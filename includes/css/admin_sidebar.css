@@ -100,11 +100,13 @@
     color: #fff;
 }
 
+
 .nav-item.active {
     background: var(--primary-light);
     color: #fff;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
+
 
 .nav-item i {
     width: 22px;

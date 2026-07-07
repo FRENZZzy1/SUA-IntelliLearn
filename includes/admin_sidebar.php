@@ -1,12 +1,15 @@
 <?php
+
 /**
  * SUA IntelliLearn - Sidebar Module
  * St. Uriel Academy Admin Portal
  * 
  * Includes: sidebar.css (separate stylesheet for sidebar styles)
+ * 
  */
 ?>
 
+<?php $current = basename($_SERVER['PHP_SELF']); ?>
 <!-- Sidebar Stylesheet -->
 <link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/admin_sidebar.css">
 
@@ -29,7 +32,8 @@
     <nav class="sidebar-nav">
         <div class="nav-section">
             <div class="nav-section-title">Main</div>
-            <a href="#" class="nav-item active" onclick="setActive(this)">
+            <a href="../../public/admin/dashboard.php"
+                class="nav-item <?= $current === 'dashboard.php' ? 'active' : '' ?>">
                 <i class="fas fa-th-large"></i>
                 <span class="nav-label">Dashboard</span>
             </a>
@@ -50,10 +54,12 @@
                 <span class="nav-label">Enrollment</span>
                 <span class="nav-badge">17</span>
             </a>
-            <a href="#" class="nav-item" onclick="setActive(this)">
+            <a href="../../public/admin/announcement.php"
+                class="nav-item <?= $current === 'announcement.php' ? 'active' : '' ?>">
                 <i class="fas fa-bullhorn"></i>
                 <span class="nav-label">Announcements</span>
             </a>
+
         </div>
 
         <div class="nav-section">
