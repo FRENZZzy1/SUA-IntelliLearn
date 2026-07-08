@@ -150,8 +150,10 @@
 .user-avatar {
     width: 36px; height: 36px;
     border-radius: 50%;
-    background: var(--accent);
-    display: flex; align-items: center; justify-content: center;
+    background: var(--primary-light);   /* was: var(--accent) */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-weight: 700;
     font-size: 0.85rem;
     color: #fff;

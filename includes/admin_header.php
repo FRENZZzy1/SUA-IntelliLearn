@@ -43,7 +43,7 @@ if (function_exists('get_initials')) {
             <i class="fas fa-question-circle"></i>
         </button>
         <button class="header-btn" style="width: auto; gap: 8px; padding: 0 12px; border-radius: 20px;" title="<?php echo htmlspecialchars($userRole); ?>">
-            <div class="user-avatar" style="width: 28px; height: 28px; font-size: 0.7rem;"><?php echo htmlspecialchars($initials); ?></div>
+            <div class="header-avatar" style="width: 28px; height: 28px; font-size: 0.7rem;"><?php echo htmlspecialchars($initials); ?></div>
             <span style="font-size: 0.8rem; font-weight: 500;"><?php echo htmlspecialchars($displayName); ?></span>
         </button>
     </div>

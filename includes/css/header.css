@@ -89,7 +89,7 @@
    had no base styling, only inline width/height/font-size overrides in the
    markup, so it likely rendered as plain unstyled text. This gives it the
    same circular-badge look as the .avatar used in the User Management table. */
-.user-avatar {
+.header-avatar {
     display: flex;
     align-items: center;
     justify-content: center;

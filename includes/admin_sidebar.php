@@ -56,8 +56,9 @@ if (function_exists('get_initials')) {
                 <i class="fas fa-th-large"></i>
                 <span class="nav-label">Dashboard</span>
             </a>
-            <a href="#" class="nav-item" onclick="setActive(this)">
-                <i class="fas fa-users"></i>
+            <a href="../../public/admin/user_management.php"
+                class="nav-item <?= $current === 'user_management.php' ? 'active' : '' ?>">
+                <i class="fas fa-th-large"></i>
                 <span class="nav-label">User Management</span>
             </a>
             <a href="#" class="nav-item" onclick="setActive(this)">
