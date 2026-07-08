@@ -45,7 +45,7 @@ $recentUsers     = get_recent_users($conn, 4);
     <!-- Main Dashboard Styles (excludes sidebar/header styles) -->
     <link rel="stylesheet" href="assests/css/dashboard.css">
     <!-- Header Module Styles (paired with includes/admin_header.php) -->
-    <link rel="stylesheet" href="assests/css/header.css">
+    
 </head>
 <body>
 
