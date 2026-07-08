@@ -8,6 +8,23 @@
  *   - sidebar.css (sidebar-specific styles)
  *   - dashboard.css (main dashboard styles)
  */
+
+// ================= DATABASE CONNECTION =================
+// TODO: adjust this path so it points to your actual db connection file
+require_once '../../config/config.php';
+
+// ================= DATA LAYER =================
+require_once 'assests/api/dashboard_functions.php';
+
+$totalStudents   = get_total_students($conn);
+$totalTeachers   = get_total_teachers($conn);
+$totalUsersCount = get_total_users_count($conn);
+$recentUsers     = get_recent_users($conn, 4);
+
+// NOTE: There is no Courses or Enrollments table in the current schema yet,
+// so "Active Courses" and "Pending Enrollments" stay static for now.
+// Once those tables exist, add get_active_courses_count() etc. to
+// dashboard_functions.php the same way as the functions above.
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -62,11 +79,11 @@
             <div class="stats-grid fade-in">
                 <div class="stat-card">
                     <div class="stat-info">
-                        <h3>324</h3>
+                        <h3><?php echo number_format($totalStudents); ?></h3>
                         <p>Total Students</p>
                         <div class="stat-trend up">
-                            <i class="fas fa-arrow-up"></i>
-                            <span>+12 this month</span>
+                            <i class="fas fa-user-check"></i>
+                            <span>Live count</span>
                         </div>
                     </div>
                     <div class="stat-icon students">
@@ -75,11 +92,11 @@
                 </div>
                 <div class="stat-card">
                     <div class="stat-info">
-                        <h3>18</h3>
+                        <h3><?php echo number_format($totalTeachers); ?></h3>
                         <p>Total Teachers</p>
                         <div class="stat-trend up">
-                            <i class="fas fa-arrow-up"></i>
-                            <span>+2 this month</span>
+                            <i class="fas fa-user-check"></i>
+                            <span>Live count</span>
                         </div>
                     </div>
                     <div class="stat-icon teachers">
@@ -91,8 +108,8 @@
                         <h3>24</h3>
                         <p>Active Courses</p>
                         <div class="stat-trend up">
-                            <i class="fas fa-arrow-up"></i>
-                            <span>+3 this semester</span>
+                            <i class="fas fa-info-circle"></i>
+                            <span>Static — add a Courses table</span>
                         </div>
                     </div>
                     <div class="stat-icon courses">
@@ -104,8 +121,8 @@
                         <h3>17</h3>
                         <p>Pending Enrollments</p>
                         <div class="stat-trend down">
-                            <i class="fas fa-arrow-down"></i>
-                            <span>Requires action</span>
+                            <i class="fas fa-info-circle"></i>
+                            <span>Static — add an Enrollments table</span>
                         </div>
                     </div>
                     <div class="stat-icon enroll">
@@ -256,99 +273,55 @@
                                     <th>Name</th>
                                     <th>Role</th>
                                     <th>Status</th>
-                                    <th>Last Active</th>
+                                    <th>Joined</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>
-                                        <div class="user-cell">
-                                            <div class="avatar" style="background: #8b5cf6;">AR</div>
-                                            <div>
-                                                <div class="name">Ana Reyes</div>
-                                                <div class="email">areyes@gmail.com</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="status-badge status-active"><span class="status-dot"></span> Teacher</span></td>
-                                    <td><span class="status-badge status-active"><span class="status-dot"></span> Active</span></td>
-                                    <td style="color: var(--text-muted); font-size: 0.8rem;">Today, 9:42 AM</td>
-                                    <td>
-                                        <div class="table-actions">
-                                            <button class="btn-view" onclick="showToast('Viewing Ana Reyes...')">View</button>
-                                            <button class="btn-edit" onclick="showToast('Editing Ana Reyes...')">Edit</button>
-                                            <button class="btn-deactivate" onclick="showToast('Deactivating Ana Reyes...')">Deactivate</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="user-cell">
-                                            <div class="avatar" style="background: var(--info);">JD</div>
-                                            <div>
-                                                <div class="name">Juan Dela Cruz</div>
-                                                <div class="email">juan@gmail.com</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="status-badge status-pending"><span class="status-dot"></span> Student</span></td>
-                                    <td><span class="status-badge status-active"><span class="status-dot"></span> Active</span></td>
-                                    <td style="color: var(--text-muted); font-size: 0.8rem;">Today, 8:15 AM</td>
-                                    <td>
-                                        <div class="table-actions">
-                                            <button class="btn-view" onclick="showToast('Viewing Juan Dela Cruz...')">View</button>
-                                            <button class="btn-edit" onclick="showToast('Editing Juan Dela Cruz...')">Edit</button>
-                                            <button class="btn-deactivate" onclick="showToast('Deactivating Juan Dela Cruz...')">Deactivate</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="user-cell">
-                                            <div class="avatar" style="background: var(--warning);">RL</div>
-                                            <div>
-                                                <div class="name">Mr. Robert Lim</div>
-                                                <div class="email">rlim@gmail.com</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="status-badge status-active"><span class="status-dot"></span> Admin</span></td>
-                                    <td><span class="status-badge status-active"><span class="status-dot"></span> Active</span></td>
-                                    <td style="color: var(--text-muted); font-size: 0.8rem;">Yesterday</td>
-                                    <td>
-                                        <div class="table-actions">
-                                            <button class="btn-view" onclick="showToast('Viewing Mr. Robert Lim...')">View</button>
-                                            <button class="btn-edit" onclick="showToast('Editing Mr. Robert Lim...')">Edit</button>
-                                            <button class="btn-deactivate" onclick="showToast('Deactivating Mr. Robert Lim...')">Deactivate</button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="user-cell">
-                                            <div class="avatar" style="background: var(--success);">CS</div>
-                                            <div>
-                                                <div class="name">Ms. Carla Santos</div>
-                                                <div class="email">csantos@gmail.com</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="status-badge status-active"><span class="status-dot"></span> Teacher</span></td>
-                                    <td><span class="status-badge status-inactive"><span class="status-dot"></span> Inactive</span></td>
-                                    <td style="color: var(--text-muted); font-size: 0.8rem;">Nov 10, 2025</td>
-                                    <td>
-                                        <div class="table-actions">
-                                            <button class="btn-view" onclick="showToast('Viewing Ms. Carla Santos...')">View</button>
-                                            <button class="btn-edit" onclick="showToast('Editing Ms. Carla Santos...')">Edit</button>
-                                            <button class="btn-deactivate" onclick="showToast('Activating Ms. Carla Santos...')">Activate</button>
-                                        </div>
-                                    </td>
-                                </tr>
+                                <?php if (!empty($recentUsers)): ?>
+                                    <?php foreach ($recentUsers as $row): ?>
+                                        <?php
+                                            $displayName = htmlspecialchars($row['full_name']);
+                                            $email = htmlspecialchars($row['email'] ?? '');
+                                            $initials = get_initials($row['full_name']);
+                                            $avatarColor = get_avatar_color($row['username']);
+                                            $isActive = ($row['status'] === 'active');
+                                            $statusClass = $isActive ? 'status-active' : 'status-inactive';
+                                            $statusLabel = $isActive ? 'Active' : 'Inactive';
+                                            $joined = date('M j, Y', strtotime($row['created_at']));
+                                            $jsName = addslashes($displayName);
+                                        ?>
+                                        <tr>
+                                            <td>
+                                                <div class="user-cell">
+                                                    <div class="avatar" style="background: <?php echo $avatarColor; ?>;"><?php echo $initials; ?></div>
+                                                    <div>
+                                                        <div class="name"><?php echo $displayName; ?></div>
+                                                        <div class="email"><?php echo $email; ?></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td><span class="status-badge status-active"><span class="status-dot"></span> <?php echo htmlspecialchars($row['Role']); ?></span></td>
+                                            <td><span class="status-badge <?php echo $statusClass; ?>"><span class="status-dot"></span> <?php echo $statusLabel; ?></span></td>
+                                            <td style="color: var(--text-muted); font-size: 0.8rem;"><?php echo $joined; ?></td>
+                                            <td>
+                                                <div class="table-actions">
+                                                    <button class="btn-view" onclick="showToast('Viewing <?php echo $jsName; ?>...')">View</button>
+                                                    <button class="btn-edit" onclick="showToast('Editing <?php echo $jsName; ?>...')">Edit</button>
+                                                    <button class="btn-deactivate" onclick="showToast('<?php echo $isActive ? 'Deactivating' : 'Activating'; ?> <?php echo $jsName; ?>...')"><?php echo $isActive ? 'Deactivate' : 'Activate'; ?></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No users found.</td>
+                                    </tr>
+                                <?php endif; ?>
                             </tbody>
                         </table>
                         <div class="table-footer">
-                            <span>Showing 4 of 342 accounts</span>
+                            <span>Showing <?php echo min(4, $totalUsersCount); ?> of <?php echo number_format($totalUsersCount); ?> accounts</span>
                             <a href="#" onclick="showToast('Viewing all users...')">View All Users →</a>
                         </div>
                     </div>
@@ -707,41 +680,7 @@
         <span id="toast-msg">Notification</span>
     </div>
 
-    <script>
-        // Sidebar Toggle
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-        }
-
-        // Active Nav State
-        function setActive(el) {
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            el.classList.add('active');
-        }
-
-        // Toast Notification
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            const msg = document.getElementById('toast-msg');
-            msg.textContent = message;
-            toast.style.transform = 'translateY(0)';
-            toast.style.opacity = '1';
-            setTimeout(() => {
-                toast.style.transform = 'translateY(100px)';
-                toast.style.opacity = '0';
-            }, 2500);
-        }
-
-        // Animate progress bars on load
-        window.addEventListener('load', () => {
-            document.querySelectorAll('.progress-bar-fill').forEach(bar => {
-                const width = bar.style.width;
-                bar.style.width = '0';
-                setTimeout(() => {
-                    bar.style.width = width;
-                }, 300);
-            });
-        });
+    <script src="assests/js/dashboard.js">
     </script>
 </body>
 </html>
