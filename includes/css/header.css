@@ -1,0 +1,106 @@
+/* ================= HEADER MODULE ================= */
+/* Styles for includes/admin_header.php — keep this file paired with it,
+   the same way sidebar.css is paired with admin_sidebar.php */
+
+.top-header {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-width);
+    right: 0;
+    height: var(--header-height);
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    z-index: 999;
+    transition: left 0.3s ease;
+}
+
+.sidebar.collapsed ~ .main-content .top-header {
+    left: var(--sidebar-collapsed);
+}
+
+.header-search {
+    position: relative;
+    width: 380px;
+}
+
+.header-search input {
+    width: 100%;
+    padding: 9px 16px 9px 38px;
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    background: var(--bg-main);
+    font-size: 0.85rem;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.header-search input:focus {
+    border-color: var(--primary-light);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(26,92,58,0.1);
+}
+
+.header-search i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.header-btn {
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.header-btn:hover {
+    background: var(--bg-main);
+    color: var(--text-dark);
+}
+
+.header-btn .notif-dot {
+    position: absolute;
+    top: 6px; right: 6px;
+    width: 8px; height: 8px;
+    background: var(--danger);
+    border-radius: 50%;
+    border: 2px solid #fff;
+}
+
+/* NOTE: this was missing before — the header avatar badge (.user-avatar)
+   had no base styling, only inline width/height/font-size overrides in the
+   markup, so it likely rendered as plain unstyled text. This gives it the
+   same circular-badge look as the .avatar used in the User Management table. */
+.user-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: var(--primary, #1a5c3a);
+    color: #fff;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .top-header { left: 0 !important; }
+    .header-search { width: 200px; }
+}

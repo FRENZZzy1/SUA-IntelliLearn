@@ -1,15 +1,34 @@
 <?php
+$current = basename($_SERVER['PHP_SELF']);
 
-/**
- * SUA IntelliLearn - Sidebar Module
- * St. Uriel Academy Admin Portal
- * 
- * Includes: sidebar.css (separate stylesheet for sidebar styles)
- * 
- */
+// ================= DYNAMIC USER INFO (sidebar footer) =================
+// Expects a session to already be started by the including page (e.g. dashboard.php).
+$displayName = $_SESSION['username'] ?? 'Guest';
+$rawRole     = $_SESSION['role'] ?? '';
+
+// Map raw role values (e.g. "admin", "teacher") to a friendlier label.
+// Add more mappings here as you add roles.
+$roleLabels = [
+    'admin'   => 'System Administrator',
+    'teacher' => 'Teacher',
+    'student' => 'Student',
+];
+$roleKey   = strtolower($rawRole);
+$roleLabel = $roleLabels[$roleKey] ?? ($rawRole !== '' ? ucfirst($rawRole) : 'User');
+
+// Reuse get_initials() from dashboard_functions.php if it's already loaded,
+// otherwise fall back to a simple inline version.
+if (function_exists('get_initials')) {
+    $sidebarInitials = get_initials($displayName);
+} else {
+    $parts = preg_split('/\s+/', trim($displayName));
+    $sidebarInitials = '';
+    foreach (array_slice($parts, 0, 2) as $part) {
+        $sidebarInitials .= strtoupper(substr($part, 0, 1));
+    }
+    $sidebarInitials = $sidebarInitials ?: '?';
+}
 ?>
-
-<?php $current = basename($_SERVER['PHP_SELF']); ?>
 <!-- Sidebar Stylesheet -->
 <link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/admin_sidebar.css">
 
@@ -77,10 +96,10 @@
 
     <div class="sidebar-footer">
         <div class="user-mini">
-            <div class="user-avatar">MS</div>
+            <div class="user-avatar"><?php echo htmlspecialchars($sidebarInitials); ?></div>
             <div class="user-info">
-                <div class="name">Maria Santos</div>
-                <div class="role">System Administrator</div>
+                <div class="name"><?php echo htmlspecialchars($displayName); ?></div>
+                <div class="role"><?php echo htmlspecialchars($roleLabel); ?></div>
             </div>
         </div>
     </div>

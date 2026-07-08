@@ -9,6 +9,15 @@
  *   - dashboard.css (main dashboard styles)
  */
 
+// ================= SESSION / AUTH GUARD =================
+session_start();
+
+if (!isset($_SESSION['user_id'])) {
+    // TODO: adjust this path to match where your login.php actually lives
+    header("Location: ../../login.php");
+    exit();
+}
+
 // ================= DATABASE CONNECTION =================
 // TODO: adjust this path so it points to your actual db connection file
 require_once '../../config/config.php';
@@ -33,8 +42,10 @@ $recentUsers     = get_recent_users($conn, 4);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SUA IntelliLearn - Admin Dashboard</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Main Dashboard Styles (excludes sidebar styles) -->
+    <!-- Main Dashboard Styles (excludes sidebar/header styles) -->
     <link rel="stylesheet" href="assests/css/dashboard.css">
+    <!-- Header Module Styles (paired with includes/admin_header.php) -->
+    <link rel="stylesheet" href="assests/css/header.css">
 </head>
 <body>
 
@@ -47,25 +58,7 @@ $recentUsers     = get_recent_users($conn, 4);
     <div class="main-content">
 
         <!-- ================= HEADER MODULE ================= -->
-        <header class="top-header">
-            <div class="header-search">
-                <i class="fas fa-search"></i>
-                <input type="text" placeholder="Search users, courses, reports...">
-            </div>
-            <div class="header-actions">
-                <button class="header-btn">
-                    <i class="fas fa-bell"></i>
-                    <span class="notif-dot"></span>
-                </button>
-                <button class="header-btn">
-                    <i class="fas fa-question-circle"></i>
-                </button>
-                <button class="header-btn" style="width: auto; gap: 8px; padding: 0 12px; border-radius: 20px;">
-                    <div class="user-avatar" style="width: 28px; height: 28px; font-size: 0.7rem;">MS</div>
-                    <span style="font-size: 0.8rem; font-weight: 500;">Maria Santos</span>
-                </button>
-            </div>
-        </header>
+        <?php include '../../includes/admin_header.php'; ?>
 
         <div class="content-wrapper">
 

@@ -1,11 +1,11 @@
 <?php
-/**
- * SUA IntelliLearn - Announcements Module
- * St. Uriel Academy Admin Portal
- *
- * UI DESIGN ONLY — no backend logic, no data persistence.
- * All buttons/inputs are placeholders for future wiring.
- */
+session_start();
+
+if (!isset($_SESSION['user_id'])) {
+    // TODO: adjust this path to match where your login.php actually lives
+    header("Location: ../../login.php");
+    exit();
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

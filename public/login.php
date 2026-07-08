@@ -22,7 +22,7 @@ if(isset($_POST['login'])){
         if(password_verify($password,$user['password'])){
 
             $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['name'];
+            $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
 
             header("Location: ../public/admin/dashboard.php");
