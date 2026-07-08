@@ -9,7 +9,7 @@ if(isset($_POST['login'])){
     $username = trim($_POST['username']);
     $password = trim($_POST['password']);
 
-    $stmt = $conn->prepare("SELECT * FROM users WHERE name=?");
+    $stmt = $conn->prepare("SELECT * FROM users WHERE username=?");
     $stmt->bind_param("s",$username);
     $stmt->execute();
 
@@ -25,7 +25,7 @@ if(isset($_POST['login'])){
             $_SESSION['username'] = $user['name'];
             $_SESSION['role'] = $user['role'];
 
-            header("Location: ../public/admin/dashboard.html");
+            header("Location: ../public/admin/dashboard.php");
             exit();
 
         }else{
