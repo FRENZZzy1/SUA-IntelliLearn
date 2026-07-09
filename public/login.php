@@ -1,6 +1,6 @@
 <?php
-session_start();
-include '../config/config.php';
+
+require_once '../config/config.php';
 
 $message = "";
 
@@ -10,7 +10,7 @@ if(isset($_POST['login'])){
     $password = trim($_POST['password']);
 
     $stmt = $conn->prepare("SELECT * FROM users WHERE username=?");
-    $stmt->bind_param("s",$username);
+    $stmt->bind_param("s", $username);
     $stmt->execute();
 
     $result = $stmt->get_result();
@@ -19,20 +19,27 @@ if(isset($_POST['login'])){
 
         $user = $result->fetch_assoc();
 
-        if(password_verify($password,$user['password'])){
+        if(password_verify($password, $user['password'])){
 
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
 
-            header("Location: ../public/admin/dashboard.php");
+            // Redirect based on role
+            if ($user['role'] === 'admin') {
+                header("Location: admin/dashboard.php");
+            } elseif ($user['role'] === 'teacher') {
+                header("Location: ../teacher/dashboard.php");
+            } else {
+                header("Location: ../student/dashboard.php");
+            }
             exit();
 
-        }else{
+        } else {
             $message = "Invalid Password";
         }
 
-    }else{
+    } else {
         $message = "User not found";
     }
 }
@@ -62,7 +69,7 @@ if(isset($_POST['login'])){
                 <div class="logo-container">
                     <div class="logo-ring">
                         <div class="logo-inner">
-                            <img src="../public/assests/images/logo.jpg" alt ="logo">
+                            <img src="../public/assests/images/logo.jpg" alt="logo">
                             <div class="logo-stars">
                                 <i class="fas fa-star"></i>
                                 <i class="fas fa-star"></i>
@@ -116,7 +123,7 @@ if(isset($_POST['login'])){
                 <?php if($message != ""): ?>
                     <div class="alert alert-shake">
                         <i class="fas fa-exclamation-circle"></i>
-                        <?= $message ?>
+                        <?= htmlspecialchars($message) ?>
                     </div>
                 <?php endif; ?>
 

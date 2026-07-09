@@ -1,11 +1,7 @@
 /* =================================================================
    USER MANAGEMENT MODULE
-   Restructured to match the announcement module's architecture.
-   Works alongside admin_sidebar.css — reuses the same CSS variables
-   (--sidebar-width, --primary-dark, --primary, --primary-light,
-   --accent, --danger, --bg-card, --border, --text-muted, --radius-sm,
-   --header-height). If your global stylesheet already defines these,
-   you can delete the :root fallback block below.
+   Fully functional CRUD with database integration
+   Works alongside admin_sidebar.css
 ================================================================= */
 
 :root {
@@ -15,6 +11,8 @@
     --accent: #f4a261;
     --bg-main: #f0f4f1;
     --bg-card: #ffffff;
+    --bg-page: #f8faf9;
+    --text-main: #1f2937;
     --text-dark: #1f2937;
     --text-muted: #6b7280;
     --border: #e5e7eb;
@@ -22,6 +20,7 @@
     --warning: #f59e0b;
     --danger: #ef4444;
     --info: #3b82f6;
+    --purple: #8B5CF6;
     --sidebar-width: 260px;
     --sidebar-collapsed: 70px;
     --header-height: 64px;
@@ -29,6 +28,8 @@
     --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.1);
     --radius: 12px;
     --radius-sm: 8px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
 }
 
 * {
@@ -42,7 +43,72 @@ body {
     font-family: 'DM Sans', 'Segoe UI', sans-serif;
 }
 
-/* ---------- Main content area: fills space beside the sidebar ---------- */
+/* ---------- Flash Messages ---------- */
+.flash-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 16px 24px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 9999;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    animation: slideIn 0.3s ease;
+    transition: opacity 0.3s ease;
+    max-width: 400px;
+}
+
+.flash-message i {
+    font-size: 1.1rem;
+}
+
+.flash-success {
+    background: #ecfdf5;
+    color: #065f46;
+    border: 1px solid #a7f3d0;
+}
+
+.flash-success i {
+    color: var(--success);
+}
+
+.flash-error {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.flash-error i {
+    color: var(--danger);
+}
+
+.flash-close {
+    margin-left: auto;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.flash-close:hover {
+    opacity: 1;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* ---------- Main content area ---------- */
 .main-content {
     margin-left: var(--sidebar-width);
     min-height: 100vh;
@@ -91,6 +157,7 @@ body {
     box-shadow: 0 4px 14px rgba(15, 31, 61, 0.25);
     transition: background 0.2s, transform 0.15s;
     white-space: nowrap;
+    text-decoration: none;
 }
 
 .btn-primary:hover {
@@ -108,6 +175,10 @@ body {
     font-size: 0.9rem;
     cursor: pointer;
     transition: background 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .btn-secondary:hover {
@@ -147,6 +218,12 @@ body {
     display: flex;
     align-items: center;
     gap: 14px;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 .stat-icon {
@@ -177,6 +254,10 @@ body {
     background: var(--danger);
 }
 
+.stat-icon.purple {
+    background: var(--purple);
+}
+
 .stat-value {
     font-size: 1.4rem;
     font-weight: 700;
@@ -198,6 +279,18 @@ body {
     padding: 26px;
     margin-bottom: 28px;
     box-shadow: 0 6px 24px rgba(15, 31, 61, 0.06);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .compose-panel-header {
@@ -246,6 +339,13 @@ body {
     margin-bottom: 8px;
 }
 
+.form-group label small {
+    text-transform: none;
+    font-weight: 400;
+    color: var(--text-muted);
+    opacity: 0.7;
+}
+
 .form-control {
     width: 100%;
     padding: 12px 14px;
@@ -255,6 +355,7 @@ body {
     font-size: 0.95rem;
     color: var(--text-main);
     background: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .form-control:focus {
@@ -265,7 +366,7 @@ body {
 
 textarea.form-control {
     resize: vertical;
-    min-height: 100px;
+    min-height: 80px;
     line-height: 1.6;
 }
 
@@ -275,7 +376,7 @@ textarea.form-control {
     gap: 18px;
 }
 
-/* ---- Role pills (mirrors priority-pill from announcement) ---- */
+/* ---- Role pills ---- */
 .role-options {
     display: flex;
     flex-wrap: wrap;
@@ -335,13 +436,14 @@ textarea.form-control {
     color: var(--success);
 }
 
-.status-pill[data-status="pending"].active {
+.status-pill[data-status="pending"].active,
+.status-pill[data-status="inactive"].active {
     background: rgba(217, 140, 31, 0.12);
     border-color: var(--warning);
     color: var(--warning);
 }
 
-.status-pill[data-status="inactive"].active {
+.status-pill[data-status="suspended"].active {
     background: rgba(107, 115, 133, 0.12);
     border-color: var(--text-muted);
     color: var(--text-muted);
@@ -364,9 +466,148 @@ textarea.form-control {
     color: var(--text-muted);
 }
 
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
 .compose-actions .right-actions {
     display: flex;
     gap: 10px;
+}
+
+/* ---------- Modal Overlay ---------- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 26px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.modal-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    margin: 0;
+    color: var(--primary-dark);
+}
+
+/* ---------- View Profile Styles ---------- */
+.view-profile {
+    padding: 10px 0;
+}
+
+.view-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.view-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 1.3rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.view-info h3 {
+    margin: 0 0 8px;
+    font-size: 1.2rem;
+    color: var(--text-main);
+}
+
+.view-details {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+.detail-label i {
+    color: var(--primary-light);
+    width: 18px;
+}
+
+.detail-value {
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 0.9rem;
 }
 
 /* ---------- Toolbar / filter row ---------- */
@@ -400,6 +641,14 @@ textarea.form-control {
     border-radius: var(--radius-sm);
     background: var(--bg-card);
     font-size: 0.9rem;
+    font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(42, 74, 140, 0.12);
 }
 
 .select-filter {
@@ -410,9 +659,23 @@ textarea.form-control {
     font-size: 0.85rem;
     color: var(--text-main);
     cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s;
 }
 
-/* ---------- User cards (mirrors announcement-card) ---------- */
+.select-filter:focus {
+    outline: none;
+    border-color: var(--primary-light);
+}
+
+.results-info {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+    padding-left: 4px;
+}
+
+/* ---------- User cards ---------- */
 .users-list {
     display: flex;
     flex-direction: column;
@@ -427,11 +690,12 @@ textarea.form-control {
     display: flex;
     gap: 18px;
     position: relative;
-    transition: box-shadow 0.2s;
+    transition: box-shadow 0.2s, transform 0.2s;
 }
 
 .user-card:hover {
     box-shadow: 0 8px 24px rgba(15, 31, 61, 0.08);
+    transform: translateY(-1px);
 }
 
 .user-card.pending {
@@ -450,6 +714,10 @@ textarea.form-control {
 
 .role-strip.teacher {
     background: var(--primary-light);
+}
+
+.role-strip.admin {
+    background: var(--purple);
 }
 
 .role-strip.staff {
@@ -524,6 +792,11 @@ textarea.form-control {
 .badge.student {
     background: rgba(201, 162, 39, 0.14);
     color: #93761c;
+}
+
+.badge.admin {
+    background: rgba(139, 92, 246, 0.12);
+    color: var(--purple);
 }
 
 .badge.staff {
@@ -612,6 +885,30 @@ textarea.form-control {
     border-color: var(--danger);
 }
 
+/* ---------- Empty State ---------- */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    color: var(--border);
+}
+
+.empty-state h3 {
+    font-size: 1.1rem;
+    margin: 0 0 8px;
+    color: var(--text-main);
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
 /* ---------- Pagination ---------- */
 .pagination {
     display: flex;
@@ -633,6 +930,8 @@ textarea.form-control {
     justify-content: center;
     font-size: 0.85rem;
     cursor: pointer;
+    text-decoration: none;
+    transition: all 0.15s;
 }
 
 .page-btn.active {
@@ -669,6 +968,11 @@ textarea.form-control {
     .status-options {
         flex-wrap: wrap;
     }
+
+    .modal-content {
+        margin: 20px;
+        max-height: calc(100vh - 40px);
+    }
 }
 
 @media (max-width: 600px) {
@@ -688,5 +992,20 @@ textarea.form-control {
 
     .search-box {
         min-width: 100%;
+    }
+
+    .main-content {
+        padding: 16px;
+        margin-left: 0;
+    }
+
+    .compose-actions {
+        flex-direction: column;
+        gap: 14px;
+        align-items: stretch;
+    }
+
+    .compose-actions .right-actions {
+        justify-content: flex-end;
     }
 }

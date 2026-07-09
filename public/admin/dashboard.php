@@ -10,13 +10,7 @@
  */
 
 // ================= SESSION / AUTH GUARD =================
-session_start();
 
-if (!isset($_SESSION['user_id'])) {
-    // TODO: adjust this path to match where your login.php actually lives
-    header("Location: ../../login.php");
-    exit();
-}
 
 // ================= DATABASE CONNECTION =================
 // TODO: adjust this path so it points to your actual db connection file
