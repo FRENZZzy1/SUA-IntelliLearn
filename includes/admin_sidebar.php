@@ -58,13 +58,15 @@ if (function_exists('get_initials')) {
             </a>
             <a href="../../public/admin/user_management.php"
                 class="nav-item <?= $current === 'user_management.php' ? 'active' : '' ?>">
-                <i class="fas fa-th-large"></i>
+                <i class="fas fa-user"></i>
                 <span class="nav-label">User Management</span>
             </a>
-            <a href="#" class="nav-item" onclick="setActive(this)">
+
+            <a href="../../public/admin/courses.php" class="nav-item <?= $current === 'courses.php' ? 'active' : '' ?>">
                 <i class="fas fa-book"></i>
                 <span class="nav-label">Courses & Subjects</span>
             </a>
+
         </div>
 
         <div class="nav-section">
