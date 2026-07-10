@@ -1,0 +1,139 @@
+/* =================================================================
+   ADD COURSE MODAL
+   Relies on the CSS variables defined in courses.css — load that
+   stylesheet first.
+================================================================= */
+
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+}
+
+.modal-overlay.open {
+    display: flex;
+}
+
+.modal-box {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    animation: modalPop 0.15s ease;
+}
+
+@keyframes modalPop {
+    from { transform: scale(0.97); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    margin: 0;
+    color: var(--primary-dark);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.modal-close:hover {
+    background: var(--bg-page);
+    color: var(--text-main);
+}
+
+.modal-body {
+    padding: 20px 24px 4px;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+}
+
+.modal-footer .btn-primary,
+.modal-footer .btn-secondary {
+    justify-content: center;
+}
+
+.modal-errors {
+    margin: 0 24px 4px;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: var(--danger);
+    font-size: 0.83rem;
+    font-weight: 600;
+}
+
+/* ---------- Form fields (shared row layout) ---------- */
+.form-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 16px;
+    flex: 1;
+}
+
+.form-row label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.form-row select,
+.form-row input {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: #fff;
+    font-size: 0.88rem;
+    font-family: inherit;
+    color: var(--text-main);
+}
+
+.form-row select:focus,
+.form-row input:focus {
+    outline: none;
+    border-color: var(--primary-light);
+}
+
+.form-row-split {
+    display: flex;
+    gap: 14px;
+}
+
+@media (max-width: 560px) {
+    .form-row-split {
+        flex-direction: column;
+        gap: 0;
+    }
+}

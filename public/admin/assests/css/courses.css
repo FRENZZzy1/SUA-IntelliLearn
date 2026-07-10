@@ -56,6 +56,27 @@ body {
     margin-left: var(--sidebar-collapsed);
 }
 
+/* ---------- Flash messages ---------- */
+.flash-message {
+    padding: 12px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 18px;
+}
+
+.flash-success {
+    background: rgba(34, 197, 94, 0.12);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.flash-error {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
 /* ---------- Page header ---------- */
 .page-header {
     display: flex;
