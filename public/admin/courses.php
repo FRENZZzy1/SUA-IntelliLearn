@@ -121,10 +121,13 @@ $totalTeachers    = (int) $pdo->query("SELECT COUNT(*) FROM teachers")->fetchCol
 
 $totalEnrollees = (int) $pdo->query("SELECT COUNT(*) FROM enrollments WHERE status = 'active'")->fetchColumn();
 
-// ================= DATA FOR "NEW COURSE" MODAL =================
+// ================= DATA FOR "NEW COURSE" / "UPDATE COURSE" MODALS =================
 $modalSubjects = $pdo->query("SELECT subject_id, subject_name FROM subjects ORDER BY subject_name")->fetchAll();
 $modalSections = $pdo->query("SELECT section_id, section_name, grade_level, strand FROM sections ORDER BY grade_level, section_name")->fetchAll();
 $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teachers ORDER BY lastname, firstname")->fetchAll();
+
+// ================= DATA FOR "NEW SECTION" MODAL =================
+$currentSchoolYear = $pdo->query("SELECT school_year_id, label FROM schoolyears WHERE is_current = 1 LIMIT 1")->fetch();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -228,6 +231,8 @@ $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teache
         </div>
         <div class="toolbar-right">
             <button class="btn-secondary" disabled title="Not enabled — CSV import not implemented"><i class="fas fa-file-import"></i> Import</button>
+            <button class="btn-secondary" onclick="openAddSubjectModal()"><i class="fas fa-book"></i> New Subject</button>
+            <button class="btn-secondary" onclick="openAddSectionModal()"><i class="fas fa-layer-group"></i> New Section</button>
             <button class="btn-primary" onclick="openAddCourseModal()"><i class="fas fa-plus"></i> New Course</button>
         </div>
     </div>
@@ -292,8 +297,17 @@ $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teache
                     </td>
                     <td>
                         <div class="row-actions">
-                            <a href="edit_course.php?id=<?= (int) $course['offering_id'] ?>">Edit</a>
-                            <a href="assign_teacher.php?id=<?= (int) $course['offering_id'] ?>">Assign</a>
+                            <a href="javascript:void(0)"
+                               data-course="<?= htmlspecialchars(json_encode([
+                                   'offering_id' => (int) $course['offering_id'],
+                                   'subject_id'  => (int) $course['subject_id'],
+                                   'section_id'  => (int) $course['section_id'],
+                                   'teacher_id'  => $course['teacher_id'] ? (int) $course['teacher_id'] : '',
+                                   'quarter'     => (int) $course['quarter'],
+                                   'capacity'    => (int) $course['capacity'],
+                                   'status'      => $course['status'],
+                               ]), ENT_QUOTES, 'UTF-8') ?>"
+                               onclick="openEditCourseModal(this)">Update</a>
                             <a class="delete" href="courses.php?delete=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&strand=<?= urlencode($strandFilter) ?>&q=<?= urlencode($searchQuery) ?>"
                                onclick="return confirmDelete()">Delete</a>
                         </div>
@@ -388,6 +402,185 @@ $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teache
         </div>
     </div>
 
+    <!-- Update Course Modal -->
+    <div class="modal-overlay" id="editCourseOverlay" onclick="if (event.target === this) closeEditCourseModal()">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>Update Course</h2>
+                <button type="button" class="modal-close" onclick="closeEditCourseModal()" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="modal-errors" id="editCourseErrors" hidden></div>
+
+            <form id="editCourseForm">
+                <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
+                <input type="hidden" name="offering_id" id="e_offering_id" value="">
+
+                <div class="modal-body">
+                    <div class="form-row">
+                        <label for="e_subject_id">Subject</label>
+                        <select id="e_subject_id" name="subject_id" required>
+                            <option value="">Select a subject</option>
+                            <?php foreach ($modalSubjects as $s): ?>
+                                <option value="<?= (int) $s['subject_id'] ?>"><?= clean($s['subject_name']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="e_section_id">Section</label>
+                        <select id="e_section_id" name="section_id" required>
+                            <option value="">Select a section</option>
+                            <?php foreach ($modalSections as $sec): ?>
+                                <option value="<?= (int) $sec['section_id'] ?>">
+                                    Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?><?= $sec['strand'] ? ' (' . clean($sec['strand']) . ')' : '' ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="e_teacher_id">Teacher</label>
+                        <select id="e_teacher_id" name="teacher_id" required>
+                            <option value="">Select a teacher</option>
+                            <?php foreach ($modalTeachers as $t): ?>
+                                <option value="<?= (int) $t['teacher_id'] ?>"><?= clean($t['firstname'] . ' ' . $t['lastname']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="form-row-split">
+                        <div class="form-row">
+                            <label for="e_quarter">Quarter</label>
+                            <select id="e_quarter" name="quarter" required>
+                                <option value="">Select</option>
+                                <?php foreach ([1, 2, 3, 4] as $q): ?>
+                                    <option value="<?= $q ?>">Quarter <?= $q ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="e_capacity">Capacity</label>
+                            <input type="number" id="e_capacity" name="capacity" min="1" value="50" required>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="e_status">Status</label>
+                            <select id="e_status" name="status" required>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeEditCourseModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="editCourseSubmitBtn"><i class="fas fa-check"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Section Modal -->
+    <div class="modal-overlay" id="addSectionOverlay" onclick="if (event.target === this) closeAddSectionModal()">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>New Section</h2>
+                <button type="button" class="modal-close" onclick="closeAddSectionModal()" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="modal-errors" id="addSectionErrors" hidden></div>
+
+            <form id="addSectionForm">
+                <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
+
+                <div class="modal-body">
+                    <div class="form-row">
+                        <label for="s_section_name">Section Name</label>
+                        <input type="text" id="s_section_name" name="section_name" placeholder="e.g. Rizal" required>
+                    </div>
+
+                    <div class="form-row-split">
+                        <div class="form-row">
+                            <label for="s_grade_level">Grade Level</label>
+                            <select id="s_grade_level" name="grade_level" required>
+                                <option value="">Select</option>
+                                <?php foreach ([7, 8, 9, 10, 11, 12] as $g): ?>
+                                    <option value="<?= $g ?>">Grade <?= $g ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="s_strand">Strand</label>
+                            <select id="s_strand" name="strand">
+                                <option value="">None</option>
+                                <?php foreach (['STEM', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
+                                    <option value="<?= $s ?>"><?= $s ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="s_adviser_id">Adviser</label>
+                        <select id="s_adviser_id" name="adviser_id">
+                            <option value="">No adviser yet</option>
+                            <?php foreach ($modalTeachers as $t): ?>
+                                <option value="<?= (int) $t['teacher_id'] ?>"><?= clean($t['firstname'] . ' ' . $t['lastname']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <span class="field-note">Each teacher can only advise one section.</span>
+                    </div>
+
+                    <div class="form-row">
+                        <span class="field-note">This section will be added to school year <strong><?= $currentSchoolYear ? clean($currentSchoolYear['label']) : '— none set —' ?></strong>.</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeAddSectionModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="addSectionSubmitBtn"><i class="fas fa-plus"></i> Add Section</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- New Subject Modal -->
+    <div class="modal-overlay" id="addSubjectOverlay" onclick="if (event.target === this) closeAddSubjectModal()">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>New Subject</h2>
+                <button type="button" class="modal-close" onclick="closeAddSubjectModal()" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="modal-errors" id="addSubjectErrors" hidden></div>
+
+            <form id="addSubjectForm">
+                <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
+
+                <div class="modal-body">
+                    <div class="form-row">
+                        <label for="sub_subject_name">Subject Name</label>
+                        <input type="text" id="sub_subject_name" name="subject_name" placeholder="e.g. Research" required>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="sub_description">Description</label>
+                        <textarea id="sub_description" name="description" placeholder="Optional short description"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeAddSubjectModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="addSubjectSubmitBtn"><i class="fas fa-plus"></i> Add Subject</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -407,6 +600,38 @@ $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teache
         return confirm('Delete this course? This cannot be undone.');
     }
 
+    // ---- Generic modal submit helper ----
+    // Posts a form to an endpoint, shows validation errors inline, and
+    // reloads on success so the flash message + updated list/stats appear.
+    function submitModalForm(form, url, submitBtn, errorBox, idleLabel) {
+        errorBox.hidden = true;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: new FormData(form)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                errorBox.innerHTML = data.errors.map(err => '<div>' + err + '</div>').join('');
+                errorBox.hidden = false;
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = idleLabel;
+            }
+        })
+        .catch(() => {
+            errorBox.innerHTML = '<div>Something went wrong. Please try again.</div>';
+            errorBox.hidden = false;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = idleLabel;
+        });
+    }
+
     // ---- Add Course modal ----
     function openAddCourseModal() {
         document.getElementById('addCourseOverlay').classList.add('open');
@@ -417,43 +642,97 @@ $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teache
         document.getElementById('addCourseOverlay').classList.remove('open');
     }
 
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeAddCourseModal();
-    });
-
     document.getElementById('addCourseForm').addEventListener('submit', function (e) {
         e.preventDefault();
+        submitModalForm(
+            this,
+            'add_course.php',
+            document.getElementById('addCourseSubmitBtn'),
+            document.getElementById('addCourseErrors'),
+            '<i class="fas fa-plus"></i> Add Course'
+        );
+    });
 
-        const submitBtn = document.getElementById('addCourseSubmitBtn');
-        const errorBox = document.getElementById('addCourseErrors');
-        errorBox.hidden = true;
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Adding...';
+    // ---- Update Course modal ----
+    function openEditCourseModal(triggerEl) {
+        const course = JSON.parse(triggerEl.dataset.course);
 
-        fetch('add_course.php', {
-            method: 'POST',
-            headers: { 'Accept': 'application/json' },
-            body: new FormData(this)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                // Reload so the (already server-side) flash message + updated
-                // course list + stats show up in one consistent page load.
-                location.reload();
-            } else {
-                errorBox.innerHTML = data.errors.map(err => '<div>' + err + '</div>').join('');
-                errorBox.hidden = false;
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add Course';
-            }
-        })
-        .catch(() => {
-            errorBox.innerHTML = '<div>Something went wrong. Please try again.</div>';
-            errorBox.hidden = false;
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fas fa-plus"></i> Add Course';
-        });
+        document.getElementById('e_offering_id').value = course.offering_id;
+        document.getElementById('e_subject_id').value = course.subject_id;
+        document.getElementById('e_section_id').value = course.section_id;
+        document.getElementById('e_teacher_id').value = course.teacher_id;
+        document.getElementById('e_quarter').value = course.quarter;
+        document.getElementById('e_capacity').value = course.capacity;
+        document.getElementById('e_status').value = course.status;
+
+        document.getElementById('editCourseErrors').hidden = true;
+        document.getElementById('editCourseOverlay').classList.add('open');
+    }
+
+    function closeEditCourseModal() {
+        document.getElementById('editCourseOverlay').classList.remove('open');
+    }
+
+    document.getElementById('editCourseForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitModalForm(
+            this,
+            'update_course.php',
+            document.getElementById('editCourseSubmitBtn'),
+            document.getElementById('editCourseErrors'),
+            '<i class="fas fa-check"></i> Save Changes'
+        );
+    });
+
+    // ---- New Section modal ----
+    function openAddSectionModal() {
+        document.getElementById('addSectionOverlay').classList.add('open');
+        document.getElementById('addSectionErrors').hidden = true;
+    }
+
+    function closeAddSectionModal() {
+        document.getElementById('addSectionOverlay').classList.remove('open');
+    }
+
+    document.getElementById('addSectionForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitModalForm(
+            this,
+            'add_section.php',
+            document.getElementById('addSectionSubmitBtn'),
+            document.getElementById('addSectionErrors'),
+            '<i class="fas fa-plus"></i> Add Section'
+        );
+    });
+
+    // ---- New Subject modal ----
+    function openAddSubjectModal() {
+        document.getElementById('addSubjectOverlay').classList.add('open');
+        document.getElementById('addSubjectErrors').hidden = true;
+    }
+
+    function closeAddSubjectModal() {
+        document.getElementById('addSubjectOverlay').classList.remove('open');
+    }
+
+    document.getElementById('addSubjectForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitModalForm(
+            this,
+            'add_subject.php',
+            document.getElementById('addSubjectSubmitBtn'),
+            document.getElementById('addSubjectErrors'),
+            '<i class="fas fa-plus"></i> Add Subject'
+        );
+    });
+
+    // ---- Shared: Escape closes whichever modal is open ----
+    document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        closeAddCourseModal();
+        closeEditCourseModal();
+        closeAddSectionModal();
+        closeAddSubjectModal();
     });
 </script>
 

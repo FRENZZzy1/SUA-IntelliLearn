@@ -110,7 +110,8 @@
 }
 
 .form-row select,
-.form-row input {
+.form-row input,
+.form-row textarea {
     padding: 10px 14px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -120,10 +121,23 @@
     color: var(--text-main);
 }
 
+.form-row textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
 .form-row select:focus,
-.form-row input:focus {
+.form-row input:focus,
+.form-row textarea:focus {
     outline: none;
     border-color: var(--primary-light);
+}
+
+.form-row .field-note {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    margin-top: -2px;
 }
 
 .form-row-split {
