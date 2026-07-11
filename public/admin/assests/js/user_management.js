@@ -1,4 +1,4 @@
- // ---- Sidebar collapse/expand ----
+// ---- Sidebar collapse/expand ----
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('collapsed');
     }
@@ -71,14 +71,46 @@
         const card = document.querySelector(`.user-card[data-user-id="${userId}"]`);
         if (!card) return;
 
+        const role = card.dataset.role;
+
+        // Fields shared by every role
         document.getElementById('editUserId').value = userId;
-        document.getElementById('editFullname').value = card.dataset.fullname;
+        document.getElementById('editRoleInput').value = role;
         document.getElementById('editEmail').value = card.dataset.email;
-        document.getElementById('editRoleInput').value = card.dataset.role;
-        document.getElementById('editDepartment').value = card.dataset.department;
-        document.getElementById('editContact').value = '';
         document.getElementById('editStatus').value = card.dataset.status;
-        document.getElementById('editNotes').value = card.dataset.notes;
+        document.getElementById('editNewPassword').value = '';
+
+        if (role === 'admin') {
+            document.getElementById('editFullname').value = card.dataset.fullname;
+        } else {
+            // student & teacher both use separate name fields
+            document.getElementById('editFirstname').value = card.dataset.firstname || '';
+            document.getElementById('editLastname').value = card.dataset.lastname || '';
+            document.getElementById('editMiddlename').value = card.dataset.middlename || '';
+        }
+
+        if (role === 'teacher' || role === 'admin') {
+            document.getElementById('editDepartment').value = card.dataset.department || '';
+            // Contact isn't persisted in the Teachers/Admin tables yet, so this
+            // always starts blank — fill in only if/when a contact column is added.
+            document.getElementById('editContact').value = '';
+        }
+
+        if (role === 'teacher') {
+            document.getElementById('editEmploymentStatus').value = card.dataset.employmentStatus || '';
+            document.getElementById('editNotes').value = card.dataset.notes || '';
+        }
+
+        if (role === 'student') {
+            document.getElementById('editLrn').value = card.dataset.lrn || '';
+            document.getElementById('editBirthdate').value = card.dataset.birthdate || '';
+            document.getElementById('editAddress').value = card.dataset.address || '';
+            document.getElementById('editGuardianName').value = card.dataset.guardian || '';
+            document.getElementById('editGuardianContact').value = card.dataset.guardianContact || '';
+        }
+
+        // Show/hide the right block of fields for this role
+        um_toggleEditStaffFields(role);
 
         document.getElementById('editModal').style.display = 'flex';
     }

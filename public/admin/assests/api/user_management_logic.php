@@ -119,36 +119,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // ============================================================
         // TEACHER / ADMIN CREATION — original flow
         // ============================================================
-        $fullname = trim($_POST['fullname'] ?? '');
+        $firstname = trim($_POST['firstname'] ?? '');
+        $middlename = trim($_POST['middlename'] ?? '');
+        $lastname = trim($_POST['lastname'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $department = trim($_POST['department'] ?? '');
         $contact = trim($_POST['contact'] ?? '');
-        $notes = trim($_POST['notes'] ?? '');
+        $specialization = trim($_POST['specialization'] ?? '');
+        $employment_status = trim($_POST['employment_status'] ?? '');
         $password = $_POST['password'] ?? '';
         $send_email = isset($_POST['send_email']) ? 1 : 0;
 
+        // Full name only used for the admin's username generation and flash messages —
+        // teachers table stores firstname/middlename/lastname separately.
+        $fullname = preg_replace('/\s+/', ' ', trim("$firstname $middlename $lastname"));
+
         // Validation
         $errors = [];
-        if (empty($fullname)) $errors[] = "Full name is required.";
+        if (empty($firstname)) $errors[] = "First name is required.";
+        if (empty($lastname)) $errors[] = "Last name is required.";
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Valid email is required.";
         if (empty($password) || strlen($password) < 6) $errors[] = "Password must be at least 6 characters.";
         if (!in_array($role, ['admin', 'teacher'])) $errors[] = "Invalid role selected.";
         if (!in_array($status, ['active', 'inactive', 'suspended'])) $errors[] = "Invalid status selected.";
+        if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_status, ['full-time', 'part-time'])) {
+            $errors[] = "Invalid employment status selected.";
+        }
+
+        // Friendly duplicate-email check (teachers.email and admin.email are UNIQUE)
+        if (empty($errors)) {
+            $table = $role === 'teacher' ? 'Teachers' : 'Admin';
+            $check = $pdo->prepare("SELECT 1 FROM $table WHERE email = ?");
+            $check->execute([$email]);
+            if ($check->fetch()) {
+                $errors[] = "A " . $role . " with this email already exists.";
+            }
+        }
+
+        // Teachers log in with their email as their username — make sure it's not
+        // already taken as someone else's username (e.g. a student or admin).
+        if (empty($errors) && $role === 'teacher') {
+            $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
+            $check->execute([$email]);
+            if ($check->fetch()) {
+                $errors[] = "This email is already in use as a login username.";
+            }
+        }
 
         if (empty($errors)) {
             try {
                 $pdo->beginTransaction();
 
-                // Generate username from fullname
-                $username_base = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', explode(' ', $fullname)[0]));
-                $username = $username_base;
-                $counter = 1;
-                while (true) {
-                    $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
-                    $check->execute([$username]);
-                    if (!$check->fetch()) break;
-                    $username = $username_base . $counter;
-                    $counter++;
+                if ($role === 'teacher') {
+                    // Teacher's username IS their email — used as the login credential.
+                    $username = $email;
+                } else {
+                    // Admin: keep generating a username from the first name.
+                    $username_base = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $firstname));
+                    $username = $username_base;
+                    $counter = 1;
+                    while (true) {
+                        $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
+                        $check->execute([$username]);
+                        if (!$check->fetch()) break;
+                        $username = $username_base . $counter;
+                        $counter++;
+                    }
                 }
 
                 $password_hash = password_hash($password, PASSWORD_DEFAULT);
@@ -163,15 +199,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                 // Insert role-specific data
                 if ($role === 'teacher') {
-                    $parts = explode(' ', $fullname, 2);
-                    $firstname = $parts[0] ?? '';
-                    $lastname = $parts[1] ?? '';
-
                     $stmt = $pdo->prepare("
-                        INSERT INTO Teachers (user_id, firstname, lastname, email, department, specialization, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+                        INSERT INTO Teachers (user_id, firstname, lastname, middlename, email, employment_status, department, specialization, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                     ");
-                    $stmt->execute([$user_id, $firstname, $lastname, $email, $department, $notes]);
+                    $stmt->execute([
+                        $user_id,
+                        $firstname,
+                        $lastname,
+                        $middlename !== '' ? $middlename : null,
+                        $email,
+                        $employment_status !== '' ? $employment_status : null,
+                        $department !== '' ? $department : null,
+                        $specialization !== '' ? $specialization : null,
+                    ]);
                 }
                 elseif ($role === 'admin') {
                     $stmt = $pdo->prepare("
@@ -198,18 +239,68 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     elseif ($action === 'update') {
         $user_id = intval($_POST['user_id'] ?? 0);
         $fullname = trim($_POST['fullname'] ?? '');
+        $firstname = trim($_POST['firstname'] ?? '');
+        $middlename = trim($_POST['middlename'] ?? '');
+        $lastname = trim($_POST['lastname'] ?? '');
         $email = trim($_POST['email'] ?? '');
         $role = $_POST['role'] ?? '';
         $status = $_POST['status'] ?? '';
         $department = trim($_POST['department'] ?? '');
         $contact = trim($_POST['contact'] ?? '');
-        $notes = trim($_POST['notes'] ?? '');
+        $specialization = trim($_POST['specialization'] ?? '');
+        $employment_status = trim($_POST['employment_status'] ?? '');
         $new_password = $_POST['new_password'] ?? '';
+
+        // Student-only fields
+        $lrn              = trim($_POST['lrn'] ?? '');
+        $birthdate        = trim($_POST['birthdate'] ?? '');
+        $address          = trim($_POST['address'] ?? '');
+        $guardian_name    = trim($_POST['guardian_name'] ?? '');
+        $guardian_contact = trim($_POST['guardian_contact'] ?? '');
 
         if ($user_id <= 0) {
             setFlashMessage('error', "Invalid user ID.");
             header("Location: " . $_SERVER['PHP_SELF']);
             exit();
+        }
+
+        // Validate student-specific fields before touching the database
+        if ($role === 'student') {
+            $errors = [];
+            if (empty($firstname)) $errors[] = "First name is required.";
+            if (empty($lastname)) $errors[] = "Last name is required.";
+            if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
+            $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
+            if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
+
+            if (!empty($errors)) {
+                setFlashMessage('error', implode(" ", $errors));
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            }
+
+            // LRN must stay unique (excluding this student's own record)
+            $check = $pdo->prepare("SELECT student_id FROM Students WHERE student_lrn = ? AND user_id != ?");
+            $check->execute([$lrn, $user_id]);
+            if ($check->fetch()) {
+                setFlashMessage('error', "Another student already has this LRN.");
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            }
+        }
+
+        // If editing a teacher and the email changed, keep the login username in
+        // sync with it (teachers log in with their email as their username).
+        $new_username = null;
+        if ($role === 'teacher' && !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $check = $pdo->prepare("SELECT id FROM Users WHERE username = ? AND id != ?");
+            $check->execute([$email, $user_id]);
+            if ($check->fetch()) {
+                setFlashMessage('error', "This email is already in use as a login username by another account.");
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            }
+            $new_username = $email;
         }
 
         try {
@@ -218,37 +309,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Update Users table
             if (!empty($new_password) && strlen($new_password) >= 6) {
                 $password_hash = password_hash($new_password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("UPDATE Users SET password = ?, status = ?, updated_at = NOW() WHERE id = ?");
-                $stmt->execute([$password_hash, $status, $user_id]);
+                $stmt = $pdo->prepare("UPDATE Users SET password = ?, status = ?, " . ($new_username !== null ? "username = ?, " : "") . "updated_at = NOW() WHERE id = ?");
+                $stmt->execute($new_username !== null
+                    ? [$password_hash, $status, $new_username, $user_id]
+                    : [$password_hash, $status, $user_id]);
             } else {
-                $stmt = $pdo->prepare("UPDATE Users SET status = ?, updated_at = NOW() WHERE id = ?");
-                $stmt->execute([$status, $user_id]);
+                $stmt = $pdo->prepare("UPDATE Users SET status = ?, " . ($new_username !== null ? "username = ?, " : "") . "updated_at = NOW() WHERE id = ?");
+                $stmt->execute($new_username !== null
+                    ? [$status, $new_username, $user_id]
+                    : [$status, $user_id]);
             }
 
             // Update role-specific table
             if ($role === 'teacher') {
-                $parts = explode(' ', $fullname, 2);
-                $firstname = $parts[0] ?? '';
-                $lastname = $parts[1] ?? '';
-
                 $stmt = $pdo->prepare("
                     UPDATE Teachers 
-                    SET firstname = ?, lastname = ?, email = ?, department = ?, specialization = ?, updated_at = NOW()
+                    SET firstname = ?, lastname = ?, middlename = ?, email = ?, department = ?, specialization = ?, employment_status = ?, updated_at = NOW()
                     WHERE user_id = ?
                 ");
-                $stmt->execute([$firstname, $lastname, $email, $department, $notes, $user_id]);
+                $stmt->execute([
+                    $firstname,
+                    $lastname,
+                    $middlename !== '' ? $middlename : null,
+                    $email,
+                    $department !== '' ? $department : null,
+                    $specialization !== '' ? $specialization : null,
+                    $employment_status !== '' ? $employment_status : null,
+                    $user_id,
+                ]);
             } 
             elseif ($role === 'student') {
-                $parts = explode(' ', $fullname, 2);
-                $firstname = $parts[0] ?? '';
-                $lastname = $parts[1] ?? '';
-
                 $stmt = $pdo->prepare("
-                    UPDATE Students 
-                    SET firstname = ?, lastname = ?, email = ?, updated_at = NOW()
+                    UPDATE Students
+                    SET firstname = ?, lastname = ?, middlename = ?, email = ?, student_lrn = ?,
+                        birthdate = ?, address = ?, guardian_name = ?, guardian_contact = ?, updated_at = NOW()
                     WHERE user_id = ?
                 ");
-                $stmt->execute([$firstname, $lastname, $email, $user_id]);
+                $stmt->execute([
+                    $firstname,
+                    $lastname,
+                    $middlename !== '' ? $middlename : null,
+                    $email !== '' ? $email : null,
+                    $lrn,
+                    $birthdate,
+                    $address !== '' ? $address : null,
+                    $guardian_name !== '' ? $guardian_name : null,
+                    $guardian_contact !== '' ? $guardian_contact : null,
+                    $user_id,
+                ]);
             }
             elseif ($role === 'admin') {
                 $stmt = $pdo->prepare("UPDATE Admin SET email = ? WHERE user_id = ?");
@@ -365,8 +473,9 @@ $sql = "SELECT
     COALESCE(t.department, '') as department,
     COALESCE(t.teacher_id, s.student_id, a.admin_id, 0) as role_id,
     COALESCE(t.specialization, '') as notes,
+    COALESCE(t.employment_status, '') as employment_status,
     s.student_lrn,
-    s.middlename,
+    COALESCE(t.middlename, s.middlename) as middlename,
     s.birthdate,
     s.address,
     s.guardian_name,

@@ -1,5 +1,7 @@
 <?php
 require_once 'assests/api/user_management_logic.php';
+
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -177,21 +179,37 @@ require_once 'assests/api/user_management_logic.php';
                  TEACHER / ADMIN FIELDS (shown when Role = Teacher/Admin)
             ============================================================= -->
             <div id="staffFields" style="display:none;">
-                <div class="form-row">
+                <!-- Admin uses a single Full Name field (admin table has no name columns) -->
+                <div class="form-row" id="adminNameRow">
                     <div class="form-group">
                         <label>Full Name *</label>
-                        <input type="text" name="fullname" class="form-control" placeholder="e.g. Maria Clara Santos" data-staff-required>
+                        <input type="text" name="fullname" class="form-control" placeholder="e.g. Maria Clara Santos" data-admin-required>
+                    </div>
+                </div>
+
+                <!-- Teacher uses separate name fields (matches the teachers table columns) -->
+                <div class="form-row" id="teacherNameRow" style="display:none;">
+                    <div class="form-group">
+                        <label>First Name *</label>
+                        <input type="text" name="firstname" class="form-control" placeholder="e.g. Maria" data-teacher-required>
                     </div>
                     <div class="form-group">
-                        <label>Email Address *</label>
-                        <input type="email" name="email" id="staffEmail" class="form-control" placeholder="e.g. maria@sturiel.edu.ph" data-staff-required>
+                        <label>Last Name *</label>
+                        <input type="text" name="lastname" class="form-control" placeholder="e.g. Santos" data-teacher-required>
+                    </div>
+                </div>
+                <div class="form-row" id="teacherMiddleNameRow" style="display:none;">
+                    <div class="form-group">
+                        <label>Middle Name</label>
+                        <input type="text" name="middlename" class="form-control" placeholder="e.g. Clara">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Department / Grade Level</label>
-                        <input type="text" name="department" class="form-control" placeholder="e.g. Grade 7 or Mathematics Dept">
+                        <label>Email Address *</label>
+                        <input type="email" name="email" id="staffEmail" class="form-control" placeholder="e.g. maria@sturiel.edu.ph" data-staff-required>
+                        <small id="teacherEmailHint" style="display:none; color:var(--text-muted);">This will also be the teacher's login username.</small>
                     </div>
                     <div class="form-group">
                         <label>Contact Number</label>
@@ -201,15 +219,55 @@ require_once 'assests/api/user_management_logic.php';
 
                 <div class="form-row">
                     <div class="form-group">
+                        <label>Department / Grade Level</label>
+                        <input type="text" name="department" class="form-control" placeholder="e.g. Grade 7 or Mathematics Dept">
+                    </div>
+                </div>
+
+                <div class="form-row" id="teacherOnlyFields" style="display:none;">
+                    <div class="form-group">
+                        <label>Employment Status</label>
+                        <select name="employment_status" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="full-time">Full-time</option>
+                            <option value="part-time">Part-time</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Specialization (optional)</label>
+                        <input type="text" name="specialization" class="form-control" placeholder="e.g. Algebra, Biology">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
                         <label>Password * <small>(min 6 characters)</small></label>
                         <input type="password" name="password" class="form-control" placeholder="Enter secure password" minlength="6" data-staff-required>
                     </div>
-                    <div class="form-group">
-                        <label>Notes (optional)</label>
-                        <input type="text" name="notes" class="form-control" placeholder="Additional information...">
-                    </div>
                 </div>
             </div>
+
+            <script>
+            // Toggle admin-vs-teacher sub-fields within #staffFields.
+            // (Hooks into the existing setRole() flow — call this from setRole() too if it lives elsewhere.)
+            function um_toggleStaffSubFields(role) {
+                var isTeacher = role === 'teacher';
+                document.getElementById('adminNameRow').style.display = isTeacher ? 'none' : '';
+                document.getElementById('teacherNameRow').style.display = isTeacher ? '' : 'none';
+                document.getElementById('teacherMiddleNameRow').style.display = isTeacher ? '' : 'none';
+                document.getElementById('teacherOnlyFields').style.display = isTeacher ? '' : 'none';
+                document.getElementById('teacherEmailHint').style.display = isTeacher ? '' : 'none';
+                document.querySelectorAll('[data-admin-required]').forEach(function(el) { el.required = !isTeacher; });
+                document.querySelectorAll('[data-teacher-required]').forEach(function(el) { el.required = isTeacher; });
+            }
+            // Run once on role-pill clicks. If setRole() already exists in user_management.js,
+            // this listens for the same clicks so no edits to that file are required.
+            document.querySelectorAll('.role-pill').forEach(function(pill) {
+                pill.addEventListener('click', function() {
+                    um_toggleStaffSubFields(pill.getAttribute('data-role'));
+                });
+            });
+            </script>
 
             <div class="compose-actions">
                 <div class="left-actions">
@@ -239,18 +297,43 @@ require_once 'assests/api/user_management_logic.php';
                 <input type="hidden" name="user_id" id="editUserId">
                 <input type="hidden" name="role" id="editRoleInput">
 
-                <div class="form-row">
+                <!-- Admin: single Full Name field (admin table has no separate name columns) -->
+                <div class="form-row" id="editAdminNameRow">
                     <div class="form-group">
                         <label>Full Name</label>
-                        <input type="text" name="fullname" id="editFullname" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <input type="email" name="email" id="editEmail" class="form-control" required>
+                        <input type="text" name="fullname" id="editFullname" class="form-control">
                     </div>
                 </div>
 
+                <!-- Student & Teacher: separate name fields (matches Students / Teachers columns) -->
+                <div class="form-row" id="editNameRow" style="display:none;">
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" name="firstname" id="editFirstname" class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" name="lastname" id="editLastname" class="form-control">
+                    </div>
+                </div>
+                <div class="form-row" id="editMiddleNameRow" style="display:none;">
+                    <div class="form-group">
+                        <label>Middle Name</label>
+                        <input type="text" name="middlename" id="editMiddlename" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Email: one real field for every role (no more hidden duplicate) -->
                 <div class="form-row">
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" name="email" id="editEmail" class="form-control" required>
+                        <small id="editTeacherEmailHint" style="display:none; color:var(--text-muted);">This is also the teacher's login username.</small>
+                    </div>
+                </div>
+
+                <!-- Teacher / Admin only: department + contact -->
+                <div class="form-row" id="editStaffMetaRow">
                     <div class="form-group">
                         <label>Department / Grade Level</label>
                         <input type="text" name="department" id="editDepartment" class="form-control">
@@ -260,6 +343,68 @@ require_once 'assests/api/user_management_logic.php';
                         <input type="tel" name="contact" id="editContact" class="form-control">
                     </div>
                 </div>
+
+                <div class="form-row" id="editTeacherOnlyFields" style="display:none;">
+                    <div class="form-group">
+                        <label>Employment Status</label>
+                        <select name="employment_status" id="editEmploymentStatus" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="full-time">Full-time</option>
+                            <option value="part-time">Part-time</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Specialization</label>
+                        <input type="text" name="specialization" id="editNotes" class="form-control" placeholder="e.g. Algebra, Biology">
+                    </div>
+                </div>
+
+                <!-- Student only fields -->
+                <div id="editStudentFields" style="display:none;">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>LRN <small>(12 digits)</small></label>
+                            <input type="text" name="lrn" id="editLrn" class="form-control" pattern="\d{12}" maxlength="12">
+                        </div>
+                        <div class="form-group">
+                            <label>Birthdate</label>
+                            <input type="date" name="birthdate" id="editBirthdate" class="form-control">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Address</label>
+                        <input type="text" name="address" id="editAddress" class="form-control">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Guardian Name</label>
+                            <input type="text" name="guardian_name" id="editGuardianName" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Guardian Contact</label>
+                            <input type="tel" name="guardian_contact" id="editGuardianContact" class="form-control">
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                // Shows/hides the right block of fields for the role being edited, and
+                // keeps `required` in sync with visibility so hidden fields never block
+                // native form validation.
+                function um_toggleEditStaffFields(role) {
+                    var isAdmin = role === 'admin';
+                    var isTeacher = role === 'teacher';
+                    var isStudent = role === 'student';
+
+                    document.getElementById('editAdminNameRow').style.display = isAdmin ? '' : 'none';
+                    document.getElementById('editNameRow').style.display = isAdmin ? 'none' : '';
+                    document.getElementById('editMiddleNameRow').style.display = isAdmin ? 'none' : '';
+                    document.getElementById('editStaffMetaRow').style.display = isStudent ? 'none' : '';
+                    document.getElementById('editTeacherOnlyFields').style.display = isTeacher ? '' : 'none';
+                    document.getElementById('editStudentFields').style.display = isStudent ? '' : 'none';
+                    document.getElementById('editTeacherEmailHint').style.display = isTeacher ? '' : 'none';
+                }
+                </script>
 
                 <div class="form-row">
                     <div class="form-group">
@@ -272,13 +417,8 @@ require_once 'assests/api/user_management_logic.php';
                     </div>
                     <div class="form-group">
                         <label>New Password <small>(leave blank to keep current)</small></label>
-                        <input type="password" name="new_password" class="form-control" placeholder="Min 6 characters" minlength="6">
+                        <input type="password" name="new_password" id="editNewPassword" class="form-control" placeholder="Min 6 characters" minlength="6">
                     </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Notes</label>
-                    <textarea name="notes" id="editNotes" class="form-control" rows="2"></textarea>
                 </div>
 
                 <div class="compose-actions">
@@ -362,8 +502,10 @@ require_once 'assests/api/user_management_logic.php';
         ?>
         <div class="user-card <?= $is_pending ? 'pending' : '' ?>" data-user-id="<?= $user['id'] ?>" 
              data-fullname="<?= clean($display_name) ?>" data-email="<?= clean($user['email']) ?>"
+             data-firstname="<?= clean($user['firstname']) ?>" data-lastname="<?= clean($user['lastname']) ?>"
              data-role="<?= $user['role'] ?>" data-status="<?= $user['status'] ?>"
              data-department="<?= clean($user['department']) ?>" data-notes="<?= clean($user['notes']) ?>"
+             data-employment-status="<?= clean($user['employment_status'] ?? '') ?>"
              data-username="<?= clean($user['username']) ?>" data-created="<?= $user['created_at'] ?>"
              data-lrn="<?= clean($user['student_lrn'] ?? '') ?>" data-middlename="<?= clean($user['middlename'] ?? '') ?>"
              data-birthdate="<?= clean($user['birthdate'] ?? '') ?>" data-address="<?= clean($user['address'] ?? '') ?>"
