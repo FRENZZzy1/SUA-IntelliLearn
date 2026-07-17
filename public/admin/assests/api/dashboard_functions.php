@@ -81,3 +81,123 @@ function get_avatar_color(string $seed): string {
     $index = crc32($seed) % count($colors);
     return $colors[$index];
 }
+
+/**
+ * ================= GLOBAL SEARCH =================
+ *
+ * Searches across Users (resolved to Students/teachers/Admin), courses
+ * (classofferings resolved to subject/teacher/section), and subjects.
+ *
+ * @return array{users: array, courses: array, subjects: array}
+ */
+function global_search(mysqli $conn, string $term, int $limitPerGroup = 6): array {
+    $term = trim($term);
+    if ($term === '') {
+        return ['users' => [], 'courses' => [], 'subjects' => []];
+    }
+
+    return [
+        'users'    => search_users($conn, $term, $limitPerGroup),
+        'courses'  => search_courses($conn, $term, $limitPerGroup),
+        'subjects' => search_subjects($conn, $term, $limitPerGroup),
+    ];
+}
+
+/**
+ * Search Users, joined to whichever role table (Students / teachers / Admin)
+ * they belong to, matching on username, first/last name, or email.
+ */
+function search_users(mysqli $conn, string $term, int $limit = 6): array {
+    $like = '%' . $term . '%';
+
+    $sql = "SELECT u.id, u.username, u.Role AS role, u.status,
+                COALESCE(CONCAT(s.firstname, ' ', s.lastname), CONCAT(t.firstname, ' ', t.lastname), a.position, u.username) AS full_name,
+                COALESCE(s.email, t.email, a.email) AS email
+             FROM Users u
+             LEFT JOIN Students s ON s.user_id = u.id
+             LEFT JOIN teachers t ON t.user_id = u.id
+             LEFT JOIN Admin a ON a.user_id = u.id
+             WHERE u.username LIKE ?
+                OR s.firstname LIKE ? OR s.lastname LIKE ?
+                OR t.firstname LIKE ? OR t.lastname LIKE ?
+                OR s.email LIKE ? OR t.email LIKE ? OR a.email LIKE ?
+             ORDER BY full_name ASC
+             LIMIT ?";
+
+    $stmt = $conn->prepare($sql);
+    $params = [$like, $like, $like, $like, $like, $like, $like, $like, $limit];
+    $stmt->bind_param('ssssssssi', ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+
+    return $rows;
+}
+
+/**
+ * Search course offerings (classofferings), matching on subject name,
+ * section name, or teacher name.
+ */
+function search_courses(mysqli $conn, string $term, int $limit = 6): array {
+    $like = '%' . $term . '%';
+
+    $sql = "SELECT co.offering_id, co.quarter, co.capacity, co.status,
+                sub.subject_id, sub.subject_name,
+                sec.section_id, sec.section_name, sec.grade_level,
+                t.teacher_id, CONCAT(t.firstname, ' ', t.lastname) AS teacher_name
+             FROM classofferings co
+             JOIN subjects sub ON sub.subject_id = co.subject_id
+             JOIN teachers t ON t.teacher_id = co.teacher_id
+             JOIN sections sec ON sec.section_id = co.section_id
+             WHERE sub.subject_name LIKE ?
+                OR sec.section_name LIKE ?
+                OR t.firstname LIKE ? OR t.lastname LIKE ?
+             ORDER BY sub.subject_name ASC
+             LIMIT ?";
+
+    $stmt = $conn->prepare($sql);
+    $params = [$like, $like, $like, $like, $limit];
+    $stmt->bind_param('ssssi', ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+
+    return $rows;
+}
+
+/**
+ * Search subjects by name or description.
+ */
+function search_subjects(mysqli $conn, string $term, int $limit = 6): array {
+    $like = '%' . $term . '%';
+
+    $sql = "SELECT subject_id, subject_name, description
+             FROM subjects
+             WHERE subject_name LIKE ? OR description LIKE ?
+             ORDER BY subject_name ASC
+             LIMIT ?";
+
+    $stmt = $conn->prepare($sql);
+    $params = [$like, $like, $limit];
+    $stmt->bind_param('ssi', ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $rows[] = $row;
+    }
+    $stmt->close();
+
+    return $rows;
+}

@@ -29,10 +29,76 @@ if (function_exists('get_initials')) {
 }
 ?>
 <link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/header.css">
+<style>
+    /* Global search dropdown — scoped here since header.css is shared/unknown at edit time */
+    .header-search { position: relative; }
+    .search-results-dropdown {
+        display: none;
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        width: 380px;
+        max-width: 90vw;
+        max-height: 420px;
+        overflow-y: auto;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: var(--shadow-lg, 0 10px 30px rgba(0,0,0,0.15));
+        border: 1px solid rgba(0,0,0,0.06);
+        z-index: 1000;
+    }
+    .search-results-dropdown.open { display: block; }
+    .search-group-label {
+        padding: 10px 16px 4px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #9ca3af;
+    }
+    .search-result-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 16px;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+    }
+    .search-result-item:hover { background: #f5f5f7; }
+    .search-result-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #fff;
+        flex-shrink: 0;
+    }
+    .search-result-main { display: flex; flex-direction: column; min-width: 0; }
+    .search-result-title {
+        font-size: 0.85rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .search-result-sub { font-size: 0.72rem; color: #9ca3af; }
+    .search-empty-state, .search-loading-state {
+        padding: 20px 16px;
+        text-align: center;
+        font-size: 0.8rem;
+        color: #9ca3af;
+    }
+</style>
 <header class="top-header">
     <div class="header-search">
         <i class="fas fa-search"></i>
-        <input type="text" placeholder="Search users, courses, reports...">
+        <input type="text" id="globalSearchInput" placeholder="Search users, courses, subjects..." autocomplete="off">
+        <div id="searchResultsDropdown" class="search-results-dropdown"></div>
     </div>
     <div class="header-actions">
         <button class="header-btn">

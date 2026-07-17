@@ -64,7 +64,7 @@ if (function_exists('get_initials')) {
 
             <a href="../../public/admin/courses.php" class="nav-item <?= $current === 'courses.php' ? 'active' : '' ?>">
                 <i class="fas fa-book"></i>
-                <span class="nav-label">Courses & Subjects</span>
+                <span class="nav-label">Classess & Subjects</span>
             </a>
 
         </div>
