@@ -128,6 +128,41 @@ $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teache
 
 // ================= DATA FOR "NEW SECTION" MODAL =================
 $currentSchoolYear = $pdo->query("SELECT school_year_id, label FROM schoolyears WHERE is_current = 1 LIMIT 1")->fetch();
+
+// ================= DATA FOR "SECTIONS" VIEW =================
+$sectionsList = $pdo->query("
+    SELECT
+        sec.section_id,
+        sec.section_name,
+        sec.grade_level,
+        sec.strand,
+        t.firstname AS adviser_firstname,
+        t.lastname  AS adviser_lastname,
+        sy.label AS school_year_label,
+        (SELECT COUNT(*) FROM classofferings co
+            WHERE co.section_id = sec.section_id) AS course_count,
+        (SELECT COUNT(*) FROM enrollments e
+            JOIN classofferings co2 ON co2.offering_id = e.offering_id
+            WHERE co2.section_id = sec.section_id AND e.status = 'active') AS student_count
+    FROM sections sec
+    LEFT JOIN teachers t     ON t.teacher_id = sec.adviser_id
+    LEFT JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id
+    ORDER BY sec.grade_level ASC, sec.section_name ASC
+")->fetchAll();
+
+// ================= DATA FOR "SUBJECTS" VIEW =================
+$subjectsList = $pdo->query("
+    SELECT
+        s.subject_id,
+        s.subject_name,
+        s.description,
+        (SELECT COUNT(*) FROM classofferings co
+            WHERE co.subject_id = s.subject_id) AS offering_count,
+        (SELECT COUNT(DISTINCT co.section_id) FROM classofferings co
+            WHERE co.subject_id = s.subject_id) AS section_count
+    FROM subjects s
+    ORDER BY s.subject_name ASC
+")->fetchAll();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -231,7 +266,9 @@ $currentSchoolYear = $pdo->query("SELECT school_year_id, label FROM schoolyears 
         </div>
         <div class="toolbar-right">
             <button class="btn-secondary" disabled title="Not enabled — CSV import not implemented"><i class="fas fa-file-import"></i> Import</button>
+            <button class="btn-secondary" id="toggleSubjectsBtn" onclick="togglePanel('subjects', this)"><i class="fas fa-list"></i> View Subjects</button>
             <button class="btn-secondary" onclick="openAddSubjectModal()"><i class="fas fa-book"></i> New Subject</button>
+            <button class="btn-secondary" id="toggleSectionsBtn" onclick="togglePanel('sections', this)"><i class="fas fa-list"></i> View Sections</button>
             <button class="btn-secondary" onclick="openAddSectionModal()"><i class="fas fa-layer-group"></i> New Section</button>
             <button class="btn-primary" onclick="openAddCourseModal()"><i class="fas fa-plus"></i> New Course</button>
         </div>
@@ -321,6 +358,111 @@ $currentSchoolYear = $pdo->query("SELECT school_year_id, label FROM schoolyears 
             <span class="count-note">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
         </div>
     </div>
+    <!-- /Course List -->
+
+    <!-- Sections List (hidden until "View Sections" is clicked) -->
+    <div class="view-panel" id="view-sections">
+    <div class="list-panel">
+        <div class="list-panel-header">
+            <h2>Sections List</h2>
+            <span class="count-note"><?= htmlspecialchars(count($sectionsList)) ?> sections</span>
+        </div>
+
+        <table class="course-table">
+            <thead>
+                <tr>
+                    <th>Section</th>
+                    <th>Grade Level</th>
+                    <th>Adviser</th>
+                    <th>School Year</th>
+                    <th>Courses Offered</th>
+                    <th>Enrolled Students</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($sectionsList)): ?>
+                <tr>
+                    <td colspan="6" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                        No sections found. Use "New Section" to add one.
+                    </td>
+                </tr>
+                <?php endif; ?>
+
+                <?php foreach ($sectionsList as $sec):
+                    $adviserName = $sec['adviser_firstname']
+                        ? trim($sec['adviser_firstname'] . ' ' . $sec['adviser_lastname'])
+                        : null;
+                ?>
+                <tr>
+                    <td><span class="course-name"><?= htmlspecialchars($sec['section_name']) ?></span></td>
+                    <td>Grade <?= htmlspecialchars($sec['grade_level']) ?><?= $sec['strand'] ? ' · ' . htmlspecialchars($sec['strand']) : '' ?></td>
+                    <td><?= $adviserName ? htmlspecialchars($adviserName) : '— None —' ?></td>
+                    <td><?= $sec['school_year_label'] ? htmlspecialchars($sec['school_year_label']) : '— None —' ?></td>
+                    <td><?= (int) $sec['course_count'] ?></td>
+                    <td><?= (int) $sec['student_count'] ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <div class="list-panel-footer">
+            <span class="count-note"><?= htmlspecialchars(count($sectionsList)) ?> sections total</span>
+        </div>
+    </div>
+    </div>
+    <!-- /Sections List -->
+
+    <!-- Subjects List (hidden until "View Subjects" is clicked) -->
+    <div class="view-panel" id="view-subjects">
+    <div class="list-panel">
+        <div class="list-panel-header">
+            <h2>Subjects List</h2>
+            <span class="count-note"><?= htmlspecialchars(count($subjectsList)) ?> subjects</span>
+        </div>
+
+        <table class="course-table">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Description</th>
+                    <th>Courses Offered</th>
+                    <th>Sections Covered</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (empty($subjectsList)): ?>
+                <tr>
+                    <td colspan="4" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                        No subjects found. Use "New Subject" to add one.
+                    </td>
+                </tr>
+                <?php endif; ?>
+
+                <?php foreach ($subjectsList as $subj):
+                    $colors = $subjectColors[$subj['subject_name']] ?? ['bg' => '#e5e7eb', 'text' => '#374151', 'bar' => '#9ca3af'];
+                ?>
+                <tr>
+                    <td>
+                        <div class="course-cell">
+                            <span class="subject-tag" style="background: <?= $colors['bg'] ?>; color: <?= $colors['text'] ?>;">
+                                <?= htmlspecialchars($subj['subject_name']) ?>
+                            </span>
+                        </div>
+                    </td>
+                    <td style="white-space: normal;"><?= $subj['description'] ? htmlspecialchars($subj['description']) : '— No description —' ?></td>
+                    <td><?= (int) $subj['offering_count'] ?></td>
+                    <td><?= (int) $subj['section_count'] ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <div class="list-panel-footer">
+            <span class="count-note"><?= htmlspecialchars(count($subjectsList)) ?> subjects total</span>
+        </div>
+    </div>
+    </div>
+    <!-- /Subjects List -->
 
     <!-- Add Course Modal -->
     <div class="modal-overlay" id="addCourseOverlay" onclick="if (event.target === this) closeAddCourseModal()">
@@ -598,6 +740,19 @@ $currentSchoolYear = $pdo->query("SELECT school_year_id, label FROM schoolyears 
     // ---- Delete confirmation ----
     function confirmDelete() {
         return confirm('Delete this course? This cannot be undone.');
+    }
+
+    // ---- Toggle the Sections / Subjects list panels ----
+    // Each panel is independent and hidden by default; clicking its
+    // "View..." button reveals it (and clicking again hides it).
+    function togglePanel(view, btn) {
+        const panel = document.getElementById('view-' + view);
+        const isOpen = panel.classList.toggle('open');
+        btn.classList.toggle('active', isOpen);
+
+        if (isOpen) {
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 
     // ---- Generic modal submit helper ----

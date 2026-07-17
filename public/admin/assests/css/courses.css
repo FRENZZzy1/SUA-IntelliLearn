@@ -206,6 +206,28 @@ body {
     margin-top: 2px;
 }
 
+/* ---------- Sections / Subjects toggle panels ---------- */
+/* Hidden by default; revealed when the matching "View..." button is
+   clicked (see .btn-secondary.active below for the button's own state). */
+.view-panel {
+    display: none;
+    margin-top: 20px;
+}
+
+.view-panel.open {
+    display: block;
+}
+
+.btn-secondary.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.btn-secondary.active:hover {
+    background: var(--primary-light);
+}
+
 /* ---------- Toolbar / filter row ---------- */
 .toolbar-row {
     display: flex;
