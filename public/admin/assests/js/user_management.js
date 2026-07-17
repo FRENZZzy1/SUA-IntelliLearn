@@ -80,25 +80,24 @@
         document.getElementById('editStatus').value = card.dataset.status;
         document.getElementById('editNewPassword').value = '';
 
-        if (role === 'admin') {
-            document.getElementById('editFullname').value = card.dataset.fullname;
-        } else {
-            // student & teacher both use separate name fields
+        if (role === 'student' || role === 'teacher') {
             document.getElementById('editFirstname').value = card.dataset.firstname || '';
             document.getElementById('editLastname').value = card.dataset.lastname || '';
             document.getElementById('editMiddlename').value = card.dataset.middlename || '';
         }
 
-        if (role === 'teacher' || role === 'admin') {
-            document.getElementById('editDepartment').value = card.dataset.department || '';
-            // Contact isn't persisted in the Teachers/Admin tables yet, so this
-            // always starts blank — fill in only if/when a contact column is added.
-            document.getElementById('editContact').value = '';
-        }
-
         if (role === 'teacher') {
+            document.getElementById('editDepartment').value = card.dataset.department || '';
+            // Contact isn't persisted in the Teachers table yet, so this always starts
+            // blank — fill in only if/when a contact column is added.
+            document.getElementById('editContact').value = '';
             document.getElementById('editEmploymentStatus').value = card.dataset.employmentStatus || '';
             document.getElementById('editNotes').value = card.dataset.notes || '';
+        }
+
+        if (role === 'admin') {
+            document.getElementById('editPosition').value = card.dataset.position || 'staff';
+            document.getElementById('editAccessLevel').value = card.dataset.accessLevel || 'limited';
         }
 
         if (role === 'student') {
@@ -153,6 +152,19 @@
                 <div class="detail-row">
                     <span class="detail-label"><i class="fas fa-phone"></i> Guardian Contact</span>
                     <span class="detail-value">${card.dataset.guardianContact || 'Not set'}</span>
+                </div>
+            `;
+        } else if (card.dataset.role === 'admin') {
+            const positionLabels = { principal: 'Principal', registrar: 'Registrar', staff: 'Staff' };
+            const accessLabels = { full: 'Full', limited: 'Limited', read_only: 'Read Only' };
+            extraRows = `
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-user-tie"></i> Position</span>
+                    <span class="detail-value">${positionLabels[card.dataset.position] || 'Not set'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-key"></i> Access Level</span>
+                    <span class="detail-value">${accessLabels[card.dataset.accessLevel] || 'Not set'}</span>
                 </div>
             `;
         }

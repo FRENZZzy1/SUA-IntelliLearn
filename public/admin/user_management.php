@@ -179,15 +179,8 @@ require_once 'assests/api/user_management_logic.php';
                  TEACHER / ADMIN FIELDS (shown when Role = Teacher/Admin)
             ============================================================= -->
             <div id="staffFields" style="display:none;">
-                <!-- Admin uses a single Full Name field (admin table has no name columns) -->
-                <div class="form-row" id="adminNameRow">
-                    <div class="form-group">
-                        <label>Full Name *</label>
-                        <input type="text" name="fullname" class="form-control" placeholder="e.g. Maria Clara Santos" data-admin-required>
-                    </div>
-                </div>
-
-                <!-- Teacher uses separate name fields (matches the teachers table columns) -->
+                <!-- Teacher uses separate name fields (matches the teachers table columns).
+                     Admin has NO name field at all — the admin table has no name columns. -->
                 <div class="form-row" id="teacherNameRow" style="display:none;">
                     <div class="form-group">
                         <label>First Name *</label>
@@ -211,13 +204,16 @@ require_once 'assests/api/user_management_logic.php';
                         <input type="email" name="email" id="staffEmail" class="form-control" placeholder="e.g. maria@sturiel.edu.ph" data-staff-required>
                         <small id="teacherEmailHint" style="display:none; color:var(--text-muted);">This will also be the teacher's login username.</small>
                     </div>
-                    <div class="form-group">
+                    <!-- Contact isn't a column on either Teachers or Admin, but is kept for teachers
+                         only per the existing UI; hidden entirely for admin (admin table has no such column). -->
+                    <div class="form-group" id="contactFieldGroup" style="display:none;">
                         <label>Contact Number</label>
                         <input type="tel" name="contact" class="form-control" placeholder="e.g. +63 912 345 6789">
                     </div>
                 </div>
 
-                <div class="form-row">
+                <!-- Department: a Teachers column only — admin table has no such column -->
+                <div class="form-row" id="departmentRow" style="display:none;">
                     <div class="form-group">
                         <label>Department / Grade Level</label>
                         <input type="text" name="department" class="form-control" placeholder="e.g. Grade 7 or Mathematics Dept">
@@ -239,6 +235,26 @@ require_once 'assests/api/user_management_logic.php';
                     </div>
                 </div>
 
+                <!-- Admin only: access_level + position (real columns on the admin table) -->
+                <div class="form-row" id="adminOnlyFields" style="display:none;">
+                    <div class="form-group">
+                        <label>Position *</label>
+                        <select name="position" class="form-control" data-admin-required>
+                            <option value="principal">Principal</option>
+                            <option value="registrar">Registrar</option>
+                            <option value="staff" selected>Staff</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Access Level *</label>
+                        <select name="access_level" class="form-control" data-admin-required>
+                            <option value="full">Full</option>
+                            <option value="limited" selected>Limited</option>
+                            <option value="read_only">Read Only</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>Password * <small>(min 6 characters)</small></label>
@@ -252,13 +268,15 @@ require_once 'assests/api/user_management_logic.php';
             // (Hooks into the existing setRole() flow — call this from setRole() too if it lives elsewhere.)
             function um_toggleStaffSubFields(role) {
                 var isTeacher = role === 'teacher';
-                document.getElementById('adminNameRow').style.display = isTeacher ? 'none' : '';
                 document.getElementById('teacherNameRow').style.display = isTeacher ? '' : 'none';
                 document.getElementById('teacherMiddleNameRow').style.display = isTeacher ? '' : 'none';
+                document.getElementById('contactFieldGroup').style.display = isTeacher ? '' : 'none';
+                document.getElementById('departmentRow').style.display = isTeacher ? '' : 'none';
                 document.getElementById('teacherOnlyFields').style.display = isTeacher ? '' : 'none';
+                document.getElementById('adminOnlyFields').style.display = isTeacher ? 'none' : '';
                 document.getElementById('teacherEmailHint').style.display = isTeacher ? '' : 'none';
-                document.querySelectorAll('[data-admin-required]').forEach(function(el) { el.required = !isTeacher; });
                 document.querySelectorAll('[data-teacher-required]').forEach(function(el) { el.required = isTeacher; });
+                document.querySelectorAll('[data-admin-required]').forEach(function(el) { el.required = !isTeacher; });
             }
             // Run once on role-pill clicks. If setRole() already exists in user_management.js,
             // this listens for the same clicks so no edits to that file are required.
@@ -297,15 +315,8 @@ require_once 'assests/api/user_management_logic.php';
                 <input type="hidden" name="user_id" id="editUserId">
                 <input type="hidden" name="role" id="editRoleInput">
 
-                <!-- Admin: single Full Name field (admin table has no separate name columns) -->
-                <div class="form-row" id="editAdminNameRow">
-                    <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" name="fullname" id="editFullname" class="form-control">
-                    </div>
-                </div>
-
-                <!-- Student & Teacher: separate name fields (matches Students / Teachers columns) -->
+                <!-- Student & Teacher: separate name fields (matches Students / Teachers columns).
+                     Admin has NO name field at all — admin table has no name columns. -->
                 <div class="form-row" id="editNameRow" style="display:none;">
                     <div class="form-group">
                         <label>First Name</label>
@@ -332,7 +343,7 @@ require_once 'assests/api/user_management_logic.php';
                     </div>
                 </div>
 
-                <!-- Teacher / Admin only: department + contact -->
+                <!-- Teacher only: department + contact (not columns on the admin table) -->
                 <div class="form-row" id="editStaffMetaRow">
                     <div class="form-group">
                         <label>Department / Grade Level</label>
@@ -356,6 +367,26 @@ require_once 'assests/api/user_management_logic.php';
                     <div class="form-group">
                         <label>Specialization</label>
                         <input type="text" name="specialization" id="editNotes" class="form-control" placeholder="e.g. Algebra, Biology">
+                    </div>
+                </div>
+
+                <!-- Admin only: access_level + position (real columns on the admin table) -->
+                <div class="form-row" id="editAdminOnlyFields" style="display:none;">
+                    <div class="form-group">
+                        <label>Position</label>
+                        <select name="position" id="editPosition" class="form-control">
+                            <option value="principal">Principal</option>
+                            <option value="registrar">Registrar</option>
+                            <option value="staff">Staff</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Access Level</label>
+                        <select name="access_level" id="editAccessLevel" class="form-control">
+                            <option value="full">Full</option>
+                            <option value="limited">Limited</option>
+                            <option value="read_only">Read Only</option>
+                        </select>
                     </div>
                 </div>
 
@@ -396,11 +427,11 @@ require_once 'assests/api/user_management_logic.php';
                     var isTeacher = role === 'teacher';
                     var isStudent = role === 'student';
 
-                    document.getElementById('editAdminNameRow').style.display = isAdmin ? '' : 'none';
                     document.getElementById('editNameRow').style.display = isAdmin ? 'none' : '';
                     document.getElementById('editMiddleNameRow').style.display = isAdmin ? 'none' : '';
-                    document.getElementById('editStaffMetaRow').style.display = isStudent ? 'none' : '';
+                    document.getElementById('editStaffMetaRow').style.display = isTeacher ? '' : 'none';
                     document.getElementById('editTeacherOnlyFields').style.display = isTeacher ? '' : 'none';
+                    document.getElementById('editAdminOnlyFields').style.display = isAdmin ? '' : 'none';
                     document.getElementById('editStudentFields').style.display = isStudent ? '' : 'none';
                     document.getElementById('editTeacherEmailHint').style.display = isTeacher ? '' : 'none';
                 }
@@ -506,6 +537,7 @@ require_once 'assests/api/user_management_logic.php';
              data-role="<?= $user['role'] ?>" data-status="<?= $user['status'] ?>"
              data-department="<?= clean($user['department']) ?>" data-notes="<?= clean($user['notes']) ?>"
              data-employment-status="<?= clean($user['employment_status'] ?? '') ?>"
+             data-position="<?= clean($user['admin_position'] ?? '') ?>" data-access-level="<?= clean($user['admin_access_level'] ?? '') ?>"
              data-username="<?= clean($user['username']) ?>" data-created="<?= $user['created_at'] ?>"
              data-lrn="<?= clean($user['student_lrn'] ?? '') ?>" data-middlename="<?= clean($user['middlename'] ?? '') ?>"
              data-birthdate="<?= clean($user['birthdate'] ?? '') ?>" data-address="<?= clean($user['address'] ?? '') ?>"

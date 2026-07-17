@@ -127,23 +127,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $contact = trim($_POST['contact'] ?? '');
         $specialization = trim($_POST['specialization'] ?? '');
         $employment_status = trim($_POST['employment_status'] ?? '');
+        $position = trim($_POST['position'] ?? '');
+        $access_level = trim($_POST['access_level'] ?? '');
         $password = $_POST['password'] ?? '';
         $send_email = isset($_POST['send_email']) ? 1 : 0;
 
-        // Full name only used for the admin's username generation and flash messages —
-        // teachers table stores firstname/middlename/lastname separately.
-        $fullname = preg_replace('/\s+/', ' ', trim("$firstname $middlename $lastname"));
+        // Admin: the `admin` table has no name columns at all (just email, access_level,
+        // position), so no name is collected — the email is used as the display
+        // identifier in the flash message below. Teacher: fullname is derived from the
+        // separate firstname/middlename/lastname fields, which ARE persisted (Teachers table).
+        $fullname = $role === 'admin'
+            ? $email
+            : preg_replace('/\s+/', ' ', trim("$firstname $middlename $lastname"));
 
         // Validation
         $errors = [];
-        if (empty($firstname)) $errors[] = "First name is required.";
-        if (empty($lastname)) $errors[] = "Last name is required.";
+        if ($role !== 'admin') {
+            if (empty($firstname)) $errors[] = "First name is required.";
+            if (empty($lastname)) $errors[] = "Last name is required.";
+        }
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Valid email is required.";
         if (empty($password) || strlen($password) < 6) $errors[] = "Password must be at least 6 characters.";
         if (!in_array($role, ['admin', 'teacher'])) $errors[] = "Invalid role selected.";
         if (!in_array($status, ['active', 'inactive', 'suspended'])) $errors[] = "Invalid status selected.";
         if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_status, ['full-time', 'part-time'])) {
             $errors[] = "Invalid employment status selected.";
+        }
+        if ($role === 'admin') {
+            if (!in_array($position, ['principal', 'registrar', 'staff'])) $errors[] = "Invalid position selected.";
+            if (!in_array($access_level, ['full', 'limited', 'read_only'])) $errors[] = "Invalid access level selected.";
         }
 
         // Friendly duplicate-email check (teachers.email and admin.email are UNIQUE)
@@ -156,9 +168,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Teachers log in with their email as their username — make sure it's not
-        // already taken as someone else's username (e.g. a student or admin).
-        if (empty($errors) && $role === 'teacher') {
+        // Teachers and Admins both log in with their email as their username — make
+        // sure it's not already taken as someone else's username (e.g. a student).
+        if (empty($errors) && in_array($role, ['teacher', 'admin'])) {
             $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
             $check->execute([$email]);
             if ($check->fetch()) {
@@ -170,22 +182,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $pdo->beginTransaction();
 
-                if ($role === 'teacher') {
-                    // Teacher's username IS their email — used as the login credential.
-                    $username = $email;
-                } else {
-                    // Admin: keep generating a username from the first name.
-                    $username_base = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $firstname));
-                    $username = $username_base;
-                    $counter = 1;
-                    while (true) {
-                        $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
-                        $check->execute([$username]);
-                        if (!$check->fetch()) break;
-                        $username = $username_base . $counter;
-                        $counter++;
-                    }
-                }
+                // Teachers and Admins both log in with their email as their username
+                // (already confirmed unique above).
+                $username = $email;
 
                 $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
@@ -217,9 +216,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 elseif ($role === 'admin') {
                     $stmt = $pdo->prepare("
                         INSERT INTO Admin (user_id, email, access_level, position, created_at)
-                        VALUES (?, ?, 'limited', 'staff', NOW())
+                        VALUES (?, ?, ?, ?, NOW())
                     ");
-                    $stmt->execute([$user_id, $email]);
+                    $stmt->execute([$user_id, $email, $access_level, $position]);
                 }
 
                 $pdo->commit();
@@ -238,7 +237,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // -------------------- UPDATE USER --------------------
     elseif ($action === 'update') {
         $user_id = intval($_POST['user_id'] ?? 0);
-        $fullname = trim($_POST['fullname'] ?? '');
         $firstname = trim($_POST['firstname'] ?? '');
         $middlename = trim($_POST['middlename'] ?? '');
         $lastname = trim($_POST['lastname'] ?? '');
@@ -249,6 +247,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $contact = trim($_POST['contact'] ?? '');
         $specialization = trim($_POST['specialization'] ?? '');
         $employment_status = trim($_POST['employment_status'] ?? '');
+        $position = trim($_POST['position'] ?? '');
+        $access_level = trim($_POST['access_level'] ?? '');
         $new_password = $_POST['new_password'] ?? '';
 
         // Student-only fields
@@ -289,10 +289,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // If editing a teacher and the email changed, keep the login username in
-        // sync with it (teachers log in with their email as their username).
+        // Validate admin-specific fields before touching the database
+        if ($role === 'admin') {
+            $errors = [];
+            if (!in_array($position, ['principal', 'registrar', 'staff'])) $errors[] = "Invalid position selected.";
+            if (!in_array($access_level, ['full', 'limited', 'read_only'])) $errors[] = "Invalid access level selected.";
+
+            if (!empty($errors)) {
+                setFlashMessage('error', implode(" ", $errors));
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            }
+        }
+
+        // If editing a teacher or admin and the email changed, keep the login username
+        // in sync with it (teachers and admins log in with their email as their username).
         $new_username = null;
-        if ($role === 'teacher' && !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (in_array($role, ['teacher', 'admin']) && !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $check = $pdo->prepare("SELECT id FROM Users WHERE username = ? AND id != ?");
             $check->execute([$email, $user_id]);
             if ($check->fetch()) {
@@ -359,8 +372,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             }
             elseif ($role === 'admin') {
-                $stmt = $pdo->prepare("UPDATE Admin SET email = ? WHERE user_id = ?");
-                $stmt->execute([$email, $user_id]);
+                $stmt = $pdo->prepare("UPDATE Admin SET email = ?, access_level = ?, position = ? WHERE user_id = ?");
+                $stmt->execute([$email, $access_level, $position, $user_id]);
             }
 
             $pdo->commit();
@@ -479,7 +492,9 @@ $sql = "SELECT
     s.birthdate,
     s.address,
     s.guardian_name,
-    s.guardian_contact
+    s.guardian_contact,
+    a.access_level as admin_access_level,
+    a.position as admin_position
 FROM Users u
 LEFT JOIN Teachers t ON u.id = t.user_id AND u.role = 'teacher'
 LEFT JOIN Students s ON u.id = s.user_id AND u.role = 'student'
