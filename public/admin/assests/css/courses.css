@@ -211,11 +211,19 @@ body {
    clicked (see .btn-secondary.active below for the button's own state). */
 .view-panel {
     display: none;
-    margin-top: 20px;
+    margin-top: 40px;
 }
 
 .view-panel.open {
     display: block;
+}
+
+/* Extra breathing room between the Course List and whichever
+   view-panel(s) are open below it, and between the panels themselves
+   when both Sections and Subjects are open at once. */
+.list-panel + .view-panel,
+.view-panel + .view-panel {
+    margin-top: 40px;
 }
 
 .btn-secondary.active {

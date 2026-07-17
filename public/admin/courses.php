@@ -40,7 +40,59 @@ if (isset($_GET['delete']) && ctype_digit($_GET['delete'])) {
     exit();
 }
 
+// courses.php?delete_section=ID&csrf=...  (Sections List "Delete" link)
+if (isset($_GET['delete_section']) && ctype_digit($_GET['delete_section'])) {
+    if (!validateCSRFToken($_GET['csrf'] ?? '')) {
+        setFlashMessage('error', 'That delete link expired. Please try again.');
+    } else {
+        try {
+            $stmt = $pdo->prepare("DELETE FROM sections WHERE section_id = ?");
+            $stmt->execute([(int) $_GET['delete_section']]);
+            setFlashMessage('success', 'Section deleted.');
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23000') {
+                setFlashMessage('error', 'That section still has courses assigned to it. Remove those courses first.');
+            } else {
+                setFlashMessage('error', 'Database error: ' . $e->getMessage());
+            }
+        }
+    }
+
+    header("Location: courses.php?open=sections");
+    exit();
+}
+
+// courses.php?delete_subject=ID&csrf=...  (Subjects List "Delete" link)
+if (isset($_GET['delete_subject']) && ctype_digit($_GET['delete_subject'])) {
+    if (!validateCSRFToken($_GET['csrf'] ?? '')) {
+        setFlashMessage('error', 'That delete link expired. Please try again.');
+    } else {
+        try {
+            $stmt = $pdo->prepare("DELETE FROM subjects WHERE subject_id = ?");
+            $stmt->execute([(int) $_GET['delete_subject']]);
+            setFlashMessage('success', 'Subject deleted.');
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23000') {
+                setFlashMessage('error', 'That subject is still used by existing courses. Remove those courses first.');
+            } else {
+                setFlashMessage('error', 'Database error: ' . $e->getMessage());
+            }
+        }
+    }
+
+    header("Location: courses.php?open=subjects");
+    exit();
+}
+
 $csrfToken = generateCSRFToken();
+
+// Which view-panel (if any) should be open on load — set after a
+// Sections/Subjects add, update, or delete action so the panel doesn't
+// collapse on the user after they just worked in it.
+$openView = $_GET['open'] ?? '';
+if (!in_array($openView, ['sections', 'subjects'], true)) {
+    $openView = '';
+}
 
 // ================= FILTER INPUTS =================
 $statusFilter = $_GET['status'] ?? 'all';                 // all | active | inactive
@@ -136,6 +188,7 @@ $sectionsList = $pdo->query("
         sec.section_name,
         sec.grade_level,
         sec.strand,
+        sec.adviser_id,
         t.firstname AS adviser_firstname,
         t.lastname  AS adviser_lastname,
         sy.label AS school_year_label,
@@ -266,9 +319,9 @@ $subjectsList = $pdo->query("
         </div>
         <div class="toolbar-right">
             <button class="btn-secondary" disabled title="Not enabled — CSV import not implemented"><i class="fas fa-file-import"></i> Import</button>
-            <button class="btn-secondary" id="toggleSubjectsBtn" onclick="togglePanel('subjects', this)"><i class="fas fa-list"></i> View Subjects</button>
+            <button class="btn-secondary <?= $openView === 'subjects' ? 'active' : '' ?>" id="toggleSubjectsBtn" onclick="togglePanel('subjects', this)"><i class="fas fa-list"></i> View Subjects</button>
             <button class="btn-secondary" onclick="openAddSubjectModal()"><i class="fas fa-book"></i> New Subject</button>
-            <button class="btn-secondary" id="toggleSectionsBtn" onclick="togglePanel('sections', this)"><i class="fas fa-list"></i> View Sections</button>
+            <button class="btn-secondary <?= $openView === 'sections' ? 'active' : '' ?>" id="toggleSectionsBtn" onclick="togglePanel('sections', this)"><i class="fas fa-list"></i> View Sections</button>
             <button class="btn-secondary" onclick="openAddSectionModal()"><i class="fas fa-layer-group"></i> New Section</button>
             <button class="btn-primary" onclick="openAddCourseModal()"><i class="fas fa-plus"></i> New Course</button>
         </div>
@@ -346,7 +399,7 @@ $subjectsList = $pdo->query("
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditCourseModal(this)">Update</a>
                             <a class="delete" href="courses.php?delete=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&strand=<?= urlencode($strandFilter) ?>&q=<?= urlencode($searchQuery) ?>"
-                               onclick="return confirmDelete()">Delete</a>
+                               onclick="return confirmDelete('course')">Delete</a>
                         </div>
                     </td>
                 </tr>
@@ -361,7 +414,7 @@ $subjectsList = $pdo->query("
     <!-- /Course List -->
 
     <!-- Sections List (hidden until "View Sections" is clicked) -->
-    <div class="view-panel" id="view-sections">
+    <div class="view-panel <?= $openView === 'sections' ? 'open' : '' ?>" id="view-sections">
     <div class="list-panel">
         <div class="list-panel-header">
             <h2>Sections List</h2>
@@ -377,12 +430,13 @@ $subjectsList = $pdo->query("
                     <th>School Year</th>
                     <th>Courses Offered</th>
                     <th>Enrolled Students</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($sectionsList)): ?>
                 <tr>
-                    <td colspan="6" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                    <td colspan="7" style="text-align:center; padding: 40px; color: var(--text-muted);">
                         No sections found. Use "New Section" to add one.
                     </td>
                 </tr>
@@ -400,6 +454,21 @@ $subjectsList = $pdo->query("
                     <td><?= $sec['school_year_label'] ? htmlspecialchars($sec['school_year_label']) : '— None —' ?></td>
                     <td><?= (int) $sec['course_count'] ?></td>
                     <td><?= (int) $sec['student_count'] ?></td>
+                    <td>
+                        <div class="row-actions">
+                            <a href="javascript:void(0)"
+                               data-section="<?= htmlspecialchars(json_encode([
+                                   'section_id'   => (int) $sec['section_id'],
+                                   'section_name' => $sec['section_name'],
+                                   'grade_level'  => (int) $sec['grade_level'],
+                                   'strand'       => $sec['strand'] ?? '',
+                                   'adviser_id'   => $sec['adviser_id'] ? (int) $sec['adviser_id'] : '',
+                               ]), ENT_QUOTES, 'UTF-8') ?>"
+                               onclick="openEditSectionModal(this)">Update</a>
+                            <a class="delete" href="courses.php?delete_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
+                               onclick="return confirmDelete('section')">Delete</a>
+                        </div>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -413,7 +482,7 @@ $subjectsList = $pdo->query("
     <!-- /Sections List -->
 
     <!-- Subjects List (hidden until "View Subjects" is clicked) -->
-    <div class="view-panel" id="view-subjects">
+    <div class="view-panel <?= $openView === 'subjects' ? 'open' : '' ?>" id="view-subjects">
     <div class="list-panel">
         <div class="list-panel-header">
             <h2>Subjects List</h2>
@@ -427,12 +496,13 @@ $subjectsList = $pdo->query("
                     <th>Description</th>
                     <th>Courses Offered</th>
                     <th>Sections Covered</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($subjectsList)): ?>
                 <tr>
-                    <td colspan="4" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                    <td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">
                         No subjects found. Use "New Subject" to add one.
                     </td>
                 </tr>
@@ -452,6 +522,19 @@ $subjectsList = $pdo->query("
                     <td style="white-space: normal;"><?= $subj['description'] ? htmlspecialchars($subj['description']) : '— No description —' ?></td>
                     <td><?= (int) $subj['offering_count'] ?></td>
                     <td><?= (int) $subj['section_count'] ?></td>
+                    <td>
+                        <div class="row-actions">
+                            <a href="javascript:void(0)"
+                               data-subject="<?= htmlspecialchars(json_encode([
+                                   'subject_id'   => (int) $subj['subject_id'],
+                                   'subject_name' => $subj['subject_name'],
+                                   'description'  => $subj['description'] ?? '',
+                               ]), ENT_QUOTES, 'UTF-8') ?>"
+                               onclick="openEditSubjectModal(this)">Update</a>
+                            <a class="delete" href="courses.php?delete_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
+                               onclick="return confirmDelete('subject')">Delete</a>
+                        </div>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -690,6 +773,68 @@ $subjectsList = $pdo->query("
         </div>
     </div>
 
+    <!-- Update Section Modal -->
+    <div class="modal-overlay" id="editSectionOverlay" onclick="if (event.target === this) closeEditSectionModal()">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>Update Section</h2>
+                <button type="button" class="modal-close" onclick="closeEditSectionModal()" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="modal-errors" id="editSectionErrors" hidden></div>
+
+            <form id="editSectionForm">
+                <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
+                <input type="hidden" name="section_id" id="es_section_id" value="">
+
+                <div class="modal-body">
+                    <div class="form-row">
+                        <label for="es_section_name">Section Name</label>
+                        <input type="text" id="es_section_name" name="section_name" placeholder="e.g. Rizal" required>
+                    </div>
+
+                    <div class="form-row-split">
+                        <div class="form-row">
+                            <label for="es_grade_level">Grade Level</label>
+                            <select id="es_grade_level" name="grade_level" required>
+                                <option value="">Select</option>
+                                <?php foreach ([7, 8, 9, 10, 11, 12] as $g): ?>
+                                    <option value="<?= $g ?>">Grade <?= $g ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="es_strand">Strand</label>
+                            <select id="es_strand" name="strand">
+                                <option value="">None</option>
+                                <?php foreach (['STEM', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
+                                    <option value="<?= $s ?>"><?= $s ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="es_adviser_id">Adviser</label>
+                        <select id="es_adviser_id" name="adviser_id">
+                            <option value="">No adviser yet</option>
+                            <?php foreach ($modalTeachers as $t): ?>
+                                <option value="<?= (int) $t['teacher_id'] ?>"><?= clean($t['firstname'] . ' ' . $t['lastname']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <span class="field-note">Each teacher can only advise one section.</span>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeEditSectionModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="editSectionSubmitBtn"><i class="fas fa-check"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- New Subject Modal -->
     <div class="modal-overlay" id="addSubjectOverlay" onclick="if (event.target === this) closeAddSubjectModal()">
         <div class="modal-box">
@@ -723,6 +868,40 @@ $subjectsList = $pdo->query("
         </div>
     </div>
 
+    <!-- Update Subject Modal -->
+    <div class="modal-overlay" id="editSubjectOverlay" onclick="if (event.target === this) closeEditSubjectModal()">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h2>Update Subject</h2>
+                <button type="button" class="modal-close" onclick="closeEditSubjectModal()" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="modal-errors" id="editSubjectErrors" hidden></div>
+
+            <form id="editSubjectForm">
+                <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
+                <input type="hidden" name="subject_id" id="esub_subject_id" value="">
+
+                <div class="modal-body">
+                    <div class="form-row">
+                        <label for="esub_subject_name">Subject Name</label>
+                        <input type="text" id="esub_subject_name" name="subject_name" placeholder="e.g. Research" required>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="esub_description">Description</label>
+                        <textarea id="esub_description" name="description" placeholder="Optional short description"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeEditSubjectModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="editSubjectSubmitBtn"><i class="fas fa-check"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -738,8 +917,13 @@ $subjectsList = $pdo->query("
     }
 
     // ---- Delete confirmation ----
-    function confirmDelete() {
-        return confirm('Delete this course? This cannot be undone.');
+    function confirmDelete(type) {
+        const messages = {
+            course:  'Delete this course? This cannot be undone.',
+            section: 'Delete this section? This cannot be undone.',
+            subject: 'Delete this subject? This cannot be undone.',
+        };
+        return confirm(messages[type] || messages.course);
     }
 
     // ---- Toggle the Sections / Subjects list panels ----
@@ -758,7 +942,7 @@ $subjectsList = $pdo->query("
     // ---- Generic modal submit helper ----
     // Posts a form to an endpoint, shows validation errors inline, and
     // reloads on success so the flash message + updated list/stats appear.
-    function submitModalForm(form, url, submitBtn, errorBox, idleLabel) {
+    function submitModalForm(form, url, submitBtn, errorBox, idleLabel, openPanel) {
         errorBox.hidden = true;
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
@@ -771,7 +955,13 @@ $subjectsList = $pdo->query("
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                location.reload();
+                if (openPanel) {
+                    const params = new URLSearchParams(window.location.search);
+                    params.set('open', openPanel);
+                    window.location.href = 'courses.php?' + params.toString();
+                } else {
+                    location.reload();
+                }
             } else {
                 errorBox.innerHTML = data.errors.map(err => '<div>' + err + '</div>').join('');
                 errorBox.hidden = false;
@@ -856,7 +1046,38 @@ $subjectsList = $pdo->query("
             'add_section.php',
             document.getElementById('addSectionSubmitBtn'),
             document.getElementById('addSectionErrors'),
-            '<i class="fas fa-plus"></i> Add Section'
+            '<i class="fas fa-plus"></i> Add Section',
+            'sections'
+        );
+    });
+
+    // ---- Update Section modal ----
+    function openEditSectionModal(triggerEl) {
+        const section = JSON.parse(triggerEl.dataset.section);
+
+        document.getElementById('es_section_id').value = section.section_id;
+        document.getElementById('es_section_name').value = section.section_name;
+        document.getElementById('es_grade_level').value = section.grade_level;
+        document.getElementById('es_strand').value = section.strand;
+        document.getElementById('es_adviser_id').value = section.adviser_id;
+
+        document.getElementById('editSectionErrors').hidden = true;
+        document.getElementById('editSectionOverlay').classList.add('open');
+    }
+
+    function closeEditSectionModal() {
+        document.getElementById('editSectionOverlay').classList.remove('open');
+    }
+
+    document.getElementById('editSectionForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitModalForm(
+            this,
+            'update_section.php',
+            document.getElementById('editSectionSubmitBtn'),
+            document.getElementById('editSectionErrors'),
+            '<i class="fas fa-check"></i> Save Changes',
+            'sections'
         );
     });
 
@@ -877,7 +1098,36 @@ $subjectsList = $pdo->query("
             'add_subject.php',
             document.getElementById('addSubjectSubmitBtn'),
             document.getElementById('addSubjectErrors'),
-            '<i class="fas fa-plus"></i> Add Subject'
+            '<i class="fas fa-plus"></i> Add Subject',
+            'subjects'
+        );
+    });
+
+    // ---- Update Subject modal ----
+    function openEditSubjectModal(triggerEl) {
+        const subject = JSON.parse(triggerEl.dataset.subject);
+
+        document.getElementById('esub_subject_id').value = subject.subject_id;
+        document.getElementById('esub_subject_name').value = subject.subject_name;
+        document.getElementById('esub_description').value = subject.description;
+
+        document.getElementById('editSubjectErrors').hidden = true;
+        document.getElementById('editSubjectOverlay').classList.add('open');
+    }
+
+    function closeEditSubjectModal() {
+        document.getElementById('editSubjectOverlay').classList.remove('open');
+    }
+
+    document.getElementById('editSubjectForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        submitModalForm(
+            this,
+            'update_subject.php',
+            document.getElementById('editSubjectSubmitBtn'),
+            document.getElementById('editSubjectErrors'),
+            '<i class="fas fa-check"></i> Save Changes',
+            'subjects'
         );
     });
 
@@ -887,7 +1137,9 @@ $subjectsList = $pdo->query("
         closeAddCourseModal();
         closeEditCourseModal();
         closeAddSectionModal();
+        closeEditSectionModal();
         closeAddSubjectModal();
+        closeEditSubjectModal();
     });
 </script>
 
