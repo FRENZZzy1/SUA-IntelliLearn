@@ -14,6 +14,11 @@ function get_total_students(mysqli $conn): int {
     return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
 }
 
+function get_total_Class(mysqli $conn): int {
+    $result = $conn->query("SELECT COUNT(*) AS cnt FROM classofferings");
+    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+}
+
 /**
  * Total number of teachers.
  */
@@ -80,6 +85,165 @@ function get_avatar_color(string $seed): string {
     $colors = ['#8b5cf6', 'var(--info)', 'var(--warning)', 'var(--success)', '#ec4899'];
     $index = crc32($seed) % count($colors);
     return $colors[$index];
+}
+
+/**
+ * Total number of active class offerings (courses).
+ */
+function get_active_courses_count(mysqli $conn): int {
+    $result = $conn->query("SELECT COUNT(*) AS cnt FROM classofferings WHERE status = 'active'");
+    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+}
+
+/**
+ * Total number of class offerings, regardless of status.
+ */
+function get_total_courses_count(mysqli $conn): int {
+    $result = $conn->query("SELECT COUNT(*) AS cnt FROM classofferings");
+    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+}
+
+/**
+ * Total number of active (currently enrolled) enrollments.
+ */
+function get_total_enrollees_count(mysqli $conn): int {
+    $result = $conn->query("SELECT COUNT(*) AS cnt FROM enrollments WHERE status = 'active'");
+    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+}
+
+/**
+ * Count of enrollment_requests still awaiting a decision.
+ */
+function get_pending_enrollments_count(mysqli $conn): int {
+    $result = $conn->query("SELECT COUNT(*) AS cnt FROM enrollment_requests WHERE status = 'pending'");
+    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+}
+
+/**
+ * ================= CHATBOT (OpenRouter-backed assistant) =================
+ *
+ * Retrieval layer for the floating chat assistant. Builds a compact,
+ * privacy-conscious text block describing current school data, scoped to
+ * whatever the admin's question seems to be about, that gets embedded in
+ * the system prompt sent to the LLM.
+ *
+ * IMPORTANT: this intentionally never includes sensitive student PII
+ * (birthdate, address, guardian contact info, LRN) — only the fields
+ * already considered safe to show in the dashboard/search UI (name,
+ * email, role, status, course/section/subject names). Keep it that way
+ * if you extend this — anything added here gets sent to a third-party
+ * LLM API over the network.
+ */
+
+/**
+ * A minimal English/Filipino-admin-context stopword list used to pull the
+ * meaningful keywords out of a free-text question before searching.
+ */
+function chatbot_stopwords(): array {
+    return [
+        'a','an','the','is','are','was','were','be','been','being','of','in','on','at','to','for',
+        'with','and','or','but','so','if','than','then','that','this','these','those','it','its',
+        'as','by','from','into','about','how','many','much','what','who','whom','which','when',
+        'where','why','can','could','do','does','did','has','have','had','will','would','should',
+        'i','you','we','they','he','she','me','my','our','your','their','there','here',
+        'please','show','list','tell','give','find','get','me','all','any','some',
+    ];
+}
+
+/**
+ * Pull up to $max distinct, meaningful keywords out of a question so we
+ * can run several targeted searches instead of one long LIKE '%whole
+ * sentence%' query that would rarely match anything.
+ */
+function extract_chat_keywords(string $question, int $max = 4): array {
+    $clean = preg_replace('/[^a-zA-Z0-9\s]/', ' ', $question);
+    $words = preg_split('/\s+/', strtolower(trim($clean)));
+    $stopwords = array_flip(chatbot_stopwords());
+
+    $keywords = [];
+    foreach ($words as $word) {
+        if ($word === '' || strlen($word) < 3 || isset($stopwords[$word])) {
+            continue;
+        }
+        if (!in_array($word, $keywords, true)) {
+            $keywords[] = $word;
+        }
+        if (count($keywords) >= $max) {
+            break;
+        }
+    }
+
+    return $keywords;
+}
+
+/**
+ * Build the full text context block handed to the LLM: whole-school
+ * stats (always included, they're cheap and give the model orientation)
+ * plus search hits for whatever keywords were found in the question.
+ */
+function get_chatbot_context(mysqli $conn, string $question): string {
+    $lines = [];
+
+    $lines[] = "SCHOOL-WIDE STATS:";
+    $lines[] = "- Total students: " . get_total_students($conn);
+    $lines[] = "- Total teachers: " . get_total_teachers($conn);
+    $lines[] = "- Total user accounts: " . get_total_users_count($conn);
+    $lines[] = "- Total course offerings: " . get_total_courses_count($conn);
+    $lines[] = "- Active course offerings: " . get_active_courses_count($conn);
+    $lines[] = "- Currently enrolled (active enrollments): " . get_total_enrollees_count($conn);
+    $lines[] = "- Pending enrollment requests: " . get_pending_enrollments_count($conn);
+
+    $keywords = extract_chat_keywords($question);
+    $seenUsers = $seenCourses = $seenSubjects = [];
+    $userRows = $courseRows = $subjectRows = [];
+
+    foreach ($keywords as $kw) {
+        foreach (search_users($conn, $kw, 5) as $row) {
+            if (!isset($seenUsers[$row['id']])) {
+                $seenUsers[$row['id']] = true;
+                $userRows[] = $row;
+            }
+        }
+        foreach (search_courses($conn, $kw, 5) as $row) {
+            if (!isset($seenCourses[$row['offering_id']])) {
+                $seenCourses[$row['offering_id']] = true;
+                $courseRows[] = $row;
+            }
+        }
+        foreach (search_subjects($conn, $kw, 5) as $row) {
+            if (!isset($seenSubjects[$row['subject_id']])) {
+                $seenSubjects[$row['subject_id']] = true;
+                $subjectRows[] = $row;
+            }
+        }
+    }
+
+    if (!empty($userRows)) {
+        $lines[] = "\nMATCHING USERS (name · role · status · email):";
+        foreach (array_slice($userRows, 0, 8) as $u) {
+            $lines[] = "- {$u['full_name']} · {$u['role']} · {$u['status']}" . ($u['email'] ? " · {$u['email']}" : '');
+        }
+    }
+
+    if (!empty($courseRows)) {
+        $lines[] = "\nMATCHING COURSES (subject — section · grade · teacher · quarter · capacity · status):";
+        foreach (array_slice($courseRows, 0, 8) as $c) {
+            $lines[] = "- {$c['subject_name']} — {$c['section_name']} · Grade {$c['grade_level']} · {$c['teacher_name']} · Q{$c['quarter']} · cap {$c['capacity']} · {$c['status']}";
+        }
+    }
+
+    if (!empty($subjectRows)) {
+        $lines[] = "\nMATCHING SUBJECTS (name · description):";
+        foreach (array_slice($subjectRows, 0, 8) as $s) {
+            $lines[] = "- {$s['subject_name']}" . ($s['description'] ? " · {$s['description']}" : '');
+        }
+    }
+
+    if (empty($userRows) && empty($courseRows) && empty($subjectRows)) {
+        $lines[] = "\n(No specific student/teacher/course/subject records matched keywords from this question — only school-wide stats above are available.)";
+    }
+
+    return implode("\n", $lines);
 }
 
 /**

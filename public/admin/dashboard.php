@@ -21,6 +21,7 @@ require_once 'assests/api/dashboard_functions.php';
 
 $totalStudents   = get_total_students($conn);
 $totalTeachers   = get_total_teachers($conn);
+$totalCourses    = get_total_Class($conn);
 $totalUsersCount = get_total_users_count($conn);
 $recentUsers     = get_recent_users($conn, 4);
 
@@ -92,7 +93,7 @@ $recentUsers     = get_recent_users($conn, 4);
                 </div>
                 <div class="stat-card">
                     <div class="stat-info">
-                        <h3>24</h3>
+                        <h3><?php echo number_format($totalCourses); ?></h3>
                         <p>Active Courses</p>
                         <div class="stat-trend up">
                             <i class="fas fa-info-circle"></i>
@@ -669,5 +670,7 @@ $recentUsers     = get_recent_users($conn, 4);
 
     <script src="assests/js/dashboard.js">
     </script>
+    <!-- Floating chat assistant (self-contained: injects its own styles/markup) -->
+    <script src="assests/js/chatbot.js"></script>
 </body>
 </html>

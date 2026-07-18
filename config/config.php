@@ -108,4 +108,9 @@ function getFlashMessage() {
     }
     return null;
 }
+
+define('OPENROUTER_API_KEY', '');   // from openrouter.ai/keys
+define('OPENROUTER_MODEL', 'nvidia/nemotron-3-super-120b-a12b:free'); // Check https://openrouter.ai/models?max_price=0 for current free models
+
+
 ?>
