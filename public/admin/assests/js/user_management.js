@@ -224,3 +224,17 @@
             setTimeout(() => flash.remove(), 300);
         }
     }, 5000);
+
+    function um_toggleEditStaffFields(role) {
+                    var isAdmin = role === 'admin';
+                    var isTeacher = role === 'teacher';
+                    var isStudent = role === 'student';
+
+                    document.getElementById('editNameRow').style.display = isAdmin ? 'none' : '';
+                    document.getElementById('editMiddleNameRow').style.display = isAdmin ? 'none' : '';
+                    document.getElementById('editStaffMetaRow').style.display = isTeacher ? '' : 'none';
+                    document.getElementById('editTeacherOnlyFields').style.display = isTeacher ? '' : 'none';
+                    document.getElementById('editAdminOnlyFields').style.display = isAdmin ? '' : 'none';
+                    document.getElementById('editStudentFields').style.display = isStudent ? '' : 'none';
+                    document.getElementById('editTeacherEmailHint').style.display = isTeacher ? '' : 'none';
+                }

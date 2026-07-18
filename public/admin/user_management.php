@@ -419,22 +419,10 @@ require_once 'assests/api/user_management_logic.php';
                 </div>
 
                 <script>
-                // Shows/hides the right block of fields for the role being edited, and
+               // Shows/hides the right block of fields for the role being edited, and
                 // keeps `required` in sync with visibility so hidden fields never block
-                // native form validation.
-                function um_toggleEditStaffFields(role) {
-                    var isAdmin = role === 'admin';
-                    var isTeacher = role === 'teacher';
-                    var isStudent = role === 'student';
-
-                    document.getElementById('editNameRow').style.display = isAdmin ? 'none' : '';
-                    document.getElementById('editMiddleNameRow').style.display = isAdmin ? 'none' : '';
-                    document.getElementById('editStaffMetaRow').style.display = isTeacher ? '' : 'none';
-                    document.getElementById('editTeacherOnlyFields').style.display = isTeacher ? '' : 'none';
-                    document.getElementById('editAdminOnlyFields').style.display = isAdmin ? '' : 'none';
-                    document.getElementById('editStudentFields').style.display = isStudent ? '' : 'none';
-                    document.getElementById('editTeacherEmailHint').style.display = isTeacher ? '' : 'none';
-                }
+                //  native form validation.
+                
                 </script>
 
                 <div class="form-row">

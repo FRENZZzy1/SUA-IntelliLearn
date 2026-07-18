@@ -247,7 +247,7 @@ $subjectsList = $pdo->query("
 
     <!-- Page Header -->
     <div class="page-header">
-        <h1>Courses &amp; Subjects</h1>
+        <h1>Classes &amp; Subjects</h1>
         <form class="header-actions" method="get" action="courses.php">
             <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
             <input type="hidden" name="grade" value="<?= htmlspecialchars($gradeFilter) ?>">
@@ -323,14 +323,14 @@ $subjectsList = $pdo->query("
             <button class="btn-secondary" onclick="openAddSubjectModal()"><i class="fas fa-book"></i> New Subject</button>
             <button class="btn-secondary <?= $openView === 'sections' ? 'active' : '' ?>" id="toggleSectionsBtn" onclick="togglePanel('sections', this)"><i class="fas fa-list"></i> View Sections</button>
             <button class="btn-secondary" onclick="openAddSectionModal()"><i class="fas fa-layer-group"></i> New Section</button>
-            <button class="btn-primary" onclick="openAddCourseModal()"><i class="fas fa-plus"></i> New Course</button>
+            <button class="btn-primary" onclick="openAddCourseModal()"><i class="fas fa-plus"></i> New Class</button>
         </div>
     </div>
 
     <!-- Course List -->
     <div class="list-panel">
         <div class="list-panel-header">
-            <h2>Course List</h2>
+            <h2>Class List</h2>
             <span class="count-note">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
         </div>
 
@@ -387,6 +387,8 @@ $subjectsList = $pdo->query("
                     </td>
                     <td>
                         <div class="row-actions">
+                            <a href="javascript:void(0)"
+                               onclick="openViewStudentsModal(<?= (int) $course['offering_id'] ?>)">View Students</a>
                             <a href="javascript:void(0)"
                                data-course="<?= htmlspecialchars(json_encode([
                                    'offering_id' => (int) $course['offering_id'],
@@ -705,6 +707,45 @@ $subjectsList = $pdo->query("
                     <button type="submit" class="btn-primary" id="editCourseSubmitBtn"><i class="fas fa-check"></i> Save Changes</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- View Students Modal -->
+    <div class="modal-overlay" id="viewStudentsOverlay" onclick="if (event.target === this) closeViewStudentsModal()">
+        <div class="modal-box" style="max-width: 900px; width: 90vw;">
+            <div class="modal-header">
+                <h2 id="vsModalTitle">Enrolled Students</h2>
+                <button type="button" class="modal-close" onclick="closeViewStudentsModal()" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="modal-errors" id="viewStudentsErrors" hidden></div>
+
+            <div class="modal-body" style="max-height: 65vh; overflow-y: auto;">
+                <p id="vsModalSubtitle" style="margin: 0 0 12px; color: var(--text-muted);"></p>
+
+                <table class="course-table">
+                    <thead>
+                        <tr>
+                            <th>LRN</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Enrolled On</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vsStudentsTableBody">
+                        <tr>
+                            <td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">
+                                Loading...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeViewStudentsModal()">Close</button>
+            </div>
         </div>
     </div>
 
@@ -1029,6 +1070,73 @@ $subjectsList = $pdo->query("
         );
     });
 
+    // ---- View Students modal ----
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str ?? '';
+        return div.innerHTML;
+    }
+
+    function openViewStudentsModal(offeringId) {
+        const overlay = document.getElementById('viewStudentsOverlay');
+        const errorBox = document.getElementById('viewStudentsErrors');
+        const tbody = document.getElementById('vsStudentsTableBody');
+        const title = document.getElementById('vsModalTitle');
+        const subtitle = document.getElementById('vsModalSubtitle');
+
+        errorBox.hidden = true;
+        title.textContent = 'Enrolled Students';
+        subtitle.textContent = '';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td></tr>';
+        overlay.classList.add('open');
+
+        fetch('assests/api/get_course_students.php?offering_id=' + encodeURIComponent(offeringId), {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                tbody.innerHTML = '';
+                errorBox.innerHTML = (data.errors || ['Something went wrong.']).map(err => '<div>' + escapeHtml(err) + '</div>').join('');
+                errorBox.hidden = false;
+                return;
+            }
+
+            const course = data.course;
+            title.textContent = course.subject_name + ' — ' + course.section_name;
+            subtitle.textContent = 'Grade ' + course.grade_level + (course.strand ? ' · ' + course.strand : '')
+                + ' · ' + data.students.length + '/' + course.capacity + ' enrolled';
+
+            if (data.students.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">No students enrolled in this course yet.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = data.students.map(function (s) {
+                const fullName = [s.firstname, s.middlename, s.lastname].filter(Boolean).join(' ');
+                const statusLabel = s.status.charAt(0).toUpperCase() + s.status.slice(1);
+                const enrolledDate = s.enrolled_at ? new Date(s.enrolled_at.replace(' ', 'T')).toLocaleDateString() : '—';
+                return '<tr>'
+                    + '<td>' + escapeHtml(s.student_lrn) + '</td>'
+                    + '<td>' + escapeHtml(fullName) + '</td>'
+                    + '<td>' + (s.email ? escapeHtml(s.email) : '— None —') + '</td>'
+                    + '<td><span class="status-dot-badge ' + (s.status === 'active' ? 'active' : 'inactive') + '"><span class="dot"></span>' + escapeHtml(statusLabel) + '</span></td>'
+                    + '<td>' + escapeHtml(enrolledDate) + '</td>'
+                    + '</tr>';
+            }).join('');
+        })
+        .catch(() => {
+            tbody.innerHTML = '';
+            errorBox.innerHTML = '<div>Something went wrong. Please try again.</div>';
+            errorBox.hidden = false;
+        });
+    }
+
+    function closeViewStudentsModal() {
+        document.getElementById('viewStudentsOverlay').classList.remove('open');
+    }
+
     // ---- New Section modal ----
     function openAddSectionModal() {
         document.getElementById('addSectionOverlay').classList.add('open');
@@ -1136,6 +1244,7 @@ $subjectsList = $pdo->query("
         if (e.key !== 'Escape') return;
         closeAddCourseModal();
         closeEditCourseModal();
+        closeViewStudentsModal();
         closeAddSectionModal();
         closeEditSectionModal();
         closeAddSubjectModal();
