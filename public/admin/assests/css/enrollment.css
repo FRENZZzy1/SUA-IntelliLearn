@@ -1,0 +1,165 @@
+/* =================================================================
+   ENROLLMENT MODULE
+   Loaded after courses.css + add_course.css — reuses their variables
+   and shared classes (.stat-card, .filter-pill, .list-panel,
+   .course-table, .modal-*, .form-row, .btn-primary/.btn-secondary).
+   This file only adds what's specific to the Enrollment page.
+================================================================= */
+
+/* ---------- Extra stat-trend variant (courses.css only ships
+   the green "up" and blue "info" variants) ---------- */
+.stat-trend.danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+}
+
+/* ---------- Panel header row (icon + title + Approve All / count) ---------- */
+.list-panel-header {
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.list-panel-header .panel-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.list-panel-header .panel-title i {
+    color: var(--accent);
+}
+
+.list-panel-header .header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+/* ---------- Checkboxes ---------- */
+.row-check,
+.select-all-check {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.course-table th.checkbox-col,
+.course-table td.checkbox-col {
+    width: 40px;
+    white-space: nowrap;
+}
+
+/* ---------- Status badges (pending / approved / denied) ---------- */
+.status-dot-badge.pending {
+    background: rgba(245, 158, 11, 0.14);
+    color: var(--warning);
+}
+
+.status-dot-badge.approved {
+    background: rgba(34, 197, 94, 0.12);
+    color: var(--success);
+}
+
+.status-dot-badge.denied {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--danger);
+}
+
+/* ---------- Course-requested cell ---------- */
+.course-requested {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.course-requested .matched-note {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+/* ---------- Approve / Deny action buttons ---------- */
+.enroll-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+.btn-approve {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-approve:hover {
+    background: var(--primary-light);
+}
+
+.btn-approve:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.btn-deny {
+    background: #fff;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 7px 16px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.78rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-deny:hover {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--danger);
+}
+
+.action-note {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.link-reopen {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.link-reopen:hover {
+    background: var(--bg-page);
+    color: var(--primary);
+}
+
+/* ---------- Section-picker modal (ambiguous approve match) ---------- */
+#pickSectionOverlay .modal-box {
+    max-width: 440px;
+}
+
+.pick-section-hint {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0 0 14px;
+}
+
+@media (max-width: 900px) {
+    .enroll-actions {
+        flex-wrap: wrap;
+    }
+}

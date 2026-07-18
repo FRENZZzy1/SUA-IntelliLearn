@@ -71,7 +71,7 @@ if (function_exists('get_initials')) {
 
         <div class="nav-section">
             <div class="nav-section-title">Management</div>
-            <a href="#" class="nav-item" onclick="setActive(this)">
+            <a href="../../public/admin/enrollment.php" class="nav-item <?= $current === 'enrollment.php' ? 'active' : '' ?>">
                 <i class="fas fa-user-plus"></i>
                 <span class="nav-label">Enrollment</span>
                 <span class="nav-badge">17</span>
