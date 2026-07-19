@@ -156,6 +156,58 @@ function chatbot_stopwords(): array {
 }
 
 /**
+ * Pull grade levels (7-12) mentioned in the question, e.g. "grade 10",
+ * "g10", "grade-11". Requires a "grade"/"g" cue so we don't misfire on
+ * unrelated numbers (capacities, counts, etc).
+ */
+function extract_grade_levels(string $question): array {
+    $grades = [];
+    if (preg_match_all('/\bgrade[\s\-]*?(\d{1,2})\b/i', $question, $m)) {
+        foreach ($m[1] as $g) {
+            $g = (int) $g;
+            if ($g >= 7 && $g <= 12) $grades[] = $g;
+        }
+    }
+    if (preg_match_all('/\bg[\s\-]?(\d{1,2})\b/i', $question, $m)) {
+        foreach ($m[1] as $g) {
+            $g = (int) $g;
+            if ($g >= 7 && $g <= 12) $grades[] = $g;
+        }
+    }
+    return array_values(array_unique($grades));
+}
+
+/**
+ * Detect known enum-style status words anywhere in the question. We
+ * return every match found; callers decide which table(s) it applies to
+ * since several tables share the same words (e.g. "active").
+ */
+function extract_status_keywords(string $question): array {
+    $known = ['pending', 'approved', 'denied', 'active', 'inactive', 'suspended', 'dropped', 'completed'];
+    $found = [];
+    foreach ($known as $status) {
+        if (preg_match('/\b' . preg_quote($status, '/') . '\b/i', $question)) {
+            $found[] = $status;
+        }
+    }
+    return $found;
+}
+
+/**
+ * Detect SHS strand mentions (STEM, ABM, HUMSS, TVL, GAS, ICT, etc).
+ */
+function extract_strands(string $question): array {
+    $known = ['STEM', 'ABM', 'HUMSS', 'TVL', 'GAS', 'ICT', 'ARTS'];
+    $found = [];
+    foreach ($known as $strand) {
+        if (preg_match('/\b' . preg_quote($strand, '/') . '\b/i', $question)) {
+            $found[] = $strand;
+        }
+    }
+    return $found;
+}
+
+/**
  * Pull up to $max distinct, meaningful keywords out of a question so we
  * can run several targeted searches instead of one long LIKE '%whole
  * sentence%' query that would rarely match anything.
@@ -182,6 +234,236 @@ function extract_chat_keywords(string $question, int $max = 4): array {
 }
 
 /**
+ * Current active school year label + date range (cheap, gives the model
+ * orientation on "this year" / "current quarter" type questions).
+ */
+function get_current_schoolyear(mysqli $conn): ?array {
+    $result = $conn->query("SELECT label, start_date, end_date FROM schoolyears WHERE is_current = 1 LIMIT 1");
+    $row = $result ? $result->fetch_assoc() : null;
+    return $row ?: null;
+}
+
+/**
+ * Search sections by name, strand, or grade level. Includes adviser name
+ * and a live count of active class offerings tied to the section, so
+ * "how many classes does Rizal have" is answerable without a follow-up.
+ */
+function search_sections(mysqli $conn, string $term, int $limit = 6): array {
+    $like = '%' . $term . '%';
+
+    $sql = "SELECT sec.section_id, sec.section_name, sec.grade_level, sec.strand,
+                CONCAT(t.firstname, ' ', t.lastname) AS adviser_name,
+                sy.label AS school_year,
+                (SELECT COUNT(*) FROM classofferings co WHERE co.section_id = sec.section_id AND co.status = 'active') AS active_offerings
+             FROM sections sec
+             LEFT JOIN teachers t ON t.teacher_id = sec.adviser_id
+             LEFT JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id
+             WHERE sec.section_name LIKE ? OR sec.strand LIKE ?
+             ORDER BY sec.grade_level ASC, sec.section_name ASC
+             LIMIT ?";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('ssi', $like, $like, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($row = $result->fetch_assoc()) $rows[] = $row;
+    $stmt->close();
+    return $rows;
+}
+
+/**
+ * Sections filtered by grade level (used when the question names a grade
+ * but no specific section, e.g. "sections in grade 11").
+ */
+function search_sections_by_grade(mysqli $conn, array $grades, int $limit = 8): array {
+    if (empty($grades)) return [];
+    $placeholders = implode(',', array_fill(0, count($grades), '?'));
+    $types = str_repeat('i', count($grades));
+
+    $sql = "SELECT sec.section_id, sec.section_name, sec.grade_level, sec.strand,
+                CONCAT(t.firstname, ' ', t.lastname) AS adviser_name
+             FROM sections sec
+             LEFT JOIN teachers t ON t.teacher_id = sec.adviser_id
+             WHERE sec.grade_level IN ($placeholders)
+             ORDER BY sec.grade_level ASC, sec.section_name ASC
+             LIMIT $limit";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$grades);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($row = $result->fetch_assoc()) $rows[] = $row;
+    $stmt->close();
+    return $rows;
+}
+
+/**
+ * Given a list of offering_ids, return active-enrollment counts so
+ * "seats remaining" / "is X full" questions can be answered from real
+ * numbers instead of the static capacity field alone.
+ */
+function get_offering_enrollment_counts(mysqli $conn, array $offeringIds): array {
+    if (empty($offeringIds)) return [];
+    $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
+    $types = str_repeat('i', count($offeringIds));
+
+    $sql = "SELECT offering_id, COUNT(*) AS enrolled_count
+             FROM enrollments
+             WHERE status = 'active' AND offering_id IN ($placeholders)
+             GROUP BY offering_id";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$offeringIds);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $counts = [];
+    while ($row = $result->fetch_assoc()) {
+        $counts[(int) $row['offering_id']] = (int) $row['enrolled_count'];
+    }
+    $stmt->close();
+    return $counts;
+}
+
+/**
+ * What a teacher actually teaches: subject, section, grade, quarter,
+ * status — resolved by matching on first/last name.
+ */
+function get_teacher_workload(mysqli $conn, string $term, int $limit = 10): array {
+    $like = '%' . $term . '%';
+
+    $sql = "SELECT co.offering_id, co.quarter, co.status,
+                sub.subject_name, sec.section_name, sec.grade_level,
+                CONCAT(t.firstname, ' ', t.lastname) AS teacher_name
+             FROM teachers t
+             JOIN classofferings co ON co.teacher_id = t.teacher_id
+             JOIN subjects sub ON sub.subject_id = co.subject_id
+             JOIN sections sec ON sec.section_id = co.section_id
+             WHERE t.firstname LIKE ? OR t.lastname LIKE ?
+             ORDER BY sec.grade_level ASC, sub.subject_name ASC
+             LIMIT ?";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('ssi', $like, $like, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($row = $result->fetch_assoc()) $rows[] = $row;
+    $stmt->close();
+    return $rows;
+}
+
+/**
+ * A student's current course schedule (subject, section, quarter,
+ * status) — resolved by matching on first/last name. Deliberately
+ * excludes birthdate/address/guardian/LRN, same privacy rule as the rest
+ * of this file.
+ */
+function get_student_schedule(mysqli $conn, string $term, int $limit = 10): array {
+    $like = '%' . $term . '%';
+
+    $sql = "SELECT e.status AS enrollment_status,
+                sub.subject_name, sec.section_name, sec.grade_level, co.quarter,
+                CONCAT(s.firstname, ' ', s.lastname) AS student_name
+             FROM students s
+             JOIN enrollments e ON e.student_id = s.student_id
+             JOIN classofferings co ON co.offering_id = e.offering_id
+             JOIN subjects sub ON sub.subject_id = co.subject_id
+             JOIN sections sec ON sec.section_id = co.section_id
+             WHERE s.firstname LIKE ? OR s.lastname LIKE ?
+             ORDER BY co.quarter ASC, sub.subject_name ASC
+             LIMIT ?";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('ssi', $like, $like, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($row = $result->fetch_assoc()) $rows[] = $row;
+    $stmt->close();
+    return $rows;
+}
+
+/**
+ * Enrollment requests, filtered by any combination of grade level,
+ * strand, and status (all optional). This is what makes "how many
+ * pending requests for grade 11 STEM" answerable.
+ */
+function search_enrollment_requests(mysqli $conn, array $grades = [], array $strands = [], array $statuses = [], int $limit = 10): array {
+    $where = [];
+    $params = [];
+    $types = '';
+
+    if (!empty($grades)) {
+        $where[] = 'er.grade_level IN (' . implode(',', array_fill(0, count($grades), '?')) . ')';
+        foreach ($grades as $g) { $params[] = $g; $types .= 'i'; }
+    }
+    if (!empty($strands)) {
+        $where[] = 'er.strand IN (' . implode(',', array_fill(0, count($strands), '?')) . ')';
+        foreach ($strands as $s) { $params[] = $s; $types .= 's'; }
+    }
+    // Only requests use pending/approved/denied; ignore other statuses that don't apply here.
+    $validRequestStatuses = array_values(array_intersect($statuses, ['pending', 'approved', 'denied']));
+    if (!empty($validRequestStatuses)) {
+        $where[] = 'er.status IN (' . implode(',', array_fill(0, count($validRequestStatuses), '?')) . ')';
+        foreach ($validRequestStatuses as $s) { $params[] = $s; $types .= 's'; }
+    }
+
+    if (empty($where)) return [];
+
+    $sql = "SELECT er.request_id, er.grade_level, er.strand, er.status, er.submitted_at,
+                CONCAT(s.firstname, ' ', s.lastname) AS student_name,
+                sub.subject_name
+             FROM enrollment_requests er
+             JOIN students s ON s.student_id = er.student_id
+             JOIN subjects sub ON sub.subject_id = er.subject_id
+             WHERE " . implode(' AND ', $where) . "
+             ORDER BY er.submitted_at DESC
+             LIMIT ?";
+
+    $params[] = $limit;
+    $types .= 'i';
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($row = $result->fetch_assoc()) $rows[] = $row;
+    $stmt->close();
+    return $rows;
+}
+
+/**
+ * Learning materials matching a keyword in title, resolved to the
+ * subject/section they belong to. Excludes file_path/external_url
+ * (internal storage detail, not useful to a chatbot answer).
+ */
+function search_learning_materials(mysqli $conn, string $term, int $limit = 6): array {
+    $like = '%' . $term . '%';
+
+    $sql = "SELECT lm.title, lm.type, sub.subject_name, sec.section_name
+             FROM learning_materials lm
+             JOIN classofferings co ON co.offering_id = lm.offering_id
+             JOIN subjects sub ON sub.subject_id = co.subject_id
+             JOIN sections sec ON sec.section_id = co.section_id
+             WHERE lm.title LIKE ?
+             ORDER BY lm.created_at DESC
+             LIMIT ?";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('si', $like, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $rows = [];
+    while ($row = $result->fetch_assoc()) $rows[] = $row;
+    $stmt->close();
+    return $rows;
+}
+
+/**
  * Build the full text context block handed to the LLM: whole-school
  * stats (always included, they're cheap and give the model orientation)
  * plus search hits for whatever keywords were found in the question.
@@ -198,54 +480,138 @@ function get_chatbot_context(mysqli $conn, string $question): string {
     $lines[] = "- Currently enrolled (active enrollments): " . get_total_enrollees_count($conn);
     $lines[] = "- Pending enrollment requests: " . get_pending_enrollments_count($conn);
 
+    $sy = get_current_schoolyear($conn);
+    if ($sy) {
+        $lines[] = "- Current school year: {$sy['label']} ({$sy['start_date']} to {$sy['end_date']})";
+    }
+
+    // ---- Entity extraction from the free-text question ----
     $keywords = extract_chat_keywords($question);
-    $seenUsers = $seenCourses = $seenSubjects = [];
-    $userRows = $courseRows = $subjectRows = [];
+    $grades   = extract_grade_levels($question);
+    $strands  = extract_strands($question);
+    $statuses = extract_status_keywords($question);
+
+    $foundAnything = false;
+
+    // ---- Keyword-driven lookups across users / courses / subjects / sections ----
+    $seenUsers = $seenCourses = $seenSubjects = $seenSections = [];
+    $userRows = $courseRows = $subjectRows = $sectionRows = [];
 
     foreach ($keywords as $kw) {
         foreach (search_users($conn, $kw, 5) as $row) {
-            if (!isset($seenUsers[$row['id']])) {
-                $seenUsers[$row['id']] = true;
-                $userRows[] = $row;
-            }
+            if (!isset($seenUsers[$row['id']])) { $seenUsers[$row['id']] = true; $userRows[] = $row; }
         }
         foreach (search_courses($conn, $kw, 5) as $row) {
-            if (!isset($seenCourses[$row['offering_id']])) {
-                $seenCourses[$row['offering_id']] = true;
-                $courseRows[] = $row;
-            }
+            if (!isset($seenCourses[$row['offering_id']])) { $seenCourses[$row['offering_id']] = true; $courseRows[] = $row; }
         }
         foreach (search_subjects($conn, $kw, 5) as $row) {
-            if (!isset($seenSubjects[$row['subject_id']])) {
-                $seenSubjects[$row['subject_id']] = true;
-                $subjectRows[] = $row;
-            }
+            if (!isset($seenSubjects[$row['subject_id']])) { $seenSubjects[$row['subject_id']] = true; $subjectRows[] = $row; }
+        }
+        foreach (search_sections($conn, $kw, 5) as $row) {
+            if (!isset($seenSections[$row['section_id']])) { $seenSections[$row['section_id']] = true; $sectionRows[] = $row; }
         }
     }
 
     if (!empty($userRows)) {
+        $foundAnything = true;
         $lines[] = "\nMATCHING USERS (name · role · status · email):";
         foreach (array_slice($userRows, 0, 8) as $u) {
             $lines[] = "- {$u['full_name']} · {$u['role']} · {$u['status']}" . ($u['email'] ? " · {$u['email']}" : '');
         }
+
+        // If a matched user is a student, pull their real schedule; if a
+        // teacher, pull their real teaching load. This is what turns a
+        // name match into an actually useful answer.
+        foreach (array_slice($userRows, 0, 3) as $u) {
+            if ($u['role'] === 'student') {
+                $schedule = get_student_schedule($conn, $u['full_name'], 6);
+                if (!empty($schedule)) {
+                    $lines[] = "\n{$u['full_name']}'S CURRENT SCHEDULE (subject · section · grade · quarter · status):";
+                    foreach ($schedule as $s) {
+                        $lines[] = "- {$s['subject_name']} · {$s['section_name']} · Grade {$s['grade_level']} · Q{$s['quarter']} · {$s['enrollment_status']}";
+                    }
+                }
+            } elseif ($u['role'] === 'teacher') {
+                $workload = get_teacher_workload($conn, $u['full_name'], 8);
+                if (!empty($workload)) {
+                    $lines[] = "\n{$u['full_name']}'S TEACHING LOAD (subject · section · grade · quarter · status):";
+                    foreach ($workload as $w) {
+                        $lines[] = "- {$w['subject_name']} · {$w['section_name']} · Grade {$w['grade_level']} · Q{$w['quarter']} · {$w['status']}";
+                    }
+                }
+            }
+        }
     }
 
     if (!empty($courseRows)) {
-        $lines[] = "\nMATCHING COURSES (subject — section · grade · teacher · quarter · capacity · status):";
+        $foundAnything = true;
+        $counts = get_offering_enrollment_counts($conn, array_column($courseRows, 'offering_id'));
+        $lines[] = "\nMATCHING COURSES (subject — section · grade · teacher · quarter · enrolled/capacity · status):";
         foreach (array_slice($courseRows, 0, 8) as $c) {
-            $lines[] = "- {$c['subject_name']} — {$c['section_name']} · Grade {$c['grade_level']} · {$c['teacher_name']} · Q{$c['quarter']} · cap {$c['capacity']} · {$c['status']}";
+            $enrolled = $counts[$c['offering_id']] ?? 0;
+            $lines[] = "- {$c['subject_name']} — {$c['section_name']} · Grade {$c['grade_level']} · {$c['teacher_name']} · Q{$c['quarter']} · {$enrolled}/{$c['capacity']} enrolled · {$c['status']}";
         }
     }
 
     if (!empty($subjectRows)) {
+        $foundAnything = true;
         $lines[] = "\nMATCHING SUBJECTS (name · description):";
         foreach (array_slice($subjectRows, 0, 8) as $s) {
             $lines[] = "- {$s['subject_name']}" . ($s['description'] ? " · {$s['description']}" : '');
         }
     }
 
-    if (empty($userRows) && empty($courseRows) && empty($subjectRows)) {
-        $lines[] = "\n(No specific student/teacher/course/subject records matched keywords from this question — only school-wide stats above are available.)";
+    if (!empty($sectionRows)) {
+        $foundAnything = true;
+        $lines[] = "\nMATCHING SECTIONS (name · grade · strand · adviser · active offerings):";
+        foreach (array_slice($sectionRows, 0, 8) as $s) {
+            $lines[] = "- {$s['section_name']} · Grade {$s['grade_level']}" . ($s['strand'] ? " ({$s['strand']})" : '') .
+                " · adviser: " . ($s['adviser_name'] ?: 'unassigned') . " · {$s['active_offerings']} active offering(s)";
+        }
+    }
+
+    // ---- Grade-level lookups (e.g. "sections in grade 11") ----
+    if (!empty($grades) && empty($sectionRows)) {
+        $gradeSections = search_sections_by_grade($conn, $grades, 8);
+        if (!empty($gradeSections)) {
+            $foundAnything = true;
+            $lines[] = "\nSECTIONS IN GRADE(S) " . implode(', ', $grades) . " (name · strand · adviser):";
+            foreach ($gradeSections as $s) {
+                $lines[] = "- {$s['section_name']}" . ($s['strand'] ? " ({$s['strand']})" : '') . " · adviser: " . ($s['adviser_name'] ?: 'unassigned');
+            }
+        }
+    }
+
+    // ---- Enrollment requests: triggered by grade/strand/status mentions, e.g. "pending grade 11 STEM requests" ----
+    $requestRows = search_enrollment_requests($conn, $grades, $strands, $statuses, 10);
+    if (!empty($requestRows)) {
+        $foundAnything = true;
+        $lines[] = "\nMATCHING ENROLLMENT REQUESTS (student · grade · strand · subject · status · submitted):";
+        foreach ($requestRows as $r) {
+            $lines[] = "- {$r['student_name']} · Grade {$r['grade_level']}" . ($r['strand'] ? " ({$r['strand']})" : '') .
+                " · {$r['subject_name']} · {$r['status']} · " . date('M j, Y', strtotime($r['submitted_at']));
+        }
+    }
+
+    // ---- Learning materials, only when a keyword plausibly names one ----
+    $materialRows = [];
+    $seenMaterials = [];
+    foreach ($keywords as $kw) {
+        foreach (search_learning_materials($conn, $kw, 5) as $row) {
+            $key = $row['title'] . '|' . $row['section_name'];
+            if (!isset($seenMaterials[$key])) { $seenMaterials[$key] = true; $materialRows[] = $row; }
+        }
+    }
+    if (!empty($materialRows)) {
+        $foundAnything = true;
+        $lines[] = "\nMATCHING LEARNING MATERIALS (title · type · subject · section):";
+        foreach (array_slice($materialRows, 0, 8) as $m) {
+            $lines[] = "- {$m['title']} · {$m['type']} · {$m['subject_name']} · {$m['section_name']}";
+        }
+    }
+
+    if (!$foundAnything) {
+        $lines[] = "\n(No specific student/teacher/course/subject/section/request records matched this question — only school-wide stats above are available. If the question needs a record lookup, ask the admin to include a name, grade level, section, or subject to search for.)";
     }
 
     return implode("\n", $lines);
