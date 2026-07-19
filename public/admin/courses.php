@@ -744,6 +744,9 @@ $subjectsList = $pdo->query("
             </div>
 
             <div class="modal-footer">
+                <button type="button" class="btn-secondary" id="vsExportBtn" onclick="exportViewStudents()" disabled>
+                    <i class="fas fa-file-csv"></i> Export to Excel
+                </button>
                 <button type="button" class="btn-secondary" onclick="closeViewStudentsModal()">Close</button>
             </div>
         </div>
@@ -1077,12 +1080,18 @@ $subjectsList = $pdo->query("
         return div.innerHTML;
     }
 
+    let currentViewOfferingId = null;
+
     function openViewStudentsModal(offeringId) {
         const overlay = document.getElementById('viewStudentsOverlay');
         const errorBox = document.getElementById('viewStudentsErrors');
         const tbody = document.getElementById('vsStudentsTableBody');
         const title = document.getElementById('vsModalTitle');
         const subtitle = document.getElementById('vsModalSubtitle');
+        const exportBtn = document.getElementById('vsExportBtn');
+
+        currentViewOfferingId = offeringId;
+        exportBtn.disabled = true;
 
         errorBox.hidden = true;
         title.textContent = 'Enrolled Students';
@@ -1102,6 +1111,8 @@ $subjectsList = $pdo->query("
                 errorBox.hidden = false;
                 return;
             }
+
+            exportBtn.disabled = data.students.length === 0;
 
             const course = data.course;
             title.textContent = course.subject_name + ' — ' + course.section_name;
@@ -1135,6 +1146,12 @@ $subjectsList = $pdo->query("
 
     function closeViewStudentsModal() {
         document.getElementById('viewStudentsOverlay').classList.remove('open');
+        currentViewOfferingId = null;
+    }
+
+    function exportViewStudents() {
+        if (!currentViewOfferingId) return;
+        window.location = 'assests/api/export_course_students.php?offering_id=' + encodeURIComponent(currentViewOfferingId);
     }
 
     // ---- New Section modal ----
