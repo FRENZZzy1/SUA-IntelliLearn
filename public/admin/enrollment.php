@@ -135,6 +135,15 @@ $allStudents = $pdo->query("
     ORDER BY lastname, firstname
 ")->fetchAll();
 
+$allStudentsJson = json_encode(array_map(function ($s) {
+    return [
+        'id'    => (int) $s['student_id'],
+        'label' => $s['lastname'] . ', ' . $s['firstname'] . ($s['student_lrn'] ? ' — LRN ' . $s['student_lrn'] : ''),
+        'lrn'   => (string) $s['student_lrn'],
+        'name'  => $s['firstname'] . ' ' . $s['lastname'],
+    ];
+}, $allStudents));
+
 $panelTitles = [
     'pending'  => 'Pending Enrollment Requests',
     'approved' => 'Approved Enrollments',
@@ -359,15 +368,13 @@ $panelIcons = [
 
                 <div class="modal-body">
                     <div class="form-row">
-                        <label for="es_student_id">Student</label>
-                        <select id="es_student_id" name="student_id" required>
-                            <option value="">Select a student</option>
-                            <?php foreach ($allStudents as $s): ?>
-                                <option value="<?= (int) $s['student_id'] ?>">
-                                    <?= clean($s['lastname'] . ', ' . $s['firstname']) ?><?= $s['student_lrn'] ? ' — LRN ' . clean($s['student_lrn']) : '' ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
+                        <label for="es_student_search">Student</label>
+                        <div class="searchable-select" id="es_student_picker">
+                            <input type="text" id="es_student_search" class="searchable-select-input"
+                                   placeholder="Search by name or LRN..." autocomplete="off" required>
+                            <input type="hidden" id="es_student_id" name="student_id">
+                            <div class="searchable-select-dropdown" id="es_student_dropdown"></div>
+                        </div>
                     </div>
 
                     <div class="form-row-split">
@@ -400,7 +407,14 @@ $panelIcons = [
                                 <option value="<?= (int) $s['subject_id'] ?>"><?= clean($s['subject_name']) ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <span class="field-note">Creates a pending request — approve it to enroll the student into a matching class.</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="es_offering_id">Section</label>
+                        <select id="es_offering_id" name="offering_id" required disabled>
+                            <option value="">Select grade level, strand, and subject first</option>
+                        </select>
+                        <span class="field-note" id="es_section_note">Creates a pending request already tied to this section.</span>
                     </div>
                 </div>
 
@@ -412,33 +426,11 @@ $panelIcons = [
         </div>
     </div>
 
-    <!-- Section Picker Modal (shown only when a request matches more than one open section) -->
-    <div class="modal-overlay" id="pickSectionOverlay" onclick="if (event.target === this) closePickSectionModal()">
-        <div class="modal-box">
-            <div class="modal-header">
-                <h2>Choose a Section</h2>
-                <button type="button" class="modal-close" onclick="closePickSectionModal()" aria-label="Close">&times;</button>
-            </div>
-
-            <div class="modal-body">
-                <p class="pick-section-hint">More than one class matches this request. Pick which one to enroll the student into.</p>
-                <div class="form-row">
-                    <label for="pickSectionSelect">Section</label>
-                    <select id="pickSectionSelect"></select>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" onclick="closePickSectionModal()">Cancel</button>
-                <button type="button" class="btn-primary" id="pickSectionConfirmBtn" onclick="confirmPickedSection()"><i class="fas fa-check"></i> Approve</button>
-            </div>
-        </div>
-    </div>
-
 </div>
 
 <script>
     const CSRF_TOKEN = <?= json_encode($csrfToken) ?>;
+    const STUDENTS_DATA = <?= $allStudentsJson ?>;
 
     // ---- Sidebar collapse/expand (shared with sidebar module) ----
     function toggleSidebar() {
@@ -458,6 +450,7 @@ $panelIcons = [
 
     // ---- Enroll Student modal ----
     function openEnrollStudentModal() {
+        resetEnrollStudentForm();
         document.getElementById('enrollStudentOverlay').classList.add('open');
         document.getElementById('enrollStudentErrors').hidden = true;
     }
@@ -466,11 +459,135 @@ $panelIcons = [
         document.getElementById('enrollStudentOverlay').classList.remove('open');
     }
 
+    function resetEnrollStudentForm() {
+        document.getElementById('enrollStudentForm').reset();
+        studentSearchInput.value = '';
+        studentHiddenInput.value = '';
+        closeStudentDropdown();
+        resetSectionSelect('Select grade level, strand, and subject first');
+    }
+
+    // ---- Searchable student picker ----
+    const studentPicker      = document.getElementById('es_student_picker');
+    const studentSearchInput = document.getElementById('es_student_search');
+    const studentHiddenInput = document.getElementById('es_student_id');
+    const studentDropdown    = document.getElementById('es_student_dropdown');
+
+    function renderStudentOptions(filter) {
+        const term = filter.trim().toLowerCase();
+        const matches = term === ''
+            ? STUDENTS_DATA
+            : STUDENTS_DATA.filter(s =>
+                s.name.toLowerCase().includes(term) ||
+                s.lrn.toLowerCase().includes(term)
+              );
+
+        if (matches.length === 0) {
+            studentDropdown.innerHTML = '<div class="searchable-select-empty">No students match your search.</div>';
+        } else {
+            studentDropdown.innerHTML = matches.slice(0, 50).map(s =>
+                `<div class="searchable-select-option" data-id="${s.id}" data-label="${s.label.replace(/"/g, '&quot;')}">${s.label}</div>`
+            ).join('');
+        }
+        studentDropdown.classList.add('open');
+    }
+
+    function closeStudentDropdown() {
+        studentDropdown.classList.remove('open');
+    }
+
+    studentSearchInput.addEventListener('focus', () => renderStudentOptions(studentSearchInput.value));
+    studentSearchInput.addEventListener('input', () => {
+        studentHiddenInput.value = '';
+        renderStudentOptions(studentSearchInput.value);
+    });
+
+    studentDropdown.addEventListener('click', function (e) {
+        const opt = e.target.closest('.searchable-select-option');
+        if (!opt) return;
+        studentHiddenInput.value = opt.dataset.id;
+        studentSearchInput.value = opt.dataset.label;
+        closeStudentDropdown();
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!studentPicker.contains(e.target)) closeStudentDropdown();
+    });
+
+    // ---- Section dropdown, driven by grade level + strand + subject ----
+    const gradeLevelSelect = document.getElementById('es_grade_level');
+    const strandSelect     = document.getElementById('es_strand');
+    const subjectSelect    = document.getElementById('es_subject_id');
+    const sectionSelect    = document.getElementById('es_offering_id');
+    const sectionNote      = document.getElementById('es_section_note');
+
+    function resetSectionSelect(message) {
+        sectionSelect.innerHTML = `<option value="">${message}</option>`;
+        sectionSelect.disabled = true;
+        sectionNote.textContent = 'Creates a pending request already tied to this section.';
+    }
+
+    function refreshSectionOptions() {
+        const gradeLevel = gradeLevelSelect.value;
+        const subjectId  = subjectSelect.value;
+        const strand     = strandSelect.value;
+
+        if (!gradeLevel || !subjectId) {
+            resetSectionSelect('Select grade level, strand, and subject first');
+            return;
+        }
+
+        resetSectionSelect('Loading sections...');
+
+        const params = new URLSearchParams({ grade_level: gradeLevel, subject_id: subjectId, strand: strand });
+
+        fetch('get_offering_sections.php?' + params.toString(), {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                resetSectionSelect('Unable to load sections');
+                sectionNote.textContent = (data.errors || ['Something went wrong.']).join(' ');
+                return;
+            }
+            if (data.options.length === 0) {
+                sectionSelect.innerHTML = '<option value="">No open sections for this grade/strand/subject</option>';
+                sectionSelect.disabled = true;
+                sectionNote.textContent = 'Create a class offering for this combination in Courses & Subjects first.';
+                return;
+            }
+            sectionSelect.innerHTML = '<option value="">Select a section</option>' +
+                data.options.map(o => `<option value="${o.offering_id}">${o.label}</option>`).join('');
+            sectionSelect.disabled = false;
+            sectionNote.textContent = 'Creates a pending request already tied to this section.';
+        })
+        .catch(() => {
+            resetSectionSelect('Unable to load sections');
+            sectionNote.textContent = 'Something went wrong loading sections. Please try again.';
+        });
+    }
+
+    [gradeLevelSelect, strandSelect, subjectSelect].forEach(el => el.addEventListener('change', refreshSectionOptions));
+
     document.getElementById('enrollStudentForm').addEventListener('submit', function (e) {
         e.preventDefault();
+
         const submitBtn = document.getElementById('enrollStudentSubmitBtn');
         const errorBox = document.getElementById('enrollStudentErrors');
         errorBox.hidden = true;
+
+        if (!studentHiddenInput.value) {
+            errorBox.innerHTML = '<div>Please select a student from the list.</div>';
+            errorBox.hidden = false;
+            return;
+        }
+        if (!sectionSelect.value) {
+            errorBox.innerHTML = '<div>Please select a section.</div>';
+            errorBox.hidden = false;
+            return;
+        }
+
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
 
@@ -499,20 +616,14 @@ $panelIcons = [
     });
 
     // ---- Approve / Deny / Reopen ----
-    let pendingPickRequestId = null;
-
     function approveRequest(id, btnEl) {
         if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...'; }
-        doApprove(id, null, btnEl);
-    }
 
-    function doApprove(id, offeringId, btnEl) {
         const fd = new FormData();
         fd.append('csrf', CSRF_TOKEN);
         fd.append('request_id', id);
-        if (offeringId) fd.append('offering_id', offeringId);
 
-        return fetch('approve_enrollment.php', {
+        fetch('approve_enrollment.php', {
             method: 'POST',
             headers: { 'Accept': 'application/json' },
             body: fd
@@ -521,9 +632,6 @@ $panelIcons = [
         .then(data => {
             if (data.success) {
                 location.reload();
-            } else if (data.needs_selection) {
-                openPickSectionModal(id, data.options);
-                if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-check"></i> Approve'; }
             } else {
                 alert((data.errors || ['Something went wrong.']).join('\n'));
                 if (btnEl) { btnEl.disabled = false; btnEl.innerHTML = '<i class="fas fa-check"></i> Approve'; }
@@ -584,34 +692,6 @@ $panelIcons = [
         .catch(() => alert('Something went wrong. Please try again.'));
     }
 
-    // ---- Section picker (ambiguous approve match) ----
-    function openPickSectionModal(requestId, options) {
-        pendingPickRequestId = requestId;
-        const select = document.getElementById('pickSectionSelect');
-        select.innerHTML = options.map(o => `<option value="${o.offering_id}">${o.label}</option>`).join('');
-        document.getElementById('pickSectionOverlay').classList.add('open');
-    }
-
-    function closePickSectionModal() {
-        document.getElementById('pickSectionOverlay').classList.remove('open');
-        pendingPickRequestId = null;
-    }
-
-    function confirmPickedSection() {
-        if (!pendingPickRequestId) return;
-        const offeringId = document.getElementById('pickSectionSelect').value;
-        const btn = document.getElementById('pickSectionConfirmBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
-
-        doApprove(pendingPickRequestId, offeringId, null).then(data => {
-            if (!data.success) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check"></i> Approve';
-            }
-        });
-    }
-
     // ---- Approve All (checked rows, or every visible pending row if none checked) ----
     function approveAllVisible() {
         const checked = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.dataset.requestId);
@@ -622,15 +702,14 @@ $panelIcons = [
             alert('No pending requests to approve.');
             return;
         }
-        if (!confirm(`Approve ${ids.length} enrollment request(s)? Requests with more than one matching section will be skipped for manual review.`)) return;
+        if (!confirm(`Approve ${ids.length} enrollment request(s)?`)) return;
 
-        approveSequential(ids, 0, { approved: 0, needsSelection: 0, failed: 0 });
+        approveSequential(ids, 0, { approved: 0, failed: 0 });
     }
 
     function approveSequential(ids, idx, summary) {
         if (idx >= ids.length) {
             let msg = `${summary.approved} approved.`;
-            if (summary.needsSelection) msg += ` ${summary.needsSelection} need manual section selection.`;
             if (summary.failed) msg += ` ${summary.failed} failed.`;
             alert(msg);
             location.reload();
@@ -649,7 +728,6 @@ $panelIcons = [
         .then(res => res.json())
         .then(data => {
             if (data.success) summary.approved++;
-            else if (data.needs_selection) summary.needsSelection++;
             else summary.failed++;
             approveSequential(ids, idx + 1, summary);
         })
@@ -683,11 +761,10 @@ $panelIcons = [
         URL.revokeObjectURL(url);
     }
 
-    // ---- Escape closes whichever modal is open ----
+    // ---- Escape closes the Enroll Student modal ----
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
         closeEnrollStudentModal();
-        closePickSectionModal();
     });
 </script>
 

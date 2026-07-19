@@ -46,7 +46,7 @@ if ($status !== 'denied') {
 }
 
 try {
-    $pdo->prepare("UPDATE enrollment_requests SET status = 'pending', decided_at = NULL, decided_by = NULL, offering_id = NULL WHERE request_id = ?")
+    $pdo->prepare("UPDATE enrollment_requests SET status = 'pending', decided_at = NULL, decided_by = NULL WHERE request_id = ?")
         ->execute([$requestId]);
 
     setFlashMessage('success', 'Request reopened and moved back to Pending.');

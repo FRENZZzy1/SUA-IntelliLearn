@@ -27,15 +27,54 @@ $student_id  = $_POST['student_id'] ?? '';
 $grade_level = $_POST['grade_level'] ?? '';
 $subject_id  = $_POST['subject_id'] ?? '';
 $strand      = trim($_POST['strand'] ?? '');
+$offering_id = $_POST['offering_id'] ?? '';
 
 if (!ctype_digit((string) $student_id)) $errors[] = 'Please choose a student.';
 if (!in_array((string) $grade_level, ['7', '8', '9', '10', '11', '12'], true)) $errors[] = 'Please choose a grade level.';
 if (!ctype_digit((string) $subject_id)) $errors[] = 'Please choose a course/subject.';
 if ($strand !== '' && !in_array($strand, ['STEM', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = 'Invalid strand.';
+if (!ctype_digit((string) $offering_id)) $errors[] = 'Please choose a section.';
 
 if (!empty($errors)) {
     http_response_code(422);
     echo json_encode(['success' => false, 'errors' => $errors]);
+    exit();
+}
+
+$student_id  = (int) $student_id;
+$grade_level = (int) $grade_level;
+$subject_id  = (int) $subject_id;
+$offering_id = (int) $offering_id;
+
+// Re-validate the chosen section server-side: it must actually be an
+// active offering for this subject + grade (+ strand) with an open seat,
+// in case the form was tampered with or the class filled up meanwhile.
+$sectionSql = "
+    SELECT co.offering_id, co.capacity,
+        (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
+    FROM classofferings co
+    JOIN sections sec ON sec.section_id = co.section_id
+    WHERE co.offering_id = ? AND co.subject_id = ? AND sec.grade_level = ? AND co.status = 'active'
+";
+$sectionParams = [$offering_id, $subject_id, $grade_level];
+if ($strand !== '') {
+    $sectionSql .= " AND sec.strand = ?";
+    $sectionParams[] = $strand;
+}
+
+$sectionStmt = $pdo->prepare($sectionSql);
+$sectionStmt->execute($sectionParams);
+$offering = $sectionStmt->fetch();
+
+if (!$offering) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'errors' => ['That section no longer matches this request. Please refresh and pick again.']]);
+    exit();
+}
+
+if ((int) $offering['enrolled_count'] >= (int) $offering['capacity']) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'errors' => ['That section just filled up. Please choose another section.']]);
     exit();
 }
 
@@ -44,7 +83,7 @@ $dupStmt = $pdo->prepare("
     SELECT COUNT(*) FROM enrollment_requests
     WHERE student_id = ? AND subject_id = ? AND grade_level = ? AND status = 'pending'
 ");
-$dupStmt->execute([(int) $student_id, (int) $subject_id, (int) $grade_level]);
+$dupStmt->execute([$student_id, $subject_id, $grade_level]);
 
 if ((int) $dupStmt->fetchColumn() > 0) {
     http_response_code(422);
@@ -54,14 +93,15 @@ if ((int) $dupStmt->fetchColumn() > 0) {
 
 try {
     $stmt = $pdo->prepare("
-        INSERT INTO enrollment_requests (student_id, grade_level, subject_id, strand, status)
-        VALUES (?, ?, ?, ?, 'pending')
+        INSERT INTO enrollment_requests (student_id, grade_level, subject_id, strand, offering_id, status)
+        VALUES (?, ?, ?, ?, ?, 'pending')
     ");
     $stmt->execute([
-        (int) $student_id,
-        (int) $grade_level,
-        (int) $subject_id,
+        $student_id,
+        $grade_level,
+        $subject_id,
         $strand !== '' ? $strand : null,
+        $offering_id,
     ]);
 
     setFlashMessage('success', 'Enrollment request submitted.');
