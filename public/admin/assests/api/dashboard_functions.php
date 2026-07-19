@@ -19,6 +19,11 @@ function get_total_Class(mysqli $conn): int {
     return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
 }
 
+function get_pending_enrollments(mysqli $conn): int {
+    $result = $conn->query("SELECT COUNT(*) AS cnt FROM enrollment_requests WHERE status = 'pending'");
+    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+}
+
 /**
  * Total number of teachers.
  */

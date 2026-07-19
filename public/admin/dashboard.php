@@ -22,6 +22,7 @@ require_once 'assests/api/dashboard_functions.php';
 $totalStudents   = get_total_students($conn);
 $totalTeachers   = get_total_teachers($conn);
 $totalCourses    = get_total_Class($conn);
+$pendingEnrollments = get_pending_enrollments($conn);
 $totalUsersCount = get_total_users_count($conn);
 $recentUsers     = get_recent_users($conn, 4);
 
@@ -97,7 +98,7 @@ $recentUsers     = get_recent_users($conn, 4);
                         <p>Active Courses</p>
                         <div class="stat-trend up">
                             <i class="fas fa-info-circle"></i>
-                            <span>Static — add a Courses table</span>
+                            <span>live count</span>
                         </div>
                     </div>
                     <div class="stat-icon courses">
@@ -106,11 +107,11 @@ $recentUsers     = get_recent_users($conn, 4);
                 </div>
                 <div class="stat-card">
                     <div class="stat-info">
-                        <h3>17</h3>
+                        <h3><?php echo number_format($pendingEnrollments); ?></h3>
                         <p>Pending Enrollments</p>
                         <div class="stat-trend down">
                             <i class="fas fa-info-circle"></i>
-                            <span>Static — add an Enrollments table</span>
+                            <span>live count</span>
                         </div>
                     </div>
                     <div class="stat-icon enroll">
