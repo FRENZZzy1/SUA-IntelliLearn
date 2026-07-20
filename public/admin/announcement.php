@@ -1,6 +1,5 @@
 <?php
-session_start();
-
+require_once '../../config/config.php';
 if (!isset($_SESSION['user_id'])) {
     // TODO: adjust this path to match where your login.php actually lives
     header("Location: ../login.php");
@@ -16,7 +15,7 @@ if (($_SESSION['role'] ?? null) !== 'admin') {
 
 // TODO: adjust this path to match your actual DB connection include.
 // This file is expected to expose a PDO instance in $pdo.
-require_once '../../config/config.php';
+
 
 $currentUserId = $_SESSION['user_id'];
 
