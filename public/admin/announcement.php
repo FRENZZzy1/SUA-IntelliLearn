@@ -1,22 +1,11 @@
 <?php
-session_start();
-
-if (!isset($_SESSION['user_id'])) {
-    // TODO: adjust this path to match where your login.php actually lives
-    header("Location: ../login.php");
-    exit();
-}
-
-// Only admins can post from this page.
-// TODO: confirm $_SESSION['role'] is the key your login script actually sets.
-if (($_SESSION['role'] ?? null) !== 'admin') {
-    header("Location: ../login.php");
-    exit();
-}
-
 // TODO: adjust this path to match your actual DB connection include.
-// This file is expected to expose a PDO instance in $pdo.
-require_once '../../config/config.php';
+// This file is expected to expose a PDO instance in $pdo, and a
+// requireAdmin() helper that starts the session, checks the user is
+// logged in as an admin, and redirects to login.php otherwise.
+require_once __DIR__ . '/../../config/config.php';
+
+requireAdmin();
 
 $currentUserId = $_SESSION['user_id'];
 
@@ -281,6 +270,17 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
 </div>
 
 <script>
+    // ---- Sidebar collapse/expand (shared with sidebar module) ----
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('collapsed');
+    }
+
+    // ---- Sidebar nav active state (shared with sidebar module) ----
+    function setActive(el) {
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        el.classList.add('active');
+    }
+
     function toggleCompose() {
         const panel = document.getElementById('composePanel');
         panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none';
