@@ -18,6 +18,10 @@ require_once '../../config/config.php';
 
 // ================= DATA LAYER =================
 require_once 'assests/api/dashboard_functions.php';
+$aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
+$aum_endpoint = '/SUA-IntelliLearn/public/admin/assests/api/add_user_handler.php';
+include 'assests/api/add_user_modal.php';
+
 
 $totalStudents   = get_total_students($conn);
 $totalTeachers   = get_total_teachers($conn);
@@ -183,7 +187,7 @@ $recentUsers     = get_recent_users($conn, 4);
                         </div>
                         <div class="card-body">
                             <div class="quick-actions-grid">
-                                <button class="quick-action-btn" onclick="showToast('Add User Account modal opened')">
+                                <button class="quick-action-btn" onclick="openAddUserModal()">
                                     <i class="fas fa-user-plus qa-icon-green"></i>
                                     <span>Add User Account</span>
                                 </button>
