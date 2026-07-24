@@ -121,9 +121,16 @@ if ($role === 'student') {
 // ============================================================
 // TEACHER / ADMIN CREATION
 // ============================================================
-$firstname         = trim($_POST['firstname'] ?? '');
-$middlename        = trim($_POST['middlename'] ?? '');
-$lastname          = trim($_POST['lastname'] ?? '');
+// NOTE: the modal posts teacher name fields as teacher_firstname /
+// teacher_lastname / teacher_middlename (admin has no name fields at
+// all, since $fullname falls back to email for admins below). Read
+// those keys here instead of firstname/lastname/middlename, which
+// were never posted for teacher/admin and caused "First name is
+// required." / "Last name is required." errors even when the teacher
+// name fields were filled in.
+$firstname         = trim($_POST['teacher_firstname'] ?? '');
+$middlename        = trim($_POST['teacher_middlename'] ?? '');
+$lastname          = trim($_POST['teacher_lastname'] ?? '');
 $email             = trim($_POST['email'] ?? '');
 $department        = trim($_POST['department'] ?? '');
 $contact           = trim($_POST['contact'] ?? '');

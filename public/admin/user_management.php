@@ -20,7 +20,13 @@ require_once 'assests/api/user_management_logic.php';
 </head>
 <body>
 
-<?php include '../../includes/admin_sidebar.php'; ?>
+<?php include '../../includes/admin_sidebar.php';
+    $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
+$aum_endpoint = '/SUA-IntelliLearn/public/admin/assests/api/add_user_handler.php';
+include 'assests/api/add_user_modal.php';
+
+?>
+
 
 <!-- Flash Messages -->
 <?php if ($flash): ?>
@@ -39,7 +45,7 @@ require_once 'assests/api/user_management_logic.php';
             <h1>User Management</h1>
             <p>Manage teacher and student accounts across St. Uriel Academy.</p>
         </div>
-        <button class="btn-primary" id="newUserBtn" onclick="toggleAddUser()">
+        <button class="btn-primary" id="newUserBtn" onclick="openAddUserModal()">
             <i class="fas fa-user-plus"></i> Add User
         </button>
     </div>
@@ -77,230 +83,6 @@ require_once 'assests/api/user_management_logic.php';
     </div>
 
     <!-- Add User Panel (hidden by default) -->
-    <div class="compose-panel" id="addUserPanel" style="display:none;">
-        <div class="compose-panel-header">
-            <h2><i class="fas fa-user-plus"></i>&nbsp; Add New User</h2>
-            <div class="close-icon" onclick="toggleAddUser()"><i class="fas fa-times"></i></div>
-        </div>
-
-        <form method="POST" action="" id="addUserForm">
-            <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-            <input type="hidden" name="action" value="create">
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Role *</label>
-                    <div class="role-options">
-                        <div class="role-pill active" data-role="student" onclick="setRole(this)">
-                            <i class="fas fa-user-graduate"></i> Student
-                        </div>
-                        <div class="role-pill" data-role="teacher" onclick="setRole(this)">
-                            <i class="fas fa-chalkboard-teacher"></i> Teacher
-                        </div>
-                        <div class="role-pill" data-role="admin" onclick="setRole(this)">
-                            <i class="fas fa-user-shield"></i> Admin
-                        </div>
-                    </div>
-                    <input type="hidden" name="role" id="roleInput" value="student">
-                </div>
-                <div class="form-group">
-                    <label>Status</label>
-                    <div class="status-options">
-                        <div class="status-pill active" data-status="active" onclick="setStatus(this)">Active</div>
-                        <div class="status-pill" data-status="inactive" onclick="setStatus(this)">Inactive</div>
-                        <div class="status-pill" data-status="suspended" onclick="setStatus(this)">Suspended</div>
-                    </div>
-                    <input type="hidden" name="status" id="statusInput" value="active">
-                </div>
-            </div>
-
-            <!-- ============================================================
-                 STUDENT FIELDS (shown when Role = Student)
-            ============================================================= -->
-            <div id="studentFields">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>First Name *</label>
-                        <input type="text" name="firstname" class="form-control" placeholder="e.g. Maria" data-student-required>
-                    </div>
-                    <div class="form-group">
-                        <label>Last Name *</label>
-                        <input type="text" name="lastname" class="form-control" placeholder="e.g. Santos" data-student-required>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Middle Name</label>
-                        <input type="text" name="middlename" class="form-control" placeholder="e.g. Clara">
-                    </div>
-                    <div class="form-group">
-                        <label>LRN * <small>(12 digits)</small></label>
-                        <input type="text" name="lrn" class="form-control" placeholder="e.g. 136090100234" pattern="\d{12}" maxlength="12" data-student-required>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Email <small>(optional)</small></label>
-                        <input type="email" name="email" id="studentEmail" class="form-control" placeholder="e.g. maria@sturiel.edu.ph">
-                    </div>
-                    <div class="form-group">
-                        <label>Birthdate *</label>
-                        <input type="date" name="birthdate" class="form-control" data-student-required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Address</label>
-                    <input type="text" name="address" class="form-control" placeholder="e.g. 123 Rizal St., Talisay City">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Guardian Name</label>
-                        <input type="text" name="guardian_name" class="form-control" placeholder="e.g. Juana Santos">
-                    </div>
-                    <div class="form-group">
-                        <label>Guardian Contact</label>
-                        <input type="tel" name="guardian_contact" class="form-control" placeholder="e.g. +63 912 345 6789">
-                    </div>
-                </div>
-
-                <div class="form-group" style="background:var(--bg-page); padding:12px 14px; border-radius:var(--radius-sm); font-size:0.85rem; color:var(--text-muted);">
-                    <i class="fas fa-circle-info"></i>
-                    Username &amp; password are generated automatically:
-                    <strong>Username</strong> = STU-(last 4 digits of LRN)-(birthdate as MMDDYY),
-                    <strong>Password</strong> = Last name + birthdate as MMDDYY.
-                </div>
-            </div>
-
-            <!-- ============================================================
-                 TEACHER / ADMIN FIELDS (shown when Role = Teacher/Admin)
-            ============================================================= -->
-            <div id="staffFields" style="display:none;">
-                <!-- Teacher uses separate name fields (matches the teachers table columns).
-                     Admin has NO name field at all — the admin table has no name columns. -->
-                <div class="form-row" id="teacherNameRow" style="display:none;">
-                    <div class="form-group">
-                        <label>First Name *</label>
-                        <input type="text" name="firstname" class="form-control" placeholder="e.g. Maria" data-teacher-required>
-                    </div>
-                    <div class="form-group">
-                        <label>Last Name *</label>
-                        <input type="text" name="lastname" class="form-control" placeholder="e.g. Santos" data-teacher-required>
-                    </div>
-                </div>
-                <div class="form-row" id="teacherMiddleNameRow" style="display:none;">
-                    <div class="form-group">
-                        <label>Middle Name</label>
-                        <input type="text" name="middlename" class="form-control" placeholder="e.g. Clara">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Email Address *</label>
-                        <input type="email" name="email" id="staffEmail" class="form-control" placeholder="e.g. maria@sturiel.edu.ph" data-staff-required>
-                        <small id="teacherEmailHint" style="display:none; color:var(--text-muted);">This will also be the teacher's login username.</small>
-                    </div>
-                    <!-- Contact isn't a column on either Teachers or Admin, but is kept for teachers
-                         only per the existing UI; hidden entirely for admin (admin table has no such column). -->
-                    <div class="form-group" id="contactFieldGroup" style="display:none;">
-                        <label>Contact Number</label>
-                        <input type="tel" name="contact" class="form-control" placeholder="e.g. +63 912 345 6789">
-                    </div>
-                </div>
-
-                <!-- Department: a Teachers column only — admin table has no such column -->
-                <div class="form-row" id="departmentRow" style="display:none;">
-                    <div class="form-group">
-                        <label>Department / Grade Level</label>
-                        <input type="text" name="department" class="form-control" placeholder="e.g. Grade 7 or Mathematics Dept">
-                    </div>
-                </div>
-
-                <div class="form-row" id="teacherOnlyFields" style="display:none;">
-                    <div class="form-group">
-                        <label>Employment Status</label>
-                        <select name="employment_status" class="form-control">
-                            <option value="">-- Select --</option>
-                            <option value="full-time">Full-time</option>
-                            <option value="part-time">Part-time</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Specialization (optional)</label>
-                        <input type="text" name="specialization" class="form-control" placeholder="e.g. Algebra, Biology">
-                    </div>
-                </div>
-
-                <!-- Admin only: access_level + position (real columns on the admin table) -->
-                <div class="form-row" id="adminOnlyFields" style="display:none;">
-                    <div class="form-group">
-                        <label>Position *</label>
-                        <select name="position" class="form-control" data-admin-required>
-                            <option value="principal">Principal</option>
-                            <option value="registrar">Registrar</option>
-                            <option value="staff" selected>Staff</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Access Level *</label>
-                        <select name="access_level" class="form-control" data-admin-required>
-                            <option value="full">Full</option>
-                            <option value="limited" selected>Limited</option>
-                            <option value="read_only">Read Only</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Password * <small>(min 6 characters)</small></label>
-                        <input type="password" name="password" class="form-control" placeholder="Enter secure password" minlength="6" data-staff-required>
-                    </div>
-                </div>
-            </div>
-
-            <script>
-            // Toggle admin-vs-teacher sub-fields within #staffFields.
-            // (Hooks into the existing setRole() flow — call this from setRole() too if it lives elsewhere.)
-            function um_toggleStaffSubFields(role) {
-                var isTeacher = role === 'teacher';
-                document.getElementById('teacherNameRow').style.display = isTeacher ? '' : 'none';
-                document.getElementById('teacherMiddleNameRow').style.display = isTeacher ? '' : 'none';
-                document.getElementById('contactFieldGroup').style.display = isTeacher ? '' : 'none';
-                document.getElementById('departmentRow').style.display = isTeacher ? '' : 'none';
-                document.getElementById('teacherOnlyFields').style.display = isTeacher ? '' : 'none';
-                document.getElementById('adminOnlyFields').style.display = isTeacher ? 'none' : '';
-                document.getElementById('teacherEmailHint').style.display = isTeacher ? '' : 'none';
-                document.querySelectorAll('[data-teacher-required]').forEach(function(el) { el.required = isTeacher; });
-                document.querySelectorAll('[data-admin-required]').forEach(function(el) { el.required = !isTeacher; });
-            }
-            // Run once on role-pill clicks. If setRole() already exists in user_management.js,
-            // this listens for the same clicks so no edits to that file are required.
-            document.querySelectorAll('.role-pill').forEach(function(pill) {
-                pill.addEventListener('click', function() {
-                    um_toggleStaffSubFields(pill.getAttribute('data-role'));
-                });
-            });
-            </script>
-
-            <div class="compose-actions">
-                <div class="left-actions">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="send_email" value="1"> 
-                        <i class="fas fa-envelope"></i> Send welcome email
-                    </label>
-                </div>
-                <div class="right-actions">
-                    <button type="button" class="btn-secondary" onclick="toggleAddUser()">Cancel</button>
-                    <button type="submit" class="btn-gold"><i class="fas fa-save"></i> Save User</button>
-                </div>
-            </div>
-        </form>
-    </div>
 
     <!-- Edit User Modal -->
     <div class="modal-overlay" id="editModal" style="display:none;">

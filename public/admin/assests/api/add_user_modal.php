@@ -1,304 +1,439 @@
 <?php
-/* =====================================================================
-   ADD USER — REUSABLE POPUP COMPONENT
-   ---------------------------------------------------------------------
-   Drop this file into any module with:
-
-       <?php $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
-             include '/full/or/relative/path/to/add_user_modal.php'; ?>
-
-   ($aum_endpoint is optional — set it before the include if the handler
-   lives somewhere other than the default path below. Every module can
-   point at the SAME handler file, so there's only one copy of the
-   create-user logic to maintain.)
-
-   Then anywhere on the page:
-
-       <button type="button" class="btn-primary" onclick="openAddUserModal()">
-           <i class="fas fa-user-plus"></i> Add User
-       </button>
-
-   To open it pre-locked to one role (e.g. from the Teachers module, so
-   staff can only add teachers and the role picker is hidden):
-
-       <button onclick="openAddUserModal('teacher')">Add Teacher</button>
-
-   To react when a user is successfully created (e.g. refresh a table),
-   define this BEFORE the modal is opened (anywhere in your page's JS):
-
-       window.onUserAdded = function(user) {
-           console.log('New user created:', user);
-           // e.g. location.reload(); or re-fetch your list via AJAX
-       };
-
-   Requires: Font Awesome (for icons) already loaded on the host page.
-   This component is fully self-contained (its own CSS, prefixed "aum-"
-   to avoid clashing with the host page's styles) and does NOT depend
-   on user_management.css.
-===================================================================== */
-
 if (!isset($aum_endpoint)) {
     $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
 }
-
-// generateCSRFToken() is expected to already exist (from config.php,
-// which the host module should already be including for its own auth).
 $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
 ?>
 <div class="aum-overlay" id="aumOverlay" style="display:none;" data-endpoint="<?= htmlspecialchars($aum_endpoint) ?>">
     <div class="aum-modal">
+        <div class="aum-accent-bar"></div>
+        
         <div class="aum-header">
-            <h2><i class="fas fa-user-plus"></i>&nbsp; Add New User</h2>
+            <div class="aum-header-icon"><i class="fas fa-user-plus"></i></div>
+            <div class="aum-header-text">
+                <h2>Add New User</h2>
+                <p>Fill in the details below to create an account</p>
+            </div>
             <div class="aum-close" onclick="closeAddUserModal()"><i class="fas fa-times"></i></div>
         </div>
 
         <div class="aum-alert" id="aumAlert"></div>
 
-        <form id="aumForm" novalidate>
-            <input type="hidden" name="csrf_token" id="aumCsrf" value="<?= htmlspecialchars($aum_csrf) ?>">
-            <input type="hidden" name="action" value="create">
+        <!-- Scrollable inner wrapper keeps scrollbar away from the border -->
+        <div class="aum-scroll-area">
+            <form id="aumForm" novalidate>
+                <input type="hidden" name="csrf_token" id="aumCsrf" value="<?= htmlspecialchars($aum_csrf) ?>">
+                <input type="hidden" name="action" value="create">
 
-            <div class="aum-row">
-                <div class="aum-group" id="aumRoleGroup">
-                    <label>Role *</label>
-                    <div class="aum-pills">
-                        <div class="aum-pill active" data-role="student" onclick="aumSetRole(this)">
-                            <i class="fas fa-user-graduate"></i> Student
+                <div class="aum-section aum-section-pills">
+                    <div class="aum-row">
+                        <div class="aum-group" id="aumRoleGroup">
+                            <label class="aum-section-label"><i class="fas fa-id-badge"></i> Select Role <span class="aum-req">*</span></label>
+                            <div class="aum-pills">
+                                <div class="aum-pill active" data-role="student" onclick="aumSetRole(this)">
+                                    <div class="aum-pill-icon"><i class="fas fa-user-graduate"></i></div>
+                                    <div class="aum-pill-text"><strong>Student</strong><small>Learner account</small></div>
+                                </div>
+                                <div class="aum-pill" data-role="teacher" onclick="aumSetRole(this)">
+                                    <div class="aum-pill-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                                    <div class="aum-pill-text"><strong>Teacher</strong><small>Faculty account</small></div>
+                                </div>
+                                <div class="aum-pill" data-role="admin" onclick="aumSetRole(this)">
+                                    <div class="aum-pill-icon"><i class="fas fa-user-shield"></i></div>
+                                    <div class="aum-pill-text"><strong>Admin</strong><small>Staff account</small></div>
+                                </div>
+                            </div>
+                            <input type="hidden" name="role" id="aumRoleInput" value="student">
                         </div>
-                        <div class="aum-pill" data-role="teacher" onclick="aumSetRole(this)">
-                            <i class="fas fa-chalkboard-teacher"></i> Teacher
+                    </div>
+                    <div class="aum-row">
+                        <div class="aum-group">
+                            <label class="aum-section-label"><i class="fas fa-toggle-on"></i> Account Status</label>
+                            <div class="aum-pills aum-pills-compact">
+                                <div class="aum-pill active" data-status="active" onclick="aumSetStatus(this)"><span class="aum-dot aum-dot-green"></span> Active</div>
+                                <div class="aum-pill" data-status="inactive" onclick="aumSetStatus(this)"><span class="aum-dot aum-dot-gray"></span> Inactive</div>
+                                <div class="aum-pill" data-status="suspended" onclick="aumSetStatus(this)"><span class="aum-dot aum-dot-red"></span> Suspended</div>
+                            </div>
+                            <input type="hidden" name="status" id="aumStatusInput" value="active">
                         </div>
-                        <div class="aum-pill" data-role="admin" onclick="aumSetRole(this)">
-                            <i class="fas fa-user-shield"></i> Admin
+                    </div>
+                </div>
+
+                <div id="aumStudentFields" class="aum-section aum-fields-section">
+                    <div class="aum-section-title">
+                        <span class="aum-section-line"></span>
+                        <span><i class="fas fa-user-graduate"></i> Student Information</span>
+                        <span class="aum-section-line"></span>
+                    </div>
+                    <div class="aum-row">
+                        <div class="aum-group">
+                            <label>First Name <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap"><i class="fas fa-user aum-input-icon"></i><input type="text" name="firstname" class="aum-control" placeholder="e.g. Maria" data-student-required></div>
+                        </div>
+                        <div class="aum-group">
+                            <label>Last Name <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap"><i class="fas fa-user aum-input-icon"></i><input type="text" name="lastname" class="aum-control" placeholder="e.g. Santos" data-student-required></div>
                         </div>
                     </div>
-                    <input type="hidden" name="role" id="aumRoleInput" value="student">
-                </div>
-                <div class="aum-group">
-                    <label>Status</label>
-                    <div class="aum-pills">
-                        <div class="aum-pill active" data-status="active" onclick="aumSetStatus(this)">Active</div>
-                        <div class="aum-pill" data-status="inactive" onclick="aumSetStatus(this)">Inactive</div>
-                        <div class="aum-pill" data-status="suspended" onclick="aumSetStatus(this)">Suspended</div>
+                    <div class="aum-row">
+                        <div class="aum-group">
+                            <label>Middle Name</label>
+                            <div class="aum-input-wrap"><i class="fas fa-user aum-input-icon"></i><input type="text" name="middlename" class="aum-control" placeholder="e.g. Clara"></div>
+                        </div>
+                        <div class="aum-group">
+                            <label>LRN <span class="aum-req">*</span> <small>(12 digits)</small></label>
+                            <div class="aum-input-wrap"><i class="fas fa-id-card aum-input-icon"></i><input type="text" name="lrn" class="aum-control" placeholder="e.g. 136090100234" pattern="\d{12}" maxlength="12" data-student-required></div>
+                        </div>
                     </div>
-                    <input type="hidden" name="status" id="aumStatusInput" value="active">
-                </div>
-            </div>
-
-            <!-- ============================================================
-                 STUDENT FIELDS
-            ============================================================= -->
-            <div id="aumStudentFields">
-                <div class="aum-row">
-                    <div class="aum-group">
-                        <label>First Name *</label>
-                        <input type="text" name="firstname" class="aum-control" placeholder="e.g. Maria" data-student-required>
+                    <div class="aum-row">
+                        <div class="aum-group">
+                            <label>Email <small>(optional)</small></label>
+                            <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="email" name="email" id="aumStudentEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph"></div>
+                        </div>
+                        <div class="aum-group">
+                            <label>Birthdate <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap"><i class="fas fa-calendar-alt aum-input-icon"></i><input type="date" name="birthdate" class="aum-control" data-student-required></div>
+                        </div>
                     </div>
                     <div class="aum-group">
-                        <label>Last Name *</label>
-                        <input type="text" name="lastname" class="aum-control" placeholder="e.g. Santos" data-student-required>
+                        <label>Address</label>
+                        <div class="aum-input-wrap"><i class="fas fa-map-marker-alt aum-input-icon"></i><input type="text" name="address" class="aum-control" placeholder="e.g. 123 Rizal St., Talisay City"></div>
                     </div>
-                </div>
-                <div class="aum-row">
-                    <div class="aum-group">
-                        <label>Middle Name</label>
-                        <input type="text" name="middlename" class="aum-control" placeholder="e.g. Clara">
+                    <div class="aum-row">
+                        <div class="aum-group">
+                            <label>Guardian Name</label>
+                            <div class="aum-input-wrap"><i class="fas fa-user-friends aum-input-icon"></i><input type="text" name="guardian_name" class="aum-control" placeholder="e.g. Juana Santos"></div>
+                        </div>
+                        <div class="aum-group">
+                            <label>Guardian Contact</label>
+                            <div class="aum-input-wrap"><i class="fas fa-phone aum-input-icon"></i><input type="tel" name="guardian_contact" class="aum-control" placeholder="e.g. +63 912 345 6789"></div>
+                        </div>
                     </div>
-                    <div class="aum-group">
-                        <label>LRN * <small>(12 digits)</small></label>
-                        <input type="text" name="lrn" class="aum-control" placeholder="e.g. 136090100234" pattern="\d{12}" maxlength="12" data-student-required>
-                    </div>
-                </div>
-                <div class="aum-row">
-                    <div class="aum-group">
-                        <label>Email <small>(optional)</small></label>
-                        <input type="email" name="email" id="aumStudentEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph">
-                    </div>
-                    <div class="aum-group">
-                        <label>Birthdate *</label>
-                        <input type="date" name="birthdate" class="aum-control" data-student-required>
-                    </div>
-                </div>
-                <div class="aum-group">
-                    <label>Address</label>
-                    <input type="text" name="address" class="aum-control" placeholder="e.g. 123 Rizal St., Talisay City">
-                </div>
-                <div class="aum-row">
-                    <div class="aum-group">
-                        <label>Guardian Name</label>
-                        <input type="text" name="guardian_name" class="aum-control" placeholder="e.g. Juana Santos">
-                    </div>
-                    <div class="aum-group">
-                        <label>Guardian Contact</label>
-                        <input type="tel" name="guardian_contact" class="aum-control" placeholder="e.g. +63 912 345 6789">
-                    </div>
-                </div>
-                <div class="aum-hint">
-                    <i class="fas fa-circle-info"></i>
-                    Username &amp; password are generated automatically:
-                    <strong>Username</strong> = STU-(last 4 digits of LRN)-(birthdate as MMDDYY),
-                    <strong>Password</strong> = Last name + birthdate as MMDDYY.
-                </div>
-            </div>
-
-            <!-- ============================================================
-                 TEACHER / ADMIN FIELDS
-            ============================================================= -->
-            <div id="aumStaffFields" style="display:none;">
-                <div class="aum-row" id="aumTeacherNameRow" style="display:none;">
-                    <div class="aum-group">
-                        <label>First Name *</label>
-                        <input type="text" name="teacher_firstname" class="aum-control" placeholder="e.g. Maria" data-teacher-required>
-                    </div>
-                    <div class="aum-group">
-                        <label>Last Name *</label>
-                        <input type="text" name="teacher_lastname" class="aum-control" placeholder="e.g. Santos" data-teacher-required>
-                    </div>
-                </div>
-                <div class="aum-row" id="aumTeacherMiddleNameRow" style="display:none;">
-                    <div class="aum-group">
-                        <label>Middle Name</label>
-                        <input type="text" name="teacher_middlename" class="aum-control" placeholder="e.g. Clara">
+                    <div class="aum-hint">
+                        <div class="aum-hint-icon"><i class="fas fa-lightbulb"></i></div>
+                        <div class="aum-hint-text">
+                            <strong>Auto-generated credentials:</strong><br>
+                            <span class="aum-hint-detail"><strong>Username:</strong> STU-(last 4 digits of LRN)-(birthdate as MMDDYY)<br><strong>Password:</strong> Last name + birthdate as MMDDYY</span>
+                        </div>
                     </div>
                 </div>
 
-                <div class="aum-row">
-                    <div class="aum-group">
-                        <label>Email Address *</label>
-                        <input type="email" name="email" id="aumStaffEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph" data-staff-required>
-                        <small id="aumTeacherEmailHint" style="display:none;">This will also be the teacher's login username.</small>
+                <div id="aumStaffFields" style="display:none;" class="aum-section aum-fields-section">
+                    <div class="aum-section-title">
+                        <span class="aum-section-line"></span>
+                        <span><i class="fas fa-briefcase"></i> Staff Information</span>
+                        <span class="aum-section-line"></span>
                     </div>
-                    <div class="aum-group" id="aumContactFieldGroup" style="display:none;">
-                        <label>Contact Number</label>
-                        <input type="tel" name="contact" class="aum-control" placeholder="e.g. +63 912 345 6789">
+                    <div class="aum-row" id="aumTeacherNameRow" style="display:none;">
+                        <div class="aum-group">
+                            <label>First Name <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap"><i class="fas fa-user aum-input-icon"></i><input type="text" name="teacher_firstname" class="aum-control" placeholder="e.g. Maria" data-teacher-required></div>
+                        </div>
+                        <div class="aum-group">
+                            <label>Last Name <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap"><i class="fas fa-user aum-input-icon"></i><input type="text" name="teacher_lastname" class="aum-control" placeholder="e.g. Santos" data-teacher-required></div>
+                        </div>
+                    </div>
+                    <div class="aum-row" id="aumTeacherMiddleNameRow" style="display:none;">
+                        <div class="aum-group">
+                            <label>Middle Name</label>
+                            <div class="aum-input-wrap"><i class="fas fa-user aum-input-icon"></i><input type="text" name="teacher_middlename" class="aum-control" placeholder="e.g. Clara"></div>
+                        </div>
+                    </div>
+                    <div class="aum-row">
+                        <div class="aum-group">
+                            <label>Email Address <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="email" name="email" id="aumStaffEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph" data-staff-required></div>
+                            <small id="aumTeacherEmailHint" style="display:none;" class="aum-help-text"><i class="fas fa-info-circle"></i> This will also be the teacher's login username.</small>
+                        </div>
+                        <div class="aum-group" id="aumContactFieldGroup" style="display:none;">
+                            <label>Contact Number</label>
+                            <div class="aum-input-wrap"><i class="fas fa-phone aum-input-icon"></i><input type="tel" name="contact" class="aum-control" placeholder="e.g. +63 912 345 6789"></div>
+                        </div>
+                    </div>
+                    <div class="aum-row" id="aumDepartmentRow" style="display:none;">
+                        <div class="aum-group">
+                            <label>Department / Grade Level</label>
+                            <div class="aum-input-wrap"><i class="fas fa-building aum-input-icon"></i><input type="text" name="department" class="aum-control" placeholder="e.g. Grade 7 or Mathematics Dept"></div>
+                        </div>
+                    </div>
+                    <div class="aum-row" id="aumTeacherOnlyFields" style="display:none;">
+                        <div class="aum-group">
+                            <label>Employment Status</label>
+                            <div class="aum-input-wrap"><i class="fas fa-briefcase aum-input-icon"></i><select name="employment_status" class="aum-control"><option value="">-- Select --</option><option value="full-time">Full-time</option><option value="part-time">Part-time</option></select></div>
+                        </div>
+                        <div class="aum-group">
+                            <label>Specialization <small>(optional)</small></label>
+                            <div class="aum-input-wrap"><i class="fas fa-star aum-input-icon"></i><input type="text" name="specialization" class="aum-control" placeholder="e.g. Algebra, Biology"></div>
+                        </div>
+                    </div>
+                    <div class="aum-row" id="aumAdminOnlyFields" style="display:none;">
+                        <div class="aum-group">
+                            <label>Position <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap"><i class="fas fa-crown aum-input-icon"></i><select name="position" class="aum-control" data-admin-required><option value="principal">Principal</option><option value="registrar">Registrar</option><option value="staff" selected>Staff</option></select></div>
+                        </div>
+                        <div class="aum-group">
+                            <label>Access Level <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap"><i class="fas fa-lock aum-input-icon"></i><select name="access_level" class="aum-control" data-admin-required><option value="full">Full</option><option value="limited" selected>Limited</option><option value="read_only">Read Only</option></select></div>
+                        </div>
+                    </div>
+                    <div class="aum-row">
+                        <div class="aum-group">
+                            <label>Password <span class="aum-req">*</span> <small>(min 6 characters)</small></label>
+                            <div class="aum-input-wrap"><i class="fas fa-key aum-input-icon"></i><input type="password" name="password" class="aum-control" placeholder="Enter secure password" minlength="6" data-staff-required></div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="aum-row" id="aumDepartmentRow" style="display:none;">
-                    <div class="aum-group">
-                        <label>Department / Grade Level</label>
-                        <input type="text" name="department" class="aum-control" placeholder="e.g. Grade 7 or Mathematics Dept">
+                <div class="aum-actions">
+                    <label class="aum-checkbox">
+                        <div class="aum-checkbox-box"><input type="checkbox" name="send_email" value="1"><span class="aum-checkmark"><i class="fas fa-check"></i></span></div>
+                        <span class="aum-checkbox-label"><i class="fas fa-envelope"></i> Send welcome email</span>
+                    </label>
+                    <div class="aum-actions-right">
+                        <button type="button" class="aum-btn-secondary" onclick="closeAddUserModal()"><i class="fas fa-times"></i> Cancel</button>
+                        <button type="submit" class="aum-btn-primary" id="aumSubmitBtn"><i class="fas fa-save"></i> Save User</button>
                     </div>
                 </div>
-
-                <div class="aum-row" id="aumTeacherOnlyFields" style="display:none;">
-                    <div class="aum-group">
-                        <label>Employment Status</label>
-                        <select name="employment_status" class="aum-control">
-                            <option value="">-- Select --</option>
-                            <option value="full-time">Full-time</option>
-                            <option value="part-time">Part-time</option>
-                        </select>
-                    </div>
-                    <div class="aum-group">
-                        <label>Specialization (optional)</label>
-                        <input type="text" name="specialization" class="aum-control" placeholder="e.g. Algebra, Biology">
-                    </div>
-                </div>
-
-                <div class="aum-row" id="aumAdminOnlyFields" style="display:none;">
-                    <div class="aum-group">
-                        <label>Position *</label>
-                        <select name="position" class="aum-control" data-admin-required>
-                            <option value="principal">Principal</option>
-                            <option value="registrar">Registrar</option>
-                            <option value="staff" selected>Staff</option>
-                        </select>
-                    </div>
-                    <div class="aum-group">
-                        <label>Access Level *</label>
-                        <select name="access_level" class="aum-control" data-admin-required>
-                            <option value="full">Full</option>
-                            <option value="limited" selected>Limited</option>
-                            <option value="read_only">Read Only</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="aum-row">
-                    <div class="aum-group">
-                        <label>Password * <small>(min 6 characters)</small></label>
-                        <input type="password" name="password" class="aum-control" placeholder="Enter secure password" minlength="6" data-staff-required>
-                    </div>
-                </div>
-            </div>
-
-            <div class="aum-actions">
-                <label class="aum-checkbox">
-                    <input type="checkbox" name="send_email" value="1">
-                    <i class="fas fa-envelope"></i> Send welcome email
-                </label>
-                <div class="aum-actions-right">
-                    <button type="button" class="aum-btn-secondary" onclick="closeAddUserModal()">Cancel</button>
-                    <button type="submit" class="aum-btn-primary" id="aumSubmitBtn">
-                        <i class="fas fa-save"></i> Save User
-                    </button>
-                </div>
-            </div>
-        </form>
+            </form>
+        </div>
     </div>
 </div>
 
 <style>
+/* ── Overlay ───────────────────────────────────────────── */
 .aum-overlay {
     position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(18, 64, 41, 0.45);
     display: flex; align-items: center; justify-content: center;
-    z-index: 9999; padding: 20px; backdrop-filter: blur(4px);
+    z-index: 9999; padding: 24px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    animation: aumFadeIn 0.25s ease;
 }
+@keyframes aumFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Modal Shell (no scroll here) ──────────────────────── */
 .aum-modal {
-    background: #fff; border-radius: 14px; padding: 26px;
-    width: 100%; max-width: 640px; max-height: 90vh; overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-    animation: aumSlideIn 0.2s ease;
-    font-family: 'DM Sans', Arial, sans-serif;
+    background: #ffffff; border-radius: 20px;
+    width: 100%; max-width: 680px; max-height: 92vh;
+    box-shadow: 0 25px 80px rgba(18, 64, 41, 0.25), 0 0 0 1px rgba(255,255,255,0.1);
+    animation: aumSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
 }
-@keyframes aumSlideIn {
-    from { opacity: 0; transform: scale(0.96) translateY(10px); }
+@keyframes aumSlideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Scrollable Inner Area ─────────────────────────────── */
+.aum-scroll-area {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    /* Thin custom scrollbar so it never looks bulky at the edge */
+    scrollbar-width: thin;
+    scrollbar-color: #c5d5cb transparent;
+}
+.aum-scroll-area::-webkit-scrollbar { width: 6px; }
+.aum-scroll-area::-webkit-scrollbar-track { background: transparent; margin: 8px 0; }
+.aum-scroll-area::-webkit-scrollbar-thumb {
+    background: #c5d5cb; border-radius: 10px;
+}
+
+/* ── Accent Bar ────────────────────────────────────────── */
+.aum-accent-bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 5px;
+    background: linear-gradient(90deg, #124029 0%, #1a5c3a 40%, #f4a261 100%);
+    border-radius: 20px 20px 0 0; z-index: 2;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+.aum-header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 28px 28px 0 28px; flex-shrink: 0; position: relative; z-index: 1;
+}
+.aum-header-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: linear-gradient(135deg, #124029 0%, #1a5c3a 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1.2rem;
+    box-shadow: 0 4px 12px rgba(18, 64, 41, 0.25);
+    flex-shrink: 0;
+}
+.aum-header-text { flex: 1; }
+.aum-header-text h2 { font-size: 1.3rem; font-weight: 700; color: #124029; margin: 0 0 4px 0; letter-spacing: -0.3px; }
+.aum-header-text p { font-size: 0.82rem; color: #6b7280; margin: 0; }
+.aum-close {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #9ca3af; font-size: 1.1rem;
+    transition: all 0.2s ease; flex-shrink: 0;
+    background: #f8faf9; border: 1px solid transparent;
+}
+.aum-close:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; transform: rotate(90deg); }
+
+/* ── Alert ─────────────────────────────────────────────── */
+.aum-alert {
+    display: none; margin: 16px 28px 0 28px;
+    padding: 14px 16px; border-radius: 12px;
+    font-size: 0.88rem; line-height: 1.5;
+    align-items: center; gap: 10px; flex-shrink: 0;
+    animation: aumAlertPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes aumAlertPop {
+    from { opacity: 0; transform: scale(0.95) translateY(-5px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
-.aum-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.aum-header h2 { font-size: 1.15rem; margin: 0; color: #124029; }
-.aum-close { cursor: pointer; color: #6b7280; width: 30px; height: 30px; border-radius: 8px; display:flex; align-items:center; justify-content:center; }
-.aum-close:hover { background: #f0f4f1; color: #1f2937; }
-.aum-alert { display: none; padding: 12px 14px; border-radius: 8px; margin-bottom: 14px; font-size: 0.88rem; }
-.aum-alert.show { display: block; }
-.aum-alert.success { background: #ecfdf3; color: #166534; border: 1px solid #bbf7d0; }
-.aum-alert.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-.aum-row { display: flex; gap: 14px; margin-bottom: 14px; flex-wrap: wrap; }
-.aum-group { flex: 1; min-width: 180px; }
-.aum-group label { display: block; font-size: 0.82rem; font-weight: 600; color: #1f2937; margin-bottom: 6px; }
-.aum-group label small { font-weight: 400; color: #6b7280; }
+.aum-alert.show { display: flex; }
+.aum-alert.success {
+    background: linear-gradient(135deg, #ecfdf3 0%, #d1fae5 100%);
+    color: #166534; border: 1px solid #86efac;
+    box-shadow: 0 2px 8px rgba(22, 101, 52, 0.08);
+}
+.aum-alert.error {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    color: #991b1b; border: 1px solid #fca5a5;
+    box-shadow: 0 2px 8px rgba(153, 27, 27, 0.08);
+}
+.aum-alert i { font-size: 1.1rem; flex-shrink: 0; }
+
+/* ── Sections ──────────────────────────────────────────── */
+.aum-section { padding: 0 28px; margin-top: 20px; }
+.aum-section-pills {
+    background: linear-gradient(180deg, #f8faf9 0%, #ffffff 100%);
+    margin: 16px 28px 0 28px; padding: 20px 24px;
+    border-radius: 16px; border: 1px solid #e8f0eb;
+}
+.aum-fields-section { margin-top: 8px; }
+.aum-section-title {
+    display: flex; align-items: center; gap: 12px;
+    margin: 24px 0 16px 0; color: #124029;
+    font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+}
+.aum-section-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, #d1e0d6, transparent); }
+.aum-section-label { display: block; font-size: 0.8rem; font-weight: 700; color: #374151; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.aum-section-label i { color: #1a5c3a; margin-right: 4px; }
+
+/* ── Form Layout ───────────────────────────────────────── */
+.aum-row { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.aum-group { flex: 1; min-width: 200px; }
+.aum-group label { display: block; font-size: 0.82rem; font-weight: 600; color: #374151; margin-bottom: 7px; }
+.aum-req { color: #dc2626; font-weight: 700; }
+.aum-help-text { display: block; margin-top: 6px; font-size: 0.78rem; color: #6b7280; }
+.aum-help-text i { color: #f4a261; }
+
+/* ── Inputs ────────────────────────────────────────────── */
+.aum-input-wrap { position: relative; }
+.aum-input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 0.85rem; pointer-events: none; transition: color 0.2s ease; }
 .aum-control {
-    width: 100%; padding: 9px 12px; border: 1px solid #e5e7eb; border-radius: 8px;
-    font-size: 0.9rem; font-family: inherit; color: #1f2937; background: #fff;
+    width: 100%; padding: 10px 12px 10px 38px;
+    border: 1.5px solid #e5e7eb; border-radius: 10px;
+    font-size: 0.9rem; font-family: inherit; color: #1f2937;
+    background: #fafbfc; transition: all 0.2s ease;
 }
-.aum-control:focus { outline: none; border-color: #1a5c3a; box-shadow: 0 0 0 3px rgba(26,92,58,0.1); }
-.aum-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.aum-control::placeholder { color: #b0b8c4; }
+.aum-control:hover { border-color: #c5d5cb; background: #f8faf9; }
+.aum-control:focus { outline: none; border-color: #1a5c3a; background: #ffffff; box-shadow: 0 0 0 4px rgba(26,92,58,0.1); }
+.aum-control:focus + .aum-input-icon, .aum-input-wrap:focus-within .aum-input-icon { color: #1a5c3a; }
+select.aum-control { padding-right: 36px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+/* ── Pills ─────────────────────────────────────────────── */
+.aum-pills { display: flex; gap: 10px; flex-wrap: wrap; }
 .aum-pill {
-    padding: 7px 14px; border: 1px solid #e5e7eb; border-radius: 20px;
-    font-size: 0.83rem; cursor: pointer; color: #4b5563; background: #fff; transition: all .15s;
+    flex: 1; min-width: 120px; padding: 10px 14px;
+    border: 2px solid #e5e7eb; border-radius: 12px; cursor: pointer;
+    background: #fff; color: #4b5563;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex; align-items: center; gap: 10px;
 }
-.aum-pill:hover { border-color: #1a5c3a; }
-.aum-pill.active { background: #1a5c3a; border-color: #1a5c3a; color: #fff; }
+.aum-pill:hover { border-color: #1a5c3a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(18, 64, 41, 0.1); }
+.aum-pill.active {
+    background: linear-gradient(135deg, #124029 0%, #1a5c3a 100%);
+    border-color: #124029; color: #fff;
+    box-shadow: 0 4px 16px rgba(18, 64, 41, 0.25);
+    transform: translateY(-1px);
+}
+.aum-pill-icon { width: 34px; height: 34px; border-radius: 10px; background: rgba(18, 64, 41, 0.08); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; color: #1a5c3a; transition: all 0.2s ease; }
+.aum-pill.active .aum-pill-icon { background: rgba(255,255,255,0.2); color: #fff; }
+.aum-pill-text { display: flex; flex-direction: column; }
+.aum-pill-text strong { font-size: 0.85rem; font-weight: 600; }
+.aum-pill-text small { font-size: 0.72rem; opacity: 0.8; font-weight: 400; }
+.aum-pills-compact .aum-pill { min-width: auto; padding: 8px 14px; font-size: 0.82rem; font-weight: 500; }
+.aum-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.aum-dot-green { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.2); }
+.aum-dot-gray { background: #9ca3af; box-shadow: 0 0 0 3px rgba(156,163,175,0.2); }
+.aum-dot-red { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.2); }
+
+/* ── Hint Box ──────────────────────────────────────────── */
 .aum-hint {
-    background: #f8faf9; padding: 12px 14px; border-radius: 8px;
-    font-size: 0.82rem; color: #6b7280; margin-bottom: 4px;
+    background: linear-gradient(135deg, #fef9f3 0%, #fdf4e8 100%);
+    border: 1px solid #fde8cd; border-radius: 12px;
+    padding: 16px; display: flex; gap: 14px;
+    margin-top: 8px; margin-bottom: 4px;
 }
-.aum-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; padding-top: 16px; border-top: 1px solid #e5e7eb; flex-wrap: wrap; gap: 12px; }
-.aum-checkbox { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: #4b5563; }
+.aum-hint-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #f4a261 0%, #e8935a 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.9rem; flex-shrink: 0; box-shadow: 0 2px 8px rgba(244, 162, 97, 0.3); }
+.aum-hint-text { font-size: 0.82rem; color: #7c5c3a; line-height: 1.6; }
+.aum-hint-text strong { color: #92400e; }
+.aum-hint-detail { color: #a16207; font-size: 0.8rem; }
+
+/* ── Actions ───────────────────────────────────────────── */
+.aum-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 24px 28px 28px 28px; padding-top: 20px;
+    border-top: 1px solid #e8f0eb; flex-wrap: wrap; gap: 14px;
+}
+
+/* Custom Checkbox */
+.aum-checkbox { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.aum-checkbox-box { position: relative; width: 22px; height: 22px; }
+.aum-checkbox-box input { position: absolute; opacity: 0; width: 0; height: 0; }
+.aum-checkmark {
+    position: absolute; top: 0; left: 0; width: 22px; height: 22px; border-radius: 6px;
+    border: 2px solid #d1d5db; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease; color: transparent; font-size: 0.65rem;
+}
+.aum-checkbox-box input:checked + .aum-checkmark {
+    background: linear-gradient(135deg, #124029 0%, #1a5c3a 100%);
+    border-color: #124029; color: #fff;
+    box-shadow: 0 2px 6px rgba(18, 64, 41, 0.25);
+}
+.aum-checkbox-label { font-size: 0.85rem; color: #4b5563; font-weight: 500; }
+.aum-checkbox-label i { color: #f4a261; margin-right: 2px; }
 .aum-actions-right { display: flex; gap: 10px; margin-left: auto; }
+
+/* Buttons */
 .aum-btn-primary, .aum-btn-secondary {
-    padding: 10px 18px; border-radius: 8px; font-size: 0.88rem; font-weight: 600;
-    cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 6px;
+    padding: 11px 20px; border-radius: 10px; font-size: 0.88rem; font-weight: 600;
+    cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 8px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.aum-btn-primary { background: #f4a261; color: #1f2937; }
-.aum-btn-primary:hover { background: #e8935a; }
-.aum-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-.aum-btn-secondary { background: #f0f4f1; color: #374151; }
-.aum-btn-secondary:hover { background: #e5e7eb; }
-@media (max-width: 600px) {
-    .aum-row { flex-direction: column; }
+.aum-btn-primary {
+    background: linear-gradient(135deg, #f4a261 0%, #e8935a 100%);
+    color: #1f2937; box-shadow: 0 4px 14px rgba(244, 162, 97, 0.35);
+}
+.aum-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(244, 162, 97, 0.45); }
+.aum-btn-primary:active { transform: translateY(0); }
+.aum-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+.aum-btn-secondary { background: #f0f4f1; color: #4b5563; border: 1px solid #e5e7eb; }
+.aum-btn-secondary:hover { background: #e4ebe6; border-color: #d1d5db; transform: translateY(-1px); }
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .aum-overlay { padding: 12px; }
+    .aum-modal { border-radius: 16px; max-height: 95vh; }
+    .aum-accent-bar { border-radius: 16px 16px 0 0; }
+    .aum-header { padding: 20px 20px 0 20px; }
+    .aum-alert { margin: 12px 20px 0 20px; }
+    .aum-section, .aum-actions { padding-left: 20px; padding-right: 20px; margin-left: 0; margin-right: 0; }
+    .aum-section-pills { margin: 12px 20px 0 20px; padding: 16px; }
+    .aum-row { flex-direction: column; gap: 12px; }
+    .aum-group { min-width: 100%; }
+    .aum-pill { min-width: 100%; }
+    .aum-actions { flex-direction: column; align-items: stretch; }
+    .aum-actions-right { margin-left: 0; justify-content: flex-end; }
 }
 </style>
 
@@ -374,7 +509,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
     function aumShowAlert(type, message) {
         var alertBox = document.getElementById('aumAlert');
         alertBox.className = 'aum-alert show ' + type;
-        alertBox.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> ' + message;
+        alertBox.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> <span>' + message + '</span>';
     }
 
     document.getElementById('aumForm').addEventListener('submit', function (e) {
@@ -413,7 +548,6 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
         });
     });
 
-    // Close on backdrop click
     document.getElementById('aumOverlay').addEventListener('click', function (e) {
         if (e.target === this) window.closeAddUserModal();
     });
