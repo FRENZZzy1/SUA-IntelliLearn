@@ -93,6 +93,60 @@ if (function_exists('get_initials')) {
         font-size: 0.8rem;
         color: #9ca3af;
     }
+
+    /* Profile dropdown */
+    .ahp-profile { position: relative; }
+    .ahp-profile-trigger {
+        display: flex; align-items: center; gap: 8px;
+        cursor: pointer; user-select: none;
+    }
+    .ahp-profile-trigger .fa-chevron-down {
+        font-size: 0.65rem; color: #9ca3af; margin-left: 2px;
+        transition: transform 0.15s ease;
+    }
+    .ahp-profile.open .fa-chevron-down { transform: rotate(180deg); }
+    .ahp-profile-menu {
+        display: none;
+        position: absolute;
+        top: calc(100% + 8px);
+        right: 0;
+        width: 220px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: var(--shadow-lg, 0 10px 30px rgba(0,0,0,0.15));
+        border: 1px solid rgba(0,0,0,0.06);
+        z-index: 1000;
+        overflow: hidden;
+        padding: 6px;
+    }
+    .ahp-profile.open .ahp-profile-menu { display: block; }
+    .ahp-profile-header {
+        display: flex; align-items: center; gap: 10px;
+        padding: 10px 10px 12px;
+        border-bottom: 1px solid #f0f0f2;
+        margin-bottom: 6px;
+    }
+    .ahp-profile-header .header-avatar { flex-shrink: 0; }
+    .ahp-profile-header-text { min-width: 0; }
+    .ahp-profile-header-name {
+        font-size: 0.85rem; font-weight: 600; color: #1f2937;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ahp-profile-header-role {
+        font-size: 0.72rem; color: #9ca3af; text-transform: capitalize;
+    }
+    .ahp-profile-item {
+        display: flex; align-items: center; gap: 10px;
+        width: 100%; padding: 9px 10px; border-radius: 8px;
+        font-size: 0.83rem; color: #374151; text-decoration: none;
+        background: none; border: none; cursor: pointer; text-align: left;
+        font-family: inherit;
+    }
+    .ahp-profile-item i { width: 16px; text-align: center; color: #9ca3af; }
+    .ahp-profile-item:hover { background: #f5f5f7; }
+    .ahp-profile-item.ahp-logout { color: #b91c1c; margin-top: 4px; }
+    .ahp-profile-item.ahp-logout i { color: #b91c1c; }
+    .ahp-profile-item.ahp-logout:hover { background: #fef2f2; }
 </style>
 <header class="top-header">
     <div class="header-search">
@@ -108,9 +162,63 @@ if (function_exists('get_initials')) {
         <button class="header-btn">
             <i class="fas fa-question-circle"></i>
         </button>
-        <button class="header-btn" style="width: auto; gap: 8px; padding: 0 12px; border-radius: 20px;" title="<?php echo htmlspecialchars($userRole); ?>">
-            <div class="header-avatar" style="width: 28px; height: 28px; font-size: 0.7rem;"><?php echo htmlspecialchars($initials); ?></div>
-            <span style="font-size: 0.8rem; font-weight: 500;"><?php echo htmlspecialchars($displayName); ?></span>
-        </button>
+        <div class="ahp-profile" id="ahpProfile">
+            <button type="button"
+                    class="header-btn ahp-profile-trigger"
+                    style="width: auto; gap: 8px; padding: 0 12px; border-radius: 20px;"
+                    title="<?php echo htmlspecialchars($userRole); ?>"
+                    onclick="ahpToggleMenu()"
+                    aria-haspopup="true"
+                    aria-expanded="false">
+                <div class="header-avatar" style="width: 28px; height: 28px; font-size: 0.7rem;"><?php echo htmlspecialchars($initials); ?></div>
+                <span style="font-size: 0.8rem; font-weight: 500;"><?php echo htmlspecialchars($displayName); ?></span>
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="ahp-profile-menu" id="ahpProfileMenu">
+                <div class="ahp-profile-header">
+                    <div class="header-avatar" style="width: 34px; height: 34px; font-size: 0.75rem;"><?php echo htmlspecialchars($initials); ?></div>
+                    <div class="ahp-profile-header-text">
+                        <div class="ahp-profile-header-name"><?php echo htmlspecialchars($displayName); ?></div>
+                        <div class="ahp-profile-header-role"><?php echo htmlspecialchars($userRole); ?></div>
+                    </div>
+                </div>
+                <a href="/SUA-INTELLILEARN/public/admin/profile.php" class="ahp-profile-item">
+                    <i class="fas fa-user-cog"></i> Profile Settings
+                </a>
+                <a href="/SUA-INTELLILEARN/public/logout.php" class="ahp-profile-item ahp-logout">
+                    <i class="fas fa-arrow-right-from-bracket"></i> Logout
+                </a>
+            </div>
+        </div>
     </div>
 </header>
+<script>
+(function () {
+    function ahpEl() { return document.getElementById('ahpProfile'); }
+
+    window.ahpToggleMenu = function () {
+        var el = ahpEl();
+        var trigger = el.querySelector('.ahp-profile-trigger');
+        var isOpen = el.classList.toggle('open');
+        trigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    };
+
+    function ahpClose() {
+        var el = ahpEl();
+        if (!el) return;
+        el.classList.remove('open');
+        el.querySelector('.ahp-profile-trigger').setAttribute('aria-expanded', 'false');
+    }
+
+    // Close when clicking outside the dropdown.
+    document.addEventListener('click', function (e) {
+        var el = ahpEl();
+        if (el && !el.contains(e.target)) ahpClose();
+    });
+
+    // Close on Escape.
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') ahpClose();
+    });
+})();
+</script>
