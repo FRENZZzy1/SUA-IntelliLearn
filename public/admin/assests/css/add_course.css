@@ -23,7 +23,7 @@
     background: var(--bg-card);
     border-radius: var(--radius);
     width: 100%;
-    max-width: 560px;
+    max-width: 720px;
     max-height: 90vh;
     overflow-y: auto;
     box-shadow: var(--shadow-lg);

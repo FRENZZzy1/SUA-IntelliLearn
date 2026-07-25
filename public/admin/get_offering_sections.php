@@ -36,10 +36,11 @@ $gradeLevel = (int) $gradeLevel;
 $subjectId  = (int) $subjectId;
 
 $sql = "
-    SELECT co.offering_id, co.capacity, sec.section_name, sec.strand,
+    SELECT co.offering_id, co.capacity, co.quarter, sec.section_name, sec.strand, sy.label AS school_year_label,
         (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
     FROM classofferings co
     JOIN sections sec ON sec.section_id = co.section_id
+    JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id
     WHERE co.subject_id = ? AND sec.grade_level = ? AND co.status = 'active'
 ";
 $params = [$subjectId, $gradeLevel];
@@ -65,6 +66,8 @@ foreach ($rows as $c) {
         'offering_id' => (int) $c['offering_id'],
         'label' => $c['section_name']
             . ($c['strand'] ? ' (' . $c['strand'] . ')' : '')
+            . ' · Q' . (int) $c['quarter']
+            . ' · ' . $c['school_year_label']
             . ' · ' . $seatsLeft . ' seat' . ($seatsLeft === 1 ? '' : 's') . ' left',
     ];
 }

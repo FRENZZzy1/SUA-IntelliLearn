@@ -16,7 +16,7 @@
     --bg-card: #ffffff;
     --text-dark: #1f2937;
     --text-muted: #6b7280;
-    --border: #e5e7eb;
+    --border: #b8c0cc;
     --success: #22c55e;
     --warning: #f59e0b;
     --danger: #ef4444;
@@ -100,7 +100,7 @@ body {
 .btn-secondary {
     background: #fff;
     color: var(--text-main);
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     padding: 12px 20px;
     border-radius: var(--radius-sm);
     font-weight: 600;
@@ -140,7 +140,7 @@ body {
 
 .stat-card {
     background: var(--bg-card);
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     border-radius: var(--radius-md);
     padding: 18px 20px;
     display: flex;
@@ -192,7 +192,7 @@ body {
 /* ---------- Compose panel ---------- */
 .compose-panel {
     background: var(--bg-card);
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     border-radius: var(--radius-lg);
     padding: 26px;
     margin-bottom: 28px;
@@ -248,7 +248,7 @@ body {
 .form-control {
     width: 100%;
     padding: 12px 14px;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     border-radius: var(--radius-sm);
     font-family: inherit;
     font-size: 0.95rem;
@@ -285,7 +285,7 @@ textarea.form-control {
     align-items: center;
     gap: 8px;
     padding: 9px 14px;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     border-radius: 999px;
     font-size: 0.85rem;
     cursor: pointer;
@@ -313,7 +313,7 @@ textarea.form-control {
     flex: 1;
     text-align: center;
     padding: 10px;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: 0.85rem;
     font-weight: 600;
@@ -345,7 +345,7 @@ textarea.form-control {
     align-items: center;
     gap: 4px;
     padding: 8px;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     border-bottom: none;
     border-radius: var(--radius-sm) var(--radius-sm) 0 0;
     background: var(--bg-page);
@@ -447,7 +447,7 @@ textarea.form-control {
 .search-box input {
     width: 100%;
     padding: 11px 14px 11px 38px;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--bg-card);
     font-size: 0.9rem;
@@ -455,7 +455,7 @@ textarea.form-control {
 
 .select-filter {
     padding: 11px 14px;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--bg-card);
     font-size: 0.85rem;
@@ -472,7 +472,7 @@ textarea.form-control {
 
 .announcement-card {
     background: var(--bg-card);
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     border-radius: var(--radius-md);
     padding: 20px 22px;
     display: flex;
@@ -600,7 +600,7 @@ textarea.form-control {
     padding: 3px 9px;
     border-radius: 999px;
     background: var(--bg-page);
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     color: var(--text-main);
 }
 
@@ -616,7 +616,7 @@ textarea.form-control {
     width: 34px;
     height: 34px;
     border-radius: 8px;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     background: #fff;
     color: var(--text-muted);
     display: flex;
@@ -651,7 +651,7 @@ textarea.form-control {
     min-width: 36px;
     height: 36px;
     border-radius: 8px;
-    border: 1px solid var(--border);
+    border: 2px solid var(--border);
     background: #fff;
     color: var(--text-muted);
     display: flex;

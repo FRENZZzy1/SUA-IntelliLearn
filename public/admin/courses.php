@@ -20,6 +20,31 @@ $subjectColors = [
     'Araling Panlipunan'  => ['bg' => '#fce7f3', 'text' => '#be185d', 'bar' => '#db2777'],
 ];
 
+// ================= SCHEDULE FORMAT HELPER =================
+// Formats schedule_days ("M - W") + start_time/end_time ("07:00:00")
+// into "M - W : 7 AM - 10 AM" for display. Returns null if nothing is set.
+function formatScheduleDisplay(?string $days, ?string $start, ?string $end): ?string
+{
+    $days  = $days ? trim($days) : '';
+    $time  = '';
+
+    if ($start && $end) {
+        $time = date('g A', strtotime($start)) . ' - ' . date('g A', strtotime($end));
+    } elseif ($start) {
+        $time = date('g A', strtotime($start));
+    }
+
+    if ($days === '' && $time === '') {
+        return null;
+    }
+
+    if ($days !== '' && $time !== '') {
+        return $days . ' : ' . $time;
+    }
+
+    return $days !== '' ? $days : $time;
+}
+
 // ================= DELETE HANDLER =================
 // courses.php?delete=ID&csrf=...  (confirmed client-side, then this runs on reload)
 if (isset($_GET['delete']) && ctype_digit($_GET['delete'])) {
@@ -32,10 +57,12 @@ if (isset($_GET['delete']) && ctype_digit($_GET['delete'])) {
     }
 
     header("Location: courses.php?" . http_build_query(array_filter([
-        'status' => $_GET['status'] ?? null,
-        'grade'  => $_GET['grade'] ?? null,
-        'strand' => $_GET['strand'] ?? null,
-        'q'      => $_GET['q'] ?? null,
+        'status'      => $_GET['status'] ?? null,
+        'grade'       => $_GET['grade'] ?? null,
+        'strand'      => $_GET['strand'] ?? null,
+        'quarter'     => $_GET['quarter'] ?? null,
+        'school_year' => $_GET['school_year'] ?? null,
+        'q'           => $_GET['q'] ?? null,
     ])));
     exit();
 }
@@ -95,13 +122,23 @@ if (!in_array($openView, ['sections', 'subjects'], true)) {
 }
 
 // ================= FILTER INPUTS =================
-$statusFilter = $_GET['status'] ?? 'all';                 // all | active | inactive
-$gradeFilter  = $_GET['grade']  ?? 'all';                 // all | 7..12
-$strandFilter = $_GET['strand'] ?? 'all';                 // all | STEM | ABM | HUMSS | TVL
-$searchQuery  = trim($_GET['q'] ?? '');
+$statusFilter     = $_GET['status']  ?? 'all';             // all | active | inactive
+$gradeFilter      = $_GET['grade']   ?? 'all';             // all | 7..12
+$strandFilter     = $_GET['strand']  ?? 'all';             // all | STEM | ABM | HUMSS | TVL
+$quarterFilter    = $_GET['quarter'] ?? 'all';             // all | 1..4
+$schoolYearFilter = $_GET['school_year'] ?? 'all';         // all | school_year_id
+$searchQuery      = trim($_GET['q'] ?? '');
 
 if (!in_array($statusFilter, ['all', 'active', 'inactive'], true)) {
     $statusFilter = 'all';
+}
+
+if ($quarterFilter !== 'all' && !in_array($quarterFilter, ['1', '2', '3', '4'], true)) {
+    $quarterFilter = 'all';
+}
+
+if ($schoolYearFilter !== 'all' && !ctype_digit((string) $schoolYearFilter)) {
+    $schoolYearFilter = 'all';
 }
 
 // ================= BUILD MAIN QUERY =================
@@ -123,6 +160,16 @@ if ($strandFilter !== 'all') {
     $params[] = $strandFilter;
 }
 
+if ($quarterFilter !== 'all') {
+    $where[] = 'co.quarter = ?';
+    $params[] = (int) $quarterFilter;
+}
+
+if ($schoolYearFilter !== 'all') {
+    $where[] = 'co.school_year_id = ?';
+    $params[] = (int) $schoolYearFilter;
+}
+
 if ($searchQuery !== '') {
     $where[] = '(s.subject_name LIKE ? OR sec.section_name LIKE ? OR CONCAT(t.firstname, " ", t.lastname) LIKE ?)';
     $like = '%' . $searchQuery . '%';
@@ -140,6 +187,10 @@ $sql = "
         co.capacity,
         co.status,
         co.quarter,
+        co.school_year_id,
+        co.schedule_days,
+        co.start_time,
+        co.end_time,
         s.subject_name,
         sec.section_id,
         sec.section_name,
@@ -148,12 +199,14 @@ $sql = "
         t.teacher_id,
         t.firstname AS teacher_firstname,
         t.lastname  AS teacher_lastname,
+        syco.label AS offering_school_year_label,
         (SELECT COUNT(*) FROM enrollments e
             WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
     FROM classofferings co
     JOIN subjects s   ON s.subject_id = co.subject_id
     JOIN sections sec ON sec.section_id = co.section_id
     LEFT JOIN teachers t ON t.teacher_id = co.teacher_id
+    LEFT JOIN schoolyears syco ON syco.school_year_id = co.school_year_id
     {$whereSql}
     ORDER BY sec.grade_level ASC, s.subject_name ASC
 ";
@@ -177,6 +230,7 @@ $totalEnrollees = (int) $pdo->query("SELECT COUNT(*) FROM enrollments WHERE stat
 $modalSubjects = $pdo->query("SELECT subject_id, subject_name FROM subjects ORDER BY subject_name")->fetchAll();
 $modalSections = $pdo->query("SELECT section_id, section_name, grade_level, strand FROM sections ORDER BY grade_level, section_name")->fetchAll();
 $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teachers ORDER BY lastname, firstname")->fetchAll();
+$modalSchoolYears = $pdo->query("SELECT school_year_id, label, is_current FROM schoolyears ORDER BY start_date DESC")->fetchAll();
 
 // ================= DATA FOR "NEW SECTION" MODAL =================
 $currentSchoolYear = $pdo->query("SELECT school_year_id, label FROM schoolyears WHERE is_current = 1 LIMIT 1")->fetch();
@@ -252,6 +306,8 @@ $subjectsList = $pdo->query("
             <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
             <input type="hidden" name="grade" value="<?= htmlspecialchars($gradeFilter) ?>">
             <input type="hidden" name="strand" value="<?= htmlspecialchars($strandFilter) ?>">
+            <input type="hidden" name="quarter" value="<?= htmlspecialchars($quarterFilter) ?>">
+            <input type="hidden" name="school_year" value="<?= htmlspecialchars($schoolYearFilter) ?>">
             <div class="header-search">
                 <i class="fas fa-search"></i>
                 <input type="text" name="q" value="<?= htmlspecialchars($searchQuery) ?>" placeholder="Search courses, teachers..." onchange="this.form.submit()">
@@ -292,11 +348,11 @@ $subjectsList = $pdo->query("
     <div class="toolbar-row">
         <div class="toolbar-left">
             <a class="filter-pill <?= $statusFilter === 'all' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['status' => 'all', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'q' => $searchQuery])) ?>">All Courses</a>
+               href="?<?= http_build_query(array_filter(['status' => 'all', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">All Courses</a>
             <a class="filter-pill <?= $statusFilter === 'active' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['status' => 'active', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'q' => $searchQuery])) ?>">Active</a>
+               href="?<?= http_build_query(array_filter(['status' => 'active', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Active</a>
             <a class="filter-pill <?= $statusFilter === 'inactive' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['status' => 'inactive', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'q' => $searchQuery])) ?>">Inactive</a>
+               href="?<?= http_build_query(array_filter(['status' => 'inactive', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Inactive</a>
 
             <form method="get" action="courses.php" style="display:contents">
                 <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
@@ -315,10 +371,23 @@ $subjectsList = $pdo->query("
                         <option value="<?= $s ?>" <?= $strandFilter === $s ? 'selected' : '' ?>><?= $s ?></option>
                     <?php endforeach; ?>
                 </select>
+
+                <select class="select-filter" name="quarter" onchange="this.form.submit()">
+                    <option value="all" <?= $quarterFilter === 'all' ? 'selected' : '' ?>>All Quarters</option>
+                    <?php foreach ([1, 2, 3, 4] as $q): ?>
+                        <option value="<?= $q ?>" <?= $quarterFilter == $q ? 'selected' : '' ?>>Quarter <?= $q ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <select class="select-filter" name="school_year" onchange="this.form.submit()">
+                    <option value="all" <?= $schoolYearFilter === 'all' ? 'selected' : '' ?>>All School Years</option>
+                    <?php foreach ($modalSchoolYears as $sy): ?>
+                        <option value="<?= (int) $sy['school_year_id'] ?>" <?= $schoolYearFilter == $sy['school_year_id'] ? 'selected' : '' ?>><?= clean($sy['label']) ?></option>
+                    <?php endforeach; ?>
+                </select>
             </form>
         </div>
         <div class="toolbar-right">
-            <button class="btn-secondary" disabled title="Not enabled — CSV import not implemented"><i class="fas fa-file-import"></i> Import</button>
             <button class="btn-secondary <?= $openView === 'subjects' ? 'active' : '' ?>" id="toggleSubjectsBtn" onclick="togglePanel('subjects', this)"><i class="fas fa-list"></i> View Subjects</button>
             <button class="btn-secondary" onclick="openAddSubjectModal()"><i class="fas fa-book"></i> New Subject</button>
             <button class="btn-secondary <?= $openView === 'sections' ? 'active' : '' ?>" id="toggleSectionsBtn" onclick="togglePanel('sections', this)"><i class="fas fa-list"></i> View Sections</button>
@@ -338,7 +407,11 @@ $subjectsList = $pdo->query("
             <thead>
                 <tr>
                     <th>Course / Subject</th>
-                    <th>Grade Level</th>
+                    <th>Section</th>
+                    <th>Grade Level/Strand</th>
+                    <th>Quarter</th>
+                    <th>School Year</th>
+                    <th>Schedule</th>
                     <th>Teacher Assigned</th>
                     <th>Enrollment</th>
                     <th>Status</th>
@@ -348,7 +421,7 @@ $subjectsList = $pdo->query("
             <tbody>
                 <?php if (empty($courses)): ?>
                 <tr>
-                    <td colspan="6" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                    <td colspan="10" style="text-align:center; padding: 40px; color: var(--text-muted);">
                         No courses match these filters.
                     </td>
                 </tr>
@@ -358,7 +431,7 @@ $subjectsList = $pdo->query("
                     $colors = $subjectColors[$course['subject_name']] ?? ['bg' => '#e5e7eb', 'text' => '#374151', 'bar' => '#9ca3af'];
                     $pct = $course['capacity'] > 0 ? round(($course['enrolled_count'] / $course['capacity']) * 100) : 0;
                     $teacherName = $course['teacher_id'] ? trim($course['teacher_firstname'] . ' ' . $course['teacher_lastname']) : null;
-                    $courseName = $course['subject_name'] . ' — ' . $course['section_name'];
+                    $scheduleDisplay = formatScheduleDisplay($course['schedule_days'], $course['start_time'], $course['end_time']);
                 ?>
                 <tr>
                     <td>
@@ -366,10 +439,13 @@ $subjectsList = $pdo->query("
                             <span class="subject-tag" style="background: <?= $colors['bg'] ?>; color: <?= $colors['text'] ?>;">
                                 <?= htmlspecialchars($course['subject_name']) ?>
                             </span>
-                            <span class="course-name"><?= htmlspecialchars($courseName) ?></span>
                         </div>
                     </td>
+                    <td class="course-name"><?= htmlspecialchars($course['section_name']) ?></td>
                     <td>Grade <?= htmlspecialchars($course['grade_level']) ?><?= $course['strand'] ? ' · ' . htmlspecialchars($course['strand']) : '' ?></td>
+                    <td><?= htmlspecialchars($course['quarter']) ?></td>
+                    <td><?= $course['offering_school_year_label'] ? htmlspecialchars($course['offering_school_year_label']) : '<span class="field-note">— None —</span>' ?></td>
+                    <td><?= $scheduleDisplay ? htmlspecialchars($scheduleDisplay) : '<span class="field-note">— Not set —</span>' ?></td>
                     <td><?= $teacherName ? htmlspecialchars($teacherName) : '— Unassigned —' ?></td>
                     <td>
                         <div class="enrollment-cell">
@@ -391,13 +467,17 @@ $subjectsList = $pdo->query("
                                onclick="openViewStudentsModal(<?= (int) $course['offering_id'] ?>)">View Students</a>
                             <a href="javascript:void(0)"
                                data-course="<?= htmlspecialchars(json_encode([
-                                   'offering_id' => (int) $course['offering_id'],
-                                   'subject_id'  => (int) $course['subject_id'],
-                                   'section_id'  => (int) $course['section_id'],
-                                   'teacher_id'  => $course['teacher_id'] ? (int) $course['teacher_id'] : '',
-                                   'quarter'     => (int) $course['quarter'],
-                                   'capacity'    => (int) $course['capacity'],
-                                   'status'      => $course['status'],
+                                   'offering_id'   => (int) $course['offering_id'],
+                                   'subject_id'    => (int) $course['subject_id'],
+                                   'section_id'    => (int) $course['section_id'],
+                                   'teacher_id'    => $course['teacher_id'] ? (int) $course['teacher_id'] : '',
+                                   'quarter'       => (int) $course['quarter'],
+                                   'school_year_id' => (int) $course['school_year_id'],
+                                   'schedule_days' => $course['schedule_days'] ?? '',
+                                   'start_time'    => $course['start_time'] ? date('g:i A', strtotime($course['start_time'])) : '',
+                                   'end_time'      => $course['end_time'] ? date('g:i A', strtotime($course['end_time'])) : '',
+                                   'capacity'      => (int) $course['capacity'],
+                                   'status'        => $course['status'],
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditCourseModal(this)">Update</a>
                             <a class="delete" href="courses.php?delete=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&strand=<?= urlencode($strandFilter) ?>&q=<?= urlencode($searchQuery) ?>"
@@ -427,7 +507,7 @@ $subjectsList = $pdo->query("
             <thead>
                 <tr>
                     <th>Section</th>
-                    <th>Grade Level</th>
+                    <th>Grade Level/Strand</th>
                     <th>Adviser</th>
                     <th>School Year</th>
                     <th>Courses Offered</th>
@@ -607,6 +687,16 @@ $subjectsList = $pdo->query("
                         </div>
 
                         <div class="form-row">
+                            <label for="m_school_year_id">School Year</label>
+                            <select id="m_school_year_id" name="school_year_id" required>
+                                <option value="">Select</option>
+                                <?php foreach ($modalSchoolYears as $sy): ?>
+                                    <option value="<?= (int) $sy['school_year_id'] ?>" <?= $sy['is_current'] ? 'selected' : '' ?>><?= clean($sy['label']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
                             <label for="m_capacity">Capacity</label>
                             <input type="number" id="m_capacity" name="capacity" min="1" value="50" required>
                         </div>
@@ -617,6 +707,24 @@ $subjectsList = $pdo->query("
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row-split">
+                        <div class="form-row">
+                            <label for="m_schedule_days">Schedule Days</label>
+                            <input type="text" id="m_schedule_days" name="schedule_days" maxlength="20" placeholder="e.g. M - W">
+                            <span class="field-note">Optional</span>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="m_start_time">Start Time</label>
+                            <input type="text" id="m_start_time" name="start_time" maxlength="20" placeholder="e.g. 7:00 AM">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="m_end_time">End Time</label>
+                            <input type="text" id="m_end_time" name="end_time" maxlength="20" placeholder="e.g. 10:00 AM">
                         </div>
                     </div>
                 </div>
@@ -688,6 +796,16 @@ $subjectsList = $pdo->query("
                         </div>
 
                         <div class="form-row">
+                            <label for="e_school_year_id">School Year</label>
+                            <select id="e_school_year_id" name="school_year_id" required>
+                                <option value="">Select</option>
+                                <?php foreach ($modalSchoolYears as $sy): ?>
+                                    <option value="<?= (int) $sy['school_year_id'] ?>"><?= clean($sy['label']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
                             <label for="e_capacity">Capacity</label>
                             <input type="number" id="e_capacity" name="capacity" min="1" value="50" required>
                         </div>
@@ -698,6 +816,24 @@ $subjectsList = $pdo->query("
                                 <option value="active">Active</option>
                                 <option value="inactive">Inactive</option>
                             </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row-split">
+                        <div class="form-row">
+                            <label for="e_schedule_days">Schedule Days</label>
+                            <input type="text" id="e_schedule_days" name="schedule_days" maxlength="20" placeholder="e.g. M - W">
+                            <span class="field-note">Optional</span>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="e_start_time">Start Time</label>
+                            <input type="text" id="e_start_time" name="start_time" maxlength="20" placeholder="e.g. 7:00 AM">
+                        </div>
+
+                        <div class="form-row">
+                            <label for="e_end_time">End Time</label>
+                            <input type="text" id="e_end_time" name="end_time" maxlength="20" placeholder="e.g. 10:00 AM">
                         </div>
                     </div>
                 </div>
@@ -1023,6 +1159,7 @@ $subjectsList = $pdo->query("
 
     // ---- Add Course modal ----
     function openAddCourseModal() {
+        document.getElementById('addCourseForm').reset();
         document.getElementById('addCourseOverlay').classList.add('open');
         document.getElementById('addCourseErrors').hidden = true;
     }
@@ -1051,8 +1188,12 @@ $subjectsList = $pdo->query("
         document.getElementById('e_section_id').value = course.section_id;
         document.getElementById('e_teacher_id').value = course.teacher_id;
         document.getElementById('e_quarter').value = course.quarter;
+        document.getElementById('e_school_year_id').value = course.school_year_id;
         document.getElementById('e_capacity').value = course.capacity;
         document.getElementById('e_status').value = course.status;
+        document.getElementById('e_schedule_days').value = course.schedule_days || '';
+        document.getElementById('e_start_time').value = course.start_time || '';
+        document.getElementById('e_end_time').value = course.end_time || '';
 
         document.getElementById('editCourseErrors').hidden = true;
         document.getElementById('editCourseOverlay').classList.add('open');

@@ -67,10 +67,27 @@ function isAdmin() {
 }
 
 /**
- * Require admin access or redirect
+ * Require admin access or redirect.
+ *
+ * AJAX/fetch calls (enrollment.php's approve/deny/reopen/add-request
+ * endpoints, etc.) always send `Accept: application/json`. For those,
+ * a session/role failure returns a JSON 401 instead of an HTML
+ * redirect — otherwise fetch() follows the redirect to login.php,
+ * gets back an HTML page instead of JSON, and res.json() throws,
+ * which surfaces to the user as a generic "Something went wrong."
  */
 function requireAdmin() {
     if (!isLoggedIn() || !isAdmin()) {
+        $wantsJson = isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json');
+        $isAjax    = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+        if ($wantsJson || $isAjax) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'errors' => ['Your session has expired. Please refresh the page and log in again.']]);
+            exit();
+        }
+
         header("Location: ../../login.php");
         exit();
     }

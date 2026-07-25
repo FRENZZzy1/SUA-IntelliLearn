@@ -13,6 +13,7 @@ $currentUserId = $_SESSION['user_id'];
    Handle new announcement submission (Publish / Save Draft)
 --------------------------------------------------------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_action'])) {
+    $announcementId = (int) ($_POST['announcement_id'] ?? 0);
     $title    = trim($_POST['title'] ?? '');
     $body     = trim($_POST['body'] ?? '');
     $audience = $_POST['audience'] ?? 'all';
@@ -26,19 +27,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_action'])) {
     if (!in_array($priority, $allowedPriority, true)) $priority = 'normal';
 
     if ($title !== '' && $body !== '') {
-        $stmt = $pdo->prepare(
-            "INSERT INTO announcements (posted_by, title, body, audience, priority, status, is_pinned)
-             VALUES (:posted_by, :title, :body, :audience, :priority, :status, :is_pinned)"
-        );
-        $stmt->execute([
-            ':posted_by' => $currentUserId,
-            ':title'     => $title,
-            ':body'      => $body,
-            ':audience'  => $audience,
-            ':priority'  => $priority,
-            ':status'    => $status,
-            ':is_pinned' => $isPinned,
-        ]);
+        if ($announcementId > 0) {
+            // Update an existing announcement (also how a draft gets published later).
+            $stmt = $pdo->prepare(
+                "UPDATE announcements
+                 SET title = :title, body = :body, audience = :audience,
+                     priority = :priority, status = :status, is_pinned = :is_pinned
+                 WHERE announcement_id = :id"
+            );
+            $stmt->execute([
+                ':title'     => $title,
+                ':body'      => $body,
+                ':audience'  => $audience,
+                ':priority'  => $priority,
+                ':status'    => $status,
+                ':is_pinned' => $isPinned,
+                ':id'        => $announcementId,
+            ]);
+        } else {
+            $stmt = $pdo->prepare(
+                "INSERT INTO announcements (posted_by, title, body, audience, priority, status, is_pinned)
+                 VALUES (:posted_by, :title, :body, :audience, :priority, :status, :is_pinned)"
+            );
+            $stmt->execute([
+                ':posted_by' => $currentUserId,
+                ':title'     => $title,
+                ':body'      => $body,
+                ':audience'  => $audience,
+                ':priority'  => $priority,
+                ':status'    => $status,
+                ':is_pinned' => $isPinned,
+            ]);
+        }
     }
 
     // Redirect so refreshing the page doesn't resubmit the form.
@@ -57,6 +77,9 @@ if (isset($_GET['action'], $_GET['id'])) {
         $stmt->execute([':id' => $id]);
     } elseif ($_GET['action'] === 'delete') {
         $stmt = $pdo->prepare("DELETE FROM announcements WHERE announcement_id = :id");
+        $stmt->execute([':id' => $id]);
+    } elseif ($_GET['action'] === 'publish') {
+        $stmt = $pdo->prepare("UPDATE announcements SET status = 'published' WHERE announcement_id = :id");
         $stmt->execute([':id' => $id]);
     }
 
@@ -130,7 +153,7 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
             <h1>Announcements</h1>
             <p>Post updates and notices visible to students and teachers.</p>
         </div>
-        <button class="btn-primary" id="newAnnouncementBtn" onclick="toggleCompose()">
+        <button class="btn-primary" id="newAnnouncementBtn" onclick="openNewAnnouncement()">
             <i class="fas fa-plus"></i> New Announcement
         </button>
     </div>
@@ -170,13 +193,15 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
     <!-- Compose Panel (hidden by default) -->
     <form class="compose-panel" id="composePanel" style="display:none;" method="POST" action="announcement.php">
         <div class="compose-panel-header">
-            <h2><i class="fas fa-pen-to-square"></i>&nbsp; Create Announcement</h2>
-            <div class="close-icon" onclick="toggleCompose()"><i class="fas fa-times"></i></div>
+            <h2 id="composeTitle"><i class="fas fa-pen-to-square"></i>&nbsp; Create Announcement</h2>
+            <div class="close-icon" onclick="closeCompose()"><i class="fas fa-times"></i></div>
         </div>
+
+        <input type="hidden" name="announcement_id" id="announcementIdInput" value="">
 
         <div class="form-group">
             <label>Title</label>
-            <input type="text" name="title" class="form-control" placeholder="e.g. Class Suspension Notice for June 12" required>
+            <input type="text" name="title" id="titleInput" class="form-control" placeholder="e.g. Class Suspension Notice for June 12" required>
         </div>
 
         <div class="form-row">
@@ -208,26 +233,26 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
 
         <div class="form-group">
             <label>Message</label>
-            <textarea class="form-control" name="body" placeholder="Write the announcement details here..." required></textarea>
+            <textarea class="form-control" name="body" id="bodyInput" placeholder="Write the announcement details here..." required></textarea>
         </div>
 
         <div class="compose-actions">
             <div class="left-actions">
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-                    <input type="checkbox" name="is_pinned" value="1">
+                    <input type="checkbox" name="is_pinned" id="pinInput" value="1">
                     <i class="fas fa-thumbtack"></i> Pin to top of announcements
                 </label>
             </div>
             <div class="right-actions">
-                <button type="button" class="btn-secondary" onclick="toggleCompose()">Cancel</button>
+                <button type="button" class="btn-secondary" onclick="closeCompose()">Cancel</button>
                 <button type="submit" name="form_action" value="draft" class="btn-secondary">Save as Draft</button>
-                <button type="submit" name="form_action" value="publish" class="btn-gold"><i class="fas fa-paper-plane"></i> Publish</button>
+                <button type="submit" name="form_action" value="publish" class="btn-gold" id="publishBtn"><i class="fas fa-paper-plane"></i> Publish</button>
             </div>
         </div>
     </form>
 
     <!-- Announcements List -->
-    <div class="announcements-list">
+    <div class="announcements-list" id="announcementsList">
         <?php if (empty($announcements)): ?>
             <p style="color:var(--text-muted);">No announcements yet. Create one above.</p>
         <?php endif; ?>
@@ -255,6 +280,22 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                     </div>
                 </div>
                 <div class="card-actions">
+                    <a class="icon-btn" href="#" title="Edit"
+                       onclick="openEditAnnouncement(<?= htmlspecialchars(json_encode([
+                            'id'       => (int) $a['announcement_id'],
+                            'title'    => $a['title'],
+                            'body'     => $a['body'],
+                            'audience' => $a['audience'],
+                            'priority' => $a['priority'],
+                            'pinned'   => (bool) $a['is_pinned'],
+                       ]), ENT_QUOTES, 'UTF-8') ?>); return false;">
+                        <i class="fas fa-pen"></i>
+                    </a>
+                    <?php if ($a['status'] === 'draft'): ?>
+                    <a class="icon-btn" href="?action=publish&id=<?= $a['announcement_id'] ?>" title="Publish draft">
+                        <i class="fas fa-paper-plane"></i>
+                    </a>
+                    <?php endif; ?>
                     <a class="icon-btn" href="?action=toggle_pin&id=<?= $a['announcement_id'] ?>" title="<?= $a['is_pinned'] ? 'Unpin' : 'Pin' ?>">
                         <i class="<?= $a['is_pinned'] ? 'fas' : 'far' ?> fa-thumbtack"></i>
                     </a>
@@ -281,26 +322,62 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
         el.classList.add('active');
     }
 
-    function toggleCompose() {
+    function showPanel() {
         const panel = document.getElementById('composePanel');
-        panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none';
-        if (panel.style.display === 'block') {
-            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        panel.style.display = 'block';
+        document.getElementById('announcementsList').style.display = 'none';
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    function setPriority(el) {
-        document.querySelectorAll('.priority-pill').forEach(p => p.classList.remove('active'));
-        el.classList.add('active');
-        document.getElementById('priorityInput').value = el.dataset.level;
+    function closeCompose() {
+        document.getElementById('composePanel').style.display = 'none';
+        document.getElementById('announcementsList').style.display = 'flex';
     }
 
-    document.querySelectorAll('.audience-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-            document.querySelectorAll('.audience-chip').forEach(c => c.classList.remove('checked'));
-            chip.classList.add('checked');
+    function setAudience(value) {
+        document.querySelectorAll('.audience-chip').forEach(chip => {
+            const input = chip.querySelector('input');
+            const isMatch = input.value === value;
+            input.checked = isMatch;
+            chip.classList.toggle('checked', isMatch);
         });
-    });
+    }
+
+    function setPriority(elOrValue) {
+        const value = (typeof elOrValue === 'string') ? elOrValue : elOrValue.dataset.level;
+        document.querySelectorAll('.priority-pill').forEach(p => {
+            p.classList.toggle('active', p.dataset.level === value);
+        });
+        document.getElementById('priorityInput').value = value;
+    }
+
+    function resetComposeForm() {
+        document.getElementById('announcementIdInput').value = '';
+        document.getElementById('titleInput').value = '';
+        document.getElementById('bodyInput').value = '';
+        document.getElementById('pinInput').checked = false;
+        setAudience('all');
+        setPriority('normal');
+        document.getElementById('composeTitle').innerHTML = '<i class="fas fa-pen-to-square"></i>&nbsp; Create Announcement';
+        document.getElementById('publishBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Publish';
+    }
+
+    function openNewAnnouncement() {
+        resetComposeForm();
+        showPanel();
+    }
+
+    function openEditAnnouncement(data) {
+        document.getElementById('announcementIdInput').value = data.id;
+        document.getElementById('titleInput').value = data.title;
+        document.getElementById('bodyInput').value = data.body;
+        document.getElementById('pinInput').checked = !!data.pinned;
+        setAudience(data.audience);
+        setPriority(data.priority);
+        document.getElementById('composeTitle').innerHTML = '<i class="fas fa-pen-to-square"></i>&nbsp; Edit Announcement';
+        document.getElementById('publishBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Publish Update';
+        showPanel();
+    }
 </script>
 
 </body>

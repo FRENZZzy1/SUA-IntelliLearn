@@ -17,7 +17,24 @@ if (!in_array($tab, ['pending', 'approved', 'denied', 'all'], true)) {
 }
 $gradeFilter  = $_GET['grade']  ?? 'all';                 // all | 7..12
 $courseFilter = $_GET['course'] ?? 'all';                 // all | subject_id
+$strandFilter = $_GET['strand'] ?? 'all';                 // all | STEM | ABM | HUMSS | TVL
+$quarterFilter    = $_GET['quarter'] ?? 'all';             // all | 1..4
+$schoolYearFilter = $_GET['school_year'] ?? 'all';         // all | school_year_id
 $searchQuery  = trim($_GET['q'] ?? '');
+
+if ($quarterFilter !== 'all' && !in_array($quarterFilter, ['1', '2', '3', '4'], true)) {
+    $quarterFilter = 'all';
+}
+if ($schoolYearFilter !== 'all' && !ctype_digit((string) $schoolYearFilter)) {
+    $schoolYearFilter = 'all';
+}
+
+$hasActiveFilters = $gradeFilter !== 'all'
+    || $courseFilter !== 'all'
+    || $strandFilter !== 'all'
+    || $quarterFilter !== 'all'
+    || $schoolYearFilter !== 'all'
+    || $searchQuery !== '';
 
 // ================= BUILD MAIN QUERY =================
 $where  = [];
@@ -36,6 +53,21 @@ if ($gradeFilter !== 'all' && ctype_digit($gradeFilter)) {
 if ($courseFilter !== 'all' && ctype_digit($courseFilter)) {
     $where[] = 'er.subject_id = ?';
     $params[] = (int) $courseFilter;
+}
+
+if ($strandFilter !== 'all') {
+    $where[] = 'er.strand = ?';
+    $params[] = $strandFilter;
+}
+
+if ($quarterFilter !== 'all') {
+    $where[] = 'co2.quarter = ?';
+    $params[] = (int) $quarterFilter;
+}
+
+if ($schoolYearFilter !== 'all') {
+    $where[] = 'sec2.school_year_id = ?';
+    $params[] = (int) $schoolYearFilter;
 }
 
 if ($searchQuery !== '') {
@@ -61,12 +93,18 @@ $sql = "
         st.firstname,
         st.lastname,
         subj.subject_name,
-        sec2.section_name AS matched_section_name
+        sec2.section_name AS matched_section_name,
+        co2.quarter AS matched_quarter,
+        sy2.label AS matched_school_year,
+        co2.schedule_days AS matched_schedule_days,
+        co2.start_time AS matched_start_time,
+        co2.end_time AS matched_end_time
     FROM enrollment_requests er
     JOIN students st  ON st.student_id = er.student_id
     JOIN subjects subj ON subj.subject_id = er.subject_id
     LEFT JOIN classofferings co2 ON co2.offering_id = er.offering_id
     LEFT JOIN sections sec2      ON sec2.section_id  = co2.section_id
+    LEFT JOIN schoolyears sy2    ON sy2.school_year_id = sec2.school_year_id
     {$whereSql}
     ORDER BY er.submitted_at DESC
 ";
@@ -89,6 +127,18 @@ if ($courseFilter !== 'all' && ctype_digit($courseFilter)) {
     $countWhere[] = 'er.subject_id = ?';
     $countParams[] = (int) $courseFilter;
 }
+if ($strandFilter !== 'all') {
+    $countWhere[] = 'er.strand = ?';
+    $countParams[] = $strandFilter;
+}
+if ($quarterFilter !== 'all') {
+    $countWhere[] = 'co2.quarter = ?';
+    $countParams[] = (int) $quarterFilter;
+}
+if ($schoolYearFilter !== 'all') {
+    $countWhere[] = 'sec2.school_year_id = ?';
+    $countParams[] = (int) $schoolYearFilter;
+}
 if ($searchQuery !== '') {
     $countWhere[] = '(CONCAT(st.firstname, " ", st.lastname) LIKE ? OR subj.subject_name LIKE ?)';
     $like = '%' . $searchQuery . '%';
@@ -102,6 +152,8 @@ $countSql = "
     FROM enrollment_requests er
     JOIN students st   ON st.student_id = er.student_id
     JOIN subjects subj ON subj.subject_id = er.subject_id
+    LEFT JOIN classofferings co2 ON co2.offering_id = er.offering_id
+    LEFT JOIN sections sec2      ON sec2.section_id  = co2.section_id
     {$countWhereSql}
     GROUP BY er.status
 ";
@@ -127,6 +179,7 @@ $deniedThisWeek       = (int) $pdo->query("SELECT COUNT(*) FROM enrollment_reque
 
 // ================= DATA FOR FILTER DROPDOWNS =================
 $allSubjects = $pdo->query("SELECT subject_id, subject_name FROM subjects ORDER BY subject_name")->fetchAll();
+$allSchoolYears = $pdo->query("SELECT school_year_id, label FROM schoolyears ORDER BY start_date DESC")->fetchAll();
 
 // ================= DATA FOR "ENROLL STUDENT" MODAL =================
 $allStudents = $pdo->query("
@@ -143,6 +196,19 @@ $allStudentsJson = json_encode(array_map(function ($s) {
         'name'  => $s['firstname'] . ' ' . $s['lastname'],
     ];
 }, $allStudents));
+
+// Combine schedule_days + start_time/end_time into one display string,
+// e.g. "M - W • 7:00 AM - 10:00 AM". Returns null if nothing is set
+// (legacy/unmatched requests), same as the other matched_* fields.
+function formatSchedule(?string $days, ?string $start, ?string $end): ?string
+{
+    $parts = [];
+    if ($days) $parts[] = $days;
+    if ($start && $end) {
+        $parts[] = date('g:i A', strtotime($start)) . ' - ' . date('g:i A', strtotime($end));
+    }
+    return $parts ? implode(' &bull; ', $parts) : null;
+}
 
 $panelTitles = [
     'pending'  => 'Pending Enrollment Requests',
@@ -193,6 +259,9 @@ $panelIcons = [
             <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
             <input type="hidden" name="grade" value="<?= htmlspecialchars($gradeFilter) ?>">
             <input type="hidden" name="course" value="<?= htmlspecialchars($courseFilter) ?>">
+            <input type="hidden" name="strand" value="<?= htmlspecialchars($strandFilter) ?>">
+            <input type="hidden" name="quarter" value="<?= htmlspecialchars($quarterFilter) ?>">
+            <input type="hidden" name="school_year" value="<?= htmlspecialchars($schoolYearFilter) ?>">
             <div class="header-search">
                 <i class="fas fa-search"></i>
                 <input type="text" name="q" value="<?= htmlspecialchars($searchQuery) ?>" placeholder="Search students, courses..." onchange="this.form.submit()">
@@ -235,13 +304,13 @@ $panelIcons = [
     <div class="toolbar-row">
         <div class="toolbar-left">
             <a class="filter-pill <?= $tab === 'pending' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['tab' => 'pending', 'grade' => $gradeFilter, 'course' => $courseFilter, 'q' => $searchQuery])) ?>">Pending (<?= $tabCounts['pending'] ?>)</a>
+               href="?<?= http_build_query(array_filter(['tab' => 'pending', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Pending (<?= $tabCounts['pending'] ?>)</a>
             <a class="filter-pill <?= $tab === 'approved' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['tab' => 'approved', 'grade' => $gradeFilter, 'course' => $courseFilter, 'q' => $searchQuery])) ?>">Approved</a>
+               href="?<?= http_build_query(array_filter(['tab' => 'approved', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Approved</a>
             <a class="filter-pill <?= $tab === 'denied' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['tab' => 'denied', 'grade' => $gradeFilter, 'course' => $courseFilter, 'q' => $searchQuery])) ?>">Denied</a>
+               href="?<?= http_build_query(array_filter(['tab' => 'denied', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Denied</a>
             <a class="filter-pill <?= $tab === 'all' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['tab' => 'all', 'grade' => $gradeFilter, 'course' => $courseFilter, 'q' => $searchQuery])) ?>">All Records</a>
+               href="?<?= http_build_query(array_filter(['tab' => 'all', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">All Records</a>
         </div>
         <div class="toolbar-right">
             <form method="get" action="enrollment.php" style="display:contents">
@@ -261,6 +330,31 @@ $panelIcons = [
                         <option value="<?= (int) $s['subject_id'] ?>" <?= $courseFilter == $s['subject_id'] ? 'selected' : '' ?>><?= clean($s['subject_name']) ?></option>
                     <?php endforeach; ?>
                 </select>
+
+                <select class="select-filter" name="strand" onchange="this.form.submit()">
+                    <option value="all" <?= $strandFilter === 'all' ? 'selected' : '' ?>>All Strands</option>
+                    <?php foreach (['STEM', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
+                        <option value="<?= $s ?>" <?= $strandFilter === $s ? 'selected' : '' ?>><?= $s ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <select class="select-filter" name="quarter" onchange="this.form.submit()">
+                    <option value="all" <?= $quarterFilter === 'all' ? 'selected' : '' ?>>All Quarters</option>
+                    <?php foreach ([1, 2, 3, 4] as $q): ?>
+                        <option value="<?= $q ?>" <?= $quarterFilter == $q ? 'selected' : '' ?>>Quarter <?= $q ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <select class="select-filter" name="school_year" onchange="this.form.submit()">
+                    <option value="all" <?= $schoolYearFilter === 'all' ? 'selected' : '' ?>>All School Years</option>
+                    <?php foreach ($allSchoolYears as $sy): ?>
+                        <option value="<?= (int) $sy['school_year_id'] ?>" <?= $schoolYearFilter == $sy['school_year_id'] ? 'selected' : '' ?>><?= clean($sy['label']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+
+                <?php if ($hasActiveFilters): ?>
+                <a class="btn-clear-filter" href="?tab=<?= urlencode($tab) ?>" title="Clear all filters"><i class="fas fa-xmark"></i> Clear Filters</a>
+                <?php endif; ?>
             </form>
             <button class="btn-primary" onclick="openEnrollStudentModal()"><i class="fas fa-user-plus"></i> Enroll Student</button>
         </div>
@@ -283,8 +377,12 @@ $panelIcons = [
                 <tr>
                     <th class="checkbox-col"><input type="checkbox" class="select-all-check" id="selectAllCheckbox" title="Select all"></th>
                     <th>Student Name</th>
-                    <th>Grade Level</th>
                     <th>Course Requested</th>
+                    <th>Section</th>
+                    <th>Grade Level/Strand</th>
+                    <th>Quarter</th>
+                    <th>School Year</th>
+                    <th>Schedule</th>
                     <th>Date Submitted</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -293,7 +391,7 @@ $panelIcons = [
             <tbody id="enrollmentTableBody">
                 <?php if (empty($requests)): ?>
                 <tr>
-                    <td colspan="7" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                    <td colspan="11" style="text-align:center; padding: 40px; color: var(--text-muted);">
                         No <?= $tab === 'all' ? 'enrollment records' : $tab . ' requests' ?> found.
                     </td>
                 </tr>
@@ -303,7 +401,7 @@ $panelIcons = [
                     $studentName = trim($r['firstname'] . ' ' . $r['lastname']);
                     $courseRequested = $r['strand']
                         ? $r['subject_name'] . ' (' . $r['strand'] . ')'
-                        : $r['subject_name'] . ' ' . $r['grade_level'];
+                        : $r['subject_name'];
                     $dateSubmitted = date('F j, Y', strtotime($r['submitted_at']));
                 ?>
                 <tr data-request-id="<?= (int) $r['request_id'] ?>" data-status="<?= clean($r['status']) ?>">
@@ -313,15 +411,17 @@ $panelIcons = [
                         <?php endif; ?>
                     </td>
                     <td><?= htmlspecialchars($studentName) ?></td>
-                    <td>Grade <?= (int) $r['grade_level'] ?></td>
                     <td>
                         <div class="course-requested">
                             <span><?= htmlspecialchars($courseRequested) ?></span>
-                            <?php if ($r['status'] === 'approved' && $r['matched_section_name']): ?>
-                            <span class="matched-note">Enrolled &middot; <?= htmlspecialchars($r['matched_section_name']) ?></span>
-                            <?php endif; ?>
                         </div>
                     </td>
+                    <td><?= $r['matched_section_name'] ? htmlspecialchars($r['matched_section_name']) : '<span class="action-note">&mdash;</span>' ?></td>
+                    <td>Grade <?= (int) $r['grade_level'] ?><?= $r['strand'] ? ' &middot; ' . htmlspecialchars($r['strand']) : '' ?></td>
+                    <td><?= $r['matched_quarter'] ? (int) $r['matched_quarter'] : '<span class="action-note">&mdash;</span>' ?></td>
+                    <td><?= $r['matched_school_year'] ? htmlspecialchars($r['matched_school_year']) : '<span class="action-note">&mdash;</span>' ?></td>
+                    <?php $scheduleDisplay = formatSchedule($r['matched_schedule_days'], $r['matched_start_time'], $r['matched_end_time']); ?>
+                    <td><?= $scheduleDisplay ? $scheduleDisplay : '<span class="action-note">&mdash;</span>' ?></td>
                     <td><?= htmlspecialchars($dateSubmitted) ?></td>
                     <td>
                         <span class="status-dot-badge <?= clean($r['status']) ?>">
@@ -739,15 +839,19 @@ $panelIcons = [
 
     // ---- Export CSV (client-side, from the currently visible table) ----
     function exportCSV() {
-        const rows = [['Student Name', 'Grade Level', 'Course Requested', 'Date Submitted', 'Status']];
+        const rows = [['Student Name', 'Course Requested', 'Section', 'Grade Level', 'Quarter', 'School Year', 'Schedule', 'Date Submitted', 'Status']];
         document.querySelectorAll('#enrollmentTableBody tr[data-request-id]').forEach(tr => {
             const cells = tr.querySelectorAll('td');
             rows.push([
-                cells[1].innerText.trim(),
+                cells[1].innerText.trim().split('\n')[0],
                 cells[2].innerText.trim(),
-                cells[3].innerText.trim().split('\n')[0],
+                cells[3].innerText.trim(),
                 cells[4].innerText.trim(),
                 cells[5].innerText.trim(),
+                cells[6].innerText.trim(),
+                cells[7].innerText.trim(),
+                cells[8].innerText.trim(),
+                cells[9].innerText.trim(),
             ]);
         });
 

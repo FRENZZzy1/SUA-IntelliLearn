@@ -240,8 +240,7 @@ body {
 .toolbar-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 20px;
     flex-wrap: wrap;
 }
@@ -253,10 +252,19 @@ body {
     flex-wrap: wrap;
 }
 
+/* margin-left: auto pushes this group to the right edge of whatever
+   line it ends up on. When both groups fit on one row, filters sit at
+   the left edge and buttons at the right edge with no gap wasted in
+   between. When there isn't room and this group wraps to its own line,
+   auto-margin still pulls it flush right instead of stranding it at
+   the left with empty space trailing off to the right. */
 .toolbar-right {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: wrap;
+    margin-left: auto;
+    justify-content: flex-end;
 }
 
 .filter-pill {

@@ -50,7 +50,7 @@ $offering_id = (int) $offering_id;
 // active offering for this subject + grade (+ strand) with an open seat,
 // in case the form was tampered with or the class filled up meanwhile.
 $sectionSql = "
-    SELECT co.offering_id, co.capacity,
+    SELECT co.offering_id, co.capacity, co.quarter, sec.school_year_id,
         (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
     FROM classofferings co
     JOIN sections sec ON sec.section_id = co.section_id
@@ -62,36 +62,117 @@ if ($strand !== '') {
     $sectionParams[] = $strand;
 }
 
-$sectionStmt = $pdo->prepare($sectionSql);
-$sectionStmt->execute($sectionParams);
-$offering = $sectionStmt->fetch();
-
-if (!$offering) {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'errors' => ['That section no longer matches this request. Please refresh and pick again.']]);
-    exit();
-}
-
-if ((int) $offering['enrolled_count'] >= (int) $offering['capacity']) {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'errors' => ['That section just filled up. Please choose another section.']]);
-    exit();
-}
-
-// Don't create a duplicate pending request for the same student+subject+grade.
-$dupStmt = $pdo->prepare("
-    SELECT COUNT(*) FROM enrollment_requests
-    WHERE student_id = ? AND subject_id = ? AND grade_level = ? AND status = 'pending'
-");
-$dupStmt->execute([$student_id, $subject_id, $grade_level]);
-
-if ((int) $dupStmt->fetchColumn() > 0) {
-    http_response_code(422);
-    echo json_encode(['success' => false, 'errors' => ['This student already has a pending request for that course at this grade level.']]);
-    exit();
-}
-
+// From here on, every DB call is wrapped in one try/catch so an
+// unexpected PDOException always degrades to a JSON error response
+// instead of an uncaught fatal error (which would return non-JSON
+// output and show up to the user as "Something went wrong").
 try {
+    $sectionStmt = $pdo->prepare($sectionSql);
+    $sectionStmt->execute($sectionParams);
+    $offering = $sectionStmt->fetch();
+
+    if (!$offering) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'errors' => ['That section no longer matches this request. Please refresh and pick again.']]);
+        exit();
+    }
+
+    if ((int) $offering['enrolled_count'] >= (int) $offering['capacity']) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'errors' => ['That section just filled up. Please choose another section.']]);
+        exit();
+    }
+
+    // The term (quarter + school year) of the section being requested. The
+    // duplicate checks below are scoped to this term, so the same course/
+    // section can be requested again for a different quarter or school year
+    // without tripping over an earlier request/enrollment from another term.
+    $offeringQuarter      = (int) $offering['quarter'];
+    $offeringSchoolYearId = (int) $offering['school_year_id'];
+
+    // Don't create a duplicate pending request for the same student+subject+grade
+    // in the same quarter/school year.
+    $dupStmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM enrollment_requests er
+        JOIN classofferings co ON co.offering_id = er.offering_id
+        JOIN sections sec ON sec.section_id = co.section_id
+        WHERE er.student_id = ? AND er.subject_id = ? AND er.grade_level = ? AND er.status = 'pending'
+          AND co.quarter = ? AND sec.school_year_id = ?
+    ");
+    $dupStmt->execute([$student_id, $subject_id, $grade_level, $offeringQuarter, $offeringSchoolYearId]);
+
+    if ((int) $dupStmt->fetchColumn() > 0) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'errors' => ['This student already has a pending request for that course, quarter, and school year.']]);
+        exit();
+    }
+
+    // Don't allow a new request if the student is already ACTIVELY enrolled
+    // in a class offering for this same subject + grade (+ strand) AND the
+    // same quarter/school year. Without this check, an already-approved
+    // enrollment doesn't stop a fresh request from being submitted (and later
+    // denied/reopened) for the same course, since the earlier request is no
+    // longer 'pending'. Scoping to quarter/school year lets the same course
+    // and section be requested again for a different term.
+    $activeSql = "
+        SELECT COUNT(*)
+        FROM enrollments en
+        JOIN classofferings co ON co.offering_id = en.offering_id
+        JOIN sections sec ON sec.section_id = co.section_id
+        WHERE en.student_id = ?
+          AND en.status = 'active'
+          AND co.subject_id = ?
+          AND sec.grade_level = ?
+          AND co.quarter = ?
+          AND sec.school_year_id = ?
+    ";
+    $activeParams = [$student_id, $subject_id, $grade_level, $offeringQuarter, $offeringSchoolYearId];
+    if ($strand !== '') {
+        $activeSql .= " AND sec.strand = ?";
+        $activeParams[] = $strand;
+    }
+
+    $activeStmt = $pdo->prepare($activeSql);
+    $activeStmt->execute($activeParams);
+
+    if ((int) $activeStmt->fetchColumn() > 0) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'errors' => ['This student is already enrolled in that course for this quarter and school year.']]);
+        exit();
+    }
+
+    // Don't let a fresh request slip in for a combo that was already DENIED
+    // for the same quarter/school year. A denied decision should stick until
+    // the admin explicitly reopens it from the table — it shouldn't be
+    // possible to route around a denial by just submitting the same request
+    // again through the modal. A denial in one term doesn't block requesting
+    // the same course/section in a different term.
+    $deniedSql = "
+        SELECT COUNT(*)
+        FROM enrollment_requests er
+        JOIN classofferings co ON co.offering_id = er.offering_id
+        JOIN sections sec ON sec.section_id = co.section_id
+        WHERE er.student_id = ? AND er.subject_id = ? AND er.grade_level = ? AND er.status = 'denied'
+          AND co.quarter = ? AND sec.school_year_id = ?
+    ";
+    $deniedParams = [$student_id, $subject_id, $grade_level, $offeringQuarter, $offeringSchoolYearId];
+    if ($strand !== '') {
+        $deniedSql .= " AND er.strand = ?";
+        $deniedParams[] = $strand;
+    } else {
+        $deniedSql .= " AND er.strand IS NULL";
+    }
+
+    $deniedStmt = $pdo->prepare($deniedSql);
+    $deniedStmt->execute($deniedParams);
+
+    if ((int) $deniedStmt->fetchColumn() > 0) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'errors' => ['This student already has a denied request for that course, quarter, and school year. Reopen it from the table instead of submitting a new one.']]);
+        exit();
+    }
+
     $stmt = $pdo->prepare("
         INSERT INTO enrollment_requests (student_id, grade_level, subject_id, strand, offering_id, status)
         VALUES (?, ?, ?, ?, ?, 'pending')
