@@ -32,7 +32,7 @@ $offering_id = $_POST['offering_id'] ?? '';
 if (!ctype_digit((string) $student_id)) $errors[] = 'Please choose a student.';
 if (!in_array((string) $grade_level, ['7', '8', '9', '10', '11', '12'], true)) $errors[] = 'Please choose a grade level.';
 if (!ctype_digit((string) $subject_id)) $errors[] = 'Please choose a course/subject.';
-if ($strand !== '' && !in_array($strand, ['STEM', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = 'Invalid strand.';
+if ($strand !== '' && !in_array($strand, ['GAS', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = 'Invalid strand.';
 if (!ctype_digit((string) $offering_id)) $errors[] = 'Please choose a section.';
 
 if (!empty($errors)) {

@@ -333,7 +333,7 @@ $panelIcons = [
 
                 <select class="select-filter" name="strand" onchange="this.form.submit()">
                     <option value="all" <?= $strandFilter === 'all' ? 'selected' : '' ?>>All Strands</option>
-                    <?php foreach (['STEM', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
+                    <?php foreach (['GAS', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
                         <option value="<?= $s ?>" <?= $strandFilter === $s ? 'selected' : '' ?>><?= $s ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -492,7 +492,7 @@ $panelIcons = [
                             <label for="es_strand">Strand</label>
                             <select id="es_strand" name="strand">
                                 <option value="">None</option>
-                                <?php foreach (['STEM', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
+                                <?php foreach (['GAS', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
                                     <option value="<?= $s ?>"><?= $s ?></option>
                                 <?php endforeach; ?>
                             </select>
