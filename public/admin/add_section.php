@@ -30,7 +30,7 @@ $adviser_id   = $_POST['adviser_id'] ?? '';
 
 if ($section_name === '') $errors[] = 'Please enter a section name.';
 if (!in_array((string) $grade_level, ['7', '8', '9', '10', '11', '12'], true)) $errors[] = 'Please choose a grade level.';
-if ($strand !== '' && !in_array($strand, ['STEM', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = 'Invalid strand.';
+if ($strand !== '' && !in_array($strand, ['GAS', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = 'Invalid strand.';
 if ($adviser_id !== '' && !ctype_digit((string) $adviser_id)) $errors[] = 'Invalid adviser selected.';
 
 if (!empty($errors)) {

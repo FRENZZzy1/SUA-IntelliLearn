@@ -124,7 +124,7 @@ if (!in_array($openView, ['sections', 'subjects'], true)) {
 // ================= FILTER INPUTS =================
 $statusFilter     = $_GET['status']  ?? 'all';             // all | active | inactive
 $gradeFilter      = $_GET['grade']   ?? 'all';             // all | 7..12
-$strandFilter     = $_GET['strand']  ?? 'all';             // all | STEM | ABM | HUMSS | TVL
+$strandFilter     = $_GET['strand']  ?? 'all';             // all | GAS | ABM | HUMSS | TVL
 $quarterFilter    = $_GET['quarter'] ?? 'all';             // all | 1..4
 $schoolYearFilter = $_GET['school_year'] ?? 'all';         // all | school_year_id
 $searchQuery      = trim($_GET['q'] ?? '');
@@ -308,17 +308,7 @@ $subjectsList = $pdo->query("
             <input type="hidden" name="strand" value="<?= htmlspecialchars($strandFilter) ?>">
             <input type="hidden" name="quarter" value="<?= htmlspecialchars($quarterFilter) ?>">
             <input type="hidden" name="school_year" value="<?= htmlspecialchars($schoolYearFilter) ?>">
-            <div class="header-search">
-                <i class="fas fa-search"></i>
-                <input type="text" name="q" value="<?= htmlspecialchars($searchQuery) ?>" placeholder="Search courses, teachers..." onchange="this.form.submit()">
-            </div>
-            <div class="icon-circle-btn" title="Notifications">
-                <i class="fas fa-bell"></i>
-                <span class="dot"></span>
-            </div>
-            <div class="icon-circle-btn" title="Help">
-                <i class="fas fa-question"></i>
-            </div>
+          
         </form>
     </div>
 
@@ -367,7 +357,7 @@ $subjectsList = $pdo->query("
 
                 <select class="select-filter" name="strand" onchange="this.form.submit()">
                     <option value="all" <?= $strandFilter === 'all' ? 'selected' : '' ?>>All Strands</option>
-                    <?php foreach (['STEM', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
+                    <?php foreach (['GAS', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
                         <option value="<?= $s ?>" <?= $strandFilter === $s ? 'selected' : '' ?>><?= $s ?></option>
                     <?php endforeach; ?>
                 </select>
@@ -922,7 +912,7 @@ $subjectsList = $pdo->query("
                             <label for="s_strand">Strand</label>
                             <select id="s_strand" name="strand">
                                 <option value="">None</option>
-                                <?php foreach (['STEM', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
+                                <?php foreach (['GAS', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
                                     <option value="<?= $s ?>"><?= $s ?></option>
                                 <?php endforeach; ?>
                             </select>
@@ -988,7 +978,7 @@ $subjectsList = $pdo->query("
                             <label for="es_strand">Strand</label>
                             <select id="es_strand" name="strand">
                                 <option value="">None</option>
-                                <?php foreach (['STEM', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
+                                <?php foreach (['GAS', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
                                     <option value="<?= $s ?>"><?= $s ?></option>
                                 <?php endforeach; ?>
                             </select>
