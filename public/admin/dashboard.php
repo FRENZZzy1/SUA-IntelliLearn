@@ -16,12 +16,14 @@
 // TODO: adjust this path so it points to your actual db connection file
 require_once '../../config/config.php';
 
+
 // ================= DATA LAYER =================
 require_once 'assests/api/dashboard_functions.php';
 $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
 $aum_endpoint = '/SUA-IntelliLearn/public/admin/assests/api/add_user_handler.php';
 include 'assests/api/add_user_modal.php';
 
+requireAdmin();
 
 $totalStudents   = get_total_students($conn);
 $totalTeachers   = get_total_teachers($conn);
