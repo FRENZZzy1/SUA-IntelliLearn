@@ -69,16 +69,6 @@ if ($dupStmt->fetch()) {
     exit();
 }
 
-if ($adviserValue !== null) {
-    $advStmt = $pdo->prepare("SELECT section_id FROM sections WHERE adviser_id = ? AND section_id != ?");
-    $advStmt->execute([$adviserValue, (int) $section_id]);
-    if ($advStmt->fetch()) {
-        http_response_code(422);
-        echo json_encode(['success' => false, 'errors' => ['That teacher is already the adviser of another section.']]);
-        exit();
-    }
-}
-
 try {
     $stmt = $pdo->prepare("
         UPDATE sections
