@@ -48,7 +48,7 @@ body {
 .main-content {
     margin-left: var(--sidebar-width);
     min-height: 100vh;
-    padding: 28px 36px 60px;
+    padding: calc(var(--header-height) + 28px) 36px 60px;
     transition: margin-left 0.3s ease;
 }
 
