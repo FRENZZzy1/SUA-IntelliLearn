@@ -269,7 +269,7 @@ $recentUsers     = get_recent_users($conn, 4);
                                     <th>Role</th>
                                     <th>Status</th>
                                     <th>Joined</th>
-                                    <th>Actions</th>
+               
                                 </tr>
                             </thead>
                             <tbody>
@@ -299,13 +299,7 @@ $recentUsers     = get_recent_users($conn, 4);
                                             <td><span class="status-badge status-active"><span class="status-dot"></span> <?php echo htmlspecialchars($row['Role']); ?></span></td>
                                             <td><span class="status-badge <?php echo $statusClass; ?>"><span class="status-dot"></span> <?php echo $statusLabel; ?></span></td>
                                             <td style="color: var(--text-muted); font-size: 0.8rem;"><?php echo $joined; ?></td>
-                                            <td>
-                                                <div class="table-actions">
-                                                    <button class="btn-view" onclick="showToast('Viewing <?php echo $jsName; ?>...')">View</button>
-                                                    <button class="btn-edit" onclick="showToast('Editing <?php echo $jsName; ?>...')">Edit</button>
-                                                    <button class="btn-deactivate" onclick="showToast('<?php echo $isActive ? 'Deactivating' : 'Activating'; ?> <?php echo $jsName; ?>...')"><?php echo $isActive ? 'Deactivate' : 'Activate'; ?></button>
-                                                </div>
-                                            </td>
+                                            
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
@@ -317,7 +311,7 @@ $recentUsers     = get_recent_users($conn, 4);
                         </table>
                         <div class="table-footer">
                             <span>Showing <?php echo min(4, $totalUsersCount); ?> of <?php echo number_format($totalUsersCount); ?> accounts</span>
-                            <a href="#" onclick="showToast('Viewing all users...')">View All Users →</a>
+                            <a href="#" onclick="window.location.href='user_management.php'">View All Users →</a>
                         </div>
                     </div>
                 </div>

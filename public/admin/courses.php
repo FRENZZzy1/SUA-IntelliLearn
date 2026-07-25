@@ -117,7 +117,7 @@ $csrfToken = generateCSRFToken();
 // Sections/Subjects add, update, or delete action so the panel doesn't
 // collapse on the user after they just worked in it.
 $openView = $_GET['open'] ?? '';
-if (!in_array($openView, ['sections', 'subjects'], true)) {
+if (!in_array($openView, ['sections', 'subjects', 'export'], true)) {
     $openView = '';
 }
 
@@ -286,6 +286,165 @@ $subjectsList = $pdo->query("
 <!-- Courses Stylesheet -->
 <link rel="stylesheet" href="assests/css/courses.css">
 <link rel="stylesheet" href="assests/css/add_course.css">
+
+<style>
+    /* ---- Search & Export panel (self-contained, doesn't require courses.css changes) ---- */
+    .export-search-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 18px;
+        padding: 20px;
+    }
+    .export-search-card {
+        background: var(--card-bg, #fff);
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 12px;
+        padding: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .export-search-card-title {
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--text, #1e293b);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .export-search-card-title i { color: #2563eb; }
+    .export-search-card-hint {
+        margin: -4px 0 2px;
+        font-size: 12.5px;
+        color: var(--text-muted, #64748b);
+    }
+    .export-search-box { position: relative; }
+    .export-search-box input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px;
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    .export-search-box input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+    .export-search-dropdown {
+        position: absolute;
+        top: calc(100% + 4px);
+        left: 0;
+        right: 0;
+        background: #fff;
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+        max-height: 260px;
+        overflow-y: auto;
+        z-index: 30;
+    }
+    .export-search-dropdown-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .export-search-dropdown-item:last-child { border-bottom: none; }
+    .export-search-dropdown-item:hover { background: #f8fafc; }
+    .export-search-dropdown-item .esdi-name { font-weight: 600; font-size: 13.5px; color: #1e293b; }
+    .export-search-dropdown-item .esdi-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+    .export-search-dropdown-empty {
+        padding: 14px 12px;
+        font-size: 13px;
+        color: #94a3b8;
+        text-align: center;
+    }
+    .export-selected-chip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        color: #1d4ed8;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 13px;
+        font-weight: 600;
+    }
+    .export-selected-chip button {
+        background: none;
+        border: none;
+        color: #1d4ed8;
+        cursor: pointer;
+        font-size: 15px;
+        line-height: 1;
+        padding: 0 2px;
+    }
+    .export-btn {
+        width: 100%;
+        justify-content: center;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .export-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* ---- Live search box (Class List, instant client-side filter) ---- */
+    .live-search-box {
+        position: relative;
+        max-width: 280px;
+        flex: 1 1 220px;
+    }
+    .live-search-box i {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: 13px;
+        pointer-events: none;
+    }
+    .live-search-box input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 10px 12px 10px 32px;
+        border: 1px solid var(--border, #e2e8f0);
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: inherit;
+    }
+    .live-search-box input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+    .live-search-clear {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        font-size: 15px;
+        line-height: 1;
+        padding: 2px 4px;
+        display: none;
+    }
+    .live-search-clear.show { display: inline-block; }
+    .no-results-row td {
+        text-align: center;
+        padding: 40px;
+        color: var(--text-muted, #64748b);
+    }
+</style>
 </head>
 <body>
 
@@ -301,7 +460,10 @@ $subjectsList = $pdo->query("
 
     <!-- Page Header -->
     <div class="page-header">
-        <h1>Classes &amp; Subjects</h1>
+        <div class="page-header-text">
+            <h1>Classes &amp; Subjects</h1>
+            <p>Manage class offerings, sections, and subjects across the school.</p>
+        </div>
         <form class="header-actions" method="get" action="courses.php">
             <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
             <input type="hidden" name="grade" value="<?= htmlspecialchars($gradeFilter) ?>">
@@ -315,34 +477,58 @@ $subjectsList = $pdo->query("
     <!-- Quick Stats -->
     <div class="stats-row">
         <div class="stat-card">
-            <div class="stat-trend info">Live</div>
-            <div class="stat-value"><?= htmlspecialchars($totalCourses) ?></div>
-            <div class="stat-label">Total Courses</div>
+            <div class="stat-icon"><i class="fas fa-book-open"></i></div>
+            <div class="stat-body">
+                <div class="stat-trend info">Live</div>
+                <div class="stat-value"><?= htmlspecialchars($totalCourses) ?></div>
+                <div class="stat-label">Total Courses</div>
+            </div>
         </div>
         <div class="stat-card">
-            <div class="stat-value"><?= htmlspecialchars($activeCourses) ?></div>
-            <div class="stat-label">Active Courses</div>
+            <div class="stat-icon"><i class="fas fa-circle-check"></i></div>
+            <div class="stat-body">
+                <div class="stat-value"><?= htmlspecialchars($activeCourses) ?></div>
+                <div class="stat-label">Active Courses</div>
+            </div>
         </div>
         <div class="stat-card">
-            <div class="stat-trend info"><?= htmlspecialchars($teachersAssigned) ?>/<?= htmlspecialchars($totalTeachers) ?></div>
-            <div class="stat-value"><?= htmlspecialchars($teachersAssigned) ?></div>
-            <div class="stat-label">Teachers Assigned</div>
+            <div class="stat-icon info"><i class="fas fa-chalkboard-teacher"></i></div>
+            <div class="stat-body">
+                <div class="stat-trend info"><?= htmlspecialchars($teachersAssigned) ?>/<?= htmlspecialchars($totalTeachers) ?></div>
+                <div class="stat-value"><?= htmlspecialchars($teachersAssigned) ?></div>
+                <div class="stat-label">Teachers Assigned</div>
+            </div>
         </div>
         <div class="stat-card">
-            <div class="stat-value"><?= htmlspecialchars($totalEnrollees) ?></div>
-            <div class="stat-label">Total Enrollees</div>
+            <div class="stat-icon accent"><i class="fas fa-user-graduate"></i></div>
+            <div class="stat-body">
+                <div class="stat-value"><?= htmlspecialchars($totalEnrollees) ?></div>
+                <div class="stat-label">Total Enrollees</div>
+            </div>
         </div>
     </div>
 
     <!-- Filter / Action Toolbar -->
-    <div class="toolbar-row">
-        <div class="toolbar-left">
+    <div class="toolbar">
+        <div class="filter-bar">
             <a class="filter-pill <?= $statusFilter === 'all' ? 'active' : '' ?>"
                href="?<?= http_build_query(array_filter(['status' => 'all', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">All Courses</a>
             <a class="filter-pill <?= $statusFilter === 'active' ? 'active' : '' ?>"
                href="?<?= http_build_query(array_filter(['status' => 'active', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Active</a>
             <a class="filter-pill <?= $statusFilter === 'inactive' ? 'active' : '' ?>"
                href="?<?= http_build_query(array_filter(['status' => 'inactive', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Inactive</a>
+
+            <!-- Live client-side search: instantly filters the Class List table below
+                 by subject, section, or teacher name. No page reload, no server call. -->
+            <div class="live-search-box">
+                <i class="fas fa-search"></i>
+                <input type="text"
+                       id="liveSearchInput"
+                       placeholder="Search teacher, subject, or section..."
+                       autocomplete="off"
+                       oninput="filterCourseList(this.value)">
+                <button type="button" class="live-search-clear" id="liveSearchClearBtn" onclick="clearCourseListSearch()" aria-label="Clear search">&times;</button>
+            </div>
 
             <form method="get" action="courses.php" style="display:contents">
                 <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
@@ -377,12 +563,20 @@ $subjectsList = $pdo->query("
                 </select>
             </form>
         </div>
-        <div class="toolbar-right">
-            <button class="btn-secondary <?= $openView === 'subjects' ? 'active' : '' ?>" id="toggleSubjectsBtn" onclick="togglePanel('subjects', this)"><i class="fas fa-list"></i> View Subjects</button>
-            <button class="btn-secondary" onclick="openAddSubjectModal()"><i class="fas fa-book"></i> New Subject</button>
-            <button class="btn-secondary <?= $openView === 'sections' ? 'active' : '' ?>" id="toggleSectionsBtn" onclick="togglePanel('sections', this)"><i class="fas fa-list"></i> View Sections</button>
-            <button class="btn-secondary" onclick="openAddSectionModal()"><i class="fas fa-layer-group"></i> New Section</button>
-            <button class="btn-primary" onclick="openAddCourseModal()"><i class="fas fa-plus"></i> New Class</button>
+
+        <div class="action-bar">
+            <div class="action-bar-group">
+                <span class="action-bar-group-label">View</span>
+                <button class="btn-secondary <?= $openView === 'subjects' ? 'active' : '' ?>" id="toggleSubjectsBtn" onclick="togglePanel('subjects', this)"><i class="fas fa-list"></i> Subjects</button>
+                <button class="btn-secondary <?= $openView === 'sections' ? 'active' : '' ?>" id="toggleSectionsBtn" onclick="togglePanel('sections', this)"><i class="fas fa-list"></i> Sections</button>
+                <button class="btn-secondary <?= $openView === 'export' ? 'active' : '' ?>" id="toggleExportBtn" onclick="togglePanel('export', this)"><i class="fas fa-file-export"></i> Search &amp; Export</button>
+            </div>
+            <div class="action-bar-group">
+                <span class="action-bar-group-label">Create</span>
+                <button class="btn-secondary" onclick="openAddSubjectModal()"><i class="fas fa-book"></i> New Subject</button>
+                <button class="btn-secondary" onclick="openAddSectionModal()"><i class="fas fa-layer-group"></i> New Section</button>
+                <button class="btn-primary" onclick="openAddCourseModal()"><i class="fas fa-plus"></i> New Class</button>
+            </div>
         </div>
     </div>
 
@@ -390,10 +584,10 @@ $subjectsList = $pdo->query("
     <div class="list-panel">
         <div class="list-panel-header">
             <h2>Class List</h2>
-            <span class="count-note">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
+            <span class="count-note" id="courseCountTop">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
         </div>
 
-        <table class="course-table">
+        <table class="course-table" id="courseTable">
             <thead>
                 <tr>
                     <th>Course / Subject</th>
@@ -405,13 +599,13 @@ $subjectsList = $pdo->query("
                     <th>Teacher Assigned</th>
                     <th>Enrollment</th>
                     <th>Status</th>
-                    <th>Actions</th>
+                    <th class="col-actions">Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="courseTableBody">
                 <?php if (empty($courses)): ?>
-                <tr>
-                    <td colspan="10" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                <tr class="empty-row">
+                    <td colspan="10">
                         No courses match these filters.
                     </td>
                 </tr>
@@ -422,8 +616,15 @@ $subjectsList = $pdo->query("
                     $pct = $course['capacity'] > 0 ? round(($course['enrolled_count'] / $course['capacity']) * 100) : 0;
                     $teacherName = $course['teacher_id'] ? trim($course['teacher_firstname'] . ' ' . $course['teacher_lastname']) : null;
                     $scheduleDisplay = formatScheduleDisplay($course['schedule_days'], $course['start_time'], $course['end_time']);
+                    // Pre-baked lowercase blob this row matches against for the
+                    // instant client-side search box (subject + section + teacher name).
+                    $searchBlob = mb_strtolower(trim(
+                        $course['subject_name'] . ' ' .
+                        $course['section_name'] . ' ' .
+                        ($teacherName ?? '')
+                    ));
                 ?>
-                <tr>
+                <tr class="course-row" data-search="<?= htmlspecialchars($searchBlob) ?>">
                     <td>
                         <div class="course-cell">
                             <span class="subject-tag" style="background: <?= $colors['bg'] ?>; color: <?= $colors['text'] ?>;">
@@ -451,7 +652,7 @@ $subjectsList = $pdo->query("
                             <?= $course['status'] === 'active' ? 'Active' : 'Inactive' ?>
                         </span>
                     </td>
-                    <td>
+                    <td class="col-actions">
                         <div class="row-actions">
                             <a href="javascript:void(0)"
                                onclick="openViewStudentsModal(<?= (int) $course['offering_id'] ?>)">View Students</a>
@@ -480,7 +681,7 @@ $subjectsList = $pdo->query("
         </table>
 
         <div class="list-panel-footer">
-            <span class="count-note">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
+            <span class="count-note" id="courseCountBottom">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
         </div>
     </div>
     <!-- /Course List -->
@@ -502,13 +703,13 @@ $subjectsList = $pdo->query("
                     <th>School Year</th>
                     <th>Courses Offered</th>
                     <th>Enrolled Students</th>
-                    <th>Actions</th>
+                    <th class="col-actions">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($sectionsList)): ?>
-                <tr>
-                    <td colspan="7" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                <tr class="empty-row">
+                    <td colspan="7">
                         No sections found. Use "New Section" to add one.
                     </td>
                 </tr>
@@ -526,7 +727,7 @@ $subjectsList = $pdo->query("
                     <td><?= $sec['school_year_label'] ? htmlspecialchars($sec['school_year_label']) : '— None —' ?></td>
                     <td><?= (int) $sec['course_count'] ?></td>
                     <td><?= (int) $sec['student_count'] ?></td>
-                    <td>
+                    <td class="col-actions">
                         <div class="row-actions">
                             <a href="javascript:void(0)"
                                data-section="<?= htmlspecialchars(json_encode([
@@ -568,13 +769,13 @@ $subjectsList = $pdo->query("
                     <th>Description</th>
                     <th>Courses Offered</th>
                     <th>Sections Covered</th>
-                    <th>Actions</th>
+                    <th class="col-actions">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($subjectsList)): ?>
-                <tr>
-                    <td colspan="5" style="text-align:center; padding: 40px; color: var(--text-muted);">
+                <tr class="empty-row">
+                    <td colspan="5">
                         No subjects found. Use "New Subject" to add one.
                     </td>
                 </tr>
@@ -594,7 +795,7 @@ $subjectsList = $pdo->query("
                     <td style="white-space: normal;"><?= $subj['description'] ? htmlspecialchars($subj['description']) : '— No description —' ?></td>
                     <td><?= (int) $subj['offering_count'] ?></td>
                     <td><?= (int) $subj['section_count'] ?></td>
-                    <td>
+                    <td class="col-actions">
                         <div class="row-actions">
                             <a href="javascript:void(0)"
                                data-subject="<?= htmlspecialchars(json_encode([
@@ -618,6 +819,66 @@ $subjectsList = $pdo->query("
     </div>
     </div>
     <!-- /Subjects List -->
+
+    <!-- Search & Export (hidden until "Search & Export" is clicked) -->
+    <div class="view-panel <?= $openView === 'export' ? 'open' : '' ?>" id="view-export">
+    <div class="list-panel">
+        <div class="list-panel-header">
+            <h2>Search &amp; Export Classes</h2>
+            <span class="count-note">Find a teacher, section, or student and export their classes to Excel</span>
+        </div>
+
+        <div class="export-search-grid">
+
+            <!-- Search by Teacher -->
+            <div class="export-search-card">
+                <div class="export-search-card-title"><i class="fas fa-chalkboard-teacher"></i> By Teacher</div>
+                <p class="export-search-card-hint">e.g. "Rose" — exports every class that teacher handles</p>
+                <div class="export-search-box">
+                    <input type="text" id="exportTeacherInput" placeholder="Search teacher name..." autocomplete="off"
+                           oninput="exportSearchInput('teacher', this.value)">
+                    <div class="export-search-dropdown" id="exportTeacherDropdown" hidden></div>
+                </div>
+                <div class="export-selected-chip" id="exportTeacherChip" hidden></div>
+                <button type="button" class="btn-primary export-btn" id="exportTeacherBtn" disabled onclick="exportSelected('teacher')">
+                    <i class="fas fa-file-excel"></i> Export Teacher's Classes
+                </button>
+            </div>
+
+            <!-- Search by Section -->
+            <div class="export-search-card">
+                <div class="export-search-card-title"><i class="fas fa-layer-group"></i> By Section</div>
+                <p class="export-search-card-hint">e.g. "A110" — exports every class offered in that section</p>
+                <div class="export-search-box">
+                    <input type="text" id="exportSectionInput" placeholder="Search section name..." autocomplete="off"
+                           oninput="exportSearchInput('section', this.value)">
+                    <div class="export-search-dropdown" id="exportSectionDropdown" hidden></div>
+                </div>
+                <div class="export-selected-chip" id="exportSectionChip" hidden></div>
+                <button type="button" class="btn-primary export-btn" id="exportSectionBtn" disabled onclick="exportSelected('section')">
+                    <i class="fas fa-file-excel"></i> Export Section's Classes
+                </button>
+            </div>
+
+            <!-- Search by Student -->
+            <div class="export-search-card">
+                <div class="export-search-card-title"><i class="fas fa-user-graduate"></i> By Student</div>
+                <p class="export-search-card-hint">e.g. "Frenz" — exports every class that student is enrolled in</p>
+                <div class="export-search-box">
+                    <input type="text" id="exportStudentInput" placeholder="Search student name or LRN..." autocomplete="off"
+                           oninput="exportSearchInput('student', this.value)">
+                    <div class="export-search-dropdown" id="exportStudentDropdown" hidden></div>
+                </div>
+                <div class="export-selected-chip" id="exportStudentChip" hidden></div>
+                <button type="button" class="btn-primary export-btn" id="exportStudentBtn" disabled onclick="exportSelected('student')">
+                    <i class="fas fa-file-excel"></i> Export Student's Classes
+                </button>
+            </div>
+
+        </div>
+    </div>
+    </div>
+    <!-- /Search & Export -->
 
     <!-- Add Course Modal -->
     <div class="modal-overlay" id="addCourseOverlay" onclick="if (event.target === this) closeAddCourseModal()">
@@ -1146,6 +1407,158 @@ $subjectsList = $pdo->query("
             submitBtn.innerHTML = idleLabel;
         });
     }
+
+    // ---- Live search: instantly filters the Class List table ----
+    // Matches each row's pre-baked data-search string (subject + section +
+    // teacher name, all lowercase) against whatever the admin types.
+    // No server round-trip — pure client-side show/hide.
+    const TOTAL_COURSES = <?= (int) $totalCourses ?>;
+    let noResultsRow = null;
+
+    function getOrCreateNoResultsRow() {
+        if (noResultsRow) return noResultsRow;
+        const tbody = document.getElementById('courseTableBody');
+        noResultsRow = document.createElement('tr');
+        noResultsRow.className = 'no-results-row';
+        noResultsRow.innerHTML = '<td colspan="10">No courses match your search.</td>';
+        tbody.appendChild(noResultsRow);
+        return noResultsRow;
+    }
+
+    function filterCourseList(rawValue) {
+        const q = rawValue.trim().toLowerCase();
+        const rows = document.querySelectorAll('#courseTableBody tr.course-row');
+        const clearBtn = document.getElementById('liveSearchClearBtn');
+        clearBtn.classList.toggle('show', q.length > 0);
+
+        let visible = 0;
+        rows.forEach(row => {
+            const match = q === '' || row.dataset.search.includes(q);
+            row.style.display = match ? '' : 'none';
+            if (match) visible++;
+        });
+
+        const noRow = getOrCreateNoResultsRow();
+        noRow.style.display = (visible === 0 && rows.length > 0) ? '' : 'none';
+
+        const label = 'Showing ' + visible + ' of ' + TOTAL_COURSES + ' courses';
+        const top = document.getElementById('courseCountTop');
+        const bottom = document.getElementById('courseCountBottom');
+        if (top) top.textContent = label;
+        if (bottom) bottom.textContent = label;
+    }
+
+    function clearCourseListSearch() {
+        const input = document.getElementById('liveSearchInput');
+        input.value = '';
+        filterCourseList('');
+        input.focus();
+    }
+
+    // ---- Search & Export panel ----
+    const exportEndpoints = {
+        teacher: 'assests/api/export_teacher_classes.php?teacher_id=',
+        section: 'assests/api/export_section_classes.php?section_id=',
+        student: 'assests/api/export_student_classes.php?student_id=',
+    };
+    const exportSelected_ = { teacher: null, section: null, student: null };
+    const exportDebounce_ = { teacher: null, section: null, student: null };
+
+    function exportSearchInput(type, value) {
+        // Typing again after a selection invalidates it.
+        if (exportSelected_[type]) {
+            exportSelected_[type] = null;
+            document.getElementById('export' + capitalize(type) + 'Chip').hidden = true;
+            document.getElementById('export' + capitalize(type) + 'Btn').disabled = true;
+        }
+
+        clearTimeout(exportDebounce_[type]);
+        const dropdown = document.getElementById('export' + capitalize(type) + 'Dropdown');
+
+        const q = value.trim();
+        if (q.length < 1) {
+            dropdown.hidden = true;
+            dropdown.innerHTML = '';
+            return;
+        }
+
+        exportDebounce_[type] = setTimeout(() => {
+            fetch('assests/api/search_entities.php?type=' + type + '&q=' + encodeURIComponent(q), {
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                dropdown.innerHTML = '';
+                if (!data.success || data.results.length === 0) {
+                    dropdown.innerHTML = '<div class="export-search-dropdown-empty">No matches found.</div>';
+                    dropdown.hidden = false;
+                    return;
+                }
+
+                data.results.forEach(function (r) {
+                    const item = document.createElement('div');
+                    item.className = 'export-search-dropdown-item';
+                    item.innerHTML = '<div class="esdi-name"></div><div class="esdi-sub"></div>';
+                    item.querySelector('.esdi-name').textContent = r.label;
+                    item.querySelector('.esdi-sub').textContent = r.sublabel;
+                    item.onclick = function () { selectExportEntity(type, r.id, r.label, r.sublabel); };
+                    dropdown.appendChild(item);
+                });
+                dropdown.hidden = false;
+            })
+            .catch(() => {
+                dropdown.innerHTML = '<div class="export-search-dropdown-empty">Something went wrong.</div>';
+                dropdown.hidden = false;
+            });
+        }, 250);
+    }
+
+    function selectExportEntity(type, id, label, sublabel) {
+        exportSelected_[type] = { id, label };
+
+        const input = document.getElementById('export' + capitalize(type) + 'Input');
+        const dropdown = document.getElementById('export' + capitalize(type) + 'Dropdown');
+        const chip = document.getElementById('export' + capitalize(type) + 'Chip');
+        const btn = document.getElementById('export' + capitalize(type) + 'Btn');
+
+        input.value = label;
+        dropdown.hidden = true;
+        dropdown.innerHTML = '';
+
+        chip.innerHTML = '<span>' + escapeHtml(label) + ' <span style="font-weight:400; color:#3b82f6;">· ' + escapeHtml(sublabel) + '</span></span>'
+            + '<button type="button" onclick="clearExportSelection(\'' + type + '\')" aria-label="Clear">&times;</button>';
+        chip.hidden = false;
+        btn.disabled = false;
+    }
+
+    function clearExportSelection(type) {
+        exportSelected_[type] = null;
+        document.getElementById('export' + capitalize(type) + 'Input').value = '';
+        document.getElementById('export' + capitalize(type) + 'Chip').hidden = true;
+        document.getElementById('export' + capitalize(type) + 'Btn').disabled = true;
+        document.getElementById('export' + capitalize(type) + 'Input').focus();
+    }
+
+    function exportSelected(type) {
+        const sel = exportSelected_[type];
+        if (!sel) return;
+        window.location = exportEndpoints[type] + encodeURIComponent(sel.id);
+    }
+
+    function capitalize(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+
+    // Close any open export dropdown when clicking elsewhere on the page.
+    document.addEventListener('click', function (e) {
+        ['teacher', 'section', 'student'].forEach(function (type) {
+            const box = document.getElementById('export' + capitalize(type) + 'Input')?.closest('.export-search-box');
+            const dropdown = document.getElementById('export' + capitalize(type) + 'Dropdown');
+            if (box && dropdown && !box.contains(e.target)) {
+                dropdown.hidden = true;
+            }
+        });
+    });
 
     // ---- Add Course modal ----
     function openAddCourseModal() {

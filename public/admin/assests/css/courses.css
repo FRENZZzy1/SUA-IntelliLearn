@@ -31,6 +31,15 @@
     --radius: 12px;
     --radius-md: 12px;
     --radius-sm: 8px;
+
+    /* ---- Spacing scale: keeps gaps/margins consistent across the page ---- */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
 }
 
 * {
@@ -58,11 +67,14 @@ body {
 
 /* ---------- Flash messages ---------- */
 .flash-message {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     padding: 12px 18px;
     border-radius: var(--radius-sm);
     font-size: 0.85rem;
     font-weight: 600;
-    margin-bottom: 18px;
+    margin-bottom: var(--space-5);
 }
 
 .flash-success {
@@ -77,20 +89,32 @@ body {
     border: 1px solid rgba(239, 68, 68, 0.25);
 }
 
-/* ---------- Page header ---------- */
+/* =================================================================
+   PAGE HEADER
+   Title + short subtitle on the left. Reserved space on the right
+   for future page-level actions (kept as a flex slot so it never
+   collapses oddly if it's empty).
+================================================================= */
 .page-header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
     gap: 20px;
-    margin-bottom: 24px;
+    margin-bottom: var(--space-6);
 }
 
-.page-header h1 {
+.page-header-text h1 {
     font-family: 'Playfair Display', serif;
     font-size: 1.9rem;
-    margin: 0;
+    margin: 0 0 4px;
     color: var(--primary-dark);
+    line-height: 1.2;
+}
+
+.page-header-text p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-muted);
 }
 
 .header-actions {
@@ -160,12 +184,16 @@ body {
     border: 1.5px solid var(--bg-card);
 }
 
-/* ---------- Stat strip ---------- */
+/* =================================================================
+   STAT STRIP
+   Each card gets an icon chip so the row reads at a glance instead
+   of as four identical blocks of numbers.
+================================================================= */
 .stats-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    margin-bottom: 22px;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
 }
 
 .stat-card {
@@ -173,7 +201,37 @@ body {
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
     padding: 18px 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
     position: relative;
+}
+
+.stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    background: rgba(26, 92, 58, 0.1);
+    color: var(--primary);
+}
+
+.stat-icon.info {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--info);
+}
+
+.stat-icon.accent {
+    background: rgba(244, 162, 97, 0.18);
+    color: #c2703a;
+}
+
+.stat-body {
+    min-width: 0;
 }
 
 .stat-trend {
@@ -194,7 +252,7 @@ body {
 }
 
 .stat-value {
-    font-size: 1.7rem;
+    font-size: 1.6rem;
     font-weight: 700;
     color: var(--primary-dark);
     line-height: 1.2;
@@ -211,7 +269,7 @@ body {
    clicked (see .btn-secondary.active below for the button's own state). */
 .view-panel {
     display: none;
-    margin-top: 40px;
+    margin-top: var(--space-8);
 }
 
 .view-panel.open {
@@ -223,7 +281,7 @@ body {
    when both Sections and Subjects are open at once. */
 .list-panel + .view-panel,
 .view-panel + .view-panel {
-    margin-top: 40px;
+    margin-top: var(--space-8);
 }
 
 .btn-secondary.active {
@@ -236,35 +294,56 @@ body {
     background: var(--primary-light);
 }
 
-/* ---------- Toolbar / filter row ---------- */
-.toolbar-row {
+/* =================================================================
+   TOOLBAR
+   Two clearly separated rows instead of one crowded line:
+   1. filter-bar   — narrowing down what you're looking at (pills,
+                      search, dropdown filters)
+   2. action-bar    — things you can go do (view lists, add records)
+   A hairline divider + slightly muted background on the action row
+   keeps "browsing" and "doing" visually distinct at a glance.
+================================================================= */
+.toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-bottom: var(--space-6);
+}
+
+.filter-bar {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 20px;
     flex-wrap: wrap;
 }
 
-.toolbar-left {
+.action-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
+    justify-content: space-between;
+    gap: var(--space-3);
+    flex-wrap: wrap;
+    padding-top: var(--space-4);
+    border-top: 1px dashed var(--border);
+}
+
+.action-bar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
-/* margin-left: auto pushes this group to the right edge of whatever
-   line it ends up on. When both groups fit on one row, filters sit at
-   the left edge and buttons at the right edge with no gap wasted in
-   between. When there isn't room and this group wraps to its own line,
-   auto-margin still pulls it flush right instead of stranding it at
-   the left with empty space trailing off to the right. */
-.toolbar-right {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    margin-left: auto;
-    justify-content: flex-end;
+/* Small caption above a button cluster so it's clear what the group
+   of buttons is for (view/browse vs. create) without adding UI chrome. */
+.action-bar-group-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-right: 4px;
+    white-space: nowrap;
 }
 
 .filter-pill {
@@ -356,8 +435,16 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 12px;
     padding: 18px 22px;
     border-bottom: 1px solid var(--border);
+}
+
+.list-panel-header-text {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .list-panel-header h2 {
@@ -384,10 +471,15 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--text-muted);
-    padding: 12px 22px;
+    padding: 13px 22px;
     background: var(--bg-page);
     font-weight: 700;
     white-space: nowrap;
+}
+
+.course-table thead th.col-actions,
+.course-table tbody td.col-actions {
+    text-align: right;
 }
 
 .course-table tbody tr {
@@ -400,7 +492,7 @@ body {
 }
 
 .course-table tbody td {
-    padding: 14px 22px;
+    padding: 15px 22px;
     font-size: 0.86rem;
     color: var(--text-main);
     vertical-align: middle;
@@ -416,7 +508,7 @@ body {
 .subject-tag {
     font-size: 0.68rem;
     font-weight: 700;
-    padding: 3px 9px;
+    padding: 4px 10px;
     border-radius: 6px;
     white-space: nowrap;
 }
@@ -424,6 +516,11 @@ body {
 .course-name {
     font-weight: 600;
     color: var(--text-main);
+}
+
+.field-note {
+    color: var(--text-muted);
+    font-style: italic;
 }
 
 .enrollment-cell {
@@ -482,6 +579,7 @@ body {
 .row-actions {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 4px;
 }
 
@@ -519,6 +617,12 @@ body {
     color: var(--text-muted);
 }
 
+.empty-row td {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-muted);
+}
+
 @media (max-width: 1100px) {
     .stats-row {
         grid-template-columns: repeat(2, 1fr);
@@ -536,5 +640,9 @@ body {
 
     .course-table {
         min-width: 760px;
+    }
+
+    .action-bar {
+        justify-content: flex-start;
     }
 }

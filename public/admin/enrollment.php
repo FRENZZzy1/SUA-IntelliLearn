@@ -239,10 +239,12 @@ $panelIcons = [
 <link rel="stylesheet" href="assests/css/courses.css">
 <link rel="stylesheet" href="assests/css/add_course.css">
 <link rel="stylesheet" href="assests/css/enrollment.css">
+
 </head>
 <body>
 
 <?php include '../../includes/admin_sidebar.php'; ?>
+<?php include '../../includes/admin_header.php'; ?>
 
 <div class="main-content" id="mainContent">
 
