@@ -1,15 +1,16 @@
 <?php
 /**
  * Backend endpoint for the "Section" dropdown in the Enroll Student
- * modal on enrollment.php. Returns the open class offerings (active,
- * matching subject + grade level + strand) so the admin picks a
- * specific section up front, instead of resolving ambiguous matches
- * at approval time. Called via fetch() — always returns JSON, never
- * renders a page.
+ * modal on enrollment.php. Returns the sections that have at least one
+ * open (active, seats-available) class offering for the given
+ * grade level + strand + quarter, so the admin picks a section up
+ * front and then the specific subjects offered in it. Called via
+ * fetch() — always returns JSON, never renders a page.
  *
- * Matching rules mirror approve_enrollment.php: subject_id + grade_level
- * always match; strand is only filtered on when provided (junior high
- * requests, which have no strand, match any section for that grade).
+ * Unlike subject-first lookups, this is intentionally subject-agnostic:
+ * a section can host several class offerings (subjects) for the same
+ * quarter, so the subject list is resolved afterwards via
+ * get_section_offerings.php once a section is chosen.
  */
 
 require_once __DIR__ . '/../../config/config.php';
@@ -19,11 +20,16 @@ requireAdmin();
 header('Content-Type: application/json');
 
 $gradeLevel = $_GET['grade_level'] ?? '';
-$subjectId  = $_GET['subject_id'] ?? '';
+$quarter    = $_GET['quarter'] ?? '';
 $strand     = trim($_GET['strand'] ?? '');
 
-if (!in_array((string) $gradeLevel, ['7', '8', '9', '10', '11', '12'], true) || !ctype_digit((string) $subjectId)) {
-    echo json_encode(['success' => false, 'errors' => ['Grade level and subject are required.']]);
+if (!in_array((string) $gradeLevel, ['7', '8', '9', '10', '11', '12'], true)) {
+    echo json_encode(['success' => false, 'errors' => ['Grade level is required.']]);
+    exit();
+}
+
+if (!in_array((string) $quarter, ['1', '2', '3', '4'], true)) {
+    echo json_encode(['success' => false, 'errors' => ['Quarter is required.']]);
     exit();
 }
 
@@ -33,17 +39,19 @@ if ($strand !== '' && !in_array($strand, ['STEM', 'ABM', 'HUMSS', 'TVL'], true))
 }
 
 $gradeLevel = (int) $gradeLevel;
-$subjectId  = (int) $subjectId;
+$quarter    = (int) $quarter;
 
 $sql = "
-    SELECT co.offering_id, co.capacity, co.quarter, sec.section_name, sec.strand, sy.label AS school_year_label,
-        (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
+    SELECT DISTINCT sec.section_id, sec.section_name, sec.strand, sy.label AS school_year_label
     FROM classofferings co
     JOIN sections sec ON sec.section_id = co.section_id
     JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id
-    WHERE co.subject_id = ? AND sec.grade_level = ? AND co.status = 'active'
+    WHERE sec.grade_level = ? AND co.quarter = ? AND co.status = 'active'
+      AND co.capacity > (
+          SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active'
+      )
 ";
-$params = [$subjectId, $gradeLevel];
+$params = [$gradeLevel, $quarter];
 
 if ($strand !== '') {
     $sql .= " AND sec.strand = ?";
@@ -52,24 +60,23 @@ if ($strand !== '') {
 
 $sql .= " ORDER BY sec.section_name";
 
-$stmt = $pdo->prepare($sql);
-$stmt->execute($params);
-$rows = $stmt->fetchAll();
+try {
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
 
-$options = [];
-foreach ($rows as $c) {
-    $seatsLeft = (int) $c['capacity'] - (int) $c['enrolled_count'];
-    if ($seatsLeft <= 0) {
-        continue; // full sections aren't offered as a choice
+    $options = [];
+    foreach ($rows as $s) {
+        $options[] = [
+            'section_id' => (int) $s['section_id'],
+            'label' => $s['section_name']
+                . ($s['strand'] ? ' (' . $s['strand'] . ')' : '')
+                . ' · ' . $s['school_year_label'],
+        ];
     }
-    $options[] = [
-        'offering_id' => (int) $c['offering_id'],
-        'label' => $c['section_name']
-            . ($c['strand'] ? ' (' . $c['strand'] . ')' : '')
-            . ' · Q' . (int) $c['quarter']
-            . ' · ' . $c['school_year_label']
-            . ' · ' . $seatsLeft . ' seat' . ($seatsLeft === 1 ? '' : 's') . ' left',
-    ];
-}
 
-echo json_encode(['success' => true, 'options' => $options]);
+    echo json_encode(['success' => true, 'options' => $options]);
+} catch (PDOException $e) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'errors' => ['Database error: ' . $e->getMessage()]]);
+}

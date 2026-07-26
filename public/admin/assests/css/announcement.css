@@ -13,8 +13,10 @@
     --primary-dark: #124029;
     --accent: #f4a261;
     --bg-main: #f0f4f1;
+    --bg-page: #eef2ef;
     --bg-card: #ffffff;
     --text-dark: #1f2937;
+    --text-main: #1f2937;
     --text-muted: #6b7280;
     --border: #b8c0cc;
     --success: #22c55e;
@@ -140,12 +142,13 @@ body {
 
 .stat-card {
     background: var(--bg-card);
-    border: 2px solid var(--border);
-    border-radius: var(--radius-md);
+    border: none;
+    border-radius: var(--radius);
     padding: 18px 20px;
     display: flex;
     align-items: center;
     gap: 14px;
+    box-shadow: 0 2px 8px rgba(15, 31, 61, 0.06);
 }
 
 .stat-icon {
@@ -192,11 +195,11 @@ body {
 /* ---------- Compose panel ---------- */
 .compose-panel {
     background: var(--bg-card);
-    border: 2px solid var(--border);
-    border-radius: var(--radius-lg);
+    border: 1px solid rgba(184, 192, 204, 0.5);
+    border-radius: var(--radius);
     padding: 26px;
     margin-bottom: 28px;
-    box-shadow: 0 6px 24px rgba(15, 31, 61, 0.06);
+    box-shadow: var(--shadow-lg);
 }
 
 .compose-panel-header {
@@ -472,17 +475,19 @@ textarea.form-control {
 
 .announcement-card {
     background: var(--bg-card);
-    border: 2px solid var(--border);
-    border-radius: var(--radius-md);
+    border: none;
+    border-radius: var(--radius);
     padding: 20px 22px;
     display: flex;
     gap: 18px;
     position: relative;
-    transition: box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(15, 31, 61, 0.06);
+    transition: box-shadow 0.2s, transform 0.15s;
 }
 
 .announcement-card:hover {
-    box-shadow: 0 8px 24px rgba(15, 31, 61, 0.08);
+    box-shadow: 0 6px 18px rgba(15, 31, 61, 0.1);
+    transform: translateY(-1px);
 }
 
 .announcement-card.pinned {

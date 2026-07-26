@@ -256,26 +256,9 @@ $panelIcons = [
 
     <!-- Page Header -->
     <div class="page-header">
-        <h1>Enrollment</h1>
-        <form class="header-actions" method="get" action="enrollment.php">
-            <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
-            <input type="hidden" name="grade" value="<?= htmlspecialchars($gradeFilter) ?>">
-            <input type="hidden" name="course" value="<?= htmlspecialchars($courseFilter) ?>">
-            <input type="hidden" name="strand" value="<?= htmlspecialchars($strandFilter) ?>">
-            <input type="hidden" name="quarter" value="<?= htmlspecialchars($quarterFilter) ?>">
-            <input type="hidden" name="school_year" value="<?= htmlspecialchars($schoolYearFilter) ?>">
-            <div class="header-search">
-                <i class="fas fa-search"></i>
-                <input type="text" name="q" value="<?= htmlspecialchars($searchQuery) ?>" placeholder="Search students, courses..." onchange="this.form.submit()">
-            </div>
-            <div class="icon-circle-btn" title="Notifications">
-                <i class="fas fa-bell"></i>
-                <span class="dot"></span>
-            </div>
-            <div class="icon-circle-btn" title="Help">
-                <i class="fas fa-question"></i>
-            </div>
-        </form>
+        <div class="page-header-text">
+            <h1>Enrollment</h1>
+        </div>
     </div>
 
     <!-- Quick Stats -->
@@ -303,8 +286,8 @@ $panelIcons = [
     </div>
 
     <!-- Filter / Action Toolbar -->
-    <div class="toolbar-row">
-        <div class="toolbar-left">
+    <div class="toolbar" style="flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+        <div class="filter-bar">
             <a class="filter-pill <?= $tab === 'pending' ? 'active' : '' ?>"
                href="?<?= http_build_query(array_filter(['tab' => 'pending', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Pending (<?= $tabCounts['pending'] ?>)</a>
             <a class="filter-pill <?= $tab === 'approved' ? 'active' : '' ?>"
@@ -313,8 +296,7 @@ $panelIcons = [
                href="?<?= http_build_query(array_filter(['tab' => 'denied', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Denied</a>
             <a class="filter-pill <?= $tab === 'all' ? 'active' : '' ?>"
                href="?<?= http_build_query(array_filter(['tab' => 'all', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">All Records</a>
-        </div>
-        <div class="toolbar-right">
+
             <form method="get" action="enrollment.php" style="display:contents">
                 <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
                 <input type="hidden" name="q" value="<?= htmlspecialchars($searchQuery) ?>">
@@ -358,6 +340,9 @@ $panelIcons = [
                 <a class="btn-clear-filter" href="?tab=<?= urlencode($tab) ?>" title="Clear all filters"><i class="fas fa-xmark"></i> Clear Filters</a>
                 <?php endif; ?>
             </form>
+        </div>
+
+        <div class="action-bar" style="justify-content: flex-end; border-top: none; padding-top: 0;">
             <button class="btn-primary" onclick="openEnrollStudentModal()"><i class="fas fa-user-plus"></i> Enroll Student</button>
         </div>
     </div>
@@ -494,29 +479,44 @@ $panelIcons = [
                             <label for="es_strand">Strand</label>
                             <select id="es_strand" name="strand">
                                 <option value="">None</option>
-                                <?php foreach (['GAS', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
+                                <?php foreach (['STEM', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
                                     <option value="<?= $s ?>"><?= $s ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="es_quarter">Quarter</label>
+                            <select id="es_quarter" name="quarter" required>
+                                <option value="">Select</option>
+                                <?php foreach ([1, 2, 3, 4] as $q): ?>
+                                    <option value="<?= $q ?>">Quarter <?= $q ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
                     </div>
 
                     <div class="form-row">
-                        <label for="es_subject_id">Course / Subject Requested</label>
-                        <select id="es_subject_id" name="subject_id" required>
-                            <option value="">Select a subject</option>
-                            <?php foreach ($allSubjects as $s): ?>
-                                <option value="<?= (int) $s['subject_id'] ?>"><?= clean($s['subject_name']) ?></option>
-                            <?php endforeach; ?>
+                        <label for="es_section_id">Section</label>
+                        <select id="es_section_id" name="section_id" required disabled>
+                            <option value="">Select grade level, strand, and quarter first</option>
                         </select>
+                        <span class="field-note" id="es_section_note">Pick a section to see the subjects offered in it.</span>
                     </div>
 
                     <div class="form-row">
-                        <label for="es_offering_id">Section</label>
-                        <select id="es_offering_id" name="offering_id" required disabled>
-                            <option value="">Select grade level, strand, and subject first</option>
-                        </select>
-                        <span class="field-note" id="es_section_note">Creates a pending request already tied to this section.</span>
+                        <div class="subject-list-label-row">
+                            <label>Course / Subject Requested</label>
+                            <div class="subject-list-bulk-actions">
+                                <button type="button" class="link-btn" id="es_subject_check_all">Check all</button>
+                                <span class="subject-list-bulk-sep">&middot;</span>
+                                <button type="button" class="link-btn" id="es_subject_uncheck_all">Uncheck all</button>
+                            </div>
+                        </div>
+                        <div class="subject-checkbox-list" id="es_subject_list">
+                            <div class="subject-checkbox-empty">Select grade level, strand, quarter, and section first</div>
+                        </div>
+                        <span class="field-note" id="es_subject_note">Check every subject to request for this student in this section. Creates one pending request per subject checked.</span>
                     </div>
                 </div>
 
@@ -566,7 +566,8 @@ $panelIcons = [
         studentSearchInput.value = '';
         studentHiddenInput.value = '';
         closeStudentDropdown();
-        resetSectionSelect('Select grade level, strand, and subject first');
+        resetSectionSelect('Select grade level, strand, and quarter first');
+        resetSubjectList('Select grade level, strand, quarter, and section first');
     }
 
     // ---- Searchable student picker ----
@@ -616,32 +617,44 @@ $panelIcons = [
         if (!studentPicker.contains(e.target)) closeStudentDropdown();
     });
 
-    // ---- Section dropdown, driven by grade level + strand + subject ----
+    // ---- Section dropdown, driven by grade level + strand + quarter ----
     const gradeLevelSelect = document.getElementById('es_grade_level');
     const strandSelect     = document.getElementById('es_strand');
-    const subjectSelect    = document.getElementById('es_subject_id');
-    const sectionSelect    = document.getElementById('es_offering_id');
+    const quarterSelect    = document.getElementById('es_quarter');
+    const sectionSelect    = document.getElementById('es_section_id');
     const sectionNote      = document.getElementById('es_section_note');
+    const subjectList      = document.getElementById('es_subject_list');
+    const subjectNote      = document.getElementById('es_subject_note');
+
+    const SECTION_DEFAULT_NOTE = 'Pick a section to see the subjects offered in it.';
+    const SUBJECT_DEFAULT_NOTE = 'Check every subject to request for this student in this section. Creates one pending request per subject checked.';
 
     function resetSectionSelect(message) {
         sectionSelect.innerHTML = `<option value="">${message}</option>`;
         sectionSelect.disabled = true;
-        sectionNote.textContent = 'Creates a pending request already tied to this section.';
+        sectionNote.textContent = SECTION_DEFAULT_NOTE;
+    }
+
+    function resetSubjectList(message) {
+        subjectList.innerHTML = `<div class="subject-checkbox-empty">${message}</div>`;
+        subjectNote.textContent = SUBJECT_DEFAULT_NOTE;
     }
 
     function refreshSectionOptions() {
         const gradeLevel = gradeLevelSelect.value;
-        const subjectId  = subjectSelect.value;
         const strand     = strandSelect.value;
+        const quarter    = quarterSelect.value;
 
-        if (!gradeLevel || !subjectId) {
-            resetSectionSelect('Select grade level, strand, and subject first');
+        resetSubjectList('Select grade level, strand, quarter, and section first');
+
+        if (!gradeLevel || !quarter) {
+            resetSectionSelect('Select grade level, strand, and quarter first');
             return;
         }
 
         resetSectionSelect('Loading sections...');
 
-        const params = new URLSearchParams({ grade_level: gradeLevel, subject_id: subjectId, strand: strand });
+        const params = new URLSearchParams({ grade_level: gradeLevel, quarter: quarter, strand: strand });
 
         fetch('get_offering_sections.php?' + params.toString(), {
             headers: { 'Accept': 'application/json' }
@@ -654,15 +667,15 @@ $panelIcons = [
                 return;
             }
             if (data.options.length === 0) {
-                sectionSelect.innerHTML = '<option value="">No open sections for this grade/strand/subject</option>';
+                sectionSelect.innerHTML = '<option value="">No open sections for this grade/strand/quarter</option>';
                 sectionSelect.disabled = true;
                 sectionNote.textContent = 'Create a class offering for this combination in Courses & Subjects first.';
                 return;
             }
             sectionSelect.innerHTML = '<option value="">Select a section</option>' +
-                data.options.map(o => `<option value="${o.offering_id}">${o.label}</option>`).join('');
+                data.options.map(o => `<option value="${o.section_id}">${o.label}</option>`).join('');
             sectionSelect.disabled = false;
-            sectionNote.textContent = 'Creates a pending request already tied to this section.';
+            sectionNote.textContent = SECTION_DEFAULT_NOTE;
         })
         .catch(() => {
             resetSectionSelect('Unable to load sections');
@@ -670,11 +683,68 @@ $panelIcons = [
         });
     }
 
-    [gradeLevelSelect, strandSelect, subjectSelect].forEach(el => el.addEventListener('change', refreshSectionOptions));
+    // ---- Subject checkbox list, driven by the chosen section ----
+    function refreshSubjectOptions() {
+        const gradeLevel = gradeLevelSelect.value;
+        const strand     = strandSelect.value;
+        const quarter    = quarterSelect.value;
+        const sectionId  = sectionSelect.value;
+
+        if (!gradeLevel || !quarter || !sectionId) {
+            resetSubjectList('Select grade level, strand, quarter, and section first');
+            return;
+        }
+
+        resetSubjectList('Loading subjects...');
+
+        const params = new URLSearchParams({
+            section_id: sectionId, grade_level: gradeLevel, quarter: quarter, strand: strand
+        });
+
+        fetch('get_section_offerings.php?' + params.toString(), {
+            headers: { 'Accept': 'application/json' }
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                resetSubjectList((data.errors || ['Unable to load subjects.']).join(' '));
+                return;
+            }
+            if (data.options.length === 0) {
+                resetSubjectList('No class offerings exist for this section and quarter yet.');
+                return;
+            }
+            subjectList.innerHTML = data.options.map(o => `
+                <label class="subject-checkbox-item${o.full ? ' is-full' : ''}">
+                    <input type="checkbox" name="subject_offering" value="${o.offering_id}"
+                           data-subject-id="${o.subject_id}" ${o.full ? 'disabled' : ''}>
+                    <span>${o.subject_name}</span>
+                    <small>${o.full ? 'Full' : o.seats_left + ' seat' + (o.seats_left === 1 ? '' : 's') + ' left'}</small>
+                </label>
+            `).join('');
+            subjectNote.textContent = SUBJECT_DEFAULT_NOTE;
+        })
+        .catch(() => {
+            resetSubjectList('Something went wrong loading subjects. Please try again.');
+        });
+    }
+
+    [gradeLevelSelect, strandSelect, quarterSelect].forEach(el => el.addEventListener('change', refreshSectionOptions));
+    sectionSelect.addEventListener('change', refreshSubjectOptions);
+
+    // ---- Check all / Uncheck all for the subject checkbox list ----
+    document.getElementById('es_subject_check_all').addEventListener('click', function () {
+        subjectList.querySelectorAll('input[name="subject_offering"]:not(:disabled)').forEach(cb => cb.checked = true);
+    });
+
+    document.getElementById('es_subject_uncheck_all').addEventListener('click', function () {
+        subjectList.querySelectorAll('input[name="subject_offering"]').forEach(cb => cb.checked = false);
+    });
 
     document.getElementById('enrollStudentForm').addEventListener('submit', function (e) {
         e.preventDefault();
 
+        const form = this;
         const submitBtn = document.getElementById('enrollStudentSubmitBtn');
         const errorBox = document.getElementById('enrollStudentErrors');
         errorBox.hidden = true;
@@ -690,31 +760,71 @@ $panelIcons = [
             return;
         }
 
+        const checkedSubjects = Array.from(subjectList.querySelectorAll('input[name="subject_offering"]:checked'));
+
+        if (checkedSubjects.length === 0) {
+            errorBox.innerHTML = '<div>Please check at least one subject to request.</div>';
+            errorBox.hidden = false;
+            return;
+        }
+
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
 
-        fetch('add_enrollment_request.php', {
-            method: 'POST',
-            headers: { 'Accept': 'application/json' },
-            body: new FormData(this)
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                window.location.href = 'enrollment.php?tab=pending';
-            } else {
-                errorBox.innerHTML = data.errors.map(err => '<div>' + err + '</div>').join('');
-                errorBox.hidden = false;
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-plus"></i> Submit Request';
+        const gradeLevel = gradeLevelSelect.value;
+        const strand     = strandSelect.value;
+        const studentId  = studentHiddenInput.value;
+        const csrf       = form.querySelector('input[name="csrf"]').value;
+
+        // One subject checked = one pending request; submit each in turn so a
+        // failure on one subject (e.g. a duplicate) doesn't stop the others.
+        const submitOne = (checkbox) => {
+            const fd = new FormData();
+            fd.append('csrf', csrf);
+            fd.append('student_id', studentId);
+            fd.append('grade_level', gradeLevel);
+            fd.append('strand', strand);
+            fd.append('subject_id', checkbox.dataset.subjectId);
+            fd.append('offering_id', checkbox.value);
+
+            const subjectLabel = checkbox.closest('.subject-checkbox-item').querySelector('span').textContent;
+
+            return fetch('add_enrollment_request.php', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json' },
+                body: fd
+            })
+            .then(res => res.json())
+            .then(data => ({ subjectLabel, success: !!data.success, errors: data.errors || ['Something went wrong.'] }))
+            .catch(() => ({ subjectLabel, success: false, errors: ['Something went wrong. Please try again.'] }));
+        };
+
+        (async () => {
+            const results = [];
+            for (const checkbox of checkedSubjects) {
+                results.push(await submitOne(checkbox));
             }
-        })
-        .catch(() => {
-            errorBox.innerHTML = '<div>Something went wrong. Please try again.</div>';
+
+            const failures = results.filter(r => !r.success);
+
+            if (failures.length === 0) {
+                window.location.href = 'enrollment.php?tab=pending';
+                return;
+            }
+
+            errorBox.innerHTML = failures
+                .map(f => `<div><strong>${f.subjectLabel}:</strong> ${f.errors.join(' ')}</div>`)
+                .join('');
             errorBox.hidden = false;
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="fas fa-plus"></i> Submit Request';
-        });
+
+            if (failures.length < results.length) {
+                // Some subjects succeeded — refresh the list so the ones that
+                // went through don't get resubmitted if the admin tries again.
+                refreshSubjectOptions();
+            }
+        })();
     });
 
     // ---- Approve / Deny / Reopen ----
