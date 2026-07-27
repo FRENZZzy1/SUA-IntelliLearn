@@ -87,8 +87,8 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                     </div>
                     <div class="aum-row">
                         <div class="aum-group">
-                            <label>Email <small>(optional)</small></label>
-                            <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="email" name="email" id="aumStudentEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph"></div>
+                            <label>Email</label>
+                            <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="email" name="email" id="aumStudentEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph" required></div>
                         </div>
                         <div class="aum-group">
                             <label>Birthdate <span class="aum-req">*</span></label>
@@ -515,6 +515,11 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
     document.getElementById('aumForm').addEventListener('submit', function (e) {
         e.preventDefault();
         var form = e.target;
+
+           if (!form.reportValidity()) {
+        return;
+    }
+
         var btn = document.getElementById('aumSubmitBtn');
         var endpoint = document.getElementById('aumOverlay').getAttribute('data-endpoint');
 
