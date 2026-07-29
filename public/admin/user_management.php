@@ -317,7 +317,22 @@ include 'assests/api/add_user_modal.php';
                     <th class="th-user">User</th>
                     <th>Role</th>
                     <th>Email</th>
-                    <th>Details</th>
+                    <th><?php
+                        $effective_role = $role_filter;
+                        if ($effective_role === 'all') {
+                            if ($department_filter !== 'all' && $department_filter !== '') {
+                                $effective_role = 'teacher';
+                            } elseif ($grade_level_filter !== 'all' && $grade_level_filter !== '') {
+                                $effective_role = 'student';
+                            }
+                        }
+                        echo match($effective_role) {
+                            'student' => 'LRN',
+                            'teacher' => 'Department',
+                            'admin' => 'Position',
+                            default => 'Details',
+                        };
+                    ?></th>
                     <th>Status</th>
                     <th>Last Active</th>
                     <th class="th-actions">Actions</th>
