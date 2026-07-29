@@ -95,6 +95,18 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                             <div class="aum-input-wrap"><i class="fas fa-calendar-alt aum-input-icon"></i><input type="date" name="birthdate" class="aum-control" data-student-required></div>
                         </div>
                     </div>
+                    <div class="aum-row">
+                        <div class="aum-group">
+                            <label>Gender <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap"><i class="fas fa-venus-mars aum-input-icon"></i>
+                                <select name="gender" class="aum-control" data-student-required>
+                                    <option value="">-- Select --</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
                     <div class="aum-group">
                         <label>Address</label>
                         <div class="aum-input-wrap"><i class="fas fa-map-marker-alt aum-input-icon"></i><input type="text" name="address" class="aum-control" placeholder="e.g. 123 Rizal St., Talisay City"></div>

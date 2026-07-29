@@ -184,6 +184,15 @@ include 'assests/api/add_user_modal.php';
                             <input type="date" name="birthdate" id="editBirthdate" class="form-control">
                         </div>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select name="gender" id="editGender" class="form-control">
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                            </select>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label>Address</label>
                         <input type="text" name="address" id="editAddress" class="form-control">
@@ -280,6 +289,13 @@ include 'assests/api/add_user_modal.php';
             <?php endforeach; ?>
         </select>
         <?php endif; ?>
+        <?php if ($role_filter === 'all' || $role_filter === 'student'): ?>
+        <select name="gender" class="select-filter" onchange="this.form.submit()">
+            <option value="all" <?= $gender_filter === 'all' ? 'selected' : '' ?>>All Genders</option>
+            <option value="male" <?= $gender_filter === 'male' ? 'selected' : '' ?>>Male</option>
+            <option value="female" <?= $gender_filter === 'female' ? 'selected' : '' ?>>Female</option>
+        </select>
+        <?php endif; ?>
         <select name="sort" class="select-filter" onchange="this.form.submit()">
             <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
             <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
@@ -287,7 +303,7 @@ include 'assests/api/add_user_modal.php';
             <option value="name_desc" <?= $sort === 'name_desc' ? 'selected' : '' ?>>Name Z–A</option>
             <option value="last_active" <?= $sort === 'last_active' ? 'selected' : '' ?>>Last Active</option>
         </select>
-        <?php if (!empty($search) || $role_filter !== 'all' || $status_filter !== 'all' || $department_filter !== 'all' || $grade_level_filter !== 'all'): ?>
+        <?php if (!empty($search) || $role_filter !== 'all' || $status_filter !== 'all' || $department_filter !== 'all' || $grade_level_filter !== 'all' || $gender_filter !== 'all'): ?>
         <a href="?" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
             <i class="fas fa-times"></i> Clear Filters
         </a>
@@ -350,11 +366,15 @@ include 'assests/api/add_user_modal.php';
                     // Build a role-appropriate "Details" cell: LRN for students,
                     // department for teachers, position for admins.
                     if ($user['role'] === 'student') {
+                        $gender_labels = ['male' => 'Male', 'female' => 'Female'];
                         $details_html = !empty($user['student_lrn'])
                             ? '<span class="chip"><i class="fas fa-id-card"></i> ' . clean($user['student_lrn']) . '</span>'
                             : '<span class="t-muted">No LRN</span>';
                         $details_html .= !empty($user['grade_level'])
                             ? ' <span class="chip"><i class="fas fa-layer-group"></i> Grade ' . clean($user['grade_level']) . '</span>'
+                            : '';
+                        $details_html .= !empty($user['gender'])
+                            ? ' <span class="chip"><i class="fas fa-venus-mars"></i> ' . clean($gender_labels[$user['gender']] ?? ucfirst($user['gender'])) . '</span>'
                             : '';
                     } elseif ($user['role'] === 'teacher') {
                         $details_html = $user['department']
@@ -377,6 +397,7 @@ include 'assests/api/add_user_modal.php';
                     data-position="<?= clean($user['admin_position'] ?? '') ?>" data-access-level="<?= clean($user['admin_access_level'] ?? '') ?>"
                     data-username="<?= clean($user['username']) ?>" data-created="<?= $user['created_at'] ?>"
                     data-lrn="<?= clean($user['student_lrn'] ?? '') ?>" data-middlename="<?= clean($user['middlename'] ?? '') ?>"
+                    data-gender="<?= clean($user['gender'] ?? '') ?>"
                     data-birthdate="<?= clean($user['birthdate'] ?? '') ?>" data-address="<?= clean($user['address'] ?? '') ?>"
                     data-guardian="<?= clean($user['guardian_name'] ?? '') ?>" data-guardian-contact="<?= clean($user['guardian_contact'] ?? '') ?>">
                     <td data-label="User">

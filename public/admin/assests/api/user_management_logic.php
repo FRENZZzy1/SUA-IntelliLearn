@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $middlename       = trim($_POST['middlename'] ?? '');
             $lrn              = trim($_POST['lrn'] ?? '');
             $email            = trim($_POST['email'] ?? '');
+            $gender           = trim($_POST['gender'] ?? '');
             $birthdate        = trim($_POST['birthdate'] ?? '');
             $address          = trim($_POST['address'] ?? '');
             $guardian_name    = trim($_POST['guardian_name'] ?? '');
@@ -41,6 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($firstname)) $errors[] = "First name is required.";
             if (empty($lastname)) $errors[] = "Last name is required.";
             if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
+            if (!in_array($gender, ['male', 'female'])) $errors[] = "Please select a valid gender.";
             if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email address is invalid.";
             $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
             if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
@@ -87,8 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Insert into Students
                     $stmt = $pdo->prepare("
                         INSERT INTO Students
-                            (user_id, student_lrn, firstname, lastname, middlename, email, birthdate, address, guardian_name, guardian_contact, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                            (user_id, student_lrn, firstname, lastname, middlename, email, gender, birthdate, address, guardian_name, guardian_contact, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                     ");
                     $stmt->execute([
                         $user_id,
@@ -97,6 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $lastname,
                         $middlename !== '' ? $middlename : null,
                         $email !== '' ? $email : null,
+                        $gender,
                         $birthdate,
                         $address,
                         $guardian_name,
@@ -253,6 +256,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Student-only fields
         $lrn              = trim($_POST['lrn'] ?? '');
+        $gender           = trim($_POST['gender'] ?? '');
         $birthdate        = trim($_POST['birthdate'] ?? '');
         $address          = trim($_POST['address'] ?? '');
         $guardian_name    = trim($_POST['guardian_name'] ?? '');
@@ -270,6 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($firstname)) $errors[] = "First name is required.";
             if (empty($lastname)) $errors[] = "Last name is required.";
             if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
+            if (!in_array($gender, ['male', 'female'])) $errors[] = "Please select a valid gender.";
             $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
             if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
 
@@ -354,7 +359,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             elseif ($role === 'student') {
                 $stmt = $pdo->prepare("
                     UPDATE Students
-                    SET firstname = ?, lastname = ?, middlename = ?, email = ?, student_lrn = ?,
+                    SET firstname = ?, lastname = ?, middlename = ?, email = ?, student_lrn = ?, gender = ?,
                         birthdate = ?, address = ?, guardian_name = ?, guardian_contact = ?, updated_at = NOW()
                     WHERE user_id = ?
                 ");
@@ -364,6 +369,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $middlename !== '' ? $middlename : null,
                     $email !== '' ? $email : null,
                     $lrn,
+                    $gender,
                     $birthdate,
                     $address !== '' ? $address : null,
                     $guardian_name !== '' ? $guardian_name : null,
@@ -424,6 +430,7 @@ $role_filter = $_GET['role'] ?? 'all';
 $status_filter = $_GET['status'] ?? 'all';
 $department_filter = trim($_GET['department'] ?? 'all');
 $grade_level_filter = trim($_GET['grade_level'] ?? 'all');
+$gender_filter = $_GET['gender'] ?? 'all';
 $sort = $_GET['sort'] ?? 'newest';
 $page = max(1, intval($_GET['page'] ?? 1));
 $per_page = 10;
@@ -475,6 +482,13 @@ if ($grade_level_filter !== 'all' && $grade_level_filter !== '') {
     $params[] = $grade_level_filter;
 }
 
+// Student gender filter (s.gender is only populated for students, so this
+// naturally has no effect on teachers/admins).
+if ($gender_filter !== 'all' && in_array($gender_filter, ['male', 'female'])) {
+    $where_clauses[] = "s.gender = ?";
+    $params[] = $gender_filter;
+}
+
 $where_sql = implode(" AND ", $where_clauses);
 
 // Count total for pagination
@@ -513,6 +527,7 @@ $sql = "SELECT
     COALESCE(t.specialization, '') as notes,
     COALESCE(t.employment_status, '') as employment_status,
     s.student_lrn,
+    s.gender,
     COALESCE(t.middlename, s.middlename) as middlename,
     s.birthdate,
     s.address,
