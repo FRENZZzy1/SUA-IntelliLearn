@@ -2,8 +2,8 @@
 /**
  * Backend endpoint for the "Course / Subject" checkbox list in the
  * Enroll Student modal on enrollment.php. Once a section is chosen
- * (itself filtered by grade level + strand + quarter), this returns
- * every active class offering taught in that section for that quarter,
+ * (itself filtered by grade level + strand + term), this returns
+ * every active class offering taught in that section for that term,
  * so the admin can check off one or more subjects to request at once.
  * Called via fetch() — always returns JSON, never renders a page.
  */
@@ -16,7 +16,7 @@ header('Content-Type: application/json');
 
 $sectionId  = $_GET['section_id'] ?? '';
 $gradeLevel = $_GET['grade_level'] ?? '';
-$quarter    = $_GET['quarter'] ?? '';
+$term       = $_GET['term'] ?? '';
 $strand     = trim($_GET['strand'] ?? '');
 
 if (!ctype_digit((string) $sectionId)) {
@@ -29,8 +29,8 @@ if (!in_array((string) $gradeLevel, ['7', '8', '9', '10', '11', '12'], true)) {
     exit();
 }
 
-if (!in_array((string) $quarter, ['1', '2', '3', '4'], true)) {
-    echo json_encode(['success' => false, 'errors' => ['Quarter is required.']]);
+if (!in_array($term, ['TRM 1', 'TRM 2', 'TRM 3'], true)) {
+    echo json_encode(['success' => false, 'errors' => ['Term is required.']]);
     exit();
 }
 
@@ -41,9 +41,8 @@ if ($strand !== '' && !in_array($strand, ['STEM', 'ABM', 'HUMSS', 'TVL'], true))
 
 $sectionId  = (int) $sectionId;
 $gradeLevel = (int) $gradeLevel;
-$quarter    = (int) $quarter;
 
-// Re-validate the section actually matches the grade/strand/quarter filters
+// Re-validate the section actually matches the grade/strand/term filters
 // (in case the form was tampered with or filters changed after load).
 $sectionSql = "SELECT section_id FROM sections WHERE section_id = ? AND grade_level = ?";
 $sectionParams = [$sectionId, $gradeLevel];
@@ -69,7 +68,7 @@ try {
         ORDER BY subj.subject_name
     ";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute([$sectionId, $quarter]);
+    $stmt->execute([$sectionId, $term]);
     $rows = $stmt->fetchAll();
 
     $options = [];

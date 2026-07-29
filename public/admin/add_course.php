@@ -36,7 +36,7 @@ $end_time_raw    = trim($_POST['end_time'] ?? '');
 if (!ctype_digit((string) $subject_id)) $errors[] = 'Please choose a subject.';
 if (!ctype_digit((string) $section_id)) $errors[] = 'Please choose a section.';
 if (!ctype_digit((string) $teacher_id)) $errors[] = 'Please choose a teacher.';
-if (!in_array((string) $quarter, ['1', '2', '3', '4'], true)) $errors[] = 'Please choose a quarter.';
+if (!in_array((string) $quarter, ['TRM 1', 'TRM 2', 'TRM 3'], true)) $errors[] = 'Please choose a term.';
 if (!ctype_digit((string) $school_year_id)) $errors[] = 'Please choose a school year.';
 if (!ctype_digit((string) $capacity) || (int) $capacity < 1) $errors[] = 'Capacity must be a positive number.';
 if (!in_array($status, ['active', 'inactive'], true)) $errors[] = 'Invalid status.';
@@ -81,7 +81,7 @@ try {
         (int) $subject_id,
         (int) $teacher_id,
         (int) $section_id,
-        (int) $quarter,
+        $quarter,
         (int) $school_year_id,
         $schedule_days !== '' ? $schedule_days : null,
         $start_time,

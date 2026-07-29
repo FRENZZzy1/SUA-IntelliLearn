@@ -83,15 +83,15 @@ try {
         exit();
     }
 
-    // The term (quarter + school year) of the section being requested. The
+    // The term (TRM 1/2/3 + school year) of the section being requested. The
     // duplicate checks below are scoped to this term, so the same course/
-    // section can be requested again for a different quarter or school year
+    // section can be requested again for a different term or school year
     // without tripping over an earlier request/enrollment from another term.
-    $offeringQuarter      = (int) $offering['quarter'];
+    $offeringTerm         = $offering['quarter'];
     $offeringSchoolYearId = (int) $offering['school_year_id'];
 
     // Don't create a duplicate pending request for the same student+subject+grade
-    // in the same quarter/school year.
+    // in the same term/school year.
     $dupStmt = $pdo->prepare("
         SELECT COUNT(*)
         FROM enrollment_requests er
@@ -100,20 +100,20 @@ try {
         WHERE er.student_id = ? AND er.subject_id = ? AND er.grade_level = ? AND er.status = 'pending'
           AND co.quarter = ? AND sec.school_year_id = ?
     ");
-    $dupStmt->execute([$student_id, $subject_id, $grade_level, $offeringQuarter, $offeringSchoolYearId]);
+    $dupStmt->execute([$student_id, $subject_id, $grade_level, $offeringTerm, $offeringSchoolYearId]);
 
     if ((int) $dupStmt->fetchColumn() > 0) {
         http_response_code(422);
-        echo json_encode(['success' => false, 'errors' => ['This student already has a pending request for that course, quarter, and school year.']]);
+        echo json_encode(['success' => false, 'errors' => ['This student already has a pending request for that course, term, and school year.']]);
         exit();
     }
 
     // Don't allow a new request if the student is already ACTIVELY enrolled
     // in a class offering for this same subject + grade (+ strand) AND the
-    // same quarter/school year. Without this check, an already-approved
+    // same term/school year. Without this check, an already-approved
     // enrollment doesn't stop a fresh request from being submitted (and later
     // denied/reopened) for the same course, since the earlier request is no
-    // longer 'pending'. Scoping to quarter/school year lets the same course
+    // longer 'pending'. Scoping to term/school year lets the same course
     // and section be requested again for a different term.
     $activeSql = "
         SELECT COUNT(*)
@@ -127,7 +127,7 @@ try {
           AND co.quarter = ?
           AND sec.school_year_id = ?
     ";
-    $activeParams = [$student_id, $subject_id, $grade_level, $offeringQuarter, $offeringSchoolYearId];
+    $activeParams = [$student_id, $subject_id, $grade_level, $offeringTerm, $offeringSchoolYearId];
     if ($strand !== '') {
         $activeSql .= " AND sec.strand = ?";
         $activeParams[] = $strand;
@@ -138,12 +138,12 @@ try {
 
     if ((int) $activeStmt->fetchColumn() > 0) {
         http_response_code(422);
-        echo json_encode(['success' => false, 'errors' => ['This student is already enrolled in that course for this quarter and school year.']]);
+        echo json_encode(['success' => false, 'errors' => ['This student is already enrolled in that course for this term and school year.']]);
         exit();
     }
 
     // Don't let a fresh request slip in for a combo that was already DENIED
-    // for the same quarter/school year. A denied decision should stick until
+    // for the same term/school year. A denied decision should stick until
     // the admin explicitly reopens it from the table — it shouldn't be
     // possible to route around a denial by just submitting the same request
     // again through the modal. A denial in one term doesn't block requesting
@@ -156,7 +156,7 @@ try {
         WHERE er.student_id = ? AND er.subject_id = ? AND er.grade_level = ? AND er.status = 'denied'
           AND co.quarter = ? AND sec.school_year_id = ?
     ";
-    $deniedParams = [$student_id, $subject_id, $grade_level, $offeringQuarter, $offeringSchoolYearId];
+    $deniedParams = [$student_id, $subject_id, $grade_level, $offeringTerm, $offeringSchoolYearId];
     if ($strand !== '') {
         $deniedSql .= " AND er.strand = ?";
         $deniedParams[] = $strand;
@@ -169,7 +169,7 @@ try {
 
     if ((int) $deniedStmt->fetchColumn() > 0) {
         http_response_code(422);
-        echo json_encode(['success' => false, 'errors' => ['This student already has a denied request for that course, quarter, and school year. Reopen it from the table instead of submitting a new one.']]);
+        echo json_encode(['success' => false, 'errors' => ['This student already has a denied request for that course, term, and school year. Reopen it from the table instead of submitting a new one.']]);
         exit();
     }
 

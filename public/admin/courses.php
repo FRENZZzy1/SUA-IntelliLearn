@@ -125,7 +125,7 @@ if (!in_array($openView, ['sections', 'subjects', 'export'], true)) {
 $statusFilter     = $_GET['status']  ?? 'all';             // all | active | inactive
 $gradeFilter      = $_GET['grade']   ?? 'all';             // all | 7..12
 $strandFilter     = $_GET['strand']  ?? 'all';             // all | GAS | ABM | HUMSS | TVL
-$quarterFilter    = $_GET['quarter'] ?? 'all';             // all | 1..4
+$quarterFilter    = $_GET['quarter'] ?? 'all';             // all | 1..3
 $schoolYearFilter = $_GET['school_year'] ?? 'all';         // all | school_year_id
 $searchQuery      = trim($_GET['q'] ?? '');
 
@@ -133,7 +133,7 @@ if (!in_array($statusFilter, ['all', 'active', 'inactive'], true)) {
     $statusFilter = 'all';
 }
 
-if ($quarterFilter !== 'all' && !in_array($quarterFilter, ['1', '2', '3', '4'], true)) {
+if ($quarterFilter !== 'all' && !in_array($quarterFilter, ['TRM 1', 'TRM 2', 'TRM 3'], true)) {
     $quarterFilter = 'all';
 }
 
@@ -162,7 +162,7 @@ if ($strandFilter !== 'all') {
 
 if ($quarterFilter !== 'all') {
     $where[] = 'co.quarter = ?';
-    $params[] = (int) $quarterFilter;
+    $params[] = $quarterFilter;
 }
 
 if ($schoolYearFilter !== 'all') {
@@ -549,9 +549,9 @@ $subjectsList = $pdo->query("
                 </select>
 
                 <select class="select-filter" name="quarter" onchange="this.form.submit()">
-                    <option value="all" <?= $quarterFilter === 'all' ? 'selected' : '' ?>>All Quarters</option>
-                    <?php foreach ([1, 2, 3, 4] as $q): ?>
-                        <option value="<?= $q ?>" <?= $quarterFilter == $q ? 'selected' : '' ?>>Quarter <?= $q ?></option>
+                    <option value="all" <?= $quarterFilter === 'all' ? 'selected' : '' ?>>All Terms</option>
+                    <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $q): ?>
+                        <option value="<?= $q ?>" <?= $quarterFilter === $q ? 'selected' : '' ?>><?= $q ?></option>
                     <?php endforeach; ?>
                 </select>
 
@@ -593,7 +593,7 @@ $subjectsList = $pdo->query("
                     <th>Course / Subject</th>
                     <th>Section</th>
                     <th>Grade Level/Strand</th>
-                    <th>Quarter</th>
+                    <th>Term</th>
                     <th>School Year</th>
                     <th>Schedule</th>
                     <th>Teacher Assigned</th>
@@ -662,7 +662,7 @@ $subjectsList = $pdo->query("
                                    'subject_id'    => (int) $course['subject_id'],
                                    'section_id'    => (int) $course['section_id'],
                                    'teacher_id'    => $course['teacher_id'] ? (int) $course['teacher_id'] : '',
-                                   'quarter'       => (int) $course['quarter'],
+                                   'quarter'       => $course['quarter'],
                                    'school_year_id' => (int) $course['school_year_id'],
                                    'schedule_days' => $course['schedule_days'] ?? '',
                                    'start_time'    => $course['start_time'] ? date('g:i A', strtotime($course['start_time'])) : '',
@@ -928,11 +928,11 @@ $subjectsList = $pdo->query("
 
                     <div class="form-row-split">
                         <div class="form-row">
-                            <label for="m_quarter">Quarter</label>
+                            <label for="m_quarter">Term</label>
                             <select id="m_quarter" name="quarter" required>
                                 <option value="">Select</option>
-                                <?php foreach ([1, 2, 3, 4] as $q): ?>
-                                    <option value="<?= $q ?>">Quarter <?= $q ?></option>
+                                <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $q): ?>
+                                    <option value="<?= $q ?>"><?= $q ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -1037,11 +1037,11 @@ $subjectsList = $pdo->query("
 
                     <div class="form-row-split">
                         <div class="form-row">
-                            <label for="e_quarter">Quarter</label>
+                            <label for="e_quarter">Term</label>
                             <select id="e_quarter" name="quarter" required>
                                 <option value="">Select</option>
-                                <?php foreach ([1, 2, 3, 4] as $q): ?>
-                                    <option value="<?= $q ?>">Quarter <?= $q ?></option>
+                                <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $q): ?>
+                                    <option value="<?= $q ?>"><?= $q ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

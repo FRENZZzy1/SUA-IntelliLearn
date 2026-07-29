@@ -3,13 +3,13 @@
  * Backend endpoint for the "Section" dropdown in the Enroll Student
  * modal on enrollment.php. Returns the sections that have at least one
  * open (active, seats-available) class offering for the given
- * grade level + strand + quarter, so the admin picks a section up
+ * grade level + strand + term, so the admin picks a section up
  * front and then the specific subjects offered in it. Called via
  * fetch() — always returns JSON, never renders a page.
  *
  * Unlike subject-first lookups, this is intentionally subject-agnostic:
  * a section can host several class offerings (subjects) for the same
- * quarter, so the subject list is resolved afterwards via
+ * term, so the subject list is resolved afterwards via
  * get_section_offerings.php once a section is chosen.
  */
 
@@ -20,7 +20,7 @@ requireAdmin();
 header('Content-Type: application/json');
 
 $gradeLevel = $_GET['grade_level'] ?? '';
-$quarter    = $_GET['quarter'] ?? '';
+$term       = $_GET['term'] ?? '';
 $strand     = trim($_GET['strand'] ?? '');
 
 if (!in_array((string) $gradeLevel, ['7', '8', '9', '10', '11', '12'], true)) {
@@ -28,8 +28,8 @@ if (!in_array((string) $gradeLevel, ['7', '8', '9', '10', '11', '12'], true)) {
     exit();
 }
 
-if (!in_array((string) $quarter, ['1', '2', '3', '4'], true)) {
-    echo json_encode(['success' => false, 'errors' => ['Quarter is required.']]);
+if (!in_array($term, ['TRM 1', 'TRM 2', 'TRM 3'], true)) {
+    echo json_encode(['success' => false, 'errors' => ['Term is required.']]);
     exit();
 }
 
@@ -39,7 +39,6 @@ if ($strand !== '' && !in_array($strand, ['STEM', 'ABM', 'HUMSS', 'TVL'], true))
 }
 
 $gradeLevel = (int) $gradeLevel;
-$quarter    = (int) $quarter;
 
 $sql = "
     SELECT DISTINCT sec.section_id, sec.section_name, sec.strand, sy.label AS school_year_label
@@ -51,7 +50,7 @@ $sql = "
           SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active'
       )
 ";
-$params = [$gradeLevel, $quarter];
+$params = [$gradeLevel, $term];
 
 if ($strand !== '') {
     $sql .= " AND sec.strand = ?";

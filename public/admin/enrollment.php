@@ -18,12 +18,12 @@ if (!in_array($tab, ['pending', 'approved', 'denied', 'all'], true)) {
 $gradeFilter  = $_GET['grade']  ?? 'all';                 // all | 7..12
 $courseFilter = $_GET['course'] ?? 'all';                 // all | subject_id
 $strandFilter = $_GET['strand'] ?? 'all';                 // all | STEM | ABM | HUMSS | TVL
-$quarterFilter    = $_GET['quarter'] ?? 'all';             // all | 1..4
+$termFilter   = $_GET['term'] ?? 'all';                    // all | TRM 1..3
 $schoolYearFilter = $_GET['school_year'] ?? 'all';         // all | school_year_id
 $searchQuery  = trim($_GET['q'] ?? '');
 
-if ($quarterFilter !== 'all' && !in_array($quarterFilter, ['1', '2', '3', '4'], true)) {
-    $quarterFilter = 'all';
+if ($termFilter !== 'all' && !in_array($termFilter, ['TRM 1', 'TRM 2', 'TRM 3'], true)) {
+    $termFilter = 'all';
 }
 if ($schoolYearFilter !== 'all' && !ctype_digit((string) $schoolYearFilter)) {
     $schoolYearFilter = 'all';
@@ -32,7 +32,7 @@ if ($schoolYearFilter !== 'all' && !ctype_digit((string) $schoolYearFilter)) {
 $hasActiveFilters = $gradeFilter !== 'all'
     || $courseFilter !== 'all'
     || $strandFilter !== 'all'
-    || $quarterFilter !== 'all'
+    || $termFilter !== 'all'
     || $schoolYearFilter !== 'all'
     || $searchQuery !== '';
 
@@ -60,9 +60,9 @@ if ($strandFilter !== 'all') {
     $params[] = $strandFilter;
 }
 
-if ($quarterFilter !== 'all') {
+if ($termFilter !== 'all') {
     $where[] = 'co2.quarter = ?';
-    $params[] = (int) $quarterFilter;
+    $params[] = $termFilter;
 }
 
 if ($schoolYearFilter !== 'all') {
@@ -94,7 +94,7 @@ $sql = "
         st.lastname,
         subj.subject_name,
         sec2.section_name AS matched_section_name,
-        co2.quarter AS matched_quarter,
+        co2.quarter AS matched_term,
         sy2.label AS matched_school_year,
         co2.schedule_days AS matched_schedule_days,
         co2.start_time AS matched_start_time,
@@ -131,9 +131,9 @@ if ($strandFilter !== 'all') {
     $countWhere[] = 'er.strand = ?';
     $countParams[] = $strandFilter;
 }
-if ($quarterFilter !== 'all') {
+if ($termFilter !== 'all') {
     $countWhere[] = 'co2.quarter = ?';
-    $countParams[] = (int) $quarterFilter;
+    $countParams[] = $termFilter;
 }
 if ($schoolYearFilter !== 'all') {
     $countWhere[] = 'sec2.school_year_id = ?';
@@ -289,13 +289,13 @@ $panelIcons = [
     <div class="toolbar" style="flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap;">
         <div class="filter-bar">
             <a class="filter-pill <?= $tab === 'pending' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['tab' => 'pending', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Pending (<?= $tabCounts['pending'] ?>)</a>
+               href="?<?= http_build_query(array_filter(['tab' => 'pending', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'term' => $termFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Pending (<?= $tabCounts['pending'] ?>)</a>
             <a class="filter-pill <?= $tab === 'approved' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['tab' => 'approved', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Approved</a>
+               href="?<?= http_build_query(array_filter(['tab' => 'approved', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'term' => $termFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Approved</a>
             <a class="filter-pill <?= $tab === 'denied' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['tab' => 'denied', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Denied</a>
+               href="?<?= http_build_query(array_filter(['tab' => 'denied', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'term' => $termFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Denied</a>
             <a class="filter-pill <?= $tab === 'all' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['tab' => 'all', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">All Records</a>
+               href="?<?= http_build_query(array_filter(['tab' => 'all', 'grade' => $gradeFilter, 'course' => $courseFilter, 'strand' => $strandFilter, 'term' => $termFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">All Records</a>
 
             <form method="get" action="enrollment.php" style="display:contents">
                 <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
@@ -322,10 +322,10 @@ $panelIcons = [
                     <?php endforeach; ?>
                 </select>
 
-                <select class="select-filter" name="quarter" onchange="this.form.submit()">
-                    <option value="all" <?= $quarterFilter === 'all' ? 'selected' : '' ?>>All Quarters</option>
-                    <?php foreach ([1, 2, 3, 4] as $q): ?>
-                        <option value="<?= $q ?>" <?= $quarterFilter == $q ? 'selected' : '' ?>>Quarter <?= $q ?></option>
+                <select class="select-filter" name="term" onchange="this.form.submit()">
+                    <option value="all" <?= $termFilter === 'all' ? 'selected' : '' ?>>All Terms</option>
+                    <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $t): ?>
+                        <option value="<?= $t ?>" <?= $termFilter === $t ? 'selected' : '' ?>><?= $t ?></option>
                     <?php endforeach; ?>
                 </select>
 
@@ -367,7 +367,7 @@ $panelIcons = [
                     <th>Course Requested</th>
                     <th>Section</th>
                     <th>Grade Level/Strand</th>
-                    <th>Quarter</th>
+                    <th>Term</th>
                     <th>School Year</th>
                     <th>Schedule</th>
                     <th>Date Submitted</th>
@@ -405,7 +405,7 @@ $panelIcons = [
                     </td>
                     <td><?= $r['matched_section_name'] ? htmlspecialchars($r['matched_section_name']) : '<span class="action-note">&mdash;</span>' ?></td>
                     <td>Grade <?= (int) $r['grade_level'] ?><?= $r['strand'] ? ' &middot; ' . htmlspecialchars($r['strand']) : '' ?></td>
-                    <td><?= $r['matched_quarter'] ? (int) $r['matched_quarter'] : '<span class="action-note">&mdash;</span>' ?></td>
+                    <td><?= $r['matched_term'] ? htmlspecialchars($r['matched_term']) : '<span class="action-note">&mdash;</span>' ?></td>
                     <td><?= $r['matched_school_year'] ? htmlspecialchars($r['matched_school_year']) : '<span class="action-note">&mdash;</span>' ?></td>
                     <?php $scheduleDisplay = formatSchedule($r['matched_schedule_days'], $r['matched_start_time'], $r['matched_end_time']); ?>
                     <td><?= $scheduleDisplay ? $scheduleDisplay : '<span class="action-note">&mdash;</span>' ?></td>
@@ -486,11 +486,11 @@ $panelIcons = [
                         </div>
 
                         <div class="form-row">
-                            <label for="es_quarter">Quarter</label>
-                            <select id="es_quarter" name="quarter" required>
+                            <label for="es_term">Term</label>
+                            <select id="es_term" name="term" required>
                                 <option value="">Select</option>
-                                <?php foreach ([1, 2, 3, 4] as $q): ?>
-                                    <option value="<?= $q ?>">Quarter <?= $q ?></option>
+                                <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $t): ?>
+                                    <option value="<?= $t ?>"><?= $t ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>
@@ -499,7 +499,7 @@ $panelIcons = [
                     <div class="form-row">
                         <label for="es_section_id">Section</label>
                         <select id="es_section_id" name="section_id" required disabled>
-                            <option value="">Select grade level, strand, and quarter first</option>
+                            <option value="">Select grade level, strand, and term first</option>
                         </select>
                         <span class="field-note" id="es_section_note">Pick a section to see the subjects offered in it.</span>
                     </div>
@@ -514,7 +514,7 @@ $panelIcons = [
                             </div>
                         </div>
                         <div class="subject-checkbox-list" id="es_subject_list">
-                            <div class="subject-checkbox-empty">Select grade level, strand, quarter, and section first</div>
+                            <div class="subject-checkbox-empty">Select grade level, strand, term, and section first</div>
                         </div>
                         <span class="field-note" id="es_subject_note">Check every subject to request for this student in this section. Creates one pending request per subject checked.</span>
                     </div>
@@ -566,8 +566,8 @@ $panelIcons = [
         studentSearchInput.value = '';
         studentHiddenInput.value = '';
         closeStudentDropdown();
-        resetSectionSelect('Select grade level, strand, and quarter first');
-        resetSubjectList('Select grade level, strand, quarter, and section first');
+        resetSectionSelect('Select grade level, strand, and term first');
+        resetSubjectList('Select grade level, strand, term, and section first');
     }
 
     // ---- Searchable student picker ----
@@ -617,10 +617,10 @@ $panelIcons = [
         if (!studentPicker.contains(e.target)) closeStudentDropdown();
     });
 
-    // ---- Section dropdown, driven by grade level + strand + quarter ----
+    // ---- Section dropdown, driven by grade level + strand + term ----
     const gradeLevelSelect = document.getElementById('es_grade_level');
     const strandSelect     = document.getElementById('es_strand');
-    const quarterSelect    = document.getElementById('es_quarter');
+    const termSelect       = document.getElementById('es_term');
     const sectionSelect    = document.getElementById('es_section_id');
     const sectionNote      = document.getElementById('es_section_note');
     const subjectList      = document.getElementById('es_subject_list');
@@ -643,18 +643,18 @@ $panelIcons = [
     function refreshSectionOptions() {
         const gradeLevel = gradeLevelSelect.value;
         const strand     = strandSelect.value;
-        const quarter    = quarterSelect.value;
+        const term       = termSelect.value;
 
-        resetSubjectList('Select grade level, strand, quarter, and section first');
+        resetSubjectList('Select grade level, strand, term, and section first');
 
-        if (!gradeLevel || !quarter) {
-            resetSectionSelect('Select grade level, strand, and quarter first');
+        if (!gradeLevel || !term) {
+            resetSectionSelect('Select grade level, strand, and term first');
             return;
         }
 
         resetSectionSelect('Loading sections...');
 
-        const params = new URLSearchParams({ grade_level: gradeLevel, quarter: quarter, strand: strand });
+        const params = new URLSearchParams({ grade_level: gradeLevel, term: term, strand: strand });
 
         fetch('get_offering_sections.php?' + params.toString(), {
             headers: { 'Accept': 'application/json' }
@@ -667,7 +667,7 @@ $panelIcons = [
                 return;
             }
             if (data.options.length === 0) {
-                sectionSelect.innerHTML = '<option value="">No open sections for this grade/strand/quarter</option>';
+                sectionSelect.innerHTML = '<option value="">No open sections for this grade/strand/term</option>';
                 sectionSelect.disabled = true;
                 sectionNote.textContent = 'Create a class offering for this combination in Courses & Subjects first.';
                 return;
@@ -687,18 +687,18 @@ $panelIcons = [
     function refreshSubjectOptions() {
         const gradeLevel = gradeLevelSelect.value;
         const strand     = strandSelect.value;
-        const quarter    = quarterSelect.value;
+        const term       = termSelect.value;
         const sectionId  = sectionSelect.value;
 
-        if (!gradeLevel || !quarter || !sectionId) {
-            resetSubjectList('Select grade level, strand, quarter, and section first');
+        if (!gradeLevel || !term || !sectionId) {
+            resetSubjectList('Select grade level, strand, term, and section first');
             return;
         }
 
         resetSubjectList('Loading subjects...');
 
         const params = new URLSearchParams({
-            section_id: sectionId, grade_level: gradeLevel, quarter: quarter, strand: strand
+            section_id: sectionId, grade_level: gradeLevel, term: term, strand: strand
         });
 
         fetch('get_section_offerings.php?' + params.toString(), {
@@ -711,13 +711,13 @@ $panelIcons = [
                 return;
             }
             if (data.options.length === 0) {
-                resetSubjectList('No class offerings exist for this section and quarter yet.');
+                resetSubjectList('No class offerings exist for this section and term yet.');
                 return;
             }
             subjectList.innerHTML = data.options.map(o => `
                 <label class="subject-checkbox-item${o.full ? ' is-full' : ''}">
                     <input type="checkbox" name="subject_offering" value="${o.offering_id}"
-                           data-subject-id="${o.subject_id}" ${o.full ? 'disabled' : ''}>
+                           data-subject-id="${o.subject_id}" ${o.full ? 'disabled' : 'checked'}>
                     <span>${o.subject_name}</span>
                     <small>${o.full ? 'Full' : o.seats_left + ' seat' + (o.seats_left === 1 ? '' : 's') + ' left'}</small>
                 </label>
@@ -729,7 +729,7 @@ $panelIcons = [
         });
     }
 
-    [gradeLevelSelect, strandSelect, quarterSelect].forEach(el => el.addEventListener('change', refreshSectionOptions));
+    [gradeLevelSelect, strandSelect, termSelect].forEach(el => el.addEventListener('change', refreshSectionOptions));
     sectionSelect.addEventListener('change', refreshSubjectOptions);
 
     // ---- Check all / Uncheck all for the subject checkbox list ----
@@ -951,7 +951,7 @@ $panelIcons = [
 
     // ---- Export CSV (client-side, from the currently visible table) ----
     function exportCSV() {
-        const rows = [['Student Name', 'Course Requested', 'Section', 'Grade Level', 'Quarter', 'School Year', 'Schedule', 'Date Submitted', 'Status']];
+        const rows = [['Student Name', 'Course Requested', 'Section', 'Grade Level', 'Term', 'School Year', 'Schedule', 'Date Submitted', 'Status']];
         document.querySelectorAll('#enrollmentTableBody tr[data-request-id]').forEach(tr => {
             const cells = tr.querySelectorAll('td');
             rows.push([
