@@ -327,13 +327,16 @@ include 'assests/api/add_user_modal.php';
                     </div>
                 </div>
                 <p class="user-excerpt">
+
+                    <?php if (!empty($user['student_lrn'])): ?>
+                    <i class="fas fa-id-card"></i> LRN: <?= clean($user['student_lrn']) ?>
+                    <?php endif; ?>
+
                     <i class="fas fa-envelope"></i> <?= clean($user['email']) ?: 'No email' ?>
                     <?php if ($user['department']): ?>
                     &nbsp;&bull;&nbsp; <i class="fas fa-building"></i> <?= clean($user['department']) ?>
                     <?php endif; ?>
-                    <?php if (!empty($user['student_lrn'])): ?>
-                    &nbsp;&bull;&nbsp; <i class="fas fa-id-card"></i> LRN: <?= clean($user['student_lrn']) ?>
-                    <?php endif; ?>
+                    
                 </p>
                 <div class="user-meta">
                     <span><i class="fas fa-clock"></i> <?= timeAgo($user['updated_at']) ?></span>

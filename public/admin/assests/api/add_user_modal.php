@@ -88,7 +88,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                     <div class="aum-row">
                         <div class="aum-group">
                             <label>Email</label>
-                            <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="email" name="email" id="aumStudentEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph" required></div>
+                            <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="email" name="email" id="aumStudentEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph" data-student-required></div>
                         </div>
                         <div class="aum-group">
                             <label>Birthdate <span class="aum-req">*</span></label>
@@ -154,7 +154,14 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                     <div class="aum-row" id="aumDepartmentRow" style="display:none;">
                         <div class="aum-group">
                             <label>Department / Grade Level</label>
-                            <div class="aum-input-wrap"><i class="fas fa-building aum-input-icon"></i><input type="text" name="department" class="aum-control" placeholder="e.g. Grade 7 or Mathematics Dept"></div>
+                            <div class="aum-input-wrap"><i class="fas fa-building aum-input-icon"></i>
+                                <select name="department" class="aum-control">
+                                    <option value="">-- Select --</option>
+                                    <option value="Senior High">Senior High</option>
+                                    <option value="High School">High School</option>
+                                    <option value="Highschool/Senior High">Highschool/Senior High</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     <div class="aum-row" id="aumTeacherOnlyFields" style="display:none;">
