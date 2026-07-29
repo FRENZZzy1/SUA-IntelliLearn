@@ -204,3 +204,183 @@ function export_xlsx_modern(array $opts): void
     echo "\xEF\xBB\xBF";
     echo $doc;
 }
+
+/**
+ * export_xlsx_schedule_grid()
+ * ------------------------------------------------------------------
+ * Builds + streams a weekly TIME x DAY timetable grid (like a printed
+ * class schedule), instead of the flat list-style table that
+ * export_xlsx_modern() produces. Same zero-dependency HTML-table-as-.xls
+ * trick, styled to match a dark-green/white timetable look.
+ *
+ * @param array $opts {
+ *   string   filename       Download filename, e.g. "section_schedule.xls"
+ *   string   sheet_name     Sheet tab name shown in Excel
+ *   string   band_title     Big title band text, e.g. "GRADE 12: HUMSS A"
+ *   string[] subtitle_lines Lines shown under the title band
+ *   string[] days           Column headers in order, e.g. ['Monday',...,'Friday']
+ *   array    rows           [
+ *       [
+ *           'time_label' => '7:00 AM - 7:50 AM',
+ *           'type'       => 'class' | 'recess',     // 'recess' spans+centers across all day columns
+ *           'label'      => 'RECESS',                // only used when type === 'recess'
+ *           'cells'      => [ dayName => ['subject' => string, 'teacher' => string] | null, ... ],
+ *       ],
+ *       ...
+ *   ]
+ *   string|null footer_text  Optional line under the grid (e.g. adviser name)
+ * }
+ */
+function export_xlsx_schedule_grid(array $opts): void
+{
+    $filename      = $opts['filename']      ?? 'schedule.xls';
+    $sheetName     = $opts['sheet_name']     ?? 'Schedule';
+    $bandTitle     = $opts['band_title']     ?? 'Class Schedule';
+    $subtitleLines = $opts['subtitle_lines'] ?? [];
+    $days          = $opts['days']           ?? ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    $rows          = $opts['rows']           ?? [];
+    $footerText    = $opts['footer_text']    ?? null;
+
+    $colCount = count($days) + 1; // +1 for the Time column
+
+    $filename = preg_replace('/\.[a-z0-9]+$/i', '', $filename) . '.xls';
+
+    $darkGreen  = '#14532d';
+    $lightGreen = '#e8f5ee';
+    $white      = '#ffffff';
+    $recessBg   = '#fef3c7';
+    $recessFg   = '#b45309';
+    $subjectFg  = '#14532d';
+    $teacherFg  = '#14532d';
+
+    // Applied to every cell that can hold variable-length text so Excel wraps
+    // the content onto extra lines (and grows the row) instead of clipping it
+    // or letting it spill into the next column.
+    $wrap = 'white-space:normal; word-wrap:break-word; mso-wrap-text:wrap; vertical-align:middle;';
+
+    $body  = '<table border="0" cellspacing="0" cellpadding="0" '
+        . 'style="border-collapse:collapse; table-layout:fixed; font-family:Calibri,Arial,sans-serif; font-size:11pt;">';
+
+    // Column widths: Time column a bit narrower, day columns wide enough for
+    // a subject name + teacher name to sit comfortably on their own lines.
+    $body .= '<colgroup><col width="16">';
+    for ($i = 0; $i < count($days); $i++) {
+        $body .= '<col width="20">';
+    }
+    $body .= '</colgroup>';
+
+    // Title band
+    $body .= '<tr><td colspan="' . $colCount . '" '
+        . 'style="background:' . $darkGreen . '; color:' . $white . '; font-size:15pt; font-weight:bold; padding:8px 10px; ' . $wrap . '">'
+        . xlsx_html_escape($bandTitle) . '</td></tr>';
+
+    // Subtitle line(s)
+    foreach ($subtitleLines as $line) {
+        $body .= '<tr><td colspan="' . $colCount . '" '
+            . 'style="background:' . $lightGreen . '; color:#475569; font-style:italic; padding:4px 10px; ' . $wrap . '">'
+            . xlsx_html_escape($line) . '</td></tr>';
+    }
+
+    $body .= '<tr><td colspan="' . $colCount . '" height="6" style="font-size:1pt; line-height:1pt;">&nbsp;</td></tr>';
+
+    // Header row: TIME | day names
+    $body .= '<tr>';
+    $body .= '<td style="background:' . $darkGreen . '; color:' . $white . '; font-weight:bold; text-align:center; '
+        . 'padding:6px 8px; border:1px solid #e2e8f0; ' . $wrap . '">TIME</td>';
+    foreach ($days as $day) {
+        $body .= '<td style="background:' . $darkGreen . '; color:' . $white . '; font-weight:bold; text-align:center; '
+            . 'padding:6px 8px; border:1px solid #e2e8f0; ' . $wrap . '">' . xlsx_html_escape(strtoupper($day)) . '</td>';
+    }
+    $body .= '</tr>';
+
+    if (empty($rows)) {
+        $body .= '<tr><td colspan="' . $colCount . '" style="padding:10px; border:1px solid #e2e8f0; color:#64748b; ' . $wrap . '">'
+            . 'No scheduled classes found.</td></tr>';
+    }
+
+    foreach ($rows as $ri => $row) {
+        $isRecess = ($row['type'] ?? 'class') === 'recess';
+        $isEven   = ($ri % 2) === 0;
+        $rowBg    = $isEven ? $white : $lightGreen;
+
+        if ($isRecess) {
+            $body .= '<tr>';
+            $body .= '<td style="background:' . $darkGreen . '; color:' . $white . '; font-weight:bold; text-align:center; '
+                . 'padding:6px 8px; border:1px solid #e2e8f0; ' . $wrap . '">' . xlsx_html_escape($row['time_label'] ?? '') . '</td>';
+            $label = $row['label'] ?? 'RECESS';
+            $body .= '<td colspan="' . count($days) . '" style="background:' . $recessBg . '; color:' . $recessFg . '; '
+                . 'font-weight:bold; text-align:center; padding:6px 8px; border:1px solid #e2e8f0; ' . $wrap . '">'
+                . xlsx_html_escape($label) . '</td>';
+            $body .= '</tr>';
+            continue;
+        }
+
+        // Classic .xls can only apply ONE style (color/weight/italic) per cell —
+        // nested spans/divs inside a single cell all render as one color. So each
+        // time slot is TWO real rows (subject row, teacher row) sharing one
+        // rowspan'd Time cell — each line gets its own cell, so its own color.
+        $body .= '<tr>';
+        $body .= '<td rowspan="2" style="background:' . $darkGreen . '; color:' . $white . '; font-weight:bold; text-align:center; '
+            . 'padding:6px 8px; border:1px solid #e2e8f0; ' . $wrap . '">' . xlsx_html_escape($row['time_label'] ?? '') . '</td>';
+
+        foreach ($days as $day) {
+            $cell = $row['cells'][$day] ?? null;
+            if ($cell) {
+                $body .= '<td style="background:' . $rowBg . '; text-align:center; padding:5px 8px 2px; '
+                    . 'border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; border-top:1px solid #e2e8f0; border-bottom:none; '
+                    . 'font-weight:bold; color:' . $subjectFg . '; ' . $wrap . '">'
+                    . xlsx_html_escape($cell['subject'] ?? '') . '</td>';
+            } else {
+                // No class this day/slot — merge this blank cell across both sub-rows.
+                $body .= '<td rowspan="2" style="background:' . $rowBg . '; padding:6px 8px; border:1px solid #e2e8f0;">&nbsp;</td>';
+            }
+        }
+        $body .= '</tr>';
+
+        $body .= '<tr>';
+        foreach ($days as $day) {
+            $cell = $row['cells'][$day] ?? null;
+            if (!$cell) {
+                continue; // covered by the rowspan="2" blank cell emitted above
+            }
+            $body .= '<td style="background:' . $rowBg . '; text-align:center; padding:2px 8px 5px; '
+                . 'border-left:1px solid #e2e8f0; border-right:1px solid #e2e8f0; border-top:none; border-bottom:1px solid #e2e8f0; '
+                . 'font-size:9.5pt; color:' . $teacherFg . '; mso-number-format:\'\\@\'; ' . $wrap . '">'
+                . xlsx_html_escape($cell['teacher'] ?? '') . '</td>';
+        }
+        $body .= '</tr>';
+    }
+
+    if ($footerText !== null) {
+        $body .= '<tr><td colspan="' . $colCount . '" height="10" style="font-size:1pt; line-height:1pt;">&nbsp;</td></tr>';
+        $body .= '<tr><td colspan="' . $colCount . '" style="font-weight:bold; color:' . $darkGreen . '; '
+            . 'font-size:12pt; text-align:right; padding:6px 10px; ' . $wrap . '">' . xlsx_html_escape($footerText) . '</td></tr>';
+    }
+
+    $body .= '</table>';
+
+    $doc = '<html xmlns:o="urn:schemas-microsoft-com:office:office" '
+        . 'xmlns:x="urn:schemas-microsoft-com:office:excel" '
+        . 'xmlns="http://www.w3.org/TR/REC-html40">'
+        . '<head><meta charset="UTF-8">'
+        . '<!--[if gte mso 9]><xml>'
+        . '<x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet>'
+        . '<x:Name>' . xlsx_html_escape(substr($sheetName, 0, 31)) . '</x:Name>'
+        . '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>'
+        . '</x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>'
+        . '</xml><![endif]-->'
+        . '</head><body>'
+        . $body
+        . '</body></html>';
+
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: max-age=0');
+
+    echo "\xEF\xBB\xBF";
+    echo $doc;
+}
