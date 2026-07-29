@@ -102,7 +102,7 @@
 
         if (role === 'student') {
             document.getElementById('editLrn').value = card.dataset.lrn || '';
-            document.getElementById('editGender').value = card.dataset.gender || 'male';
+            document.getElementById('editGender').value = card.dataset.gender || 'Male';
             document.getElementById('editBirthdate').value = card.dataset.birthdate || '';
             document.getElementById('editAddress').value = card.dataset.address || '';
             document.getElementById('editGuardianName').value = card.dataset.guardian || '';
@@ -127,7 +127,7 @@
         const roleColors = { admin: '#8B5CF6', teacher: '#1F6F54', student: '#2F9C74' };
         const roleLabels = { admin: 'Admin', teacher: 'Teacher', student: 'Student' };
         const statusLabels = { active: 'Active', inactive: 'Pending', suspended: 'Suspended' };
-        const genderLabels = { male: 'Male', female: 'Female' };
+        const genderLabels = { Male: 'Male', Female: 'Female' };
 
         const avatarEl = card.querySelector('.user-avatar, .user-avatar-sm');
         const initials = avatarEl ? avatarEl.textContent.trim() : '?';

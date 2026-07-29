@@ -188,8 +188,8 @@ include 'assests/api/add_user_modal.php';
                         <div class="form-group">
                             <label>Gender</label>
                             <select name="gender" id="editGender" class="form-control">
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
                             </select>
                         </div>
                     </div>
@@ -292,8 +292,8 @@ include 'assests/api/add_user_modal.php';
         <?php if ($role_filter === 'all' || $role_filter === 'student'): ?>
         <select name="gender" class="select-filter" onchange="this.form.submit()">
             <option value="all" <?= $gender_filter === 'all' ? 'selected' : '' ?>>All Genders</option>
-            <option value="male" <?= $gender_filter === 'male' ? 'selected' : '' ?>>Male</option>
-            <option value="female" <?= $gender_filter === 'female' ? 'selected' : '' ?>>Female</option>
+            <option value="Male" <?= $gender_filter === 'Male' ? 'selected' : '' ?>>Male</option>
+            <option value="Female" <?= $gender_filter === 'Female' ? 'selected' : '' ?>>Female</option>
         </select>
         <?php endif; ?>
         <select name="sort" class="select-filter" onchange="this.form.submit()">
@@ -366,7 +366,7 @@ include 'assests/api/add_user_modal.php';
                     // Build a role-appropriate "Details" cell: LRN for students,
                     // department for teachers, position for admins.
                     if ($user['role'] === 'student') {
-                        $gender_labels = ['male' => 'Male', 'female' => 'Female'];
+                        $gender_labels = ['Male' => 'Male', 'Female' => 'Female'];
                         $details_html = !empty($user['student_lrn'])
                             ? '<span class="chip"><i class="fas fa-id-card"></i> ' . clean($user['student_lrn']) . '</span>'
                             : '<span class="t-muted">No LRN</span>';

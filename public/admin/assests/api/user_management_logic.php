@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($firstname)) $errors[] = "First name is required.";
             if (empty($lastname)) $errors[] = "Last name is required.";
             if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
-            if (!in_array($gender, ['male', 'female'])) $errors[] = "Please select a valid gender.";
+            if (!in_array($gender, ['Male', 'Female'])) $errors[] = "Please select a valid gender.";
             if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email address is invalid.";
             $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
             if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
@@ -274,7 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($firstname)) $errors[] = "First name is required.";
             if (empty($lastname)) $errors[] = "Last name is required.";
             if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
-            if (!in_array($gender, ['male', 'female'])) $errors[] = "Please select a valid gender.";
+            if (!in_array($gender, ['Male', 'Female'])) $errors[] = "Please select a valid gender.";
             $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
             if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
 
@@ -484,7 +484,7 @@ if ($grade_level_filter !== 'all' && $grade_level_filter !== '') {
 
 // Student gender filter (s.gender is only populated for students, so this
 // naturally has no effect on teachers/admins).
-if ($gender_filter !== 'all' && in_array($gender_filter, ['male', 'female'])) {
+if ($gender_filter !== 'all' && in_array($gender_filter, ['Male', 'Female'])) {
     $where_clauses[] = "s.gender = ?";
     $params[] = $gender_filter;
 }
@@ -619,7 +619,7 @@ function getStatusClass(string $status): string {
 function getStatusLabel(string $status): string {
     return match($status) {
         'active' => 'Active',
-        'inactive' => 'Pending',
+        'inactive' => 'inactive',
         'suspended' => 'Suspended',
         default => 'Unknown',
     };
