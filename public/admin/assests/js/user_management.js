@@ -68,7 +68,7 @@
 
     // ---- Edit User ----
     function editUser(userId) {
-        const card = document.querySelector(`.user-card[data-user-id="${userId}"]`);
+        const card = document.querySelector(`[data-user-id="${userId}"]`);
         if (!card) return;
 
         const role = card.dataset.role;
@@ -120,14 +120,15 @@
 
     // ---- View User ----
     function viewUser(userId) {
-        const card = document.querySelector(`.user-card[data-user-id="${userId}"]`);
+        const card = document.querySelector(`[data-user-id="${userId}"]`);
         if (!card) return;
 
         const roleColors = { admin: '#8B5CF6', teacher: '#1F6F54', student: '#2F9C74' };
         const roleLabels = { admin: 'Admin', teacher: 'Teacher', student: 'Student' };
         const statusLabels = { active: 'Active', inactive: 'Pending', suspended: 'Suspended' };
 
-        const initials = card.querySelector('.user-avatar').textContent.trim();
+        const avatarEl = card.querySelector('.user-avatar, .user-avatar-sm');
+        const initials = avatarEl ? avatarEl.textContent.trim() : '?';
         const color = roleColors[card.dataset.role] || '#6B7280';
 
         let extraRows = '';

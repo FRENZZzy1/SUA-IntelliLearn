@@ -264,6 +264,22 @@ include 'assests/api/add_user_modal.php';
             <option value="inactive" <?= $status_filter === 'inactive' ? 'selected' : '' ?>>Inactive</option>
             <option value="suspended" <?= $status_filter === 'suspended' ? 'selected' : '' ?>>Suspended</option>
         </select>
+        <?php if ($role_filter === 'all' || $role_filter === 'teacher'): ?>
+        <select name="department" class="select-filter" onchange="this.form.submit()">
+            <option value="all" <?= $department_filter === 'all' ? 'selected' : '' ?>>All Departments</option>
+            <?php foreach ($departments as $dept): ?>
+            <option value="<?= clean($dept) ?>" <?= $department_filter === $dept ? 'selected' : '' ?>><?= clean($dept) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php endif; ?>
+        <?php if ($role_filter === 'all' || $role_filter === 'student'): ?>
+        <select name="grade_level" class="select-filter" onchange="this.form.submit()">
+            <option value="all" <?= $grade_level_filter === 'all' ? 'selected' : '' ?>>All Year Levels</option>
+            <?php foreach ($grade_levels as $gl): ?>
+            <option value="<?= clean($gl) ?>" <?= (string)$grade_level_filter === (string)$gl ? 'selected' : '' ?>>Grade <?= clean($gl) ?></option>
+            <?php endforeach; ?>
+        </select>
+        <?php endif; ?>
         <select name="sort" class="select-filter" onchange="this.form.submit()">
             <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
             <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
@@ -271,7 +287,7 @@ include 'assests/api/add_user_modal.php';
             <option value="name_desc" <?= $sort === 'name_desc' ? 'selected' : '' ?>>Name Z–A</option>
             <option value="last_active" <?= $sort === 'last_active' ? 'selected' : '' ?>>Last Active</option>
         </select>
-        <?php if (!empty($search) || $role_filter !== 'all' || $status_filter !== 'all'): ?>
+        <?php if (!empty($search) || $role_filter !== 'all' || $status_filter !== 'all' || $department_filter !== 'all' || $grade_level_filter !== 'all'): ?>
         <a href="?" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
             <i class="fas fa-times"></i> Clear Filters
         </a>
@@ -285,83 +301,115 @@ include 'assests/api/add_user_modal.php';
     </div>
 
     <!-- Users List -->
-    <div class="users-list">
-        <?php if (empty($users)): ?>
-        <div class="empty-state">
-            <i class="fas fa-users-slash"></i>
-            <h3>No users found</h3>
-            <p>Try adjusting your search or filter criteria.</p>
-        </div>
-        <?php else: ?>
-        <?php foreach ($users as $user): 
-            $display_name = getDisplayName($user);
-            $role_color = getRoleColor($user['role']);
-            $status_class = getStatusClass($user['status']);
-            $status_label = getStatusLabel($user['status']);
-            $role_label = getRoleLabel($user['role']);
-            $is_pending = $user['status'] === 'inactive';
-        ?>
-        <div class="user-card <?= $is_pending ? 'pending' : '' ?>" data-user-id="<?= $user['id'] ?>" 
-             data-fullname="<?= clean($display_name) ?>" data-email="<?= clean($user['email']) ?>"
-             data-firstname="<?= clean($user['firstname']) ?>" data-lastname="<?= clean($user['lastname']) ?>"
-             data-role="<?= $user['role'] ?>" data-status="<?= $user['status'] ?>"
-             data-department="<?= clean($user['department']) ?>" data-notes="<?= clean($user['notes']) ?>"
-             data-employment-status="<?= clean($user['employment_status'] ?? '') ?>"
-             data-position="<?= clean($user['admin_position'] ?? '') ?>" data-access-level="<?= clean($user['admin_access_level'] ?? '') ?>"
-             data-username="<?= clean($user['username']) ?>" data-created="<?= $user['created_at'] ?>"
-             data-lrn="<?= clean($user['student_lrn'] ?? '') ?>" data-middlename="<?= clean($user['middlename'] ?? '') ?>"
-             data-birthdate="<?= clean($user['birthdate'] ?? '') ?>" data-address="<?= clean($user['address'] ?? '') ?>"
-             data-guardian="<?= clean($user['guardian_name'] ?? '') ?>" data-guardian-contact="<?= clean($user['guardian_contact'] ?? '') ?>">
-            <div class="role-strip <?= $user['role'] ?>"></div>
-            <div class="user-body">
-                <div class="user-top-row">
-                    <div class="user-title-line">
-                        <div class="user-avatar" style="background: <?= $role_color ?>;">
-                            <?= um_initials($display_name) ?>
-                        </div>
-                        <div class="user-title-block">
-                            <h3><?= clean($display_name) ?></h3>
-                            <span class="badge <?= $user['role'] ?>"><?= $role_label ?></span>
-                            <span class="badge <?= $status_class ?>"><?= $status_label ?></span>
-                        </div>
-                    </div>
-                </div>
-                <p class="user-excerpt">
-
-                    <?php if (!empty($user['student_lrn'])): ?>
-                    <i class="fas fa-id-card"></i> LRN: <?= clean($user['student_lrn']) ?>
-                    <?php endif; ?>
-
-                    <i class="fas fa-envelope"></i> <?= clean($user['email']) ?: 'No email' ?>
-                    <?php if ($user['department']): ?>
-                    &nbsp;&bull;&nbsp; <i class="fas fa-building"></i> <?= clean($user['department']) ?>
-                    <?php endif; ?>
-                    
-                </p>
-                <div class="user-meta">
-                    <span><i class="fas fa-clock"></i> <?= timeAgo($user['updated_at']) ?></span>
-                    <span><i class="fas fa-user"></i> @<?= clean($user['username']) ?></span>
-                    <span><i class="fas fa-id-badge"></i> ID: SUA-<?= str_pad($user['id'], 5, '0', STR_PAD_LEFT) ?></span>
-                </div>
-            </div>
-            <div class="card-actions">
-                <div class="icon-btn" title="View Profile" onclick="viewUser(<?= $user['id'] ?>)"><i class="fas fa-eye"></i></div>
-                <div class="icon-btn" title="Edit" onclick="editUser(<?= $user['id'] ?>)"><i class="fas fa-pen"></i></div>
-                <?php if ($user['id'] != $_SESSION['user_id']): ?>
-                <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Are you sure you want to deactivate this user?');">
-                    <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                    <input type="hidden" name="action" value="delete">
-                    <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
-                    <button type="submit" class="icon-btn delete" title="Deactivate" style="border:none; background:none; cursor:pointer;">
-                        <i class="fas fa-ban"></i>
-                    </button>
-                </form>
-                <?php endif; ?>
-            </div>
-        </div>
-        <?php endforeach; ?>
-        <?php endif; ?>
+    <?php if (empty($users)): ?>
+    <div class="empty-state">
+        <i class="fas fa-users-slash"></i>
+        <h3>No users found</h3>
+        <p>Try adjusting your search or filter criteria.</p>
     </div>
+
+    <?php else: ?>
+    <!-- ============== USERS TABLE VIEW (all roles) ============== -->
+    <div class="users-table-wrap">
+        <table class="users-table">
+            <thead>
+                <tr>
+                    <th class="th-user">User</th>
+                    <th>Role</th>
+                    <th>Email</th>
+                    <th>Details</th>
+                    <th>Status</th>
+                    <th>Last Active</th>
+                    <th class="th-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($users as $user):
+                    $display_name = getDisplayName($user);
+                    $role_color = getRoleColor($user['role']);
+                    $status_class = getStatusClass($user['status']);
+                    $status_label = getStatusLabel($user['status']);
+                    $role_label = getRoleLabel($user['role']);
+                    $is_pending = $user['status'] === 'inactive';
+
+                    // Build a role-appropriate "Details" cell: LRN for students,
+                    // department for teachers, position for admins.
+                    if ($user['role'] === 'student') {
+                        $details_html = !empty($user['student_lrn'])
+                            ? '<span class="chip"><i class="fas fa-id-card"></i> ' . clean($user['student_lrn']) . '</span>'
+                            : '<span class="t-muted">No LRN</span>';
+                        $details_html .= !empty($user['grade_level'])
+                            ? ' <span class="chip"><i class="fas fa-layer-group"></i> Grade ' . clean($user['grade_level']) . '</span>'
+                            : '';
+                    } elseif ($user['role'] === 'teacher') {
+                        $details_html = $user['department']
+                            ? '<span class="chip"><i class="fas fa-building"></i> ' . clean($user['department']) . '</span>'
+                            : '<span class="t-muted">Not assigned</span>';
+                    } elseif ($user['role'] === 'admin') {
+                        $position_labels = ['principal' => 'Principal', 'registrar' => 'Registrar', 'staff' => 'Staff'];
+                        $position_text = $position_labels[$user['admin_position'] ?? ''] ?? 'Staff';
+                        $details_html = '<span class="chip"><i class="fas fa-user-tie"></i> ' . clean($position_text) . '</span>';
+                    } else {
+                        $details_html = '<span class="t-muted">—</span>';
+                    }
+                ?>
+                <tr class="<?= $is_pending ? 'pending' : '' ?>" data-user-id="<?= $user['id'] ?>"
+                    data-fullname="<?= clean($display_name) ?>" data-email="<?= clean($user['email']) ?>"
+                    data-firstname="<?= clean($user['firstname']) ?>" data-lastname="<?= clean($user['lastname']) ?>"
+                    data-role="<?= $user['role'] ?>" data-status="<?= $user['status'] ?>"
+                    data-department="<?= clean($user['department']) ?>" data-notes="<?= clean($user['notes']) ?>"
+                    data-employment-status="<?= clean($user['employment_status'] ?? '') ?>"
+                    data-position="<?= clean($user['admin_position'] ?? '') ?>" data-access-level="<?= clean($user['admin_access_level'] ?? '') ?>"
+                    data-username="<?= clean($user['username']) ?>" data-created="<?= $user['created_at'] ?>"
+                    data-lrn="<?= clean($user['student_lrn'] ?? '') ?>" data-middlename="<?= clean($user['middlename'] ?? '') ?>"
+                    data-birthdate="<?= clean($user['birthdate'] ?? '') ?>" data-address="<?= clean($user['address'] ?? '') ?>"
+                    data-guardian="<?= clean($user['guardian_name'] ?? '') ?>" data-guardian-contact="<?= clean($user['guardian_contact'] ?? '') ?>">
+                    <td data-label="User">
+                        <div class="t-name-cell">
+                            <div class="user-avatar-sm" style="background: <?= $role_color ?>;"><?= um_initials($display_name) ?></div>
+                            <div class="t-name-block">
+                                <span class="t-name"><?= clean($display_name) ?></span>
+                                <span class="t-id">SUA-<?= str_pad($user['id'], 5, '0', STR_PAD_LEFT) ?></span>
+                            </div>
+                        </div>
+                    </td>
+                    <td data-label="Role">
+                        <span class="badge <?= $user['role'] ?>"><?= $role_label ?></span>
+                    </td>
+                    <td data-label="Email">
+                        <span class="t-email"><?= clean($user['email']) ?: '—' ?></span>
+                    </td>
+                    <td data-label="Details">
+                        <?= $details_html ?>
+                    </td>
+                    <td data-label="Status">
+                        <span class="badge <?= $status_class ?>"><?= $status_label ?></span>
+                    </td>
+                    <td data-label="Last Active">
+                        <span class="t-muted"><i class="fas fa-clock"></i> <?= timeAgo($user['updated_at']) ?></span>
+                    </td>
+                    <td class="td-actions" data-label="Actions">
+                        <div class="t-actions">
+                            <div class="icon-btn" title="View Profile" onclick="viewUser(<?= $user['id'] ?>)"><i class="fas fa-eye"></i></div>
+                            <div class="icon-btn" title="Edit" onclick="editUser(<?= $user['id'] ?>)"><i class="fas fa-pen"></i></div>
+                            <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                            <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Are you sure you want to deactivate this user?');">
+                                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
+                                <button type="submit" class="icon-btn delete" title="Deactivate" style="border:none; background:none; cursor:pointer;">
+                                    <i class="fas fa-ban"></i>
+                                </button>
+                            </form>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    </div>
+    <?php endif; ?>
 
     <!-- Pagination -->
     <?php if ($total_pages > 1): ?>
@@ -385,4 +433,4 @@ include 'assests/api/add_user_modal.php';
 <script src="assests/js/user_management.js"></script>
    
 </body>
-</html>
+</html>`

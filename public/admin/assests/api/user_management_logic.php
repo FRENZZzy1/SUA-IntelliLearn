@@ -422,6 +422,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $search = trim($_GET['search'] ?? '');
 $role_filter = $_GET['role'] ?? 'all';
 $status_filter = $_GET['status'] ?? 'all';
+$department_filter = trim($_GET['department'] ?? 'all');
+$grade_level_filter = trim($_GET['grade_level'] ?? 'all');
 $sort = $_GET['sort'] ?? 'newest';
 $page = max(1, intval($_GET['page'] ?? 1));
 $per_page = 10;
@@ -448,6 +450,29 @@ if ($role_filter !== 'all' && in_array($role_filter, ['admin', 'teacher', 'stude
 if ($status_filter !== 'all' && in_array($status_filter, ['active', 'inactive', 'suspended'])) {
     $where_clauses[] = "u.status = ?";
     $params[] = $status_filter;
+}
+
+// Teacher department filter (t.department is only populated for teachers, so this
+// naturally has no effect on students/admins).
+if ($department_filter !== 'all' && $department_filter !== '') {
+    $where_clauses[] = "t.department = ?";
+    $params[] = $department_filter;
+}
+
+// Student year-level filter, derived from the enrollments table: we look up the
+// section of the student's most recent active enrollment and read its grade_level.
+// (s.student_id is NULL for non-students, so this naturally excludes teachers/admins.)
+if ($grade_level_filter !== 'all' && $grade_level_filter !== '') {
+    $where_clauses[] = "(
+        SELECT sec.grade_level
+        FROM enrollments e
+        JOIN classofferings co ON e.offering_id = co.offering_id
+        JOIN sections sec ON co.section_id = sec.section_id
+        WHERE e.student_id = s.student_id AND e.status = 'active'
+        ORDER BY e.enrolled_at DESC
+        LIMIT 1
+    ) = ?";
+    $params[] = $grade_level_filter;
 }
 
 $where_sql = implode(" AND ", $where_clauses);
@@ -494,7 +519,16 @@ $sql = "SELECT
     s.guardian_name,
     s.guardian_contact,
     a.access_level as admin_access_level,
-    a.position as admin_position
+    a.position as admin_position,
+    (
+        SELECT sec.grade_level
+        FROM enrollments e
+        JOIN classofferings co ON e.offering_id = co.offering_id
+        JOIN sections sec ON co.section_id = sec.section_id
+        WHERE e.student_id = s.student_id AND e.status = 'active'
+        ORDER BY e.enrolled_at DESC
+        LIMIT 1
+    ) as grade_level
 FROM Users u
 LEFT JOIN Teachers t ON u.id = t.user_id AND u.role = 'teacher'
 LEFT JOIN Students s ON u.id = s.user_id AND u.role = 'student'
@@ -517,6 +551,18 @@ $stats['students'] = $pdo->query("SELECT COUNT(*) FROM Users WHERE role = 'stude
 $stats['teachers'] = $pdo->query("SELECT COUNT(*) FROM Users WHERE role = 'teacher'")->fetchColumn();
 $stats['admins'] = $pdo->query("SELECT COUNT(*) FROM Users WHERE role = 'admin'")->fetchColumn();
 $stats['pending'] = $pdo->query("SELECT COUNT(*) FROM Users WHERE status = 'inactive'")->fetchColumn();
+
+// Options for the department (teachers) and year-level (students) filter dropdowns
+$departments = $pdo->query("
+    SELECT DISTINCT department FROM Teachers
+    WHERE department IS NOT NULL AND department != ''
+    ORDER BY department ASC
+")->fetchAll(PDO::FETCH_COLUMN);
+
+$grade_levels = $pdo->query("
+    SELECT DISTINCT grade_level FROM sections
+    ORDER BY grade_level ASC
+")->fetchAll(PDO::FETCH_COLUMN);
 
 // Helper function for initials
 function um_initials(string $name): string {

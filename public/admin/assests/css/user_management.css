@@ -909,6 +909,152 @@ textarea.form-control {
     font-size: 0.9rem;
 }
 
+/* =================================================================
+   USERS TABLE VIEW
+   Modern data-table layout used for all roles (students, teachers, admins)
+================================================================= */
+.users-table-wrap {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 6px 24px rgba(15, 31, 61, 0.06);
+    overflow: hidden;
+}
+
+.users-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.users-table thead th {
+    text-align: left;
+    padding: 16px 20px;
+    background: linear-gradient(180deg, #f8faf9 0%, #f0f4f1 100%);
+    color: var(--primary-dark);
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.users-table thead th.th-user {
+    padding-left: 20px;
+}
+
+.users-table thead th.th-actions {
+    text-align: right;
+}
+
+.users-table tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+
+.users-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.users-table tbody tr:hover {
+    background: var(--bg-page);
+}
+
+.users-table tbody tr.pending {
+    box-shadow: inset 4px 0 0 var(--warning);
+}
+
+.users-table td {
+    padding: 14px 20px;
+    vertical-align: middle;
+    color: var(--text-main);
+}
+
+.t-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar-sm {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-weight: 700;
+    font-size: 0.78rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.t-name-block {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+
+.t-name {
+    font-weight: 700;
+    color: var(--text-main);
+    font-size: 0.92rem;
+    white-space: nowrap;
+}
+
+.t-id {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.t-email {
+    color: var(--text-muted);
+    font-size: 0.86rem;
+}
+
+.t-muted {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.t-muted i {
+    color: var(--primary-light);
+    font-size: 0.78rem;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: rgba(26, 92, 58, 0.08);
+    color: var(--primary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.chip i {
+    font-size: 0.72rem;
+}
+
+.t-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.td-actions {
+    text-align: right;
+}
+
 /* ---------- Pagination ---------- */
 .pagination {
     display: flex;
@@ -972,6 +1118,83 @@ textarea.form-control {
     .modal-content {
         margin: 20px;
         max-height: calc(100vh - 40px);
+    }
+}
+
+@media (max-width: 760px) {
+    /* Collapse the teachers table into stacked cards on small screens */
+    .users-table-wrap {
+        border: none;
+        background: none;
+        box-shadow: none;
+        overflow: visible;
+    }
+
+    .users-table,
+    .users-table thead,
+    .users-table tbody,
+    .users-table tr,
+    .users-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .users-table thead {
+        display: none;
+    }
+
+    .users-table tbody tr {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        margin-bottom: 14px;
+        padding: 14px 16px;
+        box-shadow: 0 2px 8px rgba(15, 31, 61, 0.05);
+    }
+
+    .users-table tbody tr.pending {
+        border-left: 4px solid var(--warning);
+        box-shadow: none;
+    }
+
+    .users-table td {
+        padding: 8px 0;
+        border-bottom: 1px dashed var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .users-table td:last-child {
+        border-bottom: none;
+    }
+
+    .users-table td::before {
+        content: attr(data-label);
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: var(--text-muted);
+        flex-shrink: 0;
+    }
+
+    .users-table td.td-actions {
+        justify-content: flex-end;
+    }
+
+    .users-table td.td-actions::before {
+        display: none;
+    }
+
+    .t-name-cell {
+        flex: 1;
+    }
+
+    .t-actions {
+        justify-content: flex-end;
+        flex: 1;
     }
 }
 
