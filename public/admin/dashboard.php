@@ -61,6 +61,8 @@ $recentUsers     = get_recent_users($conn, 4);
 
         <!-- ================= HEADER MODULE ================= -->
         <?php include '../../includes/admin_header.php'; ?>
+        <?php include 'assests/api/add_class_modal.php'; ?>
+        
 
         <div class="content-wrapper">
 
@@ -193,9 +195,9 @@ $recentUsers     = get_recent_users($conn, 4);
                                     <i class="fas fa-user-plus qa-icon-green"></i>
                                     <span>Add User Account</span>
                                 </button>
-                                <button class="quick-action-btn" onclick="showToast('Create Course modal opened')">
+                                <button class="quick-action-btn" onclick="openAddCourseModal()">
                                     <i class="fas fa-plus-circle qa-icon-blue"></i>
-                                    <span>Create Course</span>
+                                    <span>Create Class</span>
                                 </button>
                                 <button class="quick-action-btn" onclick="showToast('Email Students modal opened')">
                                     <i class="fas fa-envelope qa-icon-orange"></i>
@@ -253,9 +255,7 @@ $recentUsers     = get_recent_users($conn, 4);
                     <div class="card-header">
                         <h2><i class="fas fa-users-cog"></i> User Management</h2>
                         <div class="card-actions">
-                            <button class="btn-sm btn-outline" onclick="showToast('Filtering users...')">
-                                <i class="fas fa-filter"></i> Filter
-                            </button>
+                        
                             <button class="btn-sm btn-primary" onclick="showToast('Add User modal opened')">
                                 <i class="fas fa-plus"></i> Add User
                             </button>
