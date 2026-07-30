@@ -13,7 +13,7 @@ $modalSchoolYears = $pdo->query("SELECT school_year_id, label, is_current FROM s
 <div class="modal-overlay" id="addCourseOverlay" onclick="if (event.target === this) closeAddCourseModal()">
     <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="addCourseTitle">
         <div class="modal-header">
-            <h2 id="addCourseTitle">Add New Course</h2>
+            <h2 id="addCourseTitle">Add New Class</h2>
             <button type="button" class="modal-close" onclick="closeAddCourseModal()" aria-label="Close">&times;</button>
         </div>
 
