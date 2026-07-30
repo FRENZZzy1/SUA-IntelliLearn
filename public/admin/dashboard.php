@@ -203,7 +203,7 @@ $recentUsers     = get_recent_users($conn, 4);
                                     <i class="fas fa-envelope qa-icon-orange"></i>
                                     <span>Email Students</span>
                                 </button>
-                                <button class="quick-action-btn" onclick="showToast('Post Announcement modal opened')">
+                                <button class="quick-action-btn" onclick="window.location.href='announcement.php'">
                                     <i class="fas fa-bullhorn qa-icon-purple"></i>
                                     <span>Post Announcement</span>
                                 </button>
