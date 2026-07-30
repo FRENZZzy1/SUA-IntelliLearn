@@ -142,43 +142,8 @@ $recentUsers     = get_recent_users($conn, 4);
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="announcement-list">
-                            <div class="announcement-item urgent">
-                                <div class="announcement-meta">
-                                    <span class="announcement-tag tag-urgent">Urgent</span>
-                                    <span class="announcement-date">June 20, 2026</span>
-                                </div>
-                                <div class="announcement-title">Quarter 3 Examination Schedule Released</div>
-                                <div class="announcement-desc">The Q3 exam schedule has been finalized. Examinations begin July 7-11, 2026. Please review the full schedule posted on the school bulletin board and prepare accordingly.</div>
-                                <div class="announcement-actions">
-                                    <a class="action-link" onclick="showToast('Editing announcement...')">Edit</a>
-                                    <a class="action-link danger" onclick="showToast('Announcement deleted')">Delete</a>
-                                </div>
-                            </div>
-                            <div class="announcement-item">
-                                <div class="announcement-meta">
-                                    <span class="announcement-tag tag-academic">Academic</span>
-                                    <span class="announcement-date">June 18, 2026</span>
-                                </div>
-                                <div class="announcement-title">System Maintenance — June 25, 10 PM</div>
-                                <div class="announcement-desc">Scheduled maintenance for data backup and system updates. Platform unavailable for approx. 2 hours.</div>
-                                <div class="announcement-actions">
-                                    <a class="action-link" onclick="showToast('Editing announcement...')">Edit</a>
-                                    <a class="action-link danger" onclick="showToast('Announcement deleted')">Delete</a>
-                                </div>
-                            </div>
-                            <div class="announcement-item event">
-                                <div class="announcement-meta">
-                                    <span class="announcement-tag tag-event">Event</span>
-                                    <span class="announcement-date">June 15, 2026</span>
-                                </div>
-                                <div class="announcement-title">No Classes: July 5-7 (Foundation Week)</div>
-                                <div class="announcement-desc">In observance of the Feast of St. Uriel, no classes on July 5-7. Classes resume on July 8.</div>
-                                <div class="announcement-actions">
-                                    <a class="action-link" onclick="showToast('Editing announcement...')">Edit</a>
-                                    <a class="action-link danger" onclick="showToast('Announcement deleted')">Delete</a>
-                                </div>
-                            </div>
+                        <div class="announcement-list" id="announcementList">
+                             <p style="text-align:center; color: var(--text-muted); padding: 20px 0;">Loading announcements...</p>
                         </div>
                     </div>
                 </div>

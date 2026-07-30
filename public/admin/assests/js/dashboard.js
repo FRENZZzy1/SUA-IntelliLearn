@@ -1,48 +1,48 @@
 function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('collapsed');
-        }
+    document.getElementById('sidebar').classList.toggle('collapsed');
+}
 
-        // Active Nav State
-        function setActive(el) {
-            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-            el.classList.add('active');
-        }
+// Active Nav State
+function setActive(el) {
+    document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+    el.classList.add('active');
+}
 
-        // Toast Notification
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            const msg = document.getElementById('toast-msg');
-            msg.textContent = message;
-            toast.style.transform = 'translateY(0)';
-            toast.style.opacity = '1';
-            setTimeout(() => {
-                toast.style.transform = 'translateY(100px)';
-                toast.style.opacity = '0';
-            }, 2500);
-        }
+// Toast Notification
+function showToast(message) {
+    const toast = document.getElementById('toast');
+    const msg = document.getElementById('toast-msg');
+    msg.textContent = message;
+    toast.style.transform = 'translateY(0)';
+    toast.style.opacity = '1';
+    setTimeout(() => {
+        toast.style.transform = 'translateY(100px)';
+        toast.style.opacity = '0';
+    }, 2500);
+}
 
-        // Animate progress bars on load
-        window.addEventListener('load', () => {
-            document.querySelectorAll('.progress-bar-fill').forEach(bar => {
-                const width = bar.style.width;
-                bar.style.width = '0';
-                setTimeout(() => {
-                    bar.style.width = width;
-                }, 300);
-            });
-        });
+// Animate progress bars on load
+window.addEventListener('load', () => {
+    document.querySelectorAll('.progress-bar-fill').forEach(bar => {
+        const width = bar.style.width;
+        bar.style.width = '0';
+        setTimeout(() => {
+            bar.style.width = width;
+        }, 300);
+    });
+});
 
-        // ================= SEARCH RESULT DETAIL MODAL =================
-        // Builds/injects the modal markup + styles once, then exposes
-        // window.showSearchDetailModal(type, data) to populate + open it.
-        (function () {
-            let modalEl = null;
+// ================= SEARCH RESULT DETAIL MODAL =================
+// Builds/injects the modal markup + styles once, then exposes
+// window.showSearchDetailModal(type, data) to populate + open it.
+(function () {
+    let modalEl = null;
 
-            function injectStyles() {
-                if (document.getElementById('searchDetailModalStyles')) return;
-                const style = document.createElement('style');
-                style.id = 'searchDetailModalStyles';
-                style.textContent = `
+    function injectStyles() {
+        if (document.getElementById('searchDetailModalStyles')) return;
+        const style = document.createElement('style');
+        style.id = 'searchDetailModalStyles';
+        style.textContent = `
                     .search-detail-overlay {
                         display: none;
                         position: fixed;
@@ -101,18 +101,18 @@ function toggleSidebar() {
                     .search-detail-label { color: var(--text-muted, #6b7280); }
                     .search-detail-value { font-weight: 500; text-align: right; }
                 `;
-                document.head.appendChild(style);
-            }
+        document.head.appendChild(style);
+    }
 
-            function injectMarkup() {
-                if (document.getElementById('searchDetailOverlay')) {
-                    modalEl = document.getElementById('searchDetailOverlay');
-                    return;
-                }
-                const overlay = document.createElement('div');
-                overlay.id = 'searchDetailOverlay';
-                overlay.className = 'search-detail-overlay';
-                overlay.innerHTML = `
+    function injectMarkup() {
+        if (document.getElementById('searchDetailOverlay')) {
+            modalEl = document.getElementById('searchDetailOverlay');
+            return;
+        }
+        const overlay = document.createElement('div');
+        overlay.id = 'searchDetailOverlay';
+        overlay.className = 'search-detail-overlay';
+        overlay.innerHTML = `
                     <div class="search-detail-card" role="dialog" aria-modal="true">
                         <div class="search-detail-header">
                             <div class="search-detail-icon" id="searchDetailIcon"></div>
@@ -124,165 +124,165 @@ function toggleSidebar() {
                         </div>
                         <div class="search-detail-body" id="searchDetailBody"></div>
                     </div>`;
-                document.body.appendChild(overlay);
-                modalEl = overlay;
+        document.body.appendChild(overlay);
+        modalEl = overlay;
 
-                overlay.addEventListener('click', (e) => {
-                    if (e.target === overlay) closeDetailModal();
-                });
-                overlay.querySelector('#searchDetailClose').addEventListener('click', closeDetailModal);
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape') closeDetailModal();
-                });
-            }
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) closeDetailModal();
+        });
+        overlay.querySelector('#searchDetailClose').addEventListener('click', closeDetailModal);
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeDetailModal();
+        });
+    }
 
-            function closeDetailModal() {
-                if (modalEl) modalEl.classList.remove('open');
-            }
+    function closeDetailModal() {
+        if (modalEl) modalEl.classList.remove('open');
+    }
 
-            function escapeHtml(str) {
-                return String(str ?? '').replace(/[&<>"']/g, (c) => ({
-                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-                }[c]));
-            }
+    function escapeHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    }
 
-            function initialsOf(name) {
-                const parts = String(name || '').trim().split(/\s+/).slice(0, 2);
-                return parts.map(p => p.charAt(0).toUpperCase()).join('') || '?';
-            }
+    function initialsOf(name) {
+        const parts = String(name || '').trim().split(/\s+/).slice(0, 2);
+        return parts.map(p => p.charAt(0).toUpperCase()).join('') || '?';
+    }
 
-            const ROLE_COLORS = { admin: '#8b5cf6', teacher: 'var(--info)', student: 'var(--success)' };
+    const ROLE_COLORS = { admin: '#8b5cf6', teacher: 'var(--info)', student: 'var(--success)' };
 
-            function buildRows(rows) {
-                return rows
-                    .filter(r => r.value !== null && r.value !== undefined && r.value !== '')
-                    .map(r => `
+    function buildRows(rows) {
+        return rows
+            .filter(r => r.value !== null && r.value !== undefined && r.value !== '')
+            .map(r => `
                         <div class="search-detail-row">
                             <span class="search-detail-label">${escapeHtml(r.label)}</span>
                             <span class="search-detail-value">${escapeHtml(r.value)}</span>
                         </div>`).join('');
-            }
+    }
 
-            function showDetailModal(type, data) {
-                injectStyles();
-                injectMarkup();
+    function showDetailModal(type, data) {
+        injectStyles();
+        injectMarkup();
 
-                const icon = document.getElementById('searchDetailIcon');
-                const title = document.getElementById('searchDetailTitle');
-                const subtitle = document.getElementById('searchDetailSubtitle');
-                const body = document.getElementById('searchDetailBody');
+        const icon = document.getElementById('searchDetailIcon');
+        const title = document.getElementById('searchDetailTitle');
+        const subtitle = document.getElementById('searchDetailSubtitle');
+        const body = document.getElementById('searchDetailBody');
 
-                if (type === 'user') {
-                    const color = ROLE_COLORS[data.role] || '#8b5cf6';
-                    icon.style.background = color;
-                    icon.innerHTML = escapeHtml(initialsOf(data.full_name));
-                    title.textContent = data.full_name || data.username || 'User';
-                    subtitle.textContent = `${data.role || ''}${data.status ? ' · ' + data.status : ''}`;
-                    body.innerHTML = buildRows([
-                        { label: 'Username', value: data.username },
-                        { label: 'Email', value: data.email },
-                        { label: 'Role', value: data.role },
-                        { label: 'Status', value: data.status },
-                        { label: 'User ID', value: data.id },
-                    ]);
-                } else if (type === 'course') {
-                    icon.style.background = 'var(--warning)';
-                    icon.innerHTML = '<i class="fas fa-book-open"></i>';
-                    title.textContent = `${data.subject_name || ''} — ${data.section_name || ''}`;
-                    subtitle.textContent = `Grade ${data.grade_level || ''}`;
-                    body.innerHTML = buildRows([
-                        { label: 'Teacher', value: data.teacher_name },
-                        { label: 'Section', value: data.section_name },
-                        { label: 'Grade level', value: data.grade_level },
-                        { label: 'Quarter', value: data.quarter },
-                        { label: 'Capacity', value: data.capacity },
-                        { label: 'Status', value: data.status },
-                        { label: 'Offering ID', value: data.offering_id },
-                    ]);
-                } else if (type === 'subject') {
-                    icon.style.background = 'var(--success)';
-                    icon.innerHTML = '<i class="fas fa-layer-group"></i>';
-                    title.textContent = data.subject_name || 'Subject';
-                    subtitle.textContent = '';
-                    body.innerHTML = buildRows([
-                        { label: 'Description', value: data.description },
-                        { label: 'Subject ID', value: data.subject_id },
-                    ]);
-                }
+        if (type === 'user') {
+            const color = ROLE_COLORS[data.role] || '#8b5cf6';
+            icon.style.background = color;
+            icon.innerHTML = escapeHtml(initialsOf(data.full_name));
+            title.textContent = data.full_name || data.username || 'User';
+            subtitle.textContent = `${data.role || ''}${data.status ? ' · ' + data.status : ''}`;
+            body.innerHTML = buildRows([
+                { label: 'Username', value: data.username },
+                { label: 'Email', value: data.email },
+                { label: 'Role', value: data.role },
+                { label: 'Status', value: data.status },
+                { label: 'User ID', value: data.id },
+            ]);
+        } else if (type === 'course') {
+            icon.style.background = 'var(--warning)';
+            icon.innerHTML = '<i class="fas fa-book-open"></i>';
+            title.textContent = `${data.subject_name || ''} — ${data.section_name || ''}`;
+            subtitle.textContent = `Grade ${data.grade_level || ''}`;
+            body.innerHTML = buildRows([
+                { label: 'Teacher', value: data.teacher_name },
+                { label: 'Section', value: data.section_name },
+                { label: 'Grade level', value: data.grade_level },
+                { label: 'Quarter', value: data.quarter },
+                { label: 'Capacity', value: data.capacity },
+                { label: 'Status', value: data.status },
+                { label: 'Offering ID', value: data.offering_id },
+            ]);
+        } else if (type === 'subject') {
+            icon.style.background = 'var(--success)';
+            icon.innerHTML = '<i class="fas fa-layer-group"></i>';
+            title.textContent = data.subject_name || 'Subject';
+            subtitle.textContent = '';
+            body.innerHTML = buildRows([
+                { label: 'Description', value: data.description },
+                { label: 'Subject ID', value: data.subject_id },
+            ]);
+        }
 
-                modalEl.classList.add('open');
-            }
+        modalEl.classList.add('open');
+    }
 
-            window.showSearchDetailModal = showDetailModal;
-            window.closeSearchDetailModal = closeDetailModal;
-        })();
+    window.showSearchDetailModal = showDetailModal;
+    window.closeSearchDetailModal = closeDetailModal;
+})();
 
-        // ================= GLOBAL SEARCH (users / courses / subjects) =================
-        (function () {
-            const input = document.getElementById('globalSearchInput');
-            const dropdown = document.getElementById('searchResultsDropdown');
-            if (!input || !dropdown) return;
+// ================= GLOBAL SEARCH (users / courses / subjects) =================
+(function () {
+    const input = document.getElementById('globalSearchInput');
+    const dropdown = document.getElementById('searchResultsDropdown');
+    if (!input || !dropdown) return;
 
-            // Cache of the last rendered results, keyed by "type-id",
-            // so a click can show full details without another request.
-            const resultsCache = new Map();
+    // Cache of the last rendered results, keyed by "type-id",
+    // so a click can show full details without another request.
+    const resultsCache = new Map();
 
-            // Path is relative to the *page* (dashboard.php), which already
-            // requires 'assests/api/dashboard_functions.php', so the search
-            // endpoint lives right next to it.
-            const SEARCH_ENDPOINT = 'assests/api/search.php';
-            const MIN_CHARS = 2;
-            const DEBOUNCE_MS = 300;
+    // Path is relative to the *page* (dashboard.php), which already
+    // requires 'assests/api/dashboard_functions.php', so the search
+    // endpoint lives right next to it.
+    const SEARCH_ENDPOINT = 'assests/api/search.php';
+    const MIN_CHARS = 2;
+    const DEBOUNCE_MS = 300;
 
-            let debounceTimer = null;
-            let activeController = null; // to cancel stale in-flight requests
-            let lastQuery = '';
+    let debounceTimer = null;
+    let activeController = null; // to cancel stale in-flight requests
+    let lastQuery = '';
 
-            function escapeHtml(str) {
-                return String(str ?? '').replace(/[&<>"']/g, (c) => ({
-                    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-                }[c]));
-            }
+    function escapeHtml(str) {
+        return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    }
 
-            function initialsOf(name) {
-                const parts = String(name || '').trim().split(/\s+/).slice(0, 2);
-                return parts.map(p => p.charAt(0).toUpperCase()).join('') || '?';
-            }
+    function initialsOf(name) {
+        const parts = String(name || '').trim().split(/\s+/).slice(0, 2);
+        return parts.map(p => p.charAt(0).toUpperCase()).join('') || '?';
+    }
 
-            const ROLE_COLORS = { admin: '#8b5cf6', teacher: 'var(--info)', student: 'var(--success)' };
+    const ROLE_COLORS = { admin: '#8b5cf6', teacher: 'var(--info)', student: 'var(--success)' };
 
-            function openDropdown() { dropdown.classList.add('open'); }
-            function closeDropdown() { dropdown.classList.remove('open'); }
+    function openDropdown() { dropdown.classList.add('open'); }
+    function closeDropdown() { dropdown.classList.remove('open'); }
 
-            function renderLoading() {
-                dropdown.innerHTML = '<div class="search-loading-state"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
-                openDropdown();
-            }
+    function renderLoading() {
+        dropdown.innerHTML = '<div class="search-loading-state"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+        openDropdown();
+    }
 
-            function renderEmpty() {
-                dropdown.innerHTML = '<div class="search-empty-state">No matching users, courses, or subjects found.</div>';
-                openDropdown();
-            }
+    function renderEmpty() {
+        dropdown.innerHTML = '<div class="search-empty-state">No matching users, courses, or subjects found.</div>';
+        openDropdown();
+    }
 
-            function renderResults(data) {
-                const users = data.users || [];
-                const courses = data.courses || [];
-                const subjects = data.subjects || [];
+    function renderResults(data) {
+        const users = data.users || [];
+        const courses = data.courses || [];
+        const subjects = data.subjects || [];
 
-                if (!users.length && !courses.length && !subjects.length) {
-                    renderEmpty();
-                    return;
-                }
+        if (!users.length && !courses.length && !subjects.length) {
+            renderEmpty();
+            return;
+        }
 
-                let html = '';
-                resultsCache.clear();
+        let html = '';
+        resultsCache.clear();
 
-                if (users.length) {
-                    html += '<div class="search-group-label">Users</div>';
-                    users.forEach(u => {
-                        resultsCache.set(`user-${u.id}`, u);
-                        const color = ROLE_COLORS[u.role] || '#8b5cf6';
-                        html += `
+        if (users.length) {
+            html += '<div class="search-group-label">Users</div>';
+            users.forEach(u => {
+                resultsCache.set(`user-${u.id}`, u);
+                const color = ROLE_COLORS[u.role] || '#8b5cf6';
+                html += `
                             <div class="search-result-item" data-type="user" data-id="${escapeHtml(u.id)}">
                                 <div class="search-result-icon" style="background:${color};">${escapeHtml(initialsOf(u.full_name))}</div>
                                 <div class="search-result-main">
@@ -290,14 +290,14 @@ function toggleSidebar() {
                                     <span class="search-result-sub">${escapeHtml(u.role)} · ${escapeHtml(u.email || u.username)}</span>
                                 </div>
                             </div>`;
-                    });
-                }
+            });
+        }
 
-                if (courses.length) {
-                    html += '<div class="search-group-label">Courses</div>';
-                    courses.forEach(c => {
-                        resultsCache.set(`course-${c.offering_id}`, c);
-                        html += `
+        if (courses.length) {
+            html += '<div class="search-group-label">Courses</div>';
+            courses.forEach(c => {
+                resultsCache.set(`course-${c.offering_id}`, c);
+                html += `
                             <div class="search-result-item" data-type="course" data-id="${escapeHtml(c.offering_id)}">
                                 <div class="search-result-icon" style="background:var(--warning);"><i class="fas fa-book-open"></i></div>
                                 <div class="search-result-main">
@@ -305,14 +305,14 @@ function toggleSidebar() {
                                     <span class="search-result-sub">Grade ${escapeHtml(c.grade_level)} · ${escapeHtml(c.teacher_name)}</span>
                                 </div>
                             </div>`;
-                    });
-                }
+            });
+        }
 
-                if (subjects.length) {
-                    html += '<div class="search-group-label">Subjects</div>';
-                    subjects.forEach(s => {
-                        resultsCache.set(`subject-${s.subject_id}`, s);
-                        html += `
+        if (subjects.length) {
+            html += '<div class="search-group-label">Subjects</div>';
+            subjects.forEach(s => {
+                resultsCache.set(`subject-${s.subject_id}`, s);
+                html += `
                             <div class="search-result-item" data-type="subject" data-id="${escapeHtml(s.subject_id)}">
                                 <div class="search-result-icon" style="background:var(--success);"><i class="fas fa-layer-group"></i></div>
                                 <div class="search-result-main">
@@ -320,85 +320,133 @@ function toggleSidebar() {
                                     <span class="search-result-sub">${escapeHtml(s.description || '')}</span>
                                 </div>
                             </div>`;
-                    });
-                }
+            });
+        }
 
-                dropdown.innerHTML = html;
+        dropdown.innerHTML = html;
+        openDropdown();
+    }
+
+    async function runSearch(term) {
+        if (activeController) activeController.abort();
+        activeController = new AbortController();
+
+        renderLoading();
+
+        try {
+            const res = await fetch(`${SEARCH_ENDPOINT}?q=${encodeURIComponent(term)}`, {
+                signal: activeController.signal,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            if (!res.ok) {
+                dropdown.innerHTML = '<div class="search-empty-state">Search is unavailable right now.</div>';
                 openDropdown();
+                return;
             }
 
-            async function runSearch(term) {
-                if (activeController) activeController.abort();
-                activeController = new AbortController();
+            const data = await res.json();
+            renderResults(data);
+        } catch (err) {
+            if (err.name === 'AbortError') return; // superseded by a newer keystroke
+            dropdown.innerHTML = '<div class="search-empty-state">Search is unavailable right now.</div>';
+            openDropdown();
+        }
+    }
 
-                renderLoading();
+    input.addEventListener('input', () => {
+        const term = input.value.trim();
+        lastQuery = term;
+        clearTimeout(debounceTimer);
 
-                try {
-                    const res = await fetch(`${SEARCH_ENDPOINT}?q=${encodeURIComponent(term)}`, {
-                        signal: activeController.signal,
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                    });
+        if (term.length < MIN_CHARS) {
+            closeDropdown();
+            return;
+        }
 
-                    if (!res.ok) {
-                        dropdown.innerHTML = '<div class="search-empty-state">Search is unavailable right now.</div>';
-                        openDropdown();
-                        return;
-                    }
+        debounceTimer = setTimeout(() => {
+            // Guard against races if the user kept typing
+            if (input.value.trim() === term) runSearch(term);
+        }, DEBOUNCE_MS);
+    });
 
-                    const data = await res.json();
-                    renderResults(data);
-                } catch (err) {
-                    if (err.name === 'AbortError') return; // superseded by a newer keystroke
-                    dropdown.innerHTML = '<div class="search-empty-state">Search is unavailable right now.</div>';
-                    openDropdown();
-                }
+    input.addEventListener('focus', () => {
+        if (lastQuery.length >= MIN_CHARS && dropdown.innerHTML) openDropdown();
+    });
+
+    // Click a result -> open the detail popup for that item.
+    dropdown.addEventListener('click', (e) => {
+        const item = e.target.closest('.search-result-item');
+        if (!item) return;
+
+        const { type, id } = item.dataset;
+        const data = resultsCache.get(`${type}-${id}`);
+
+        if (data && typeof window.showSearchDetailModal === 'function') {
+            window.showSearchDetailModal(type, data);
+        } else {
+            // Fallback if cache missed for some reason.
+            const label = item.querySelector('.search-result-title')?.textContent || '';
+            showToast(`Selected ${type}: ${label}`);
+        }
+        closeDropdown();
+    });
+
+    // Close dropdown when clicking anywhere outside the search bar.
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.header-search')) closeDropdown();
+    });
+
+    // Close on Escape.
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeDropdown();
+    });
+})();
+
+
+function loadAnnouncements() {
+    fetch('assests/api/get_announcements.php?limit=5', {
+        headers: { 'Accept': 'application/json' }
+    })
+        .then(res => res.json())
+        .then(data => {
+            const list = document.querySelector('.announcement-list');
+            if (!data.success || data.announcements.length === 0) {
+                list.innerHTML = '<p class="field-note">No announcements yet.</p>';
+                return;
             }
 
-            input.addEventListener('input', () => {
-                const term = input.value.trim();
-                lastQuery = term;
-                clearTimeout(debounceTimer);
+            list.innerHTML = data.announcements.map(a => {
+                const tagClass = a.priority === 'important' ? 'tag-urgent' : 'tag-academic';
+                const dateStr = new Date(a.created_at.replace(' ', 'T'))
+                    .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-                if (term.length < MIN_CHARS) {
-                    closeDropdown();
-                    return;
-                }
+                return `
+                <div class="announcement-item">
+                    <div class="announcement-meta">
+                        <span class="announcement-tag ${tagClass}">${escapeHtml(a.priority)}</span>
+                        <span class="announcement-date">${dateStr}</span>
+                    </div>
+                    <div class="announcement-title">${escapeHtml(a.title)}</div>
+                    <div class="announcement-desc">${escapeHtml(a.body)}</div>
+                    <div class="announcement-actions">
+                        <a class="action-link" onclick="editAnnouncement(${a.announcement_id})">Edit</a>
+                        <a class="action-link danger" onclick="deleteAnnouncement(${a.announcement_id})">Delete</a>
+                    </div>
+                </div>
+            `;
+            }).join('');
+        })
+        .catch(() => {
+            document.querySelector('.announcement-list').innerHTML =
+                '<p class="field-note">Failed to load announcements.</p>';
+        });
+}
 
-                debounceTimer = setTimeout(() => {
-                    // Guard against races if the user kept typing
-                    if (input.value.trim() === term) runSearch(term);
-                }, DEBOUNCE_MS);
-            });
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+}
 
-            input.addEventListener('focus', () => {
-                if (lastQuery.length >= MIN_CHARS && dropdown.innerHTML) openDropdown();
-            });
-
-            // Click a result -> open the detail popup for that item.
-            dropdown.addEventListener('click', (e) => {
-                const item = e.target.closest('.search-result-item');
-                if (!item) return;
-
-                const { type, id } = item.dataset;
-                const data = resultsCache.get(`${type}-${id}`);
-
-                if (data && typeof window.showSearchDetailModal === 'function') {
-                    window.showSearchDetailModal(type, data);
-                } else {
-                    // Fallback if cache missed for some reason.
-                    const label = item.querySelector('.search-result-title')?.textContent || '';
-                    showToast(`Selected ${type}: ${label}`);
-                }
-                closeDropdown();
-            });
-
-            // Close dropdown when clicking anywhere outside the search bar.
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.header-search')) closeDropdown();
-            });
-
-            // Close on Escape.
-            input.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') closeDropdown();
-            });
-        })();
+document.addEventListener('DOMContentLoaded', loadAnnouncements);
