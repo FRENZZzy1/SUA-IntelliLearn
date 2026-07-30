@@ -1003,12 +1003,26 @@ $subjectsList = $pdo->query("
             <div class="modal-body" style="max-height: 65vh; overflow-y: auto;">
                 <p id="vsModalSubtitle" style="margin: 0 0 12px; color: var(--text-muted);"></p>
 
+                <div class="vs-toolbar" style="display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap;">
+                    <div class="header-search" style="flex:1; min-width:200px;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="vsSearchInput" placeholder="Search by name or LRN..."
+                               style="width:100%;" oninput="filterViewStudents()">
+                    </div>
+                    <select id="vsGenderFilter" class="select-filter" onchange="filterViewStudents()">
+                        <option value="all">All Genders</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+
                 <table class="course-table">
                     <thead>
                         <tr>
                             <th>LRN</th>
                             <th>Name</th>
                             <th>Email</th>
+                            <th>Gender</th>
                             <th>Status</th>
                             <th>Enrolled On</th>
                         </tr>
@@ -1498,6 +1512,8 @@ $subjectsList = $pdo->query("
     }
 
     let currentViewOfferingId = null;
+    let vsAllStudents = [];   // full roster for the currently open offering
+    let vsCourseInfo = null;  // { subject_name, section_name, grade_level, strand, capacity }
 
     function openViewStudentsModal(offeringId) {
         const overlay = document.getElementById('viewStudentsOverlay');
@@ -1506,14 +1522,22 @@ $subjectsList = $pdo->query("
         const title = document.getElementById('vsModalTitle');
         const subtitle = document.getElementById('vsModalSubtitle');
         const exportBtn = document.getElementById('vsExportBtn');
+        const searchInput = document.getElementById('vsSearchInput');
+        const genderFilter = document.getElementById('vsGenderFilter');
 
         currentViewOfferingId = offeringId;
+        vsAllStudents = [];
+        vsCourseInfo = null;
         exportBtn.disabled = true;
+
+        // reset search/filter state each time the modal is opened for a course
+        searchInput.value = '';
+        genderFilter.value = 'all';
 
         errorBox.hidden = true;
         title.textContent = 'Enrolled Students';
         subtitle.textContent = '';
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td></tr>';
         overlay.classList.add('open');
 
         fetch('assests/api/get_course_students.php?offering_id=' + encodeURIComponent(offeringId), {
@@ -1531,28 +1555,12 @@ $subjectsList = $pdo->query("
 
             exportBtn.disabled = data.students.length === 0;
 
-            const course = data.course;
-            title.textContent = course.subject_name + ' — ' + course.section_name;
-            subtitle.textContent = 'Grade ' + course.grade_level + (course.strand ? ' · ' + course.strand : '')
-                + ' · ' + data.students.length + '/' + course.capacity + ' enrolled';
+            vsAllStudents = data.students;
+            vsCourseInfo = data.course;
 
-            if (data.students.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">No students enrolled in this course yet.</td></tr>';
-                return;
-            }
+            title.textContent = vsCourseInfo.subject_name + ' — ' + vsCourseInfo.section_name;
 
-            tbody.innerHTML = data.students.map(function (s) {
-                const fullName = [s.firstname, s.middlename, s.lastname].filter(Boolean).join(' ');
-                const statusLabel = s.status.charAt(0).toUpperCase() + s.status.slice(1);
-                const enrolledDate = s.enrolled_at ? new Date(s.enrolled_at.replace(' ', 'T')).toLocaleDateString() : '—';
-                return '<tr>'
-                    + '<td>' + escapeHtml(s.student_lrn) + '</td>'
-                    + '<td>' + escapeHtml(fullName) + '</td>'
-                    + '<td>' + (s.email ? escapeHtml(s.email) : '— None —') + '</td>'
-                    + '<td><span class="status-dot-badge ' + (s.status === 'active' ? 'active' : 'inactive') + '"><span class="dot"></span>' + escapeHtml(statusLabel) + '</span></td>'
-                    + '<td>' + escapeHtml(enrolledDate) + '</td>'
-                    + '</tr>';
-            }).join('');
+            renderVsStudents(vsAllStudents);
         })
         .catch(() => {
             tbody.innerHTML = '';
@@ -1561,9 +1569,75 @@ $subjectsList = $pdo->query("
         });
     }
 
+    // Renders a given list of students into the table and keeps the
+    // subtitle's enrolled count in sync with what's actually showing.
+    function renderVsStudents(list) {
+        const tbody = document.getElementById('vsStudentsTableBody');
+        const subtitle = document.getElementById('vsModalSubtitle');
+
+        if (vsCourseInfo) {
+            const filtered = list.length !== vsAllStudents.length;
+            subtitle.textContent = 'Grade ' + vsCourseInfo.grade_level + (vsCourseInfo.strand ? ' · ' + vsCourseInfo.strand : '')
+                + ' · ' + (filtered ? list.length + ' of ' + vsAllStudents.length + ' shown' : vsAllStudents.length + '/' + vsCourseInfo.capacity + ' enrolled');
+        }
+
+        if (vsAllStudents.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">No students enrolled in this course yet.</td></tr>';
+            return;
+        }
+
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">No students match your search.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = list.map(function (s) {
+            const fullName = [s.firstname, s.middlename, s.lastname].filter(Boolean).join(' ');
+            const statusLabel = s.status.charAt(0).toUpperCase() + s.status.slice(1);
+            const enrolledDate = s.enrolled_at ? new Date(s.enrolled_at.replace(' ', 'T')).toLocaleDateString() : '—';
+            const genderLabel = s.Gender ? (s.Gender.charAt(0).toUpperCase() + s.Gender.slice(1)) : '—';
+            return '<tr>'
+                + '<td>' + escapeHtml(s.student_lrn) + '</td>'
+                + '<td>' + escapeHtml(fullName) + '</td>'
+                + '<td>' + (s.email ? escapeHtml(s.email) : '— None —') + '</td>'
+                + '<td>' + escapeHtml(genderLabel) + '</td>'
+                + '<td><span class="status-dot-badge ' + (s.status === 'active' ? 'active' : 'inactive') + '"><span class="dot"></span>' + escapeHtml(statusLabel) + '</span></td>'
+                + '<td>' + escapeHtml(enrolledDate) + '</td>'
+                + '</tr>';
+        }).join('');
+    }
+
+    // Applies the current search text + gender filter to the in-memory
+    // roster (vsAllStudents) and re-renders. Runs entirely client-side,
+    // so no extra requests are made while typing/selecting.
+    function filterViewStudents() {
+        const query = document.getElementById('vsSearchInput').value.trim().toLowerCase();
+        const gender = document.getElementById('vsGenderFilter').value;
+
+        const filtered = vsAllStudents.filter(function (s) {
+            if (gender !== 'all' && (s.Gender || '').toLowerCase() !== gender) {
+                return false;
+            }
+
+            if (query) {
+                const fullName = [s.firstname, s.middlename, s.lastname].filter(Boolean).join(' ').toLowerCase();
+                const lrn = String(s.student_lrn || '').toLowerCase();
+                if (!fullName.includes(query) && !lrn.includes(query)) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        renderVsStudents(filtered);
+    }
+
     function closeViewStudentsModal() {
         document.getElementById('viewStudentsOverlay').classList.remove('open');
         currentViewOfferingId = null;
+        vsAllStudents = [];
+        vsCourseInfo = null;
     }
 
     function exportViewStudents() {

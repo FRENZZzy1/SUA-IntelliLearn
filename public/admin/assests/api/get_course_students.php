@@ -57,6 +57,7 @@ $studentsStmt = $pdo->prepare("
         st.lastname,
         st.middlename,
         st.email,
+        st.Gender,
         e.status,
         e.enrolled_at
     FROM enrollments e
