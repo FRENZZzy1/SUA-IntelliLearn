@@ -225,7 +225,7 @@ $activeCourses = (int) $pdo->query("SELECT COUNT(*) FROM classofferings WHERE st
 $teachersAssigned = (int) $pdo->query("SELECT COUNT(DISTINCT teacher_id) FROM classofferings")->fetchColumn();
 $totalTeachers    = (int) $pdo->query("SELECT COUNT(*) FROM teachers")->fetchColumn();
 
-$totalEnrollees = (int) $pdo->query("SELECT COUNT(*) FROM enrollments WHERE status = 'active'")->fetchColumn();
+$totalEnrollees = (int) $pdo->query("SELECT COUNT(DISTINCT student_id) FROM enrollments WHERE status = 'active'")->fetchColumn();
 
 // ================= DATA FOR "NEW COURSE" / "UPDATE COURSE" MODALS =================
 
