@@ -93,6 +93,7 @@ $sql = "
         st.firstname,
         st.lastname,
         subj.subject_name,
+        sec2.section_id AS matched_section_id,
         sec2.section_name AS matched_section_name,
         co2.quarter AS matched_term,
         sy2.label AS matched_school_year,
@@ -114,6 +115,38 @@ $stmt->execute($params);
 $requests = $stmt->fetchAll();
 
 $totalShown = count($requests);
+
+// ================= GROUP REQUESTS BY STUDENT + SECTION =================
+// A single "Enroll Student" submission creates one enrollment_requests row
+// per subject checked (schema is unchanged). For display, collapse those
+// rows back into one row per student+section (same status), and list the
+// individual subjects behind a "View Classes" trigger. Requests with no
+// matched section (legacy/unmatched) fall back to grouping by request_id
+// so they never get merged with something they don't belong to.
+$groupedRequests = [];
+foreach ($requests as $r) {
+    $sectionKey = $r['matched_section_id'] ? ('sec' . $r['matched_section_id']) : ('req' . $r['request_id']);
+    $groupKey = $r['student_id'] . '_' . $sectionKey . '_' . $r['status'];
+
+    if (!isset($groupedRequests[$groupKey])) {
+        $groupedRequests[$groupKey] = $r;
+        $groupedRequests[$groupKey]['subjects']    = [];
+        $groupedRequests[$groupKey]['request_ids'] = [];
+    }
+
+    $groupedRequests[$groupKey]['subjects'][] = [
+        'name'       => $r['strand'] ? $r['subject_name'] . ' (' . $r['strand'] . ')' : $r['subject_name'],
+        'request_id' => (int) $r['request_id'],
+    ];
+    $groupedRequests[$groupKey]['request_ids'][] = (int) $r['request_id'];
+
+    // Keep the earliest submission time of the group as its "Date Submitted".
+    if (strtotime($r['submitted_at']) < strtotime($groupedRequests[$groupKey]['submitted_at'])) {
+        $groupedRequests[$groupKey]['submitted_at'] = $r['submitted_at'];
+    }
+}
+$groupedRequests = array_values($groupedRequests);
+$totalGroupsShown = count($groupedRequests);
 
 // ================= TAB COUNTS (respect grade/course/search filters, not the tab itself) =================
 $countWhere  = [];
@@ -376,7 +409,7 @@ $panelIcons = [
                 </tr>
             </thead>
             <tbody id="enrollmentTableBody">
-                <?php if (empty($requests)): ?>
+                <?php if (empty($groupedRequests)): ?>
                 <tr>
                     <td colspan="11" style="text-align:center; padding: 40px; color: var(--text-muted);">
                         No <?= $tab === 'all' ? 'enrollment records' : $tab . ' requests' ?> found.
@@ -384,46 +417,52 @@ $panelIcons = [
                 </tr>
                 <?php endif; ?>
 
-                <?php foreach ($requests as $r):
-                    $studentName = trim($r['firstname'] . ' ' . $r['lastname']);
-                    $courseRequested = $r['strand']
-                        ? $r['subject_name'] . ' (' . $r['strand'] . ')'
-                        : $r['subject_name'];
-                    $dateSubmitted = date('F j, Y', strtotime($r['submitted_at']));
+                <?php foreach ($groupedRequests as $g):
+                    $studentName   = trim($g['firstname'] . ' ' . $g['lastname']);
+                    $dateSubmitted = date('F j, Y', strtotime($g['submitted_at']));
+                    $idsCsv        = implode(',', $g['request_ids']);
+                    $subjectNames  = array_column($g['subjects'], 'name');
                 ?>
-                <tr data-request-id="<?= (int) $r['request_id'] ?>" data-status="<?= clean($r['status']) ?>">
+                <tr data-request-id="<?= htmlspecialchars($idsCsv) ?>" data-status="<?= clean($g['status']) ?>">
                     <td class="checkbox-col">
-                        <?php if ($r['status'] === 'pending'): ?>
-                        <input type="checkbox" class="row-check" data-request-id="<?= (int) $r['request_id'] ?>">
+                        <?php if ($g['status'] === 'pending'): ?>
+                        <input type="checkbox" class="row-check" data-request-id="<?= htmlspecialchars($idsCsv) ?>">
                         <?php endif; ?>
                     </td>
                     <td><?= htmlspecialchars($studentName) ?></td>
                     <td>
                         <div class="course-requested">
-                            <span><?= htmlspecialchars($courseRequested) ?></span>
+                            <button type="button" class="link-btn btn-view-classes"
+                                    data-subjects="<?= htmlspecialchars(json_encode($subjectNames), ENT_QUOTES) ?>"
+                                    data-section="<?= htmlspecialchars($g['matched_section_name'] ?: '—') ?>"
+                                    data-student="<?= htmlspecialchars($studentName) ?>"
+                                    onclick="showClassesModal(this)">
+                                <i class="fas fa-eye"></i> View Classes (<?= count($g['subjects']) ?>)
+                            </button>
+                            <span class="csv-subjects" hidden><?= htmlspecialchars(implode('; ', $subjectNames)) ?></span>
                         </div>
                     </td>
-                    <td><?= $r['matched_section_name'] ? htmlspecialchars($r['matched_section_name']) : '<span class="action-note">&mdash;</span>' ?></td>
-                    <td>Grade <?= (int) $r['grade_level'] ?><?= $r['strand'] ? ' &middot; ' . htmlspecialchars($r['strand']) : '' ?></td>
-                    <td><?= $r['matched_term'] ? htmlspecialchars($r['matched_term']) : '<span class="action-note">&mdash;</span>' ?></td>
-                    <td><?= $r['matched_school_year'] ? htmlspecialchars($r['matched_school_year']) : '<span class="action-note">&mdash;</span>' ?></td>
-                    <?php $scheduleDisplay = formatSchedule($r['matched_schedule_days'], $r['matched_start_time'], $r['matched_end_time']); ?>
+                    <td><?= $g['matched_section_name'] ? htmlspecialchars($g['matched_section_name']) : '<span class="action-note">&mdash;</span>' ?></td>
+                    <td>Grade <?= (int) $g['grade_level'] ?><?= $g['strand'] ? ' &middot; ' . htmlspecialchars($g['strand']) : '' ?></td>
+                    <td><?= $g['matched_term'] ? htmlspecialchars($g['matched_term']) : '<span class="action-note">&mdash;</span>' ?></td>
+                    <td><?= $g['matched_school_year'] ? htmlspecialchars($g['matched_school_year']) : '<span class="action-note">&mdash;</span>' ?></td>
+                    <?php $scheduleDisplay = formatSchedule($g['matched_schedule_days'], $g['matched_start_time'], $g['matched_end_time']); ?>
                     <td><?= $scheduleDisplay ? $scheduleDisplay : '<span class="action-note">&mdash;</span>' ?></td>
                     <td><?= htmlspecialchars($dateSubmitted) ?></td>
                     <td>
-                        <span class="status-dot-badge <?= clean($r['status']) ?>">
+                        <span class="status-dot-badge <?= clean($g['status']) ?>">
                             <span class="dot"></span>
-                            <?= ucfirst($r['status']) ?>
+                            <?= ucfirst($g['status']) ?>
                         </span>
                     </td>
                     <td>
-                        <?php if ($r['status'] === 'pending'): ?>
+                        <?php if ($g['status'] === 'pending'): ?>
                         <div class="enroll-actions">
-                            <button class="btn-approve" onclick="approveRequest(<?= (int) $r['request_id'] ?>, this)"><i class="fas fa-check"></i> Approve</button>
-                            <button class="btn-deny" onclick="denyRequest(<?= (int) $r['request_id'] ?>, this)">Deny</button>
+                            <button class="btn-approve" onclick="approveGroup('<?= htmlspecialchars($idsCsv) ?>', this)"><i class="fas fa-check"></i> Approve</button>
+                            <button class="btn-deny" onclick="denyGroup('<?= htmlspecialchars($idsCsv) ?>', this)">Deny</button>
                         </div>
-                        <?php elseif ($r['status'] === 'denied'): ?>
-                        <a class="link-reopen" href="javascript:void(0)" onclick="reopenRequest(<?= (int) $r['request_id'] ?>)">Reopen</a>
+                        <?php elseif ($g['status'] === 'denied'): ?>
+                        <a class="link-reopen" href="javascript:void(0)" onclick="reopenGroup('<?= htmlspecialchars($idsCsv) ?>', this)">Reopen</a>
                         <?php else: ?>
                         <span class="action-note">&mdash;</span>
                         <?php endif; ?>
@@ -434,11 +473,28 @@ $panelIcons = [
         </table>
 
         <div class="list-panel-footer">
-            <span class="count-note">Showing <?= $totalShown ?> of <?= $tabCounts['all'] ?> records</span>
+            <span class="count-note">Showing <?= $totalGroupsShown ?> request(s) &bull; <?= $totalShown ?> of <?= $tabCounts['all'] ?> subject enrollments</span>
             <button class="btn-secondary" onclick="exportCSV()"><i class="fas fa-file-export"></i> Export CSV</button>
         </div>
     </div>
     <!-- /Enrollment List -->
+
+    <!-- View Classes Modal (shows every subject requested within a section) -->
+    <div class="modal-overlay" id="classesModalOverlay" onclick="if (event.target === this) closeClassesModal()">
+        <div class="modal-box" style="max-width: 420px;">
+            <div class="modal-header">
+                <h2 id="classesModalTitle">Classes Requested</h2>
+                <button type="button" class="modal-close" onclick="closeClassesModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="field-note" id="classesModalSubtitle" style="margin-bottom: 12px;"></p>
+                <ul id="classesModalList" style="margin: 0; padding-left: 20px; line-height: 1.9;"></ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeClassesModal()">Close</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Enroll Student Modal (creates a new pending request) -->
     <div class="modal-overlay" id="enrollStudentOverlay" onclick="if (event.target === this) closeEnrollStudentModal()">
@@ -827,6 +883,25 @@ $panelIcons = [
         })();
     });
 
+    // ---- View Classes modal (one section's subjects for a grouped request row) ----
+    function showClassesModal(btnEl) {
+        const subjects = JSON.parse(btnEl.dataset.subjects || '[]');
+        document.getElementById('classesModalTitle').textContent = btnEl.dataset.section
+            ? `Classes in ${btnEl.dataset.section}`
+            : 'Classes Requested';
+        document.getElementById('classesModalSubtitle').textContent = btnEl.dataset.student
+            ? `Requested for ${btnEl.dataset.student}`
+            : '';
+        document.getElementById('classesModalList').innerHTML = subjects.length
+            ? subjects.map(s => `<li>${s}</li>`).join('')
+            : '<li>No subjects found.</li>';
+        document.getElementById('classesModalOverlay').classList.add('open');
+    }
+
+    function closeClassesModal() {
+        document.getElementById('classesModalOverlay').classList.remove('open');
+    }
+
     // ---- Approve / Deny / Reopen ----
     function approveRequest(id, btnEl) {
         if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...'; }
@@ -904,10 +979,88 @@ $panelIcons = [
         .catch(() => alert('Something went wrong. Please try again.'));
     }
 
+    // ---- Group versions: one enrollment request row now represents every
+    // subject the student requested in that section, so Approve/Deny/Reopen
+    // on the row acts on every underlying enrollment_requests id at once. ----
+    function approveGroup(idsCsv, btnEl) {
+        const ids = idsCsv.split(',');
+        if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...'; }
+        approveSequential(ids, 0, { approved: 0, failed: 0 });
+    }
+
+    function denyGroup(idsCsv, btnEl) {
+        if (!confirm('Deny this enrollment request? This denies every subject requested in this section.')) return;
+        const ids = idsCsv.split(',');
+        if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Denying...'; }
+        denySequential(ids, 0, { denied: 0, failed: 0 });
+    }
+
+    function denySequential(ids, idx, summary) {
+        if (idx >= ids.length) {
+            if (summary.failed) alert(`${summary.denied} denied. ${summary.failed} failed.`);
+            location.reload();
+            return;
+        }
+        const fd = new FormData();
+        fd.append('csrf', CSRF_TOKEN);
+        fd.append('request_id', ids[idx]);
+
+        fetch('deny_enrollment.php', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: fd
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) summary.denied++;
+            else summary.failed++;
+            denySequential(ids, idx + 1, summary);
+        })
+        .catch(() => {
+            summary.failed++;
+            denySequential(ids, idx + 1, summary);
+        });
+    }
+
+    function reopenGroup(idsCsv, btnEl) {
+        if (!confirm('Reopen this request and move it back to Pending? This reopens every subject requested in this section.')) return;
+        const ids = idsCsv.split(',');
+        reopenSequential(ids, 0, { reopened: 0, failed: 0 });
+    }
+
+    function reopenSequential(ids, idx, summary) {
+        if (idx >= ids.length) {
+            if (summary.failed) alert(`${summary.reopened} reopened. ${summary.failed} failed.`);
+            location.reload();
+            return;
+        }
+        const fd = new FormData();
+        fd.append('csrf', CSRF_TOKEN);
+        fd.append('request_id', ids[idx]);
+
+        fetch('reopen_enrollment.php', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: fd
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) summary.reopened++;
+            else summary.failed++;
+            reopenSequential(ids, idx + 1, summary);
+        })
+        .catch(() => {
+            summary.failed++;
+            reopenSequential(ids, idx + 1, summary);
+        });
+    }
+
     // ---- Approve All (checked rows, or every visible pending row if none checked) ----
     function approveAllVisible() {
-        const checked = Array.from(document.querySelectorAll('.row-check:checked')).map(cb => cb.dataset.requestId);
-        const allPending = Array.from(document.querySelectorAll('tr[data-status="pending"]')).map(tr => tr.dataset.requestId);
+        const checked = Array.from(document.querySelectorAll('.row-check:checked'))
+            .flatMap(cb => cb.dataset.requestId.split(','));
+        const allPending = Array.from(document.querySelectorAll('tr[data-status="pending"]'))
+            .flatMap(tr => tr.dataset.requestId.split(','));
         const ids = checked.length > 0 ? checked : allPending;
 
         if (ids.length === 0) {
@@ -954,9 +1107,10 @@ $panelIcons = [
         const rows = [['Student Name', 'Course Requested', 'Section', 'Grade Level', 'Term', 'School Year', 'Schedule', 'Date Submitted', 'Status']];
         document.querySelectorAll('#enrollmentTableBody tr[data-request-id]').forEach(tr => {
             const cells = tr.querySelectorAll('td');
+            const subjectsText = cells[2].querySelector('.csv-subjects')?.innerText.trim() || cells[2].innerText.trim();
             rows.push([
                 cells[1].innerText.trim().split('\n')[0],
-                cells[2].innerText.trim(),
+                subjectsText,
                 cells[3].innerText.trim(),
                 cells[4].innerText.trim(),
                 cells[5].innerText.trim(),
@@ -981,6 +1135,7 @@ $panelIcons = [
     document.addEventListener('keydown', function (e) {
         if (e.key !== 'Escape') return;
         closeEnrollStudentModal();
+        closeClassesModal();
     });
 </script>
 

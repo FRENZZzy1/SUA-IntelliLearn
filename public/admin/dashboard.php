@@ -137,9 +137,6 @@ $recentUsers     = get_recent_users($conn, 4);
                     <div class="card-header">
                         <h2><i class="fas fa-bullhorn"></i> Announcements</h2>
                         <div class="card-actions">
-                            <button class="btn-sm btn-primary" onclick="showToast('Post Announcement modal opened')">
-                                <i class="fas fa-plus"></i> Post Announcement
-                            </button>
                         </div>
                     </div>
                     <div class="card-body">
@@ -285,9 +282,6 @@ $recentUsers     = get_recent_users($conn, 4);
                     <div class="card-header">
                         <h2><i class="fas fa-user-plus"></i> Pending Enrollments</h2>
                         <div class="card-actions">
-                            <button class="btn-sm btn-success" onclick="showToast('Approving all pending...')">
-                                <i class="fas fa-check"></i> Approve All
-                            </button>
                         </div>
                     </div>
                     <div class="card-body">
@@ -308,25 +302,6 @@ $recentUsers     = get_recent_users($conn, 4);
                                 <h4><?php echo number_format($deniedCount); ?></h4>
                                 <p>Denied</p>
                             </div>
-                        </div>
-
-                        <div class="enroll-filters">
-                            <select>
-                                <option>All Grade Levels</option>
-                                <option>Grade 7</option>
-                                <option>Grade 8</option>
-                                <option>Grade 9</option>
-                                <option>Grade 10</option>
-                                <option>Grade 11</option>
-                                <option>Grade 12</option>
-                            </select>
-                            <select>
-                                <option>All Courses</option>
-                                <option>Mathematics</option>
-                                <option>Science</option>
-                                <option>English</option>
-                                <option>Filipino</option>
-                            </select>
                         </div>
 
                         <table class="data-table">
