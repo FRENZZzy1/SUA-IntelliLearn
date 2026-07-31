@@ -22,6 +22,7 @@ require_once 'assests/api/dashboard_functions.php';
 $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
 $aum_endpoint = '/SUA-IntelliLearn/public/admin/assests/api/add_user_handler.php';
 include 'assests/api/add_user_modal.php';
+include 'assests/api/get_enrollments_count.php';
 
 requireAdmin();
 
@@ -221,9 +222,7 @@ $recentUsers     = get_recent_users($conn, 4);
                         <h2><i class="fas fa-users-cog"></i> User Management</h2>
                         <div class="card-actions">
                         
-                            <button class="btn-sm btn-primary" onclick="showToast('Add User modal opened')">
-                                <i class="fas fa-plus"></i> Add User
-                            </button>
+                            
                         </div>
                     </div>
                     <div class="card-body" style="padding: 0;">
@@ -294,19 +293,19 @@ $recentUsers     = get_recent_users($conn, 4);
                     <div class="card-body">
                         <div class="enrollment-stats">
                             <div class="enroll-stat pending">
-                                <h4>17</h4>
+                                <h4><?php echo number_format($pendingCount); ?></h4>
                                 <p>Pending</p>
                             </div>
                             <div class="enroll-stat approved">
-                                <h4>459</h4>
+                                <h4><?php echo number_format($totalEnrolled); ?></h4>
                                 <p>Total Enrolled</p>
                             </div>
                             <div class="enroll-stat approved">
-                                <h4>42</h4>
+                                <h4><?php echo number_format($enrolledNewThisWeek); ?></h4>
                                 <p>This Week</p>
                             </div>
                             <div class="enroll-stat denied">
-                                <h4>5</h4>
+                                <h4><?php echo number_format($deniedCount); ?></h4>
                                 <p>Denied</p>
                             </div>
                         </div>
