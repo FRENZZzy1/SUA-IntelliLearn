@@ -449,4 +449,34 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
+// editCourseOffering() is defined inline in dashboard.php (next to the Update
+// Course modal it opens), so the widget's edit stays on the dashboard instead
+// of navigating away.
+
+function deleteCourseOffering(offeringId, btnEl) {
+    if (!confirm('Delete this course offering? This cannot be undone.')) return;
+
+    fetch('assests/api/delete_course_offering.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+        },
+        body: 'offering_id=' + encodeURIComponent(offeringId) + '&csrf=' + encodeURIComponent(PENDING_ENROLL_CSRF)
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                showToast((data.errors && data.errors[0]) || 'Failed to delete course.');
+                return;
+            }
+            showToast('Course offering deleted.');
+            const row = btnEl.closest('tr');
+            if (row) row.remove();
+        })
+        .catch(() => {
+            showToast('Failed to delete course.');
+        });
+}
+
 document.addEventListener('DOMContentLoaded', loadAnnouncements);

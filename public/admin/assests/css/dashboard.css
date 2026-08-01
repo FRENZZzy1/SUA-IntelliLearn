@@ -47,6 +47,14 @@ body {
 .content-wrapper {
     padding: 24px 28px;
     max-width: 1600px;
+    transition: max-width 0.3s ease;
+}
+
+/* When the sidebar collapses, let the content use all the freed-up space
+   instead of stopping at the fixed cap (which still left a large gap on
+   wide monitors). */
+.sidebar.collapsed ~ .main-content .content-wrapper {
+    max-width: none;
 }
 
 /* ================= WELCOME MODULE ================= */
@@ -90,7 +98,7 @@ body {
     margin-bottom: 24px;
 }
 
-.stat-card {
+.stats-grid .stat-card {
     background: var(--bg-card);
     border-radius: var(--radius);
     padding: 20px 22px;
@@ -100,14 +108,15 @@ body {
     align-items: flex-start;
     justify-content: space-between;
     transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
 }
 
-.stat-card:hover {
+.stats-grid .stat-card:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-lg);
 }
 
-.stat-info h3 {
+.stats-grid .stat-info h3 {
     font-size: 2rem;
     font-weight: 700;
     color: var(--text-dark);
@@ -115,25 +124,26 @@ body {
     margin-bottom: 6px;
 }
 
-.stat-info p {
+.stats-grid .stat-info p {
     font-size: 0.85rem;
     color: var(--text-muted);
     font-weight: 500;
 }
 
-.stat-icon {
+.stats-grid .stat-icon {
     width: 44px; height: 44px;
     border-radius: var(--radius-sm);
     display: flex; align-items: center; justify-content: center;
     font-size: 1.1rem;
 }
 
-.stat-icon.students { background: #dbeafe; color: var(--info); }
-.stat-icon.teachers { background: #dcfce7; color: var(--success); }
-.stat-icon.courses { background: #fef3c7; color: var(--warning); }
-.stat-icon.enroll { background: #fce7f3; color: #ec4899; }
+.stats-grid .stat-icon.students { background: #dbeafe; color: var(--info); }
+.stats-grid .stat-icon.teachers { background: #dcfce7; color: var(--success); }
+.stats-grid .stat-icon.courses { background: #fef3c7; color: var(--warning); }
+.stats-grid .stat-icon.enroll { background: #fce7f3; color: #ec4899; }
 
-.stat-trend {
+.stats-grid .stat-trend {
+    position: static;
     display: flex;
     align-items: center;
     gap: 4px;
@@ -142,8 +152,8 @@ body {
     margin-top: 8px;
 }
 
-.stat-trend.up { color: var(--success); }
-.stat-trend.down { color: var(--danger); }
+.stats-grid .stat-trend.up { color: var(--success); }
+.stats-grid .stat-trend.down { color: var(--danger); }
 
 /* ================= DASHBOARD GRID ================= */
 .dashboard-grid {

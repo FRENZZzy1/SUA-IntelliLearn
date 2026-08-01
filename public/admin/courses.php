@@ -1470,8 +1470,10 @@ $subjectsList = $pdo->query("
    
 
     // ---- Update Course modal ----
-    function openEditCourseModal(triggerEl) {
-        const course = JSON.parse(triggerEl.dataset.course);
+    function openEditCourseModal(triggerElOrData) {
+        const course = (triggerElOrData instanceof Element)
+            ? JSON.parse(triggerElOrData.dataset.course)
+            : triggerElOrData;
 
         document.getElementById('e_offering_id').value = course.offering_id;
         document.getElementById('e_subject_id').value = course.subject_id;
@@ -1492,6 +1494,41 @@ $subjectsList = $pdo->query("
     function closeEditCourseModal() {
         document.getElementById('editCourseOverlay').classList.remove('open');
     }
+
+    // ---- Course data lookup + auto-open (used when arriving from the dashboard) ----
+    const courseOfferingsData = <?= json_encode(array_reduce($courses, function ($carry, $course) {
+        $teacherId = $course['teacher_id'] ? (int) $course['teacher_id'] : '';
+        $carry[(int) $course['offering_id']] = [
+            'offering_id'    => (int) $course['offering_id'],
+            'subject_id'     => (int) $course['subject_id'],
+            'section_id'     => (int) $course['section_id'],
+            'teacher_id'     => $teacherId,
+            'quarter'        => $course['quarter'],
+            'school_year_id' => (int) $course['school_year_id'],
+            'schedule_days'  => $course['schedule_days'] ?? '',
+            'start_time'     => $course['start_time'] ? date('g:i A', strtotime($course['start_time'])) : '',
+            'end_time'       => $course['end_time'] ? date('g:i A', strtotime($course['end_time'])) : '',
+            'capacity'       => (int) $course['capacity'],
+            'status'         => $course['status'],
+        ];
+        return $carry;
+    }, []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
+    (function openEditFromQueryString() {
+        const params = new URLSearchParams(window.location.search);
+        const editId = params.get('edit_offering');
+        if (!editId) return;
+
+        const data = courseOfferingsData[editId];
+        if (data) {
+            openEditCourseModal(data);
+        }
+
+        // Clean the URL so a page refresh doesn't reopen the modal.
+        params.delete('edit_offering');
+        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+    })();
 
     document.getElementById('editCourseForm').addEventListener('submit', function (e) {
         e.preventDefault();

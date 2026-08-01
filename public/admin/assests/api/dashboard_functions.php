@@ -125,6 +125,186 @@ function get_pending_enrollments_count(mysqli $conn): int {
 }
 
 /**
+ * Pending enrollment requests for the dashboard "Pending Enrollments" widget,
+ * grouped by student + matched section (same collapsing rule used on the
+ * full Enrollment page) so a student who checked several subjects in one
+ * submission shows as a single row with a "View Classes" trigger instead
+ * of one row per subject.
+ *
+ * @return array{groups: array, total_groups: int}
+ */
+function get_pending_enrollment_groups(mysqli $conn, int $limit = 5): array {
+    $sql = "SELECT
+                er.request_id,
+                er.student_id,
+                er.grade_level,
+                er.subject_id,
+                er.strand,
+                er.offering_id,
+                er.submitted_at,
+                st.firstname,
+                st.lastname,
+                subj.subject_name,
+                sec2.section_id AS matched_section_id
+            FROM enrollment_requests er
+            JOIN students st    ON st.student_id = er.student_id
+            JOIN subjects subj  ON subj.subject_id = er.subject_id
+            LEFT JOIN classofferings co2 ON co2.offering_id = er.offering_id
+            LEFT JOIN sections sec2      ON sec2.section_id  = co2.section_id
+            WHERE er.status = 'pending'
+            ORDER BY er.submitted_at DESC";
+
+    $result = $conn->query($sql);
+    $rows = [];
+    if ($result) {
+        while ($row = $result->fetch_assoc()) {
+            $rows[] = $row;
+        }
+    }
+
+    $groups = [];
+    foreach ($rows as $r) {
+        $sectionKey = $r['matched_section_id'] ? ('sec' . $r['matched_section_id']) : ('req' . $r['request_id']);
+        $groupKey = $r['student_id'] . '_' . $sectionKey;
+
+        if (!isset($groups[$groupKey])) {
+            $groups[$groupKey] = [
+                'student_name' => trim($r['firstname'] . ' ' . $r['lastname']),
+                'grade_level'  => (int) $r['grade_level'],
+                'strand'       => $r['strand'],
+                'submitted_at' => $r['submitted_at'],
+                'subjects'     => [],
+                'request_ids'  => [],
+            ];
+        }
+
+        $groups[$groupKey]['subjects'][]    = $r['strand'] ? $r['subject_name'] . ' (' . $r['strand'] . ')' : $r['subject_name'];
+        $groups[$groupKey]['request_ids'][] = (int) $r['request_id'];
+
+        if (strtotime($r['submitted_at']) < strtotime($groups[$groupKey]['submitted_at'])) {
+            $groups[$groupKey]['submitted_at'] = $r['submitted_at'];
+        }
+    }
+
+    $groups = array_values($groups);
+    usort($groups, fn($a, $b) => strtotime($b['submitted_at']) <=> strtotime($a['submitted_at']));
+
+    return [
+        'groups'       => array_slice($groups, 0, $limit),
+        'total_groups' => count($groups),
+    ];
+}
+
+/**
+ * Enrollment fill rate per subject+grade-level, aggregated across every
+ * active class offering for that combination (a subject can have several
+ * sections/offerings at the same grade level). Powers the dashboard's
+ * "Course Enrollment Progress" bars.
+ *
+ * Capacity/enrolled counts are aggregated in a derived table (one row per
+ * offering) before summing, so offerings with several active enrollments
+ * don't fan-out and inflate the summed capacity.
+ *
+ * @return array<int, array{label:string, enrolled:int, capacity:int, percent:int, color:string}>
+ */
+function get_course_enrollment_progress(mysqli $conn, int $limit = 6): array {
+    $sql = "SELECT subject_id, subject_name, grade_level,
+                SUM(capacity) AS capacity,
+                SUM(enrolled_count) AS enrolled
+            FROM (
+                SELECT co.offering_id, subj.subject_id, subj.subject_name, sec.grade_level, co.capacity,
+                    (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
+                FROM classofferings co
+                JOIN subjects subj ON subj.subject_id = co.subject_id
+                JOIN sections sec  ON sec.section_id  = co.section_id
+                WHERE co.status = 'active'
+            ) x
+            GROUP BY subject_id, subject_name, grade_level
+            ORDER BY grade_level ASC, subject_name ASC
+            LIMIT ?";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $capacity = (int) $row['capacity'];
+        $enrolled = (int) $row['enrolled'];
+        $percent  = $capacity > 0 ? (int) min(100, round(($enrolled / $capacity) * 100)) : 0;
+
+        $rows[] = [
+            'label'    => trim($row['subject_name'] . ' ' . $row['grade_level']),
+            'enrolled' => $enrolled,
+            'capacity' => $capacity,
+            'percent'  => $percent,
+            // Low-fill classes get flagged red regardless of subject; otherwise
+            // reuse the same deterministic palette as the user-avatar colors
+            // so bars stay visually varied without needing a fixed color map.
+            'color'    => $percent < 75 ? 'var(--danger)' : get_avatar_color($row['subject_name'] . $row['grade_level']),
+        ];
+    }
+    $stmt->close();
+
+    return $rows;
+}
+
+/**
+ * Most recently created active class offerings, resolved to their
+ * subject/section/teacher, for the dashboard's "Courses & Subjects" widget.
+ * offering_id is included so the row's "View Students" action can call the
+ * same read-only roster endpoint the full Courses & Subjects page uses.
+ *
+ * @return array<int, array{offering_id:int, subject_name:string, grade_level:int, strand:?string, teacher_name:?string, status:string}>
+ */
+function get_recent_course_offerings(mysqli $conn, int $limit = 4): array {
+    $sql = "SELECT co.offering_id, co.status,
+                co.subject_id, co.section_id, co.teacher_id,
+                co.quarter, co.school_year_id, co.capacity,
+                co.schedule_days, co.start_time, co.end_time,
+                subj.subject_name,
+                sec.grade_level, sec.strand,
+                t.teacher_id AS t_id, t.firstname AS teacher_firstname, t.lastname AS teacher_lastname
+            FROM classofferings co
+            JOIN subjects subj ON subj.subject_id = co.subject_id
+            JOIN sections sec  ON sec.section_id  = co.section_id
+            LEFT JOIN teachers t ON t.teacher_id = co.teacher_id
+            ORDER BY co.created_at DESC
+            LIMIT ?";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $rows[] = [
+            'offering_id'    => (int) $row['offering_id'],
+            'subject_name'   => $row['subject_name'],
+            'grade_level'    => (int) $row['grade_level'],
+            'strand'         => $row['strand'],
+            'teacher_name'   => $row['t_id'] ? trim($row['teacher_firstname'] . ' ' . $row['teacher_lastname']) : null,
+            'status'         => $row['status'],
+            // Raw fields for the Update Course modal (dashboard's own copy).
+            'subject_id'     => (int) $row['subject_id'],
+            'section_id'     => (int) $row['section_id'],
+            'teacher_id'     => $row['teacher_id'] ? (int) $row['teacher_id'] : '',
+            'quarter'        => $row['quarter'],
+            'school_year_id' => (int) $row['school_year_id'],
+            'capacity'       => (int) $row['capacity'],
+            'schedule_days'  => $row['schedule_days'],
+            'start_time'     => $row['start_time'],
+            'end_time'       => $row['end_time'],
+        ];
+    }
+    $stmt->close();
+
+    return $rows;
+}
+
+/**
  * ================= CHATBOT (OpenRouter-backed assistant) =================
  *
  * Retrieval layer for the floating chat assistant. Builds a compact,

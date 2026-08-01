@@ -311,6 +311,19 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
 </div>
 
 <script>
+    // ---- Announcement data lookup (used to auto-open the edit panel below) ----
+    const announcementsData = <?= json_encode(array_reduce($announcements, function ($carry, $a) {
+        $carry[(int) $a['announcement_id']] = [
+            'id'       => (int) $a['announcement_id'],
+            'title'    => $a['title'],
+            'body'     => $a['body'],
+            'audience' => $a['audience'],
+            'priority' => $a['priority'],
+            'pinned'   => (bool) $a['is_pinned'],
+        ];
+        return $carry;
+    }, []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
     // ---- Sidebar collapse/expand (shared with sidebar module) ----
     function toggleSidebar() {
         document.getElementById('sidebar').classList.toggle('collapsed');
@@ -378,6 +391,22 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
         document.getElementById('publishBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Publish Update';
         showPanel();
     }
+
+    (function openEditFromQueryString() {
+        const params = new URLSearchParams(window.location.search);
+        const editId = params.get('edit');
+        if (!editId) return;
+
+        const data = announcementsData[editId];
+        if (data) {
+            openEditAnnouncement(data);
+        }
+
+        // Clean the URL so a page refresh doesn't reopen the panel.
+        params.delete('edit');
+        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+    })();
 </script>
 
 </body>
