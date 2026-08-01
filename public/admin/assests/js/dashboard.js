@@ -483,7 +483,13 @@ function deleteCourseOffering(offeringId, btnEl) {
 // Streams a full .sql dump from assests/api/backup_data.php and saves it
 // as a file download. Errors come back as JSON; success comes back as the
 // raw .sql file, so we branch on the response Content-Type.
+let backupInProgress = false;
+
 function backupData(btnEl) {
+    if (backupInProgress) return;
+    if (!confirm('Generate a full database backup now? This may take a moment for large datasets.')) return;
+
+    backupInProgress = true;
     if (btnEl) {
         btnEl.disabled = true;
         btnEl.dataset.originalHtml = btnEl.innerHTML;
@@ -529,6 +535,7 @@ function backupData(btnEl) {
             showToast(err.message || 'Failed to back up data.');
         })
         .finally(() => {
+            backupInProgress = false;
             if (btnEl) {
                 btnEl.disabled = false;
                 btnEl.innerHTML = btnEl.dataset.originalHtml;

@@ -39,6 +39,23 @@ if (!($conn instanceof mysqli)) {
     exit;
 }
 
+// ================= RATE LIMIT =================
+// A full dump is expensive (scans every table), so cap how often any one
+// admin session can trigger it. Cooldown is tracked per-session, not
+// globally, so one admin backing up doesn't block another.
+const BACKUP_COOLDOWN_SECONDS = 60;
+
+if (!empty($_SESSION['last_backup_time'])) {
+    $secondsSince = time() - $_SESSION['last_backup_time'];
+    if ($secondsSince < BACKUP_COOLDOWN_SECONDS) {
+        $waitFor = BACKUP_COOLDOWN_SECONDS - $secondsSince;
+        http_response_code(429);
+        echo json_encode(['success' => false, 'errors' => ["Please wait {$waitFor}s before requesting another backup."]]);
+        exit;
+    }
+}
+$_SESSION['last_backup_time'] = time();
+
 // Large databases can take a while / use a lot of memory.
 set_time_limit(300);
 
