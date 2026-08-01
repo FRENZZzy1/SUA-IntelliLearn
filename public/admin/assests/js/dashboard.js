@@ -479,4 +479,61 @@ function deleteCourseOffering(offeringId, btnEl) {
         });
 }
 
+// Quick Actions -> "Backup Data"
+// Streams a full .sql dump from assests/api/backup_data.php and saves it
+// as a file download. Errors come back as JSON; success comes back as the
+// raw .sql file, so we branch on the response Content-Type.
+function backupData(btnEl) {
+    if (btnEl) {
+        btnEl.disabled = true;
+        btnEl.dataset.originalHtml = btnEl.innerHTML;
+        btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Backing up...</span>';
+    }
+
+    fetch('assests/api/backup_data.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/sql, application/json'
+        },
+        body: 'csrf=' + encodeURIComponent(PENDING_ENROLL_CSRF)
+    })
+        .then(async res => {
+            const contentType = res.headers.get('Content-Type') || '';
+
+            if (contentType.includes('application/json')) {
+                const data = await res.json();
+                throw new Error((data.errors && data.errors[0]) || 'Backup failed.');
+            }
+            if (!res.ok) {
+                throw new Error('Backup failed.');
+            }
+
+            const disposition = res.headers.get('Content-Disposition') || '';
+            const match = disposition.match(/filename="?([^"]+)"?/);
+            const filename = match ? match[1] : `backup_${Date.now()}.sql`;
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+
+            showToast('Backup downloaded successfully.');
+        })
+        .catch(err => {
+            showToast(err.message || 'Failed to back up data.');
+        })
+        .finally(() => {
+            if (btnEl) {
+                btnEl.disabled = false;
+                btnEl.innerHTML = btnEl.dataset.originalHtml;
+            }
+        });
+}
+
 document.addEventListener('DOMContentLoaded', loadAnnouncements);

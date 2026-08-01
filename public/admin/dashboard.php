@@ -185,7 +185,7 @@ $recentCourseOfferings    = get_recent_course_offerings($conn, 4);
                                     <i class="fas fa-file-export qa-icon-red"></i>
                                     <span>Generate Report</span>
                                 </button>
-                                <button class="quick-action-btn" onclick="showToast('Backup Data initiated')">
+                                <button class="quick-action-btn" onclick="backupData(this)">
                                     <i class="fas fa-database qa-icon-teal"></i>
                                     <span>Backup Data</span>
                                 </button>
@@ -291,7 +291,7 @@ $recentCourseOfferings    = get_recent_course_offerings($conn, 4);
                 <!-- Enrollment Module -->
                 <div class="card">
                     <div class="card-header">
-                        <h2><i class="fas fa-user-plus"></i> Pending Enrollments</h2>
+                        <h2><i class="fas fa-a-plus"></i> Pending Enrollments</h2>
                         <div class="card-actions">
                         </div>
                     </div>
