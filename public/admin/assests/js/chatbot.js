@@ -8,6 +8,7 @@
 // so it's cleared on refresh rather than persisted on a shared machine.
 (function () {
     const CHAT_ENDPOINT = 'assests/api/chatbot.php';
+    const MODEL_SETTINGS_ENDPOINT = 'assests/api/model_settings.php';
     const MAX_HISTORY_TURNS = 8; // sent to the server; server re-caps too
 
     const SUGGESTIONS = [
@@ -19,6 +20,8 @@
     let history = []; // [{role: 'user'|'assistant', content: string}]
     let isSending = false;
     let unreadCount = 0;
+    let modelSettingsLoaded = false; // avoid re-fetching the model list every time the panel toggles open
+    let modelSettingsAvailable = true; // flips false (and hides the gear) if the endpoint 401s — non-admin viewer
 
     // ---------- utilities ----------
 
@@ -497,6 +500,67 @@
                 .chat-panel { right: 12px; bottom: 12px; width: calc(100vw - 24px); }
                 .chat-fab { right: 16px; bottom: 16px; }
             }
+
+            /* ---- model settings (admin only) ---- */
+            .chat-model-settings {
+                max-height: 0;
+                overflow: hidden;
+                background: var(--bg-light, #f7f8fb);
+                border-bottom: 1px solid rgba(0,0,0,0.06);
+                flex-shrink: 0;
+                transition: max-height .2s ease;
+            }
+            .chat-model-settings.open { max-height: 160px; }
+            .chat-model-settings-inner { padding: 12px 14px; }
+            .chat-model-settings-label {
+                font-size: 11.5px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: .03em;
+                color: var(--text-muted, #64748b);
+                margin-bottom: 6px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .chat-model-settings select {
+                width: 100%;
+                padding: 7px 9px;
+                font-size: 12.5px;
+                border: 1px solid #dfe3ee;
+                border-radius: 8px;
+                background: #fff;
+                color: var(--text-dark, #1f2937);
+                outline: none;
+            }
+            .chat-model-settings select:focus { border-color: var(--primary, #4f46e5); }
+            .chat-model-settings-actions { display: flex; gap: 6px; margin-top: 8px; }
+            .chat-model-settings-actions button {
+                font-size: 11.5px;
+                font-weight: 600;
+                padding: 6px 10px;
+                border-radius: 8px;
+                border: 1px solid #dfe3ee;
+                background: #fff;
+                color: var(--text-dark, #1f2937);
+                cursor: pointer;
+                transition: background .15s ease;
+            }
+            .chat-model-settings-actions button:hover:not(:disabled) { background: #eef0f8; }
+            .chat-model-settings-actions button:disabled { opacity: .5; cursor: not-allowed; }
+            .chat-model-settings-actions .primary {
+                background: var(--primary, #4f46e5);
+                border-color: var(--primary, #4f46e5);
+                color: #fff;
+            }
+            .chat-model-settings-actions .primary:hover:not(:disabled) { background: var(--primary-accent, #6d5cd6); }
+            .chat-model-settings-status {
+                font-size: 11px;
+                color: var(--text-muted, #64748b);
+                margin-top: 6px;
+                min-height: 14px;
+            }
+            .chat-model-settings-status.error { color: #b91c1c; }
         `;
         document.head.appendChild(style);
     }
@@ -526,8 +590,22 @@
                     <div class="chat-panel-subtitle">Online · answers about students &amp; courses</div>
                 </div>
                 <div class="chat-panel-actions">
+                    <button type="button" class="chat-panel-icon-btn" id="chatPanelModelToggle" title="Chatbot model (admin)" aria-label="Chatbot model settings"><i class="fas fa-microchip"></i></button>
                     <button type="button" class="chat-panel-icon-btn" id="chatPanelClear" title="Clear conversation" aria-label="Clear conversation"><i class="fas fa-broom"></i></button>
                     <button type="button" class="chat-panel-icon-btn" id="chatPanelClose" aria-label="Close chat"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+            <div class="chat-model-settings" id="chatModelSettings">
+                <div class="chat-model-settings-inner">
+                    <div class="chat-model-settings-label"><i class="fas fa-brain"></i> AI model</div>
+                    <select id="chatModelSelect" disabled>
+                        <option value="">Loading models…</option>
+                    </select>
+                    <div class="chat-model-settings-actions">
+                        <button type="button" class="primary" id="chatModelSave" disabled>Save</button>
+                        <button type="button" id="chatModelReset" disabled>Use auto-select</button>
+                    </div>
+                    <div class="chat-model-settings-status" id="chatModelStatus"></div>
                 </div>
             </div>
             <div style="position: relative; flex: 1; overflow: hidden; display: flex;">
@@ -547,6 +625,9 @@
         panel.querySelector('#chatPanelClose').addEventListener('click', closePanel);
         panel.querySelector('#chatPanelClear').addEventListener('click', clearConversation);
         panel.querySelector('#chatForm').addEventListener('submit', onSubmit);
+        panel.querySelector('#chatPanelModelToggle').addEventListener('click', toggleModelSettings);
+        panel.querySelector('#chatModelSave').addEventListener('click', () => saveModelSelection(document.getElementById('chatModelSelect').value));
+        panel.querySelector('#chatModelReset').addEventListener('click', () => saveModelSelection(''));
 
         const input = panel.querySelector('#chatInput');
         input.addEventListener('input', () => autoGrow(input));
@@ -630,6 +711,86 @@
     function closePanel() {
         document.getElementById('chatPanel').classList.remove('open');
         document.getElementById('chatFabBtn').classList.remove('hidden-while-open');
+    }
+
+    // ---------- model settings (admin only) ----------
+
+    function toggleModelSettings() {
+        const panel = document.getElementById('chatModelSettings');
+        const isOpen = panel.classList.toggle('open');
+        if (isOpen && !modelSettingsLoaded) {
+            loadModelSettings();
+        }
+    }
+
+    function setModelStatus(text, isError) {
+        const status = document.getElementById('chatModelStatus');
+        if (!status) return;
+        status.textContent = text;
+        status.classList.toggle('error', !!isError);
+    }
+
+    async function loadModelSettings() {
+        const select = document.getElementById('chatModelSelect');
+        const saveBtn = document.getElementById('chatModelSave');
+        const resetBtn = document.getElementById('chatModelReset');
+
+        try {
+            const res = await fetch(MODEL_SETTINGS_ENDPOINT, { headers: { 'Accept': 'application/json' } });
+
+            if (res.status === 401) {
+                // Not an admin — hide the control entirely rather than
+                // showing a picker that will just error on use.
+                modelSettingsAvailable = false;
+                document.getElementById('chatPanelModelToggle')?.remove();
+                document.getElementById('chatModelSettings')?.remove();
+                return;
+            }
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                setModelStatus(data.error || 'Could not load models.', true);
+                select.innerHTML = '<option value="">(unavailable)</option>';
+                return;
+            }
+
+            modelSettingsLoaded = true;
+            select.innerHTML = '<option value="">— Auto-select (recommended) —</option>' +
+                data.models.map((m) => {
+                    const ctx = m.context_length ? `${m.context_length.toLocaleString()} ctx` : 'unknown ctx';
+                    const isSelected = m.id === data.selected ? 'selected' : '';
+                    return `<option value="${escapeHtml(m.id)}" ${isSelected}>${escapeHtml(m.name)} (${ctx})</option>`;
+                }).join('');
+
+            select.disabled = false;
+            saveBtn.disabled = false;
+            resetBtn.disabled = false;
+            setModelStatus(data.selected ? `Currently pinned to: ${data.selected}` : 'Currently auto-selecting a model.');
+        } catch (err) {
+            setModelStatus('Network error loading models.', true);
+        }
+    }
+
+    async function saveModelSelection(model) {
+        setModelStatus('Saving…');
+        try {
+            const res = await fetch(MODEL_SETTINGS_ENDPOINT, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ model })
+            });
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                setModelStatus(data.error || 'Could not save selection.', true);
+                return;
+            }
+
+            setModelStatus(data.selected ? `Saved. Now pinned to: ${data.selected}` : 'Saved. Back to auto-select.');
+        } catch (err) {
+            setModelStatus('Network error saving selection.', true);
+        }
     }
 
     function updateBadge() {

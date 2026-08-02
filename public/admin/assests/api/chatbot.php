@@ -48,6 +48,7 @@ if (!defined('OPENROUTER_API_KEY') || OPENROUTER_API_KEY === '') {
 
 // ================= DATA LAYER =================
 require_once 'dashboard_functions.php';
+require_once 'openrouter_model.php';
 
 // ================= READ + VALIDATE REQUEST BODY =================
 $raw = file_get_contents('php://input');
@@ -110,60 +111,88 @@ $messages = array_merge(
     [['role' => 'user', 'content' => $message]]
 );
 
-// ================= CALL OPENROUTER =================
-$payload = json_encode([
-    'model' => OPENROUTER_MODEL,
-    'messages' => $messages,
-    'temperature' => 0.3,
-    'max_tokens' => 500,
-]);
+// ================= CALL OPENROUTER (auto model selection + failover) =================
+/**
+ * Attempts one chat completion against a given model. Returns a uniform
+ * result shape so the try-loop below can treat "reachable but bad
+ * response" and "unreachable" the same way.
+ */
+function call_openrouter_model(string $model, array $messages): array {
+    $payload = json_encode([
+        'model' => $model,
+        'messages' => $messages,
+        'temperature' => 0.3,
+        'max_tokens' => 500,
+    ]);
 
-$ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST => true,
-    CURLOPT_POSTFIELDS => $payload,
-    CURLOPT_CONNECTTIMEOUT => 10, // fail fast if we can't even reach OpenRouter
-    CURLOPT_TIMEOUT => 45,        // free models can be slower than paid ones
-    CURLOPT_HTTPHEADER => [
-        'Content-Type: application/json',
-        'Authorization: Bearer ' . OPENROUTER_API_KEY,
-        // Optional but recommended by OpenRouter for their leaderboard/analytics.
-        'HTTP-Referer: ' . ($_SERVER['HTTP_ORIGIN'] ?? ($_SERVER['HTTP_HOST'] ?? 'localhost')),
-        'X-Title: SUA IntelliLearn Admin Dashboard',
-    ],
-]);
+    $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $payload,
+        CURLOPT_CONNECTTIMEOUT => 10, // fail fast if we can't even reach OpenRouter
+        CURLOPT_TIMEOUT => 45,        // free models can be slower than paid ones
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . OPENROUTER_API_KEY,
+            // Optional but recommended by OpenRouter for their leaderboard/analytics.
+            'HTTP-Referer: ' . ($_SERVER['HTTP_ORIGIN'] ?? ($_SERVER['HTTP_HOST'] ?? 'localhost')),
+            'X-Title: SUA IntelliLearn Admin Dashboard',
+        ],
+    ]);
 
-$response = curl_exec($ch);
-$curlErrno = curl_errno($ch);
-$curlError = curl_error($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
+    $response = curl_exec($ch);
+    $curlErrno = curl_errno($ch);
+    $curlError = curl_error($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
-if ($response === false) {
-    http_response_code(504);
-    if ($curlErrno === CURLE_OPERATION_TIMEDOUT) {
-        // Distinguish "couldn't even connect" from "connected but the
-        // model/API never finished responding" — they point at different fixes.
-        $message = $httpCode === 0
-            ? 'Timed out trying to reach OpenRouter. Your server\'s outbound network may be blocking or throttling requests to openrouter.ai — check with your host/firewall.'
-            : 'OpenRouter accepted the request but the model took too long to respond. The free model may be overloaded right now — try again, or switch OPENROUTER_MODEL to a different ":free" slug.';
-    } else {
-        $message = 'Could not reach the chat assistant service: ' . $curlError;
+    if ($response === false) {
+        $message = ($curlErrno === CURLE_OPERATION_TIMEDOUT)
+            ? ($httpCode === 0
+                ? 'Timed out trying to reach OpenRouter.'
+                : 'OpenRouter accepted the request but the model took too long to respond.')
+            : 'Could not reach the chat assistant service: ' . $curlError;
+        return ['ok' => false, 'error' => $message, 'status' => 504];
     }
-    echo json_encode(['error' => $message]);
-    exit;
+
+    $decoded = json_decode($response, true);
+
+    if ($httpCode !== 200 || !isset($decoded['choices'][0]['message']['content'])) {
+        $apiError = $decoded['error']['message'] ?? 'Unexpected response from the chat assistant service.';
+        return ['ok' => false, 'error' => $apiError, 'status' => 502];
+    }
+
+    return ['ok' => true, 'reply' => trim($decoded['choices'][0]['message']['content'])];
 }
 
-$decoded = json_decode($response, true);
+$candidates = get_openrouter_model_candidates();
+$triedLiveCatalog = false;
+$lastResult = null;
+$maxAttempts = 4; // don't let one slow request cascade through every free model
 
-if ($httpCode !== 200 || !isset($decoded['choices'][0]['message']['content'])) {
-    $apiError = $decoded['error']['message'] ?? 'Unexpected response from the chat assistant service.';
-    http_response_code(502);
-    echo json_encode(['error' => $apiError]);
-    exit;
+for ($i = 0, $attempts = 0; $attempts < $maxAttempts; $i++, $attempts++) {
+    // Once we've exhausted the cached + preferred list, fetch the live
+    // free-model catalog once as a last resort and keep going.
+    if ($i >= count($candidates)) {
+        if ($triedLiveCatalog) break;
+        $triedLiveCatalog = true;
+        $candidates = array_values(array_unique(array_merge($candidates, get_live_free_openrouter_models())));
+        if ($i >= count($candidates)) break;
+    }
+
+    $model = $candidates[$i];
+    $lastResult = call_openrouter_model($model, $messages);
+
+    if ($lastResult['ok']) {
+        cache_working_openrouter_model($model);
+        echo json_encode(['reply' => $lastResult['reply']]);
+        exit;
+    }
 }
 
+// Every attempted model failed.
+http_response_code($lastResult['status'] ?? 502);
 echo json_encode([
-    'reply' => trim($decoded['choices'][0]['message']['content']),
+    'error' => $lastResult['error'] ?? 'All free models failed to respond right now. Please try again shortly.',
 ]);

@@ -127,7 +127,9 @@ function getFlashMessage() {
 }
 
 define('OPENROUTER_API_KEY', '');   // from openrouter.ai/keys
-define('OPENROUTER_MODEL', 'cohere/north-mini-code:free'); // Check https://openrouter.ai/models?max_price=0 for current free models
+// No OPENROUTER_MODEL needed anymore — chatbot.php auto-selects a working
+// free model (preferred list first, then live OpenRouter free catalog as
+// fallback) via openrouter_model.php.
 
 
 ?>
