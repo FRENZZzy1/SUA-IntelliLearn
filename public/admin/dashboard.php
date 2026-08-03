@@ -26,19 +26,19 @@ include 'assests/api/get_enrollments_count.php';
 
 requireAdmin();
 
-$totalStudents   = get_total_students($conn);
-$totalTeachers   = get_total_teachers($conn);
-$totalCourses    = get_total_Class($conn);
-$pendingEnrollments = get_pending_enrollments($conn);
-$totalUsersCount = get_total_users_count($conn);
-$recentUsers     = get_recent_users($conn, 4);
+$totalStudents   = get_total_students($pdo);
+$totalTeachers   = get_total_teachers($pdo);
+$totalCourses    = get_total_Class($pdo);
+$pendingEnrollments = get_pending_enrollments($pdo);
+$totalUsersCount = get_total_users_count($pdo);
+$recentUsers     = get_recent_users($pdo, 4);
 
-$pendingEnrollmentData   = get_pending_enrollment_groups($conn, 5);
+$pendingEnrollmentData   = get_pending_enrollment_groups($pdo, 5);
 $pendingEnrollmentGroups = $pendingEnrollmentData['groups'];
 $totalPendingGroups      = $pendingEnrollmentData['total_groups'];
 
-$courseEnrollmentProgress = get_course_enrollment_progress($conn, 6);
-$recentCourseOfferings    = get_recent_course_offerings($conn, 4);
+$courseEnrollmentProgress = get_course_enrollment_progress($pdo, 6);
+$recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
 
 // NOTE: There is no Courses or Enrollments table in the current schema yet,
 // so "Active Courses" and "Pending Enrollments" stay static for now.

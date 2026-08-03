@@ -82,7 +82,7 @@ foreach (array_slice($historyIn, -8) as $turn) {
 
 // ================= RETRIEVE DB CONTEXT =================
 try {
-    $context = get_chatbot_context($conn, $message);
+    $context = get_chatbot_context($pdo, $message);
 } catch (Throwable $e) {
     $context = "(Could not retrieve database context due to an internal error.)";
 }

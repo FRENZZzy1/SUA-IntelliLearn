@@ -1,43 +1,47 @@
 <?php
 /**
- * Dashboard data layer
+ * Dashboard data layer (PDO version)
  * All database queries for the Admin Dashboard live here.
  * dashboard.php just calls these functions and renders HTML —
  * it should not contain any raw SQL.
+ *
+ * NOTE: every function now takes PDO $pdo instead of mysqli $conn.
+ * Callers (dashboard.php, chatbot.php, etc.) need to pass $pdo,
+ * which is already created in your config file.
  */
 
 /**
  * Total number of students.
  */
-function get_total_students(mysqli $conn): int {
-    $result = $conn->query("SELECT COUNT(*) AS cnt FROM Students");
-    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+function get_total_students(PDO $pdo): int {
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM Students")->fetch();
+    return $row ? (int) $row['cnt'] : 0;
 }
 
-function get_total_Class(mysqli $conn): int {
-    $result = $conn->query("SELECT COUNT(*) AS cnt FROM classofferings");
-    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+function get_total_Class(PDO $pdo): int {
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM classofferings")->fetch();
+    return $row ? (int) $row['cnt'] : 0;
 }
 
-function get_pending_enrollments(mysqli $conn): int {
-    $result = $conn->query("SELECT COUNT(*) AS cnt FROM enrollment_requests WHERE status = 'pending'");
-    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+function get_pending_enrollments(PDO $pdo): int {
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM enrollment_requests WHERE status = 'pending'")->fetch();
+    return $row ? (int) $row['cnt'] : 0;
 }
 
 /**
  * Total number of teachers.
  */
-function get_total_teachers(mysqli $conn): int {
-    $result = $conn->query("SELECT COUNT(*) AS cnt FROM teachers");
-    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+function get_total_teachers(PDO $pdo): int {
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM teachers")->fetch();
+    return $row ? (int) $row['cnt'] : 0;
 }
 
 /**
  * Total number of user accounts (all roles).
  */
-function get_total_users_count(mysqli $conn): int {
-    $result = $conn->query("SELECT COUNT(*) AS cnt FROM Users");
-    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+function get_total_users_count(PDO $pdo): int {
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM Users")->fetch();
+    return $row ? (int) $row['cnt'] : 0;
 }
 
 /**
@@ -46,7 +50,7 @@ function get_total_users_count(mysqli $conn): int {
  *
  * @return array<int, array{id:int, username:string, Role:string, status:string, created_at:string, full_name:string, email:?string}>
  */
-function get_recent_users(mysqli $conn, int $limit = 4): array {
+function get_recent_users(PDO $pdo, int $limit = 4): array {
     $sql = "SELECT u.id, u.username, u.Role, u.status, u.created_at,
                 COALESCE(CONCAT(s.firstname, ' ', s.lastname), CONCAT(t.firstname, ' ', t.lastname), u.username) AS full_name,
                 COALESCE(s.email, t.email, a.email) AS email
@@ -57,18 +61,11 @@ function get_recent_users(mysqli $conn, int $limit = 4): array {
              ORDER BY u.created_at DESC
              LIMIT ?";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $limit);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(1, $limit, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
 
-    $users = [];
-    while ($row = $result->fetch_assoc()) {
-        $users[] = $row;
-    }
-    $stmt->close();
-
-    return $users;
+    return $stmt->fetchAll();
 }
 
 /**
@@ -95,33 +92,33 @@ function get_avatar_color(string $seed): string {
 /**
  * Total number of active class offerings (courses).
  */
-function get_active_courses_count(mysqli $conn): int {
-    $result = $conn->query("SELECT COUNT(*) AS cnt FROM classofferings WHERE status = 'active'");
-    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+function get_active_courses_count(PDO $pdo): int {
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM classofferings WHERE status = 'active'")->fetch();
+    return $row ? (int) $row['cnt'] : 0;
 }
 
 /**
  * Total number of class offerings, regardless of status.
  */
-function get_total_courses_count(mysqli $conn): int {
-    $result = $conn->query("SELECT COUNT(*) AS cnt FROM classofferings");
-    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+function get_total_courses_count(PDO $pdo): int {
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM classofferings")->fetch();
+    return $row ? (int) $row['cnt'] : 0;
 }
 
 /**
  * Total number of active (currently enrolled) enrollments.
  */
-function get_total_enrollees_count(mysqli $conn): int {
-    $result = $conn->query("SELECT COUNT(*) AS cnt FROM enrollments WHERE status = 'active'");
-    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+function get_total_enrollees_count(PDO $pdo): int {
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM enrollments WHERE status = 'active'")->fetch();
+    return $row ? (int) $row['cnt'] : 0;
 }
 
 /**
  * Count of enrollment_requests still awaiting a decision.
  */
-function get_pending_enrollments_count(mysqli $conn): int {
-    $result = $conn->query("SELECT COUNT(*) AS cnt FROM enrollment_requests WHERE status = 'pending'");
-    return $result ? (int) $result->fetch_assoc()['cnt'] : 0;
+function get_pending_enrollments_count(PDO $pdo): int {
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM enrollment_requests WHERE status = 'pending'")->fetch();
+    return $row ? (int) $row['cnt'] : 0;
 }
 
 /**
@@ -133,7 +130,7 @@ function get_pending_enrollments_count(mysqli $conn): int {
  *
  * @return array{groups: array, total_groups: int}
  */
-function get_pending_enrollment_groups(mysqli $conn, int $limit = 5): array {
+function get_pending_enrollment_groups(PDO $pdo, int $limit = 5): array {
     $sql = "SELECT
                 er.request_id,
                 er.student_id,
@@ -154,13 +151,7 @@ function get_pending_enrollment_groups(mysqli $conn, int $limit = 5): array {
             WHERE er.status = 'pending'
             ORDER BY er.submitted_at DESC";
 
-    $result = $conn->query($sql);
-    $rows = [];
-    if ($result) {
-        while ($row = $result->fetch_assoc()) {
-            $rows[] = $row;
-        }
-    }
+    $rows = $pdo->query($sql)->fetchAll();
 
     $groups = [];
     foreach ($rows as $r) {
@@ -207,7 +198,7 @@ function get_pending_enrollment_groups(mysqli $conn, int $limit = 5): array {
  *
  * @return array<int, array{label:string, enrolled:int, capacity:int, percent:int, color:string}>
  */
-function get_course_enrollment_progress(mysqli $conn, int $limit = 6): array {
+function get_course_enrollment_progress(PDO $pdo, int $limit = 6): array {
     $sql = "SELECT subject_id, subject_name, grade_level,
                 SUM(capacity) AS capacity,
                 SUM(enrolled_count) AS enrolled
@@ -223,13 +214,12 @@ function get_course_enrollment_progress(mysqli $conn, int $limit = 6): array {
             ORDER BY grade_level ASC, subject_name ASC
             LIMIT ?";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $limit);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(1, $limit, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
 
     $rows = [];
-    while ($row = $result->fetch_assoc()) {
+    foreach ($stmt->fetchAll() as $row) {
         $capacity = (int) $row['capacity'];
         $enrolled = (int) $row['enrolled'];
         $percent  = $capacity > 0 ? (int) min(100, round(($enrolled / $capacity) * 100)) : 0;
@@ -245,7 +235,6 @@ function get_course_enrollment_progress(mysqli $conn, int $limit = 6): array {
             'color'    => $percent < 75 ? 'var(--danger)' : get_avatar_color($row['subject_name'] . $row['grade_level']),
         ];
     }
-    $stmt->close();
 
     return $rows;
 }
@@ -258,7 +247,7 @@ function get_course_enrollment_progress(mysqli $conn, int $limit = 6): array {
  *
  * @return array<int, array{offering_id:int, subject_name:string, grade_level:int, strand:?string, teacher_name:?string, status:string}>
  */
-function get_recent_course_offerings(mysqli $conn, int $limit = 4): array {
+function get_recent_course_offerings(PDO $pdo, int $limit = 4): array {
     $sql = "SELECT co.offering_id, co.status,
                 co.subject_id, co.section_id, co.teacher_id,
                 co.quarter, co.school_year_id, co.capacity,
@@ -273,13 +262,12 @@ function get_recent_course_offerings(mysqli $conn, int $limit = 4): array {
             ORDER BY co.created_at DESC
             LIMIT ?";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $limit);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(1, $limit, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
 
     $rows = [];
-    while ($row = $result->fetch_assoc()) {
+    foreach ($stmt->fetchAll() as $row) {
         $rows[] = [
             'offering_id'    => (int) $row['offering_id'],
             'subject_name'   => $row['subject_name'],
@@ -299,7 +287,6 @@ function get_recent_course_offerings(mysqli $conn, int $limit = 4): array {
             'end_time'       => $row['end_time'],
         ];
     }
-    $stmt->close();
 
     return $rows;
 }
@@ -417,9 +404,8 @@ function extract_chat_keywords(string $question, int $max = 4): array {
  * Current active school year label + date range (cheap, gives the model
  * orientation on "this year" / "current quarter" type questions).
  */
-function get_current_schoolyear(mysqli $conn): ?array {
-    $result = $conn->query("SELECT label, start_date, end_date FROM schoolyears WHERE is_current = 1 LIMIT 1");
-    $row = $result ? $result->fetch_assoc() : null;
+function get_current_schoolyear(PDO $pdo): ?array {
+    $row = $pdo->query("SELECT label, start_date, end_date FROM schoolyears WHERE is_current = 1 LIMIT 1")->fetch();
     return $row ?: null;
 }
 
@@ -428,7 +414,7 @@ function get_current_schoolyear(mysqli $conn): ?array {
  * and a live count of active class offerings tied to the section, so
  * "how many classes does Rizal have" is answerable without a follow-up.
  */
-function search_sections(mysqli $conn, string $term, int $limit = 6): array {
+function search_sections(PDO $pdo, string $term, int $limit = 6): array {
     $like = '%' . $term . '%';
 
     $sql = "SELECT sec.section_id, sec.section_name, sec.grade_level, sec.strand,
@@ -442,24 +428,27 @@ function search_sections(mysqli $conn, string $term, int $limit = 6): array {
              ORDER BY sec.grade_level ASC, sec.section_name ASC
              LIMIT ?";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('ssi', $like, $like, $limit);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(1, $like);
+    $stmt->bindValue(2, $like);
+    $stmt->bindValue(3, $limit, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $rows = [];
-    while ($row = $result->fetch_assoc()) $rows[] = $row;
-    $stmt->close();
-    return $rows;
+
+    return $stmt->fetchAll();
 }
 
 /**
  * Sections filtered by grade level (used when the question names a grade
  * but no specific section, e.g. "sections in grade 11").
  */
-function search_sections_by_grade(mysqli $conn, array $grades, int $limit = 8): array {
+function search_sections_by_grade(PDO $pdo, array $grades, int $limit = 8): array {
     if (empty($grades)) return [];
     $placeholders = implode(',', array_fill(0, count($grades), '?'));
-    $types = str_repeat('i', count($grades));
+
+    // $limit is interpolated directly (not bindable via a mixed IN(...) +
+    // trailing LIMIT ? param list without extra bookkeeping); it's an int
+    // cast above the call site is not guaranteed, so force it here too.
+    $limit = (int) $limit;
 
     $sql = "SELECT sec.section_id, sec.section_name, sec.grade_level, sec.strand,
                 CONCAT(t.firstname, ' ', t.lastname) AS adviser_name
@@ -469,14 +458,10 @@ function search_sections_by_grade(mysqli $conn, array $grades, int $limit = 8): 
              ORDER BY sec.grade_level ASC, sec.section_name ASC
              LIMIT $limit";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param($types, ...$grades);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $rows = [];
-    while ($row = $result->fetch_assoc()) $rows[] = $row;
-    $stmt->close();
-    return $rows;
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($grades);
+
+    return $stmt->fetchAll();
 }
 
 /**
@@ -484,26 +469,22 @@ function search_sections_by_grade(mysqli $conn, array $grades, int $limit = 8): 
  * "seats remaining" / "is X full" questions can be answered from real
  * numbers instead of the static capacity field alone.
  */
-function get_offering_enrollment_counts(mysqli $conn, array $offeringIds): array {
+function get_offering_enrollment_counts(PDO $pdo, array $offeringIds): array {
     if (empty($offeringIds)) return [];
     $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
-    $types = str_repeat('i', count($offeringIds));
 
     $sql = "SELECT offering_id, COUNT(*) AS enrolled_count
              FROM enrollments
              WHERE status = 'active' AND offering_id IN ($placeholders)
              GROUP BY offering_id";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param($types, ...$offeringIds);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($offeringIds);
 
     $counts = [];
-    while ($row = $result->fetch_assoc()) {
+    foreach ($stmt->fetchAll() as $row) {
         $counts[(int) $row['offering_id']] = (int) $row['enrolled_count'];
     }
-    $stmt->close();
     return $counts;
 }
 
@@ -511,7 +492,7 @@ function get_offering_enrollment_counts(mysqli $conn, array $offeringIds): array
  * What a teacher actually teaches: subject, section, grade, quarter,
  * status — resolved by matching on first/last name.
  */
-function get_teacher_workload(mysqli $conn, string $term, int $limit = 10): array {
+function get_teacher_workload(PDO $pdo, string $term, int $limit = 10): array {
     $like = '%' . $term . '%';
 
     $sql = "SELECT co.offering_id, co.quarter, co.status,
@@ -525,14 +506,13 @@ function get_teacher_workload(mysqli $conn, string $term, int $limit = 10): arra
              ORDER BY sec.grade_level ASC, sub.subject_name ASC
              LIMIT ?";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('ssi', $like, $like, $limit);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(1, $like);
+    $stmt->bindValue(2, $like);
+    $stmt->bindValue(3, $limit, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $rows = [];
-    while ($row = $result->fetch_assoc()) $rows[] = $row;
-    $stmt->close();
-    return $rows;
+
+    return $stmt->fetchAll();
 }
 
 /**
@@ -541,7 +521,7 @@ function get_teacher_workload(mysqli $conn, string $term, int $limit = 10): arra
  * excludes birthdate/address/guardian/LRN, same privacy rule as the rest
  * of this file.
  */
-function get_student_schedule(mysqli $conn, string $term, int $limit = 10): array {
+function get_student_schedule(PDO $pdo, string $term, int $limit = 10): array {
     $like = '%' . $term . '%';
 
     $sql = "SELECT e.status AS enrollment_status,
@@ -556,14 +536,13 @@ function get_student_schedule(mysqli $conn, string $term, int $limit = 10): arra
              ORDER BY co.quarter ASC, sub.subject_name ASC
              LIMIT ?";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('ssi', $like, $like, $limit);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(1, $like);
+    $stmt->bindValue(2, $like);
+    $stmt->bindValue(3, $limit, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $rows = [];
-    while ($row = $result->fetch_assoc()) $rows[] = $row;
-    $stmt->close();
-    return $rows;
+
+    return $stmt->fetchAll();
 }
 
 /**
@@ -571,28 +550,30 @@ function get_student_schedule(mysqli $conn, string $term, int $limit = 10): arra
  * strand, and status (all optional). This is what makes "how many
  * pending requests for grade 11 STEM" answerable.
  */
-function search_enrollment_requests(mysqli $conn, array $grades = [], array $strands = [], array $statuses = [], int $limit = 10): array {
+function search_enrollment_requests(PDO $pdo, array $grades = [], array $strands = [], array $statuses = [], int $limit = 10): array {
     $where = [];
     $params = [];
-    $types = '';
 
     if (!empty($grades)) {
         $where[] = 'er.grade_level IN (' . implode(',', array_fill(0, count($grades), '?')) . ')';
-        foreach ($grades as $g) { $params[] = $g; $types .= 'i'; }
+        foreach ($grades as $g) { $params[] = $g; }
     }
     if (!empty($strands)) {
         $where[] = 'er.strand IN (' . implode(',', array_fill(0, count($strands), '?')) . ')';
-        foreach ($strands as $s) { $params[] = $s; $types .= 's'; }
+        foreach ($strands as $s) { $params[] = $s; }
     }
     // Only requests use pending/approved/denied; ignore other statuses that don't apply here.
     $validRequestStatuses = array_values(array_intersect($statuses, ['pending', 'approved', 'denied']));
     if (!empty($validRequestStatuses)) {
         $where[] = 'er.status IN (' . implode(',', array_fill(0, count($validRequestStatuses), '?')) . ')';
-        foreach ($validRequestStatuses as $s) { $params[] = $s; $types .= 's'; }
+        foreach ($validRequestStatuses as $s) { $params[] = $s; }
     }
 
     if (empty($where)) return [];
 
+    // $limit is bound separately below via bindValue(..., PDO::PARAM_INT)
+    // rather than mixed into $params, since the earlier IN(...) params
+    // don't have a fixed type string to track in PDO (unlike mysqli).
     $sql = "SELECT er.request_id, er.grade_level, er.strand, er.status, er.submitted_at,
                 CONCAT(s.firstname, ' ', s.lastname) AS student_name,
                 sub.subject_name
@@ -603,17 +584,15 @@ function search_enrollment_requests(mysqli $conn, array $grades = [], array $str
              ORDER BY er.submitted_at DESC
              LIMIT ?";
 
-    $params[] = $limit;
-    $types .= 'i';
-
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param($types, ...$params);
+    $stmt = $pdo->prepare($sql);
+    $i = 1;
+    foreach ($params as $p) {
+        $stmt->bindValue($i++, $p);
+    }
+    $stmt->bindValue($i, $limit, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $rows = [];
-    while ($row = $result->fetch_assoc()) $rows[] = $row;
-    $stmt->close();
-    return $rows;
+
+    return $stmt->fetchAll();
 }
 
 /**
@@ -621,7 +600,7 @@ function search_enrollment_requests(mysqli $conn, array $grades = [], array $str
  * subject/section they belong to. Excludes file_path/external_url
  * (internal storage detail, not useful to a chatbot answer).
  */
-function search_learning_materials(mysqli $conn, string $term, int $limit = 6): array {
+function search_learning_materials(PDO $pdo, string $term, int $limit = 6): array {
     $like = '%' . $term . '%';
 
     $sql = "SELECT lm.title, lm.type, sub.subject_name, sec.section_name
@@ -633,14 +612,12 @@ function search_learning_materials(mysqli $conn, string $term, int $limit = 6): 
              ORDER BY lm.created_at DESC
              LIMIT ?";
 
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('si', $like, $limit);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(1, $like);
+    $stmt->bindValue(2, $limit, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
-    $rows = [];
-    while ($row = $result->fetch_assoc()) $rows[] = $row;
-    $stmt->close();
-    return $rows;
+
+    return $stmt->fetchAll();
 }
 
 /**
@@ -648,19 +625,19 @@ function search_learning_materials(mysqli $conn, string $term, int $limit = 6): 
  * stats (always included, they're cheap and give the model orientation)
  * plus search hits for whatever keywords were found in the question.
  */
-function get_chatbot_context(mysqli $conn, string $question): string {
+function get_chatbot_context(PDO $pdo, string $question): string {
     $lines = [];
 
     $lines[] = "SCHOOL-WIDE STATS:";
-    $lines[] = "- Total students: " . get_total_students($conn);
-    $lines[] = "- Total teachers: " . get_total_teachers($conn);
-    $lines[] = "- Total user accounts: " . get_total_users_count($conn);
-    $lines[] = "- Total course offerings: " . get_total_courses_count($conn);
-    $lines[] = "- Active course offerings: " . get_active_courses_count($conn);
-    $lines[] = "- Currently enrolled (active enrollments): " . get_total_enrollees_count($conn);
-    $lines[] = "- Pending enrollment requests: " . get_pending_enrollments_count($conn);
+    $lines[] = "- Total students: " . get_total_students($pdo);
+    $lines[] = "- Total teachers: " . get_total_teachers($pdo);
+    $lines[] = "- Total user accounts: " . get_total_users_count($pdo);
+    $lines[] = "- Total course offerings: " . get_total_courses_count($pdo);
+    $lines[] = "- Active course offerings: " . get_active_courses_count($pdo);
+    $lines[] = "- Currently enrolled (active enrollments): " . get_total_enrollees_count($pdo);
+    $lines[] = "- Pending enrollment requests: " . get_pending_enrollments_count($pdo);
 
-    $sy = get_current_schoolyear($conn);
+    $sy = get_current_schoolyear($pdo);
     if ($sy) {
         $lines[] = "- Current school year: {$sy['label']} ({$sy['start_date']} to {$sy['end_date']})";
     }
@@ -678,16 +655,16 @@ function get_chatbot_context(mysqli $conn, string $question): string {
     $userRows = $courseRows = $subjectRows = $sectionRows = [];
 
     foreach ($keywords as $kw) {
-        foreach (search_users($conn, $kw, 5) as $row) {
+        foreach (search_users($pdo, $kw, 5) as $row) {
             if (!isset($seenUsers[$row['id']])) { $seenUsers[$row['id']] = true; $userRows[] = $row; }
         }
-        foreach (search_courses($conn, $kw, 5) as $row) {
+        foreach (search_courses($pdo, $kw, 5) as $row) {
             if (!isset($seenCourses[$row['offering_id']])) { $seenCourses[$row['offering_id']] = true; $courseRows[] = $row; }
         }
-        foreach (search_subjects($conn, $kw, 5) as $row) {
+        foreach (search_subjects($pdo, $kw, 5) as $row) {
             if (!isset($seenSubjects[$row['subject_id']])) { $seenSubjects[$row['subject_id']] = true; $subjectRows[] = $row; }
         }
-        foreach (search_sections($conn, $kw, 5) as $row) {
+        foreach (search_sections($pdo, $kw, 5) as $row) {
             if (!isset($seenSections[$row['section_id']])) { $seenSections[$row['section_id']] = true; $sectionRows[] = $row; }
         }
     }
@@ -704,7 +681,7 @@ function get_chatbot_context(mysqli $conn, string $question): string {
         // name match into an actually useful answer.
         foreach (array_slice($userRows, 0, 3) as $u) {
             if ($u['role'] === 'student') {
-                $schedule = get_student_schedule($conn, $u['full_name'], 6);
+                $schedule = get_student_schedule($pdo, $u['full_name'], 6);
                 if (!empty($schedule)) {
                     $lines[] = "\n{$u['full_name']}'S CURRENT SCHEDULE (subject · section · grade · quarter · status):";
                     foreach ($schedule as $s) {
@@ -712,7 +689,7 @@ function get_chatbot_context(mysqli $conn, string $question): string {
                     }
                 }
             } elseif ($u['role'] === 'teacher') {
-                $workload = get_teacher_workload($conn, $u['full_name'], 8);
+                $workload = get_teacher_workload($pdo, $u['full_name'], 8);
                 if (!empty($workload)) {
                     $lines[] = "\n{$u['full_name']}'S TEACHING LOAD (subject · section · grade · quarter · status):";
                     foreach ($workload as $w) {
@@ -725,7 +702,7 @@ function get_chatbot_context(mysqli $conn, string $question): string {
 
     if (!empty($courseRows)) {
         $foundAnything = true;
-        $counts = get_offering_enrollment_counts($conn, array_column($courseRows, 'offering_id'));
+        $counts = get_offering_enrollment_counts($pdo, array_column($courseRows, 'offering_id'));
         $lines[] = "\nMATCHING COURSES (subject — section · grade · teacher · quarter · enrolled/capacity · status):";
         foreach (array_slice($courseRows, 0, 8) as $c) {
             $enrolled = $counts[$c['offering_id']] ?? 0;
@@ -752,7 +729,7 @@ function get_chatbot_context(mysqli $conn, string $question): string {
 
     // ---- Grade-level lookups (e.g. "sections in grade 11") ----
     if (!empty($grades) && empty($sectionRows)) {
-        $gradeSections = search_sections_by_grade($conn, $grades, 8);
+        $gradeSections = search_sections_by_grade($pdo, $grades, 8);
         if (!empty($gradeSections)) {
             $foundAnything = true;
             $lines[] = "\nSECTIONS IN GRADE(S) " . implode(', ', $grades) . " (name · strand · adviser):";
@@ -763,7 +740,7 @@ function get_chatbot_context(mysqli $conn, string $question): string {
     }
 
     // ---- Enrollment requests: triggered by grade/strand/status mentions, e.g. "pending grade 11 STEM requests" ----
-    $requestRows = search_enrollment_requests($conn, $grades, $strands, $statuses, 10);
+    $requestRows = search_enrollment_requests($pdo, $grades, $strands, $statuses, 10);
     if (!empty($requestRows)) {
         $foundAnything = true;
         $lines[] = "\nMATCHING ENROLLMENT REQUESTS (student · grade · strand · subject · status · submitted):";
@@ -777,7 +754,7 @@ function get_chatbot_context(mysqli $conn, string $question): string {
     $materialRows = [];
     $seenMaterials = [];
     foreach ($keywords as $kw) {
-        foreach (search_learning_materials($conn, $kw, 5) as $row) {
+        foreach (search_learning_materials($pdo, $kw, 5) as $row) {
             $key = $row['title'] . '|' . $row['section_name'];
             if (!isset($seenMaterials[$key])) { $seenMaterials[$key] = true; $materialRows[] = $row; }
         }
@@ -805,16 +782,16 @@ function get_chatbot_context(mysqli $conn, string $question): string {
  *
  * @return array{users: array, courses: array, subjects: array}
  */
-function global_search(mysqli $conn, string $term, int $limitPerGroup = 6): array {
+function global_search(PDO $pdo, string $term, int $limitPerGroup = 6): array {
     $term = trim($term);
     if ($term === '') {
         return ['users' => [], 'courses' => [], 'subjects' => []];
     }
 
     return [
-        'users'    => search_users($conn, $term, $limitPerGroup),
-        'courses'  => search_courses($conn, $term, $limitPerGroup),
-        'subjects' => search_subjects($conn, $term, $limitPerGroup),
+        'users'    => search_users($pdo, $term, $limitPerGroup),
+        'courses'  => search_courses($pdo, $term, $limitPerGroup),
+        'subjects' => search_subjects($pdo, $term, $limitPerGroup),
     ];
 }
 
@@ -822,7 +799,7 @@ function global_search(mysqli $conn, string $term, int $limitPerGroup = 6): arra
  * Search Users, joined to whichever role table (Students / teachers / Admin)
  * they belong to, matching on username, first/last name, or email.
  */
-function search_users(mysqli $conn, string $term, int $limit = 6): array {
+function search_users(PDO $pdo, string $term, int $limit = 6): array {
     $like = '%' . $term . '%';
 
     $sql = "SELECT u.id, u.username, u.Role AS role, u.status,
@@ -839,26 +816,21 @@ function search_users(mysqli $conn, string $term, int $limit = 6): array {
              ORDER BY full_name ASC
              LIMIT ?";
 
-    $stmt = $conn->prepare($sql);
-    $params = [$like, $like, $like, $like, $like, $like, $like, $like, $limit];
-    $stmt->bind_param('ssssssssi', ...$params);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    $rows = [];
-    while ($row = $result->fetch_assoc()) {
-        $rows[] = $row;
+    $stmt = $pdo->prepare($sql);
+    for ($i = 1; $i <= 8; $i++) {
+        $stmt->bindValue($i, $like);
     }
-    $stmt->close();
+    $stmt->bindValue(9, $limit, PDO::PARAM_INT);
+    $stmt->execute();
 
-    return $rows;
+    return $stmt->fetchAll();
 }
 
 /**
  * Search course offerings (classofferings), matching on subject name,
  * section name, or teacher name.
  */
-function search_courses(mysqli $conn, string $term, int $limit = 6): array {
+function search_courses(PDO $pdo, string $term, int $limit = 6): array {
     $like = '%' . $term . '%';
 
     $sql = "SELECT co.offering_id, co.quarter, co.capacity, co.status,
@@ -875,25 +847,21 @@ function search_courses(mysqli $conn, string $term, int $limit = 6): array {
              ORDER BY sub.subject_name ASC
              LIMIT ?";
 
-    $stmt = $conn->prepare($sql);
-    $params = [$like, $like, $like, $like, $limit];
-    $stmt->bind_param('ssssi', ...$params);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(1, $like);
+    $stmt->bindValue(2, $like);
+    $stmt->bindValue(3, $like);
+    $stmt->bindValue(4, $like);
+    $stmt->bindValue(5, $limit, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
 
-    $rows = [];
-    while ($row = $result->fetch_assoc()) {
-        $rows[] = $row;
-    }
-    $stmt->close();
-
-    return $rows;
+    return $stmt->fetchAll();
 }
 
 /**
  * Search subjects by name or description.
  */
-function search_subjects(mysqli $conn, string $term, int $limit = 6): array {
+function search_subjects(PDO $pdo, string $term, int $limit = 6): array {
     $like = '%' . $term . '%';
 
     $sql = "SELECT subject_id, subject_name, description
@@ -902,17 +870,11 @@ function search_subjects(mysqli $conn, string $term, int $limit = 6): array {
              ORDER BY subject_name ASC
              LIMIT ?";
 
-    $stmt = $conn->prepare($sql);
-    $params = [$like, $like, $limit];
-    $stmt->bind_param('ssi', ...$params);
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindValue(1, $like);
+    $stmt->bindValue(2, $like);
+    $stmt->bindValue(3, $limit, PDO::PARAM_INT);
     $stmt->execute();
-    $result = $stmt->get_result();
 
-    $rows = [];
-    while ($row = $result->fetch_assoc()) {
-        $rows[] = $row;
-    }
-    $stmt->close();
-
-    return $rows;
+    return $stmt->fetchAll();
 }

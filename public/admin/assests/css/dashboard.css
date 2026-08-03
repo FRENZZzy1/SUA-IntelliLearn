@@ -40,22 +40,7 @@ body {
     transition: margin-left 0.3s ease;
 }
 
-.sidebar.collapsed ~ .main-content {
-    margin-left: var(--sidebar-collapsed);
-}
 
-.content-wrapper {
-    padding: 24px 28px;
-    max-width: 1600px;
-    transition: max-width 0.3s ease;
-}
-
-/* When the sidebar collapses, let the content use all the freed-up space
-   instead of stopping at the fixed cap (which still left a large gap on
-   wide monitors). */
-.sidebar.collapsed ~ .main-content .content-wrapper {
-    max-width: none;
-}
 
 /* ================= WELCOME MODULE ================= */
 .welcome-banner {
