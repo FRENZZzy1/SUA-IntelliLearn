@@ -1,13 +1,16 @@
 <?php
 $current = basename($_SERVER['PHP_SELF']);
 
+// ================= CUSTOM SIDEBAR ICON CONFIG =================
+// Set the path to your custom icon image (SVG/PNG). Leave empty to use the default graduation cap.
+// Example: $customSidebarIcon = '../../assets/images/sua-logo.svg';
+$customSidebarIcon = 'assests/images/logo.jpg'; 
+// ==============================================================
+
 // ================= DYNAMIC USER INFO (sidebar footer) =================
-// Expects a session to already be started by the including page (e.g. dashboard.php).
 $displayName = $_SESSION['username'] ?? 'Guest';
 $rawRole     = $_SESSION['role'] ?? '';
 
-// Map raw role values (e.g. "admin", "teacher") to a friendlier label.
-// Add more mappings here as you add roles.
 $roleLabels = [
     'admin'   => 'System Administrator',
     'teacher' => 'Teacher',
@@ -16,8 +19,6 @@ $roleLabels = [
 $roleKey   = strtolower($rawRole);
 $roleLabel = $roleLabels[$roleKey] ?? ($rawRole !== '' ? ucfirst($rawRole) : 'User');
 
-// Reuse get_initials() from dashboard_functions.php if it's already loaded,
-// otherwise fall back to a simple inline version.
 if (function_exists('get_initials')) {
     $sidebarInitials = get_initials($displayName);
 } else {
@@ -34,13 +35,17 @@ if (function_exists('get_initials')) {
 
 
 <aside class="sidebar" id="sidebar">
-    <div class="toggle-btn" onclick="toggleSidebar()">
+    <div class="toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar">
         <i class="fas fa-chevron-left"></i>
     </div>
 
     <div class="sidebar-header">
         <div class="sidebar-logo">
-            <i class="fas fa-graduation-cap" style="color: var(--primary); font-size: 1.2rem;"></i>
+            <?php if (!empty($customSidebarIcon) && file_exists($customSidebarIcon)): ?>
+                <img src="<?= htmlspecialchars($customSidebarIcon) ?>" alt="SUA Logo">
+            <?php else: ?>
+                <i class="fas fa-graduation-cap" style="color: var(--primary); font-size: 1.2rem;"></i>
+            <?php endif; ?>
         </div>
         <div class="sidebar-brand">
             St. Uriel Academy
@@ -53,45 +58,41 @@ if (function_exists('get_initials')) {
             <div class="nav-section-title">Main</div>
             <a href="../../public/admin/dashboard.php"
                 class="nav-item <?= $current === 'dashboard.php' ? 'active' : '' ?>">
-                <i class="fas fa-th-large"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-th-large"></i></div>
                 <span class="nav-label">Dashboard</span>
             </a>
             <a href="../../public/admin/user_management.php"
                 class="nav-item <?= $current === 'user_management.php' ? 'active' : '' ?>">
-                <i class="fas fa-user"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-user"></i></div>
                 <span class="nav-label">User Management</span>
             </a>
-
             <a href="../../public/admin/courses.php" class="nav-item <?= $current === 'courses.php' ? 'active' : '' ?>">
-                <i class="fas fa-book"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-book"></i></div>
                 <span class="nav-label">Classes & Subjects</span>
             </a>
-
         </div>
 
         <div class="nav-section">
             <div class="nav-section-title">Management</div>
             <a href="../../public/admin/enrollment.php" class="nav-item <?= $current === 'enrollment.php' ? 'active' : '' ?>">
-                <i class="fas fa-user-plus"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-user-plus"></i></div>
                 <span class="nav-label">Enrollment</span>
-               
             </a>
             <a href="../../public/admin/announcement.php"
                 class="nav-item <?= $current === 'announcement.php' ? 'active' : '' ?>">
-                <i class="fas fa-bullhorn"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-bullhorn"></i></div>
                 <span class="nav-label">Announcements</span>
             </a>
-
         </div>
 
         <div class="nav-section">
             <div class="nav-section-title">Reports</div>
             <a href="#" class="nav-item" onclick="setActive(this)">
-                <i class="fas fa-chart-line"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-chart-line"></i></div>
                 <span class="nav-label">System Analytics</span>
             </a>
             <a href="#" class="nav-item" onclick="setActive(this)">
-                <i class="fas fa-cog"></i>
+                <div class="nav-icon-wrap"><i class="fas fa-cog"></i></div>
                 <span class="nav-label">Settings</span>
             </a>
         </div>
