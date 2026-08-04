@@ -24,7 +24,7 @@ function get_total_Class(PDO $pdo): int {
 }
 
 function get_pending_enrollments(PDO $pdo): int {
-    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM enrollment_requests WHERE status = 'pending'")->fetch();
+    $row = $pdo->query("SELECT COUNT(DISTINCT student_id) AS cnt FROM enrollment_requests WHERE status = 'pending'")->fetch();
     return $row ? (int) $row['cnt'] : 0;
 }
 
@@ -290,6 +290,121 @@ function get_recent_course_offerings(PDO $pdo, int $limit = 4): array {
 
     return $rows;
 }
+
+function get_admin_profile(PDO $pdo, int $userId): ?array {
+    $sql = "SELECT u.id AS user_id, u.username, u.role, u.status, u.created_at,
+                   a.admin_id, a.email, a.access_level, a.position
+            FROM users u
+            JOIN admin a ON a.user_id = u.id
+            WHERE u.id = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+ 
+/**
+ * Update an admin's editable profile fields (email, position).
+ *
+ * access_level and username are intentionally NOT editable here.
+ * access_level is a permission field — letting an admin grant themselves
+ * a higher access level would be a privilege-escalation bug, so that
+ * should only ever change through a separate, higher-privileged
+ * user-management flow (or directly in the DB).
+ */
+function update_admin_profile(PDO $pdo, int $adminId, string $email, string $position): array {
+    $errors = [];
+ 
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'Please enter a valid email address.';
+    }
+ 
+    $validPositions = ['principal', 'registrar', 'staff'];
+    if (!in_array($position, $validPositions, true)) {
+        $errors[] = 'Invalid position.';
+    }
+ 
+    if (!empty($errors)) {
+        return ['success' => false, 'errors' => $errors];
+    }
+ 
+    // Make sure the email isn't already used by a different admin.
+    $check = $pdo->prepare("SELECT admin_id FROM admin WHERE email = ? AND admin_id != ?");
+    $check->execute([$email, $adminId]);
+    if ($check->fetch()) {
+        return ['success' => false, 'errors' => ['That email is already in use by another admin account.']];
+    }
+ 
+    $stmt = $pdo->prepare("UPDATE admin SET email = ?, position = ? WHERE admin_id = ?");
+    $stmt->execute([$email, $position, $adminId]);
+ 
+    return ['success' => true];
+}
+ 
+/**
+ * Verify a submitted password against the stored value.
+ *
+ * Legacy support: some accounts in `users` still have plaintext passwords
+ * from before hashing was added. If the stored value doesn't look like a
+ * bcrypt/argon hash, fall back to a plain (constant-time) comparison.
+ * change_user_password() re-hashes and saves on a successful match, so
+ * accounts upgrade automatically the next time someone changes their
+ * password.
+ *
+ * NOTE: login.php also needs to accept hashed passwords (password_verify)
+ * for this to work end-to-end — otherwise anyone who changes their
+ * password here won't be able to log back in. See the note in
+ * profile_handler.php.
+ */
+function verify_user_password(string $submitted, string $stored): bool {
+    $looksHashed = (bool) preg_match('/^\$(2y|argon2i|argon2id)\$/', $stored);
+    if ($looksHashed) {
+        return password_verify($submitted, $stored);
+    }
+    return hash_equals($stored, $submitted);
+}
+ 
+/**
+ * Change a user's password. Verifies the current password first (accepting
+ * legacy plaintext, see verify_user_password()), then stores the new
+ * password hashed with password_hash().
+ */
+function change_user_password(PDO $pdo, int $userId, string $currentPassword, string $newPassword, string $confirmPassword): array {
+    $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+ 
+    if (!$row) {
+        return ['success' => false, 'errors' => ['User not found.']];
+    }
+ 
+    if (!verify_user_password($currentPassword, $row['password'])) {
+        return ['success' => false, 'errors' => ['Current password is incorrect.']];
+    }
+ 
+    $errors = [];
+    if (strlen($newPassword) < 8) {
+        $errors[] = 'New password must be at least 8 characters.';
+    }
+    if ($newPassword !== $confirmPassword) {
+        $errors[] = 'New password and confirmation do not match.';
+    }
+    if ($newPassword === $currentPassword) {
+        $errors[] = 'New password must be different from your current password.';
+    }
+ 
+    if (!empty($errors)) {
+        return ['success' => false, 'errors' => $errors];
+    }
+ 
+    $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+    $update = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+    $update->execute([$hash, $userId]);
+ 
+    return ['success' => true];
+}
+
+
 
 /**
  * ================= CHATBOT (OpenRouter-backed assistant) =================
