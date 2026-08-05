@@ -37,7 +37,7 @@ if (mb_strlen($term) < 2) {
 }
 
 try {
-    $results = global_search($conn, $term, 6);
+    $results = global_search($pdo, $term, 6);
     echo json_encode($results);
 } catch (Throwable $e) {
     http_response_code(500);
