@@ -29,7 +29,7 @@ if(isset($_POST['login'])){
             if ($user['role'] === 'admin') {
                 header("Location: admin/dashboard.php");
             } elseif ($user['role'] === 'teacher') {
-                header("Location: ../teacher/dashboard.php");
+                header("Location: teacher/dashboard.php");
             } else {
                 header("Location: ../student/dashboard.php");
             }
