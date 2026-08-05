@@ -18,6 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $id = (int) ($_POST['announcement_id'] ?? 0);
+$currentUserId = (int) ($_SESSION['user_id'] ?? 0);
 
 if ($id <= 0) {
     http_response_code(400);
@@ -26,8 +27,25 @@ if ($id <= 0) {
 }
 
 try {
-    $stmt = $pdo->prepare("DELETE FROM announcements WHERE announcement_id = :id");
-    $stmt->execute([':id' => $id]);
+    // Confirm the announcement exists and check ownership before deleting.
+    $check = $pdo->prepare("SELECT posted_by FROM announcements WHERE announcement_id = :id");
+    $check->execute([':id' => $id]);
+    $announcement = $check->fetch();
+
+    if (!$announcement) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'errors' => ['Announcement not found.']]);
+        exit();
+    }
+
+    if ((int) $announcement['posted_by'] !== $currentUserId) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'errors' => ['You can only delete announcements you created.']]);
+        exit();
+    }
+
+    $stmt = $pdo->prepare("DELETE FROM announcements WHERE announcement_id = :id AND posted_by = :posted_by");
+    $stmt->execute([':id' => $id, ':posted_by' => $currentUserId]);
 
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {

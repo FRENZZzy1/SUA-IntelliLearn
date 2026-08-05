@@ -76,8 +76,9 @@ if (isset($_GET['action'], $_GET['id'])) {
         $stmt = $pdo->prepare("UPDATE announcements SET is_pinned = 1 - is_pinned WHERE announcement_id = :id");
         $stmt->execute([':id' => $id]);
     } elseif ($_GET['action'] === 'delete') {
-        $stmt = $pdo->prepare("DELETE FROM announcements WHERE announcement_id = :id");
-        $stmt->execute([':id' => $id]);
+        // Only allow deleting an announcement the current user posted.
+        $stmt = $pdo->prepare("DELETE FROM announcements WHERE announcement_id = :id AND posted_by = :posted_by");
+        $stmt->execute([':id' => $id, ':posted_by' => $currentUserId]);
     } elseif ($_GET['action'] === 'publish') {
         $stmt = $pdo->prepare("UPDATE announcements SET status = 'published' WHERE announcement_id = :id");
         $stmt->execute([':id' => $id]);
@@ -280,6 +281,7 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                     </div>
                 </div>
                 <div class="card-actions">
+                    <?php $isOwner = (int) $a['posted_by'] === $currentUserId; ?>
                     <a class="icon-btn" href="#" title="Edit"
                        onclick="openEditAnnouncement(<?= htmlspecialchars(json_encode([
                             'id'       => (int) $a['announcement_id'],
@@ -299,10 +301,12 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                     <a class="icon-btn" href="?action=toggle_pin&id=<?= $a['announcement_id'] ?>" title="<?= $a['is_pinned'] ? 'Unpin' : 'Pin' ?>">
                         <i class="<?= $a['is_pinned'] ? 'fas' : 'far' ?> fa-thumbtack"></i>
                     </a>
+                    <?php if ($isOwner): ?>
                     <a class="icon-btn delete" href="?action=delete&id=<?= $a['announcement_id'] ?>" title="Delete"
                        onclick="return confirm('Delete this announcement?');">
                         <i class="fas fa-trash"></i>
                     </a>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php endforeach; ?>
