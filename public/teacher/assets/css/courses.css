@@ -1,0 +1,190 @@
+/* ==========================================================
+   Courses module — includes/css/courses.css
+   Loaded AFTER dashboard.css, reuses its :root tokens
+   (--primary, --card, --border, --radius, --shadow, etc).
+   ========================================================== */
+
+.dash-subtitle {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* ---------- Breadcrumb back link (section detail page) ---------- */
+.breadcrumb-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+    margin-bottom: 14px;
+}
+
+.breadcrumb-back:hover { text-decoration: underline; }
+
+.section-title-grade {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+/* ---------- Section cards (courses.php) ---------- */
+.section-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.section-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.section-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(16, 40, 30, 0.1);
+    border-color: var(--primary-light);
+}
+
+.section-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.section-grade {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--primary);
+    background: var(--bg);
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+.section-strand {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.section-name {
+    margin: 0 0 12px;
+    font-size: 1.08rem;
+    color: var(--primary-dark);
+}
+
+.section-card-stats {
+    display: flex;
+    gap: 16px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+}
+
+.section-card-stats i {
+    color: var(--primary);
+    margin-right: 4px;
+}
+
+.section-card-cta {
+    margin-top: auto;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.section-card-cta i {
+    font-size: 0.72rem;
+    transition: transform 0.18s ease;
+}
+
+.section-card:hover .section-card-cta i {
+    transform: translateX(3px);
+}
+
+/* ---------- Subject cards (course_section.php) ---------- */
+.subject-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.subject-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: var(--shadow);
+}
+
+.subject-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.quarter-chip {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--primary);
+    background: var(--bg);
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+.subject-enrolled {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.subject-enrolled i { color: var(--primary); }
+
+.subject-name {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+    color: var(--primary-dark);
+}
+
+.subject-schedule {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ==========================================================
+   Responsive
+   ========================================================== */
+@media (max-width: 768px) {
+    .section-grid,
+    .subject-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}

@@ -72,7 +72,7 @@ $atRiskCount = $atRiskCount ?? null;
             <a href="../../public/teacher/courses.php"
                 class="nav-item <?= $current === 'courses.php' ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-book"></i></div>
-                <span class="nav-label">Courses</span>
+                <span class="nav-label">Classes</span>
             </a>
             <a href="../../public/teacher/quiz_generator.php"
                 class="nav-item <?= $current === 'quiz_generator.php' ? 'active' : '' ?>">
