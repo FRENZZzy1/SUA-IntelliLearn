@@ -420,6 +420,11 @@ function loadAnnouncements() {
                 const tagClass = a.priority === 'important' ? 'tag-urgent' : 'tag-academic';
                 const dateStr = new Date(a.created_at.replace(' ', 'T'))
                     .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+                const isOwner = typeof CURRENT_USER_ID !== 'undefined' && Number(a.posted_by) === Number(CURRENT_USER_ID);
+                const actionsHtml = isOwner
+                    ? `<a class="action-link" onclick="editAnnouncement(${a.announcement_id})">Edit</a>
+                       <a class="action-link danger" onclick="deleteAnnouncement(${a.announcement_id})">Delete</a>`
+                    : '';
 
                 return `
                 <div class="announcement-item">
@@ -430,8 +435,7 @@ function loadAnnouncements() {
                     <div class="announcement-title">${escapeHtml(a.title)}</div>
                     <div class="announcement-desc">${escapeHtml(a.body)}</div>
                     <div class="announcement-actions">
-                        <a class="action-link" onclick="editAnnouncement(${a.announcement_id})">Edit</a>
-                        <a class="action-link danger" onclick="deleteAnnouncement(${a.announcement_id})">Delete</a>
+                        ${actionsHtml}
                     </div>
                 </div>
             `;
@@ -441,6 +445,33 @@ function loadAnnouncements() {
             document.querySelector('.announcement-list').innerHTML =
                 '<p class="field-note">Failed to load announcements.</p>';
         });
+}
+
+function editAnnouncement(id) {
+    // Reuses the existing edit panel on announcement.php via its ?edit= deep link.
+    window.location.href = 'announcement.php?edit=' + encodeURIComponent(id);
+}
+
+function deleteAnnouncement(id) {
+    if (!confirm('Delete this announcement?')) return;
+
+    fetch('assests/api/delete_announcement.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+        },
+        body: 'announcement_id=' + encodeURIComponent(id) + '&csrf=' + encodeURIComponent(PENDING_ENROLL_CSRF)
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                showToast((data.errors && data.errors[0]) || 'Failed to delete announcement.');
+                return;
+            }
+            loadAnnouncements();
+        })
+        .catch(() => showToast('Failed to delete announcement.'));
 }
 
 function escapeHtml(str) {

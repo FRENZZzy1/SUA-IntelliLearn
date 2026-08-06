@@ -29,21 +29,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_action'])) {
     if ($title !== '' && $body !== '') {
         if ($announcementId > 0) {
             // Update an existing announcement (also how a draft gets published later).
-            $stmt = $pdo->prepare(
-                "UPDATE announcements
-                 SET title = :title, body = :body, audience = :audience,
-                     priority = :priority, status = :status, is_pinned = :is_pinned
-                 WHERE announcement_id = :id"
-            );
-            $stmt->execute([
-                ':title'     => $title,
-                ':body'      => $body,
-                ':audience'  => $audience,
-                ':priority'  => $priority,
-                ':status'    => $status,
-                ':is_pinned' => $isPinned,
-                ':id'        => $announcementId,
-            ]);
+            // Ownership check: only the original poster may edit their own announcement.
+            $ownerCheck = $pdo->prepare("SELECT posted_by FROM announcements WHERE announcement_id = :id");
+            $ownerCheck->execute([':id' => $announcementId]);
+            $owner = $ownerCheck->fetchColumn();
+
+            if ($owner !== false && (int) $owner === (int) $currentUserId) {
+                $stmt = $pdo->prepare(
+                    "UPDATE announcements
+                     SET title = :title, body = :body, audience = :audience,
+                         priority = :priority, status = :status, is_pinned = :is_pinned
+                     WHERE announcement_id = :id AND posted_by = :posted_by"
+                );
+                $stmt->execute([
+                    ':title'     => $title,
+                    ':body'      => $body,
+                    ':audience'  => $audience,
+                    ':priority'  => $priority,
+                    ':status'    => $status,
+                    ':is_pinned' => $isPinned,
+                    ':id'        => $announcementId,
+                    ':posted_by' => $currentUserId,
+                ]);
+            }
+            // If $owner didn't match the current user, silently ignore the edit attempt.
         } else {
             $stmt = $pdo->prepare(
                 "INSERT INTO announcements (posted_by, title, body, audience, priority, status, is_pinned)
@@ -73,15 +82,17 @@ if (isset($_GET['action'], $_GET['id'])) {
     $id = (int) $_GET['id'];
 
     if ($_GET['action'] === 'toggle_pin') {
+        // Pinning affects shared visibility, not ownership, so any admin may toggle it.
         $stmt = $pdo->prepare("UPDATE announcements SET is_pinned = 1 - is_pinned WHERE announcement_id = :id");
         $stmt->execute([':id' => $id]);
     } elseif ($_GET['action'] === 'delete') {
-        // Only allow deleting an announcement the current user posted.
+        // Only the original poster may delete their own announcement.
         $stmt = $pdo->prepare("DELETE FROM announcements WHERE announcement_id = :id AND posted_by = :posted_by");
         $stmt->execute([':id' => $id, ':posted_by' => $currentUserId]);
     } elseif ($_GET['action'] === 'publish') {
-        $stmt = $pdo->prepare("UPDATE announcements SET status = 'published' WHERE announcement_id = :id");
-        $stmt->execute([':id' => $id]);
+        // Only the original poster may publish their own draft.
+        $stmt = $pdo->prepare("UPDATE announcements SET status = 'published' WHERE announcement_id = :id AND posted_by = :posted_by");
+        $stmt->execute([':id' => $id, ':posted_by' => $currentUserId]);
     }
 
     header("Location: announcement.php");
@@ -280,8 +291,9 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                         </div>
                     </div>
                 </div>
+                <?php $isOwner = ((int) $a['posted_by'] === (int) $currentUserId); ?>
                 <div class="card-actions">
-                    <?php $isOwner = (int) $a['posted_by'] === $currentUserId; ?>
+                    <?php if ($isOwner): ?>
                     <a class="icon-btn" href="#" title="Edit"
                        onclick="openEditAnnouncement(<?= htmlspecialchars(json_encode([
                             'id'       => (int) $a['announcement_id'],
@@ -293,7 +305,8 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                        ]), ENT_QUOTES, 'UTF-8') ?>); return false;">
                         <i class="fas fa-pen"></i>
                     </a>
-                    <?php if ($a['status'] === 'draft'): ?>
+                    <?php endif; ?>
+                    <?php if ($a['status'] === 'draft' && $isOwner): ?>
                     <a class="icon-btn" href="?action=publish&id=<?= $a['announcement_id'] ?>" title="Publish draft">
                         <i class="fas fa-paper-plane"></i>
                     </a>
@@ -316,15 +329,19 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
 
 <script>
     // ---- Announcement data lookup (used to auto-open the edit panel below) ----
-    const announcementsData = <?= json_encode(array_reduce($announcements, function ($carry, $a) {
-        $carry[(int) $a['announcement_id']] = [
-            'id'       => (int) $a['announcement_id'],
-            'title'    => $a['title'],
-            'body'     => $a['body'],
-            'audience' => $a['audience'],
-            'priority' => $a['priority'],
-            'pinned'   => (bool) $a['is_pinned'],
-        ];
+    // Only the current user's own announcements are included, so the ?edit=ID
+    // deep link can't be used to open someone else's announcement for editing.
+    const announcementsData = <?= json_encode(array_reduce($announcements, function ($carry, $a) use ($currentUserId) {
+        if ((int) $a['posted_by'] === (int) $currentUserId) {
+            $carry[(int) $a['announcement_id']] = [
+                'id'       => (int) $a['announcement_id'],
+                'title'    => $a['title'],
+                'body'     => $a['body'],
+                'audience' => $a['audience'],
+                'priority' => $a['priority'],
+                'pinned'   => (bool) $a['is_pinned'],
+            ];
+        }
         return $carry;
     }, []), JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 

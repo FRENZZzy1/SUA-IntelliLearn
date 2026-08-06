@@ -390,6 +390,7 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
 
             <script>
                 const PENDING_ENROLL_CSRF = <?php echo json_encode($csrfToken); ?>;
+                const CURRENT_USER_ID = <?php echo json_encode((int) $_SESSION['user_id']); ?>;
 
                 function showPendingClassesModal(btn) {
                     const subjects = JSON.parse(btn.dataset.subjects || '[]');
