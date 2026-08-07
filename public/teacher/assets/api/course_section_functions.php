@@ -57,9 +57,14 @@ if (!$section) {
 }
 
 // ---- Subjects this teacher teaches within this section -----------------
+// NOTE: a single subject can have up to 3 rows here (one per quarter/term),
+// since classofferings is unique on (subject_id, section_id, quarter, school_year_id).
+// We group by subject_id below so the card links to ONE class overview page
+// per subject, and that page is responsible for showing the Term 1/2/3 tabs.
 $stmt = $pdo->prepare("
     SELECT
         co.offering_id,
+        sub.subject_id,
         sub.subject_name,
         co.quarter,
         co.schedule_days,
@@ -75,12 +80,28 @@ $stmt = $pdo->prepare("
       AND co.section_id = ?
       AND co.status = 'active'
       AND (co.school_year_id = ? OR ? IS NULL)
-    GROUP BY co.offering_id, sub.subject_name, co.quarter, co.schedule_days,
+    GROUP BY co.offering_id, sub.subject_id, sub.subject_name, co.quarter, co.schedule_days,
              co.start_time, co.end_time, co.capacity
     ORDER BY sub.subject_name
 ");
 $stmt->execute([$teacherId, $sectionId, $schoolYearId, $schoolYearId]);
-$sectionSubjects = $stmt->fetchAll();
+$sectionSubjectsRaw = $stmt->fetchAll();
+
+// ---- Collapse the per-term rows into one card per subject ----------------
+// The card shown to the teacher represents the subject as a whole; the
+// per-term schedule/enrolled numbers shown on the card come from whichever
+// term row is found first (usually the earliest active term). Clicking the
+// card goes to class_overview.php, which loads all 3 terms itself.
+$sectionSubjects = [];
+foreach ($sectionSubjectsRaw as $row) {
+    $subjectId = $row['subject_id'];
+    if (!isset($sectionSubjects[$subjectId])) {
+        $sectionSubjects[$subjectId] = $row;
+        $sectionSubjects[$subjectId]['term_count'] = 0;
+    }
+    $sectionSubjects[$subjectId]['term_count']++;
+}
+$sectionSubjects = array_values($sectionSubjects);
 
 // ---- At-risk count for the sidebar nav badge (kept in sync with dashboard) ----
 // TODO: replace once at-risk detection exists (REQ018–REQ021).

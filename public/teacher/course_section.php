@@ -10,6 +10,21 @@ include 'assets/api/course_section_functions.php';
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/dashboard.css">
     <link rel="stylesheet" href="assets/css/courses.css">
+    <style>
+        /* .subject-card is now an <a>, not an <article> — reset default link styling.
+           Move this into courses.css whenever convenient. */
+        a.subject-card {
+            display: block;
+            color: inherit;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        a.subject-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+    </style>
 </head>
 <body>
 
@@ -44,7 +59,8 @@ include 'assets/api/course_section_functions.php';
     <?php else: ?>
         <section class="subject-grid">
             <?php foreach ($sectionSubjects as $subj): ?>
-            <article class="subject-card">
+            <a class="subject-card"
+               href="class_overview.php?subject_id=<?= (int) $subj['subject_id'] ?>&section_id=<?= (int) $section['section_id'] ?>">
                 <div class="subject-card-top">
                     <span class="quarter-chip"><?= htmlspecialchars($subj['quarter']) ?></span>
                     <span class="subject-enrolled">
@@ -62,7 +78,7 @@ include 'assets/api/course_section_functions.php';
                         · <?= date('g:i A', strtotime($subj['start_time'])) ?>–<?= date('g:i A', strtotime($subj['end_time'])) ?>
                     <?php endif; ?>
                 </p>
-            </article>
+            </a>
             <?php endforeach; ?>
         </section>
     <?php endif; ?>
