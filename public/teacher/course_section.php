@@ -9,22 +9,7 @@ include 'assets/api/course_section_functions.php';
     <title><?= htmlspecialchars($section['section_name']) ?> · Courses · SUA IntelliLearn</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/dashboard.css">
-    <link rel="stylesheet" href="assets/css/courses.css">
-    <style>
-        /* .subject-card is now an <a>, not an <article> — reset default link styling.
-           Move this into courses.css whenever convenient. */
-        a.subject-card {
-            display: block;
-            color: inherit;
-            text-decoration: none;
-            cursor: pointer;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-        a.subject-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/course_section.css">
 </head>
 <body>
 

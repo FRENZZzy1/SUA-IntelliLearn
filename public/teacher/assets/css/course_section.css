@@ -1,0 +1,120 @@
+/* ==========================================================
+   Course Section page — assets/css/course_section.css
+   Styles for course_section.php only. Independent from
+   courses.css so this page can be edited without affecting
+   courses.php or other pages that still load courses.css.
+   Loaded AFTER dashboard.css (reuses its :root tokens).
+   ========================================================== */
+
+.dash-subtitle {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+    color: var(--text-muted, #6b7280);
+    font-weight: 500;
+}
+
+/* ---------- Breadcrumb back link ---------- */
+.breadcrumb-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--primary, #10b981);
+    text-decoration: none;
+    margin-bottom: 14px;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-back:hover {
+    text-decoration: underline;
+    color: var(--primary-dark, #059669);
+}
+
+/* ---------- Page title / grade badge ---------- */
+.section-title-grade {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted, #6b7280);
+    margin-top: 4px;
+}
+
+/* ---------- Subject cards ---------- */
+.subject-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+/* .subject-card is an <a>, not an <article> — reset default link
+   styling and add the hover lift/shadow in one place. */
+.subject-card {
+    display: block;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: var(--shadow, 0 1px 3px rgba(0,0,0,0.04));
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.subject-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.subject-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.quarter-chip {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--primary, #10b981);
+    background: var(--bg, #ecfdf5);
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+.subject-enrolled {
+    font-size: 0.78rem;
+    color: var(--text-muted, #6b7280);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.subject-enrolled i { color: var(--primary, #10b981); }
+
+.subject-name {
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--primary-dark, #064e3b);
+}
+
+.subject-schedule {
+    margin: 0;
+    font-size: 0.82rem;
+    color: var(--text-muted, #6b7280);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+    .subject-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}
