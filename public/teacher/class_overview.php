@@ -1,5 +1,18 @@
 <?php
 include 'assets/api/class_overview_functions.php';
+
+// Compute summary stats
+$materialsCount    = count($materials ?? []);
+$assignmentsCount  = count($assignments ?? []);
+$enrolledCount     = (int) ($activeOffering['enrolled_count'] ?? 0);
+$capacity          = (int) ($activeOffering['capacity'] ?? 0);
+
+// Mock class average (replace with real DB query if available)
+$classAverage = 0;
+if (!empty($submissionRows)) {
+    $scores = array_filter(array_column($submissionRows, 'score'), fn($s) => $s !== null);
+    $classAverage = !empty($scores) ? round(array_sum($scores) / count($scores)) : 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -42,7 +55,7 @@ include 'assets/api/class_overview_functions.php';
         </div>
     <?php endif; ?>
 
-    <!-- ===================== Class nav: Overview / Students / Attendance / Grading ===================== -->
+    <!-- ===================== Class nav ===================== -->
     <nav class="class-nav">
         <a class="class-nav-item <?= $activeView === 'overview' ? 'active' : '' ?>"
            href="<?= classOverviewUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, 'overview') ?>">
@@ -56,24 +69,26 @@ include 'assets/api/class_overview_functions.php';
            href="<?= classOverviewUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, 'attendance') ?>">
             <i class="fas fa-calendar-check"></i> Attendance
         </a>
-        <span class="class-nav-item class-nav-disabled" title="Coming soon">
-            <i class="fas fa-marker"></i> Grading <span class="soon-chip">Soon</span>
-        </span>
+        <a class="class-nav-item <?= $activeView === 'assignments' ? 'active' : '' ?>"
+           href="<?= assignmentsUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm) ?>">
+            <i class="fas fa-marker"></i> Assignments
+        </a>
     </nav>
 
     <?php if (!$activeOfferingId && $activeView !== 'overview'): ?>
-        <!-- No term selected/available and the view needs an offering to load data -->
         <section class="panel">
-            <div class="panel-empty">
-                <i class="fas fa-calendar-xmark"></i>
-                <p>No term is set up for this subject yet.</p>
-                <span>Once a term has an active offering, its data will show up here.</span>
+            <div class="panel-empty panel-empty--enhanced">
+                <div class="panel-empty__icon">
+                    <i class="fas fa-calendar-xmark"></i>
+                </div>
+                <h3>No term is set up for this subject yet</h3>
+                <p>Once a term has an active offering, its data will show up here.</p>
             </div>
         </section>
 
     <?php elseif ($activeView === 'overview'): ?>
 
-        <!-- ===================== Term 1 / Term 2 / Term 3 tabs ===================== -->
+        <!-- Term Tabs -->
         <div class="term-tabs">
             <?php foreach ($terms as $key => $t): ?>
                 <?php if ($t['offering']): ?>
@@ -92,13 +107,55 @@ include 'assets/api/class_overview_functions.php';
 
         <?php if (!$activeOfferingId): ?>
             <section class="panel">
-                <div class="panel-empty">
-                    <i class="fas fa-calendar-xmark"></i>
-                    <p>No term is set up for this subject yet.</p>
-                    <span>Once a term has an active offering, you'll be able to upload materials here.</span>
+                <div class="panel-empty panel-empty--enhanced">
+                    <div class="panel-empty__icon">
+                        <i class="fas fa-calendar-xmark"></i>
+                    </div>
+                    <h3>No term is set up for this subject yet</h3>
+                    <p>Once a term has an active offering, you'll be able to upload materials here.</p>
                 </div>
             </section>
         <?php else: ?>
+
+            <!-- Stats Bar -->
+            <section class="stats-bar">
+                <div class="stat-card">
+                    <div class="stat-card__icon stat-card__icon--green">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-card__info">
+                        <span class="stat-card__value"><?= $enrolledCount ?></span>
+                        <span class="stat-card__label">Enrolled</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card__icon stat-card__icon--blue">
+                        <i class="fas fa-book-open"></i>
+                    </div>
+                    <div class="stat-card__info">
+                        <span class="stat-card__value"><?= $materialsCount ?></span>
+                        <span class="stat-card__label">Materials</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card__icon stat-card__icon--amber">
+                        <i class="fas fa-marker"></i>
+                    </div>
+                    <div class="stat-card__info">
+                        <span class="stat-card__value"><?= $assignmentsCount ?></span>
+                        <span class="stat-card__label">Assignments</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card__icon stat-card__icon--purple">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stat-card__info">
+                        <span class="stat-card__value"><?= $classAverage ?>%</span>
+                        <span class="stat-card__label">Class Avg.</span>
+                    </div>
+                </div>
+            </section>
 
             <div class="term-summary">
                 <span><i class="fas fa-clock"></i> <?= htmlspecialchars($activeOffering['schedule_days'] ?? 'TBA') ?>
@@ -109,8 +166,8 @@ include 'assets/api/class_overview_functions.php';
                 <span><i class="fas fa-users"></i> <?= (int) $activeOffering['enrolled_count'] ?>/<?= (int) $activeOffering['capacity'] ?> enrolled</span>
             </div>
 
-            <!-- ===================== Learning materials ===================== -->
-            <section class="panel">
+            <!-- Learning Materials -->
+            <section class="panel panel--card">
                 <div class="panel-header">
                     <h2><i class="fas fa-book-open"></i> Learning Materials</h2>
                     <button type="button" class="btn-primary" id="btnShowUpload">
@@ -118,7 +175,7 @@ include 'assets/api/class_overview_functions.php';
                     </button>
                 </div>
 
-                <!-- Upload / add-link form (hidden until "Add Material" is clicked) -->
+                <!-- Upload form -->
                 <form class="material-upload-form" id="materialUploadForm"
                       action="assets/api/material_upload.php" method="POST" enctype="multipart/form-data" hidden>
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
@@ -165,16 +222,24 @@ include 'assets/api/class_overview_functions.php';
                 </form>
 
                 <?php if (empty($materials)): ?>
-                    <div class="panel-empty">
-                        <i class="fas fa-folder-open"></i>
-                        <p>No materials uploaded for <?= htmlspecialchars($terms[$activeTerm]['label']) ?> yet.</p>
-                        <span>Click "Add Material" to upload a file or share a link with your students.</span>
+                    <div class="panel-empty panel-empty--enhanced">
+                        <div class="panel-empty__icon">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <h3>No materials uploaded yet</h3>
+                        <p>Click "Add Material" to upload a file or share a link with your students.</p>
                     </div>
                 <?php else: ?>
                     <ul class="material-list">
-                        <?php foreach ($materials as $m): ?>
-                            <li class="material-item">
-                                <div class="material-icon"><i class="fas <?= materialIcon($m['type']) ?>"></i></div>
+                        <?php foreach ($materials as $m): 
+                            $matIcon = materialIcon($m['type']);
+                            $matColorSeed = md5($m['type']);
+                            $matHue = hexdec(substr($matColorSeed, 0, 2)) % 360;
+                            $matAccent = "hsl({$matHue}, 70%, 45%)";
+                            $matAccentLight = "hsl({$matHue}, 70%, 95%)";
+                        ?>
+                            <li class="material-item" style="--mat-accent: <?= $matAccent ?>; --mat-accent-light: <?= $matAccentLight ?>;">
+                                <div class="material-icon"><i class="fas <?= $matIcon ?>"></i></div>
                                 <div class="material-info">
                                     <a class="material-title"
                                        href="<?= htmlspecialchars($m['external_url'] ?: $m['file_path']) ?>"
@@ -188,15 +253,168 @@ include 'assets/api/class_overview_functions.php';
                                         by <?= htmlspecialchars($m['firstname'] . ' ' . $m['lastname']) ?>
                                     </div>
                                 </div>
-                                <form action="assets/api/material_delete.php" method="POST" class="material-delete-form"
-                                      onsubmit="return confirm('Remove this material? This cannot be undone.');">
+                                <div class="material-actions">
+                                    <a href="<?= htmlspecialchars($m['external_url'] ?: $m['file_path']) ?>" target="_blank" rel="noopener" class="qa-btn" title="Open">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                    <form action="assets/api/material_delete.php" method="POST" class="material-delete-form"
+                                          onsubmit="return confirm('Remove this material? This cannot be undone.');">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                                        <input type="hidden" name="material_id" value="<?= (int) $m['material_id'] ?>">
+                                        <input type="hidden" name="offering_id" value="<?= (int) $activeOfferingId ?>">
+                                        <input type="hidden" name="subject_id" value="<?= (int) $classInfo['subject_id'] ?>">
+                                        <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
+                                        <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
+                                        <button type="submit" class="qa-btn qa-btn--danger" title="Remove">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </section>
+
+        <?php endif; ?>
+
+    <?php elseif ($activeView === 'students'): ?>
+
+        <section class="panel panel--card">
+            <div class="panel-header">
+                <h2><i class="fas fa-users"></i> Students · <?= htmlspecialchars($terms[$activeTerm]['label']) ?></h2>
+                <span class="enrolled-badge"><?= count($students) ?>/<?= (int) $activeOffering['capacity'] ?> enrolled</span>
+            </div>
+
+            <?php if (empty($students)): ?>
+                <div class="panel-empty panel-empty--enhanced">
+                    <div class="panel-empty__icon">
+                        <i class="fas fa-user-slash"></i>
+                    </div>
+                    <h3>No students enrolled yet</h3>
+                    <p>Students will appear here once they are enrolled in this class.</p>
+                </div>
+            <?php else: ?>
+                <div class="table-scroll">
+                    <table class="data-table data-table--modern">
+                        <thead>
+                            <tr>
+                                <th>LRN</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($students as $s): ?>
+                                <tr>
+                                    <td><span class="lrn-badge"><?= htmlspecialchars($s['student_lrn']) ?></span></td>
+                                    <td class="student-name"><?= htmlspecialchars($s['lastname'] . ', ' . $s['firstname'] . ' ' . ($s['middlename'] ?? '')) ?></td>
+                                    <td><?= htmlspecialchars($s['email'] ?? '—') ?></td>
+                                    <td><span class="chip chip--active">Active</span></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </section>
+
+    <?php elseif ($activeView === 'assignments'): ?>
+
+        <?php if (!$selectedAssignment): ?>
+            <!-- Assignments list -->
+            <section class="panel panel--card">
+                <div class="panel-header">
+                    <h2><i class="fas fa-marker"></i> Assignments · <?= htmlspecialchars($terms[$activeTerm]['label']) ?></h2>
+                    <button type="button" class="btn-primary" id="btnShowAssignmentForm">
+                        <i class="fas fa-plus"></i> New Assignment
+                    </button>
+                </div>
+
+                <!-- New assignment form -->
+                <form class="material-upload-form" id="assignmentCreateForm"
+                      action="assets/api/assignment_create.php" method="POST" enctype="multipart/form-data" hidden>
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                    <input type="hidden" name="offering_id" value="<?= (int) $activeOfferingId ?>">
+                    <input type="hidden" name="subject_id" value="<?= (int) $classInfo['subject_id'] ?>">
+                    <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
+                    <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
+
+                    <div class="form-row">
+                        <label for="assignmentTitle">Title</label>
+                        <input type="text" id="assignmentTitle" name="title" maxlength="255" required
+                               placeholder="e.g. Problem Set 3: Quadratic Equations">
+                    </div>
+
+                    <div class="form-row">
+                        <label for="assignmentDescription">Instructions (optional)</label>
+                        <textarea id="assignmentDescription" name="description" rows="3"
+                                  placeholder="What should students do for this assignment?"></textarea>
+                    </div>
+
+                    <div class="form-row form-row-inline">
+                        <div>
+                            <label for="assignmentDueDate">Due date (optional)</label>
+                            <input type="datetime-local" id="assignmentDueDate" name="due_date">
+                        </div>
+                        <div>
+                            <label for="assignmentPoints">Points</label>
+                            <input type="number" id="assignmentPoints" name="points" min="1" step="0.01" value="100">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <label for="assignmentFile">Attachment (optional)</label>
+                        <input type="file" id="assignmentFile" name="instructions_file"
+                               accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip">
+                        <span class="field-hint">Max 25MB.</span>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" id="btnCancelAssignmentForm">Cancel</button>
+                        <button type="submit" class="btn-primary"><i class="fas fa-upload"></i> Post Assignment</button>
+                    </div>
+                </form>
+
+                <?php if (empty($assignments)): ?>
+                    <div class="panel-empty panel-empty--enhanced">
+                        <div class="panel-empty__icon">
+                            <i class="fas fa-marker"></i>
+                        </div>
+                        <h3>No assignments posted yet</h3>
+                        <p>Click "New Assignment" to post work for your students.</p>
+                    </div>
+                <?php else: ?>
+                    <ul class="material-list">
+                        <?php foreach ($assignments as $a): ?>
+                            <?php $due = dueDateLabel($a['due_date']); ?>
+                            <li class="material-item">
+                                <div class="material-icon material-icon--assignment"><i class="fas fa-marker"></i></div>
+                                <div class="material-info">
+                                    <a class="material-title"
+                                       href="<?= assignmentsUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $a['assignment_id']) ?>">
+                                        <?= htmlspecialchars($a['title']) ?>
+                                    </a>
+                                    <div class="material-meta">
+                                        <?= (int) $a['points'] ?> pts
+                                        · <span class="<?= $due['overdue'] ? 'due-overdue' : '' ?>">Due <?= htmlspecialchars($due['label']) ?></span>
+                                        · <?= (int) $a['graded_count'] ?>/<?= (int) $a['submitted_count'] ?> graded
+                                    </div>
+                                </div>
+                                <a class="btn-secondary btn-view-submissions"
+                                   href="<?= assignmentsUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $a['assignment_id']) ?>">
+                                    View Submissions
+                                </a>
+                                <form action="assets/api/assignment_delete.php" method="POST" class="material-delete-form"
+                                      onsubmit="return confirm('Remove this assignment and all of its submissions? This cannot be undone.');">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-                                    <input type="hidden" name="material_id" value="<?= (int) $m['material_id'] ?>">
+                                    <input type="hidden" name="assignment_id" value="<?= (int) $a['assignment_id'] ?>">
                                     <input type="hidden" name="offering_id" value="<?= (int) $activeOfferingId ?>">
                                     <input type="hidden" name="subject_id" value="<?= (int) $classInfo['subject_id'] ?>">
                                     <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
                                     <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
-                                    <button type="submit" class="btn-icon-danger" title="Remove">
+                                    <button type="submit" class="qa-btn qa-btn--danger" title="Remove">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </form>
@@ -206,52 +424,109 @@ include 'assets/api/class_overview_functions.php';
                 <?php endif; ?>
             </section>
 
-            <!-- Assignments will go here later -->
+        <?php else: ?>
+            <!-- Submissions / grading grid -->
+            <?php $due = dueDateLabel($selectedAssignment['due_date']); ?>
+            <a href="<?= assignmentsUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm) ?>" class="breadcrumb-back">
+                <i class="fas fa-arrow-left"></i> Back to Assignments
+            </a>
 
+            <section class="panel panel--card">
+                <div class="panel-header">
+                    <h2><i class="fas fa-marker"></i> <?= htmlspecialchars($selectedAssignment['title']) ?></h2>
+                    <span class="enrolled-badge">
+                        <?= (int) $selectedAssignment['points'] ?> pts
+                        · <span class="<?= $due['overdue'] ? 'due-overdue' : '' ?>">Due <?= htmlspecialchars($due['label']) ?></span>
+                    </span>
+                </div>
+
+                <?php if (!empty($selectedAssignment['description'])): ?>
+                    <p class="assignment-description"><?= nl2br(htmlspecialchars($selectedAssignment['description'])) ?></p>
+                <?php endif; ?>
+                <?php if (!empty($selectedAssignment['instructions_file_path'])): ?>
+                    <a class="material-title attachment-link" href="<?= htmlspecialchars($selectedAssignment['instructions_file_path']) ?>" target="_blank" rel="noopener">
+                        <i class="fas fa-paperclip"></i> View attachment
+                    </a>
+                <?php endif; ?>
+
+                <?php if (empty($submissionRows)): ?>
+                    <div class="panel-empty panel-empty--enhanced">
+                        <div class="panel-empty__icon">
+                            <i class="fas fa-user-slash"></i>
+                        </div>
+                        <h3>No students enrolled yet</h3>
+                        <p>Students will appear here once they are enrolled in this class.</p>
+                    </div>
+                <?php else: ?>
+                    <form action="assets/api/submissions_grade_save.php" method="POST" class="grading-form" id="gradingForm">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                        <input type="hidden" name="assignment_id" value="<?= (int) $selectedAssignment['assignment_id'] ?>">
+                        <input type="hidden" name="offering_id" value="<?= (int) $activeOfferingId ?>">
+                        <input type="hidden" name="subject_id" value="<?= (int) $classInfo['subject_id'] ?>">
+                        <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
+                        <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
+
+                        <div class="table-scroll">
+                            <table class="data-table data-table--modern grading-table">
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Status</th>
+                                        <th>Submission</th>
+                                        <th>Score (/ <?= (int) $selectedAssignment['points'] ?>)</th>
+                                        <th>Feedback</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($submissionRows as $row): ?>
+                                        <?php
+                                            $statusInfo = submissionStatusInfo(
+                                                $row['submission_status'],
+                                                $row['submitted_at'],
+                                                $selectedAssignment['due_date']
+                                            );
+                                            $submissionLink = $row['external_url'] ?: $row['file_path'];
+                                        ?>
+                                        <tr>
+                                            <td class="student-name"><?= htmlspecialchars($row['lastname'] . ', ' . $row['firstname'] . ' ' . ($row['middlename'] ?? '')) ?></td>
+                                            <td><span class="chip chip-<?= $statusInfo['class'] ?>"><?= $statusInfo['label'] ?></span></td>
+                                            <td>
+                                                <?php if ($submissionLink): ?>
+                                                    <a href="<?= htmlspecialchars($submissionLink) ?>" target="_blank" rel="noopener" class="link-view">View</a>
+                                                <?php elseif (!empty($row['submission_text'])): ?>
+                                                    <span title="<?= htmlspecialchars($row['submission_text']) ?>" class="link-view link-view--text">Text answer</span>
+                                                <?php else: ?>
+                                                    <span class="field-hint">—</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <input type="number" class="grade-input" name="score[<?= (int) $row['student_id'] ?>]"
+                                                       min="0" max="<?= (float) $selectedAssignment['points'] ?>" step="0.01"
+                                                       value="<?= $row['score'] !== null ? htmlspecialchars($row['score']) : '' ?>"
+                                                       placeholder="—">
+                                            </td>
+                                            <td>
+                                                <input type="text" class="feedback-input" name="feedback[<?= (int) $row['student_id'] ?>]"
+                                                       maxlength="2000" placeholder="Optional feedback"
+                                                       value="<?= htmlspecialchars($row['feedback'] ?? '') ?>">
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="form-actions grading-save-bar">
+                            <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Save Grades</button>
+                        </div>
+                    </form>
+                <?php endif; ?>
+            </section>
         <?php endif; ?>
-
-    <?php elseif ($activeView === 'students'): ?>
-
-        <section class="panel">
-            <div class="panel-header">
-                <h2><i class="fas fa-users"></i> Students · <?= htmlspecialchars($terms[$activeTerm]['label']) ?></h2>
-                <span class="subject-enrolled"><?= count($students) ?>/<?= (int) $activeOffering['capacity'] ?> enrolled</span>
-            </div>
-
-            <?php if (empty($students)): ?>
-                <div class="panel-empty">
-                    <i class="fas fa-user-slash"></i>
-                    <p>No students enrolled yet.</p>
-                </div>
-            <?php else: ?>
-                <div class="table-scroll">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>LRN</th>
-                                <th>Name</th>
-                                <th>Email</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($students as $s): ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($s['student_lrn']) ?></td>
-                                    <td><?= htmlspecialchars($s['lastname'] . ', ' . $s['firstname'] . ' ' . ($s['middlename'] ?? '')) ?></td>
-                                    <td><?= htmlspecialchars($s['email'] ?? '—') ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-        </section>
 
     <?php elseif ($activeView === 'attendance'): ?>
 
         <?php
-            // Defensive fallback: these are normally set by class_overview_functions.php.
-            // If they're missing, the version of that file on the server is out of date.
             $attendanceDate      = $attendanceDate ?? date('Y-m-d');
             $attendanceByStudent = $attendanceByStudent ?? [];
             $attendanceSummary   = $attendanceSummary ?? ['Present' => 0, 'Absent' => 0, 'Late' => 0, 'Excused' => 0, 'Unmarked' => 0];
@@ -260,7 +535,7 @@ include 'assets/api/class_overview_functions.php';
             $nextDate = date('Y-m-d', strtotime($attendanceDate . ' +1 day'));
             $isToday  = $attendanceDate >= date('Y-m-d');
         ?>
-        <section class="panel attendance-panel">
+        <section class="panel panel--card attendance-panel">
             <div class="panel-header">
                 <h2><i class="fas fa-calendar-check"></i> Attendance · <?= htmlspecialchars($terms[$activeTerm]['label']) ?></h2>
             </div>
@@ -308,9 +583,12 @@ include 'assets/api/class_overview_functions.php';
             </div>
 
             <?php if (empty($students)): ?>
-                <div class="panel-empty">
-                    <i class="fas fa-user-slash"></i>
-                    <p>No students enrolled yet.</p>
+                <div class="panel-empty panel-empty--enhanced">
+                    <div class="panel-empty__icon">
+                        <i class="fas fa-user-slash"></i>
+                    </div>
+                    <h3>No students enrolled yet</h3>
+                    <p>Students will appear here once they are enrolled in this class.</p>
                 </div>
             <?php else: ?>
                 <form action="assets/api/attendance_save.php" method="POST" class="attendance-form" id="attendanceForm">
@@ -364,62 +642,9 @@ include 'assets/api/class_overview_functions.php';
 
 </main>
 
-<script>
-// Toggle the "Add Material" form open/closed
-const btnShowUpload = document.getElementById('btnShowUpload');
-const btnCancelUpload = document.getElementById('btnCancelUpload');
-const uploadForm = document.getElementById('materialUploadForm');
 
-if (btnShowUpload && uploadForm) {
-    btnShowUpload.addEventListener('click', () => {
-        uploadForm.hidden = !uploadForm.hidden;
-    });
-}
-if (btnCancelUpload && uploadForm) {
-    btnCancelUpload.addEventListener('click', () => {
-        uploadForm.hidden = true;
-        uploadForm.reset();
-    });
-}
 
-// Toggle file-vs-link fields in the upload form
-document.querySelectorAll('input[name="source"]').forEach((radio) => {
-    radio.addEventListener('change', () => {
-        const isFile = document.querySelector('input[name="source"]:checked').value === 'file';
-        document.querySelector('.material-source-file').hidden = !isFile;
-        document.querySelector('.material-source-link').hidden = isFile;
-    });
-});
-
-// ===================== Attendance =====================
-const attendanceForm = document.getElementById('attendanceForm');
-if (attendanceForm) {
-    // Keep the status-pill's highlighted state in sync with its radio input.
-    attendanceForm.querySelectorAll('.attendance-status-group').forEach((group) => {
-        group.querySelectorAll('input[type="radio"]').forEach((radio) => {
-            radio.addEventListener('change', () => {
-                group.querySelectorAll('.status-pill').forEach((pill) => pill.classList.remove('checked'));
-                radio.closest('.status-pill').classList.add('checked');
-            });
-        });
-    });
-
-    // "Mark all" bulk-action buttons
-    attendanceForm.querySelectorAll('[data-mark-all]').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const status = btn.getAttribute('data-mark-all');
-            attendanceForm.querySelectorAll('.attendance-status-group').forEach((group) => {
-                const radio = group.querySelector(`input[value="${status}"]`);
-                if (radio) {
-                    radio.checked = true;
-                    group.querySelectorAll('.status-pill').forEach((pill) => pill.classList.remove('checked'));
-                    radio.closest('.status-pill').classList.add('checked');
-                }
-            });
-        });
-    });
-}
-</script>
+<script src="assets/js/class_overview.js"></script>
 
 </body>
 </html>

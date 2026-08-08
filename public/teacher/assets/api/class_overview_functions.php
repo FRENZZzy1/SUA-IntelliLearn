@@ -101,14 +101,14 @@ if (isset($terms[$requestedTerm]) && $terms[$requestedTerm]['offering']) {
 $activeOffering   = $activeTerm ? $terms[$activeTerm]['offering'] : null;
 $activeOfferingId = $activeOffering['offering_id'] ?? null;
 
-// ---- Active nav view (Overview / Students / Attendance / Grading) --------
-$allowedViews = ['overview', 'students', 'attendance', 'grading'];
+// ---- Active nav view (Overview / Students / Attendance / Assignments) --------
+$allowedViews = ['overview', 'students', 'attendance', 'assignments'];
 $activeView   = $_GET['view'] ?? 'overview';
 if (!in_array($activeView, $allowedViews, true)) {
     $activeView = 'overview';
 }
 
-// ---- Flash message (set by material_upload.php / material_delete.php) ----
+// ---- Flash message (set by material_upload.php / material_delete.php / assignment_*.php) ----
 $flash = getFlashMessage();
 
 // ---- Learning materials for the active term's offering -------------------
@@ -170,6 +170,66 @@ if ($activeOfferingId && $activeView === 'attendance') {
             $attendanceSummary[$status]++;
         } else {
             $attendanceSummary['Unmarked']++;
+        }
+    }
+}
+
+// ---- Assignments for the active term's offering ---------------------------
+$assignments = [];
+if ($activeOfferingId && $activeView === 'assignments') {
+    $stmt = $pdo->prepare("
+        SELECT a.assignment_id, a.title, a.description, a.instructions_file_path,
+               a.due_date, a.points, a.status, a.created_at,
+               COUNT(sub.submission_id) AS submitted_count,
+               SUM(CASE WHEN sub.status = 'graded' THEN 1 ELSE 0 END) AS graded_count
+        FROM assignments a
+        LEFT JOIN submissions sub ON sub.assignment_id = a.assignment_id
+        WHERE a.offering_id = ?
+        GROUP BY a.assignment_id, a.title, a.description, a.instructions_file_path,
+                 a.due_date, a.points, a.status, a.created_at
+        ORDER BY a.created_at DESC
+    ");
+    $stmt->execute([$activeOfferingId]);
+    $assignments = $stmt->fetchAll();
+}
+
+// ---- Selected assignment + its submissions/grading grid --------------------
+$selectedAssignment = null;
+$submissionRows = [];
+if ($activeOfferingId && $activeView === 'assignments') {
+    $requestedAssignmentId = filter_input(INPUT_GET, 'assignment_id', FILTER_VALIDATE_INT);
+    if ($requestedAssignmentId) {
+        $stmt = $pdo->prepare("
+            SELECT assignment_id, title, description, instructions_file_path, due_date, points, status
+            FROM assignments
+            WHERE assignment_id = ? AND offering_id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$requestedAssignmentId, $activeOfferingId]);
+        $selectedAssignment = $stmt->fetch() ?: null;
+
+        if ($selectedAssignment) {
+            // Enrolled students in this offering, left-joined to their (latest) submission.
+            $stmt = $pdo->prepare("
+                SELECT s.student_id, s.firstname, s.lastname, s.middlename,
+                       sub.submission_id, sub.file_path, sub.external_url, sub.submission_text,
+                       sub.status AS submission_status, sub.score, sub.feedback,
+                       sub.submitted_at, sub.graded_at
+                FROM enrollments e
+                JOIN students s ON s.student_id = e.student_id
+                LEFT JOIN submissions sub
+                       ON sub.student_id = s.student_id
+                      AND sub.assignment_id = ?
+                      AND sub.attempt_number = (
+                            SELECT MAX(sub2.attempt_number)
+                            FROM submissions sub2
+                            WHERE sub2.assignment_id = sub.assignment_id AND sub2.student_id = sub.student_id
+                      )
+                WHERE e.offering_id = ? AND e.status = 'active'
+                ORDER BY s.lastname, s.firstname
+            ");
+            $stmt->execute([$selectedAssignment['assignment_id'], $activeOfferingId]);
+            $submissionRows = $stmt->fetchAll();
         }
     }
 }
@@ -237,4 +297,57 @@ function materialIcon(string $type): string
         'link'   => 'fa-link',
         default  => 'fa-file',
     };
+}
+
+/**
+ * Helper: build a link to the Assignments view, optionally deep-linking
+ * to a specific assignment's submissions/grading grid.
+ */
+function assignmentsUrl(int $subjectId, int $sectionId, ?string $term, ?int $assignmentId = null): string
+{
+    $params = [
+        'subject_id' => $subjectId,
+        'section_id' => $sectionId,
+        'view'       => 'assignments',
+    ];
+    if ($term) {
+        $params['term'] = $term;
+    }
+    if ($assignmentId) {
+        $params['assignment_id'] = $assignmentId;
+    }
+    return 'class_overview.php?' . http_build_query($params);
+}
+
+/**
+ * Helper: a short, human-friendly due-date label, flagging overdue items.
+ */
+function dueDateLabel(?string $dueDate): array
+{
+    if (!$dueDate) {
+        return ['label' => 'No due date', 'overdue' => false];
+    }
+    $ts = strtotime($dueDate);
+    return [
+        'label'   => date('M j, Y g:i A', $ts),
+        'overdue' => $ts < time(),
+    ];
+}
+
+/**
+ * Helper: submission status for a student row, accounting for "missing"
+ * (no submission row at all) and "late" (submitted after the due date).
+ */
+function submissionStatusInfo(?string $status, ?string $submittedAt, ?string $dueDate): array
+{
+    if (!$status) {
+        return ['label' => 'Missing', 'class' => 'missing'];
+    }
+    if ($status === 'graded') {
+        return ['label' => 'Graded', 'class' => 'graded'];
+    }
+    if ($dueDate && $submittedAt && strtotime($submittedAt) > strtotime($dueDate)) {
+        return ['label' => 'Late', 'class' => 'late'];
+    }
+    return ['label' => 'Submitted', 'class' => 'submitted'];
 }
