@@ -67,6 +67,38 @@ function isAdmin() {
 }
 
 /**
+ * Check if logged-in user is a teacher
+ */
+function isTeacher() {
+    return isset($_SESSION['role']) && $_SESSION['role'] === 'teacher';
+}
+
+/**
+ * Require teacher access or redirect.
+ *
+ * Same JSON-vs-redirect behavior as requireAdmin() — the quiz generator's
+ * fetch() calls (generate_quiz.php, save_quiz.php) send
+ * `Accept: application/json`, so a session/role failure returns a JSON 401
+ * instead of an HTML redirect that fetch() can't parse.
+ */
+function requireTeacher() {
+    if (!isLoggedIn() || !isTeacher()) {
+        $wantsJson = isset($_SERVER['HTTP_ACCEPT']) && str_contains($_SERVER['HTTP_ACCEPT'], 'application/json');
+        $isAjax    = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+
+        if ($wantsJson || $isAjax) {
+            http_response_code(401);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'errors' => ['Your session has expired. Please refresh the page and log in again.']]);
+            exit();
+        }
+
+        header("Location: ../../login.php");
+        exit();
+    }
+}
+
+/**
  * Require admin access or redirect.
  *
  * AJAX/fetch calls (enrollment.php's approve/deny/reopen/add-request
