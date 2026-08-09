@@ -19,7 +19,25 @@ if(isset($_POST['login'])){
 
         $user = $result->fetch_assoc();
 
-        if(password_verify($password, $user['password'])){
+        $passwordMatches = false;
+
+        // Check if the stored password is already a bcrypt hash
+        if(password_get_info($user['password'])['algo'] !== null){
+            // Stored value is a proper hash — verify normally
+            $passwordMatches = password_verify($password, $user['password']);
+        } else {
+            // Stored value is plain text — compare directly, then upgrade it to a hash
+            if($password === $user['password']){
+                $passwordMatches = true;
+
+                $newHash = password_hash($password, PASSWORD_DEFAULT);
+                $updateStmt = $conn->prepare("UPDATE users SET password=? WHERE id=?");
+                $updateStmt->bind_param("si", $newHash, $user['id']);
+                $updateStmt->execute();
+            }
+        }
+
+        if($passwordMatches){
 
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
@@ -31,7 +49,7 @@ if(isset($_POST['login'])){
             } elseif ($user['role'] === 'teacher') {
                 header("Location: teacher/dashboard.php");
             } else {
-                header("Location: ../student/dashboard.php");
+                header("Location: student/dashboard.php");
             }
             exit();
 

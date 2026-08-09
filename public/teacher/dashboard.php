@@ -18,9 +18,6 @@ include 'assets/api/dashboard_functions.php';
 
     <?php include '../../includes/teacher_header.php'; ?>
 
-    <div class="dash-page-title">
-        <h1 class="dash-title">Dashboard</h1>
-    </div>
 
     <!-- Welcome banner -->
     <section class="welcome-banner">
