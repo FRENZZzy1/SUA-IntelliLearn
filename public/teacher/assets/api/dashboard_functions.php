@@ -148,4 +148,125 @@ $greeting = $greetingHour < 12 ? 'Good morning' : ($greetingHour < 18 ? 'Good af
 $todayLabel = date('l, F j, Y');
 
 
+
+
+//for teachers profile
+function get_teacher_profile(PDO $pdo, int $userId): ?array
+{
+    $stmt = $pdo->prepare(
+        "SELECT t.teacher_id, t.user_id, t.firstname, t.lastname, t.middlename,
+                t.email, t.employment_status, t.department, t.specialization,
+                t.created_at,
+                u.username, u.status
+         FROM teachers t
+         INNER JOIN users u ON u.id = t.user_id
+         WHERE t.user_id = :user_id
+         LIMIT 1"
+    );
+    $stmt->execute(['user_id' => $userId]);
+    $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $profile ?: null;
+}
+
+/**
+ * Update a teacher's editable info: name, email, department, specialization.
+ * Returns ['success' => bool, 'errors' => string[]] to match the admin handler shape.
+ */
+function update_teacher_profile(
+    PDO $pdo,
+    int $teacherId,
+    string $firstname,
+    string $lastname,
+    string $email,
+    string $department,
+    string $specialization
+): array {
+    $errors = [];
+
+    if ($firstname === '') {
+        $errors[] = 'First name is required.';
+    }
+    if ($lastname === '') {
+        $errors[] = 'Last name is required.';
+    }
+    if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors[] = 'A valid email address is required.';
+    }
+
+    if (!empty($errors)) {
+        return ['success' => false, 'errors' => $errors];
+    }
+
+    // Make sure the email isn't already used by another teacher.
+    $check = $pdo->prepare(
+        "SELECT teacher_id FROM teachers WHERE email = :email AND teacher_id != :teacher_id LIMIT 1"
+    );
+    $check->execute(['email' => $email, 'teacher_id' => $teacherId]);
+    if ($check->fetch()) {
+        return ['success' => false, 'errors' => ['That email address is already in use.']];
+    }
+
+    $stmt = $pdo->prepare(
+        "UPDATE teachers
+         SET firstname = :firstname,
+             lastname = :lastname,
+             email = :email,
+             department = :department,
+             specialization = :specialization,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE teacher_id = :teacher_id"
+    );
+
+    $ok = $stmt->execute([
+        'firstname'      => $firstname,
+        'lastname'       => $lastname,
+        'email'          => $email,
+        'department'     => $department,
+        'specialization' => $specialization,
+        'teacher_id'     => $teacherId,
+    ]);
+
+    if (!$ok) {
+        return ['success' => false, 'errors' => ['Failed to update profile. Please try again.']];
+    }
+
+    return ['success' => true, 'errors' => []];
+}
+
+function get_initials(string $name): string
+{
+    $parts = preg_split('/\s+/', trim($name));
+    $initials = '';
+ 
+    foreach ($parts as $part) {
+        if ($part === '') {
+            continue;
+        }
+        $initials .= strtoupper($part[0]);
+        if (strlen($initials) >= 2) {
+            break;
+        }
+    }
+ 
+    return $initials !== '' ? $initials : '?';
+}
+ 
+/**
+ * Deterministically pick an avatar background color from a seed string
+ * (e.g. username) so the same person always gets the same color.
+ */
+function get_avatar_color(string $seed): string
+{
+    $colors = [
+        '#1B5E20', '#2E7D32', '#0D47A1', '#4527A0',
+        '#AD1457', '#E65100', '#00695C', '#37474F',
+    ];
+ 
+    $index = crc32($seed) % count($colors);
+ 
+    return $colors[$index];
+}
+
+
 ?>

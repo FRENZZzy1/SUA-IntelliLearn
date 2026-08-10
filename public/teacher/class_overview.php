@@ -73,6 +73,10 @@ if (!empty($submissionRows)) {
            href="<?= assignmentsUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm) ?>">
             <i class="fas fa-marker"></i> Assignments
         </a>
+        <a class="class-nav-item <?= $activeView === 'quizzes' ? 'active' : '' ?>"
+           href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm) ?>">
+            <i class="fas fa-file-circle-question"></i> Quizzes
+        </a>
     </nav>
 
     <?php if (!$activeOfferingId && $activeView !== 'overview'): ?>
@@ -518,6 +522,150 @@ if (!empty($submissionRows)) {
 
                         <div class="form-actions grading-save-bar">
                             <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Save Grades</button>
+                        </div>
+                    </form>
+                <?php endif; ?>
+            </section>
+        <?php endif; ?>
+
+    <?php elseif ($activeView === 'quizzes'): ?>
+
+        <?php if (!$selectedQuiz): ?>
+            <!-- Quizzes list -->
+            <section class="panel panel--card">
+                <div class="panel-header">
+                    <h2><i class="fas fa-file-circle-question"></i> Quizzes · <?= htmlspecialchars($terms[$activeTerm]['label']) ?></h2>
+                    <a href="quiz_generator.php?subject_id=<?= (int) $classInfo['subject_id'] ?>&section_id=<?= (int) $classInfo['section_id'] ?>&term=<?= htmlspecialchars($activeTerm) ?>"
+                       class="btn-primary">
+                        <i class="fas fa-plus"></i> New Quiz
+                    </a>
+                </div>
+
+                <?php if (empty($quizzes)): ?>
+                    <div class="panel-empty panel-empty--enhanced">
+                        <div class="panel-empty__icon">
+                            <i class="fas fa-file-circle-question"></i>
+                        </div>
+                        <h3>No quizzes yet</h3>
+                        <p>Quizzes you create show up here, along with student scores.</p>
+                    </div>
+                <?php else: ?>
+                    <ul class="material-list">
+                        <?php foreach ($quizzes as $q): ?>
+                            <?php $qStatus = quizStatusInfo($q['status']); ?>
+                            <li class="material-item">
+                                <div class="material-icon material-icon--quiz"><i class="fas fa-file-circle-question"></i></div>
+                                <div class="material-info">
+                                    <a class="material-title"
+                                       href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $q['quiz_id']) ?>">
+                                        <?= htmlspecialchars($q['title']) ?>
+                                    </a>
+                                    <div class="material-meta">
+                                        <span class="chip chip-<?= $qStatus['class'] ?>"><?= $qStatus['label'] ?></span>
+                                        · <?= (int) $q['question_count'] ?> question<?= (int) $q['question_count'] === 1 ? '' : 's' ?>
+                                        · <?= rtrim(rtrim((string) $q['total_points'], '0'), '.') ?> pts
+                                        · <?= (int) $q['attempts_submitted'] ?> attempt<?= (int) $q['attempts_submitted'] === 1 ? '' : 's' ?> submitted
+                                        <?php if ($q['avg_score'] !== null): ?>
+                                            · Avg <?= htmlspecialchars($q['avg_score']) ?>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                                <a class="btn-secondary btn-view-submissions"
+                                   href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $q['quiz_id']) ?>">
+                                    View Scores
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endif; ?>
+            </section>
+
+        <?php else: ?>
+            <!-- Per-student scores / manual override grid -->
+            <a href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm) ?>" class="breadcrumb-back">
+                <i class="fas fa-arrow-left"></i> Back to Quizzes
+            </a>
+
+            <?php $qStatus = quizStatusInfo($selectedQuiz['status']); ?>
+            <section class="panel panel--card">
+                <div class="panel-header">
+                    <h2><i class="fas fa-file-circle-question"></i> <?= htmlspecialchars($selectedQuiz['title']) ?></h2>
+                    <span class="enrolled-badge">
+                        <span class="chip chip-<?= $qStatus['class'] ?>"><?= $qStatus['label'] ?></span>
+                        · <?= rtrim(rtrim((string) $selectedQuiz['total_points'], '0'), '.') ?> pts total
+                        <?php if ($selectedQuiz['time_limit_minutes']): ?>
+                            · <?= (int) $selectedQuiz['time_limit_minutes'] ?> min limit
+                        <?php endif; ?>
+                    </span>
+                </div>
+
+                <?php if (!empty($selectedQuiz['description'])): ?>
+                    <p class="assignment-description"><?= nl2br(htmlspecialchars($selectedQuiz['description'])) ?></p>
+                <?php endif; ?>
+
+                <p class="field-hint" style="margin: 0 0 16px;">
+                    Scores below come from auto-checked quiz attempts. If the system graded something
+                    incorrectly, you can override a student's score directly here — changes are saved as final.
+                </p>
+
+                <?php if (empty($quizAttemptRows)): ?>
+                    <div class="panel-empty panel-empty--enhanced">
+                        <div class="panel-empty__icon">
+                            <i class="fas fa-user-slash"></i>
+                        </div>
+                        <h3>No students enrolled yet</h3>
+                        <p>Students will appear here once they are enrolled in this class.</p>
+                    </div>
+                <?php else: ?>
+                    <form action="assets/api/quiz_score_save.php" method="POST" class="grading-form" id="quizScoreForm">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                        <input type="hidden" name="quiz_id" value="<?= (int) $selectedQuiz['quiz_id'] ?>">
+                        <input type="hidden" name="offering_id" value="<?= (int) $activeOfferingId ?>">
+                        <input type="hidden" name="subject_id" value="<?= (int) $classInfo['subject_id'] ?>">
+                        <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
+                        <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
+
+                        <div class="table-scroll">
+                            <table class="data-table data-table--modern grading-table">
+                                <thead>
+                                    <tr>
+                                        <th>Student</th>
+                                        <th>Status</th>
+                                        <th>Attempt</th>
+                                        <th>Submitted</th>
+                                        <th>Score</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($quizAttemptRows as $row): ?>
+                                        <?php $attemptStatus = quizAttemptStatusInfo($row['attempt_status']); ?>
+                                        <tr>
+                                            <td class="student-name"><?= htmlspecialchars($row['lastname'] . ', ' . $row['firstname'] . ' ' . ($row['middlename'] ?? '')) ?></td>
+                                            <td><span class="chip chip-<?= $attemptStatus['class'] ?>"><?= $attemptStatus['label'] ?></span></td>
+                                            <td><?= $row['attempt_number'] ? '#' . (int) $row['attempt_number'] : '—' ?></td>
+                                            <td><?= $row['submitted_at'] ? date('M j, Y g:i A', strtotime($row['submitted_at'])) : '—' ?></td>
+                                            <td>
+                                                <?php if ($row['attempt_id']): ?>
+                                                    <input type="number" class="grade-input" name="score[<?= (int) $row['attempt_id'] ?>]"
+                                                           min="0" max="<?= $row['max_score'] !== null ? (float) $row['max_score'] : (float) $selectedQuiz['total_points'] ?>"
+                                                           step="0.01"
+                                                           value="<?= $row['score'] !== null ? htmlspecialchars($row['score']) : '' ?>"
+                                                           placeholder="—">
+                                                    <?php if ($row['max_score'] !== null): ?>
+                                                        <span class="field-hint">/ <?= rtrim(rtrim((string) $row['max_score'], '0'), '.') ?></span>
+                                                    <?php endif; ?>
+                                                <?php else: ?>
+                                                    <span class="field-hint">—</span>
+                                                <?php endif; ?>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="form-actions grading-save-bar">
+                            <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Save Scores</button>
                         </div>
                     </form>
                 <?php endif; ?>

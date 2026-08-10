@@ -427,6 +427,11 @@
     color: #d97706;
 }
 
+.material-icon--quiz {
+    background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+    color: #4338ca;
+}
+
 .material-info {
     flex: 1;
     min-width: 0;
@@ -607,6 +612,16 @@
 .chip-late     { background: #fff6e0; color: #a16207; }
 .chip-excused  { background: #eef2ff; color: #4338ca; }
 .chip-unmarked { background: #f3f4f6; color: #6b7280; }
+
+/* Assignment / quiz submission status chips */
+.chip-graded    { background: #e6f7ee; color: #0a7a3d; }
+.chip-submitted { background: #eef2ff; color: #4338ca; }
+.chip-missing   { background: #f3f4f6; color: #6b7280; }
+
+/* Quiz publish-status chips */
+.chip-draft     { background: #f3f4f6; color: #6b7280; }
+.chip-published { background: #e6f7ee; color: #0a7a3d; }
+.chip-closed    { background: #fdeceb; color: #b3261e; }
 
 /* Grading inputs */
 .grade-input,

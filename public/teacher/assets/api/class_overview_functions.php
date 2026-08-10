@@ -101,8 +101,8 @@ if (isset($terms[$requestedTerm]) && $terms[$requestedTerm]['offering']) {
 $activeOffering   = $activeTerm ? $terms[$activeTerm]['offering'] : null;
 $activeOfferingId = $activeOffering['offering_id'] ?? null;
 
-// ---- Active nav view (Overview / Students / Attendance / Assignments) --------
-$allowedViews = ['overview', 'students', 'attendance', 'assignments'];
+// ---- Active nav view (Overview / Students / Attendance / Assignments / Quizzes) --------
+$allowedViews = ['overview', 'students', 'attendance', 'assignments', 'quizzes'];
 $activeView   = $_GET['view'] ?? 'overview';
 if (!in_array($activeView, $allowedViews, true)) {
     $activeView = 'overview';
@@ -234,6 +234,73 @@ if ($activeOfferingId && $activeView === 'assignments') {
     }
 }
 
+// ---- Quizzes for the active term's offering --------------------------------
+$quizzes = [];
+if ($activeOfferingId && $activeView === 'quizzes') {
+    // Per-quiz aggregates are pulled as scalar subqueries rather than JOINs so
+    // that the question count and the attempt count/average don't multiply
+    // each other out (a JOIN across quiz_questions and quiz_attempts would
+    // fan out and skew both numbers).
+    $stmt = $pdo->prepare("
+        SELECT
+            q.quiz_id, q.title, q.description, q.status, q.max_attempts,
+            q.time_limit_minutes, q.available_from, q.available_until, q.created_at,
+            (SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.quiz_id) AS question_count,
+            (SELECT COALESCE(SUM(qq.points), 0) FROM quiz_questions qq WHERE qq.quiz_id = q.quiz_id) AS total_points,
+            (SELECT COUNT(*) FROM quiz_attempts qa WHERE qa.quiz_id = q.quiz_id AND qa.status IN ('submitted', 'graded')) AS attempts_submitted,
+            (SELECT ROUND(AVG(qa.score), 1) FROM quiz_attempts qa WHERE qa.quiz_id = q.quiz_id AND qa.status IN ('submitted', 'graded')) AS avg_score
+        FROM quizzes q
+        WHERE q.offering_id = ?
+        ORDER BY q.created_at DESC
+    ");
+    $stmt->execute([$activeOfferingId]);
+    $quizzes = $stmt->fetchAll();
+}
+
+// ---- Selected quiz + per-student scores grid --------------------------------
+$selectedQuiz = null;
+$quizAttemptRows = [];
+if ($activeOfferingId && $activeView === 'quizzes') {
+    $requestedQuizId = filter_input(INPUT_GET, 'quiz_id', FILTER_VALIDATE_INT);
+    if ($requestedQuizId) {
+        $stmt = $pdo->prepare("
+            SELECT
+                quiz_id, title, description, status, max_attempts, time_limit_minutes,
+                available_from, available_until,
+                (SELECT COALESCE(SUM(points), 0) FROM quiz_questions WHERE quiz_id = quizzes.quiz_id) AS total_points
+            FROM quizzes
+            WHERE quiz_id = ? AND offering_id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$requestedQuizId, $activeOfferingId]);
+        $selectedQuiz = $stmt->fetch() ?: null;
+
+        if ($selectedQuiz) {
+            // Enrolled students left-joined to their latest attempt for this quiz
+            // (mirrors the "latest attempt" pattern used for assignment submissions).
+            $stmt = $pdo->prepare("
+                SELECT s.student_id, s.firstname, s.lastname, s.middlename,
+                       qa.attempt_id, qa.attempt_number, qa.status AS attempt_status,
+                       qa.score, qa.max_score, qa.started_at, qa.submitted_at
+                FROM enrollments e
+                JOIN students s ON s.student_id = e.student_id
+                LEFT JOIN quiz_attempts qa
+                       ON qa.student_id = s.student_id
+                      AND qa.quiz_id = ?
+                      AND qa.attempt_number = (
+                            SELECT MAX(qa2.attempt_number)
+                            FROM quiz_attempts qa2
+                            WHERE qa2.quiz_id = qa.quiz_id AND qa2.student_id = qa.student_id
+                      )
+                WHERE e.offering_id = ? AND e.status = 'active'
+                ORDER BY s.lastname, s.firstname
+            ");
+            $stmt->execute([$selectedQuiz['quiz_id'], $activeOfferingId]);
+            $quizAttemptRows = $stmt->fetchAll();
+        }
+    }
+}
+
 $csrfToken = generateCSRFToken();
 
 /**
@@ -350,4 +417,54 @@ function submissionStatusInfo(?string $status, ?string $submittedAt, ?string $du
         return ['label' => 'Late', 'class' => 'late'];
     }
     return ['label' => 'Submitted', 'class' => 'submitted'];
+}
+
+/**
+ * Helper: build a link to the Quizzes view, optionally deep-linking to a
+ * specific quiz's score/grading grid.
+ */
+function quizzesUrl(int $subjectId, int $sectionId, ?string $term, ?int $quizId = null): string
+{
+    $params = [
+        'subject_id' => $subjectId,
+        'section_id' => $sectionId,
+        'view'       => 'quizzes',
+    ];
+    if ($term) {
+        $params['term'] = $term;
+    }
+    if ($quizId) {
+        $params['quiz_id'] = $quizId;
+    }
+    return 'class_overview.php?' . http_build_query($params);
+}
+
+/**
+ * Helper: display label/class for a quiz's publish status.
+ */
+function quizStatusInfo(string $status): array
+{
+    return match ($status) {
+        'published' => ['label' => 'Published', 'class' => 'published'],
+        'closed'    => ['label' => 'Closed', 'class' => 'closed'],
+        default     => ['label' => 'Draft', 'class' => 'draft'],
+    };
+}
+
+/**
+ * Helper: a student's quiz-attempt status, accounting for "not attempted"
+ * (no attempt row at all) the same way submissionStatusInfo() does for
+ * assignments.
+ */
+function quizAttemptStatusInfo(?string $status): array
+{
+    if (!$status) {
+        return ['label' => 'Not attempted', 'class' => 'missing'];
+    }
+    return match ($status) {
+        'graded'      => ['label' => 'Graded', 'class' => 'graded'],
+        'submitted'   => ['label' => 'Submitted', 'class' => 'submitted'],
+        'in_progress' => ['label' => 'In progress', 'class' => 'late'],
+        default       => ['label' => ucfirst($status), 'class' => 'missing'],
+    };
 }

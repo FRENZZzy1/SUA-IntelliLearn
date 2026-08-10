@@ -334,7 +334,7 @@ if (function_exists('get_initials')) {
                         <div class="thp-profile-header-role"><?php echo htmlspecialchars($userRole); ?></div>
                     </div>
                 </div>
-                <a href="/SUA-INTELLILEARN/public/teacher/settings.php" class="thp-profile-item">
+                <a href="/SUA-INTELLILEARN/public/teacher/profile.php" class="thp-profile-item">
                     <i class="fas fa-user-cog"></i> Profile Settings
                 </a>
                 <a href="/SUA-INTELLILEARN/public/logout.php" class="thp-profile-item thp-logout">
