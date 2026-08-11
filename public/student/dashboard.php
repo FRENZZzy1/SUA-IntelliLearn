@@ -38,13 +38,11 @@ $studentGradeSection = $sectionRow
     ? "Grade {$sectionRow['grade_level']} - {$sectionRow['section_name']}"
     : null;
 
-// ---- STATIC placeholder data (swap for real queries later) -----------
-$greeting            = 'Good morning';
-$todayLabel          = 'Wednesday, March 25, 2026';
+// ---- Real dashboard data: enrolled subjects, assignments, announcements
+require_once __DIR__ . '/assets/api/dashboard_functions.php';
 
-$enrolledSubjects   = 6;
-$pendingCount       = 5;
-$dueTodayCount      = 3;
+// ---- Still placeholder: no grades/attendance data exists yet to average.
+// TODO: replace once the grades and attendance tables have real rows.
 $overallAvgGrade    = 88;
 $attendanceRate     = 95;
 ?>
@@ -124,43 +122,35 @@ $attendanceRate     = 95;
                     <a href="announcements.php" class="panel-link">View All</a>
                 </div>
 
-                <div class="announcement-list">
-                    <div class="announcement-item">
-                        <div class="announcement-item-head">
-                            <h4>Quarter 3 Examination Schedule Released</h4>
-                            <span class="announcement-tag announcement-tag--urgent">Urgent</span>
-                        </div>
-                        <p>The Q3 exam schedule has been finalized. Exams begin April 7–11, 2026. Please review the full schedule on the bulletin board and prepare accordingly.</p>
-                        <div class="announcement-meta"><i class="fas fa-thumbtack"></i> Posted by Administration · March 24, 2026</div>
+                <?php if (empty($visibleAnnouncements)): ?>
+                    <div class="panel-empty">
+                        <i class="fas fa-bullhorn"></i>
+                        <p>No announcements yet.</p>
+                        <span>Anything your teachers or the administration post will show up here.</span>
                     </div>
-
-                    <div class="announcement-item">
-                        <div class="announcement-item-head">
-                            <h4>Acquaintance Party – April 3, 2026</h4>
-                            <span class="announcement-tag announcement-tag--event">Event</span>
-                        </div>
-                        <p>The Student Council invites all Grade 10 students to the annual Acquaintance Party at the school gymnasium. Dress code: smart casual.</p>
-                        <div class="announcement-meta"><i class="fas fa-thumbtack"></i> Posted by Student Council · March 22, 2026</div>
+                <?php else: ?>
+                    <div class="announcement-list">
+                        <?php foreach ($visibleAnnouncements as $a): ?>
+                            <?php
+                                [$badgeClass, $badgeLabel] = student_announcement_badge($a['priority']);
+                                $postedBy = $a['t_first']
+                                    ? trim($a['t_first'] . ' ' . $a['t_last'])
+                                    : 'Administration';
+                            ?>
+                            <div class="announcement-item">
+                                <div class="announcement-item-head">
+                                    <h4><?= htmlspecialchars($a['title']) ?></h4>
+                                    <span class="announcement-tag <?= $badgeClass ?>"><?= $badgeLabel ?></span>
+                                </div>
+                                <p><?= htmlspecialchars($a['body']) ?></p>
+                                <div class="announcement-meta">
+                                    <i class="fas fa-thumbtack"></i>
+                                    Posted by <?= htmlspecialchars($postedBy) ?> · <?= date('F j, Y', strtotime($a['created_at'])) ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
-
-                    <div class="announcement-item">
-                        <div class="announcement-item-head">
-                            <h4>No Classes on March 28 (Holy Thursday)</h4>
-                            <span class="announcement-tag announcement-tag--general">General</span>
-                        </div>
-                        <p>In observance of Holy Week, there will be no classes from March 27–31, 2026. Classes resume on April 1.</p>
-                        <div class="announcement-meta"><i class="fas fa-thumbtack"></i> Posted by Principal's Office · March 20, 2026</div>
-                    </div>
-
-                    <div class="announcement-item">
-                        <div class="announcement-item-head">
-                            <h4>Science Fair Project Submission Reminder</h4>
-                            <span class="announcement-tag announcement-tag--academic">Academic</span>
-                        </div>
-                        <p>All Grade 10 participants must submit their Science Fair abstracts by March 27. Submit to your Science teacher or the Science Department office.</p>
-                        <div class="announcement-meta"><i class="fas fa-thumbtack"></i> Posted by Science Dept. · March 19, 2026</div>
-                    </div>
-                </div>
+                <?php endif; ?>
             </article>
 
             <!-- Due Today + To-Do -->
@@ -169,35 +159,29 @@ $attendanceRate     = 95;
                 <article class="panel">
                     <div class="panel-head">
                         <h3><i class="fas fa-calendar-day"></i> Due Today</h3>
-                        <span class="panel-link" style="color: var(--text-muted); font-weight: 500;">March 25</span>
+                        <span class="panel-link" style="color: var(--text-muted); font-weight: 500;"><?= date('F j') ?></span>
                     </div>
 
-                    <ul class="due-list">
-                        <li class="due-item">
-                            <div class="due-icon"><i class="fas fa-file-pen"></i></div>
-                            <div class="due-info">
-                                <h5>Math Long Quiz – Ch. 5 Polynomials</h5>
-                                <span>Mathematics 10 · Mr. Dela Cruz</span>
-                            </div>
-                            <div class="due-time">8:00 AM</div>
-                        </li>
-                        <li class="due-item">
-                            <div class="due-icon"><i class="fas fa-file-lines"></i></div>
-                            <div class="due-info">
-                                <h5>English Essay – Argumentative Writing</h5>
-                                <span>English 10 · Ms. Aquino</span>
-                            </div>
-                            <div class="due-time">2:00 PM</div>
-                        </li>
-                        <li class="due-item">
-                            <div class="due-icon"><i class="fas fa-flask"></i></div>
-                            <div class="due-info">
-                                <h5>Science Lab Report – Osmosis</h5>
-                                <span>Science 10 · Ms. Villanueva</span>
-                            </div>
-                            <div class="due-time">End of Day</div>
-                        </li>
-                    </ul>
+                    <?php if (empty($dueTodayAssignments)): ?>
+                        <div class="panel-empty">
+                            <i class="fas fa-mug-hot"></i>
+                            <p>Nothing due today.</p>
+                            <span>Enjoy the breathing room.</span>
+                        </div>
+                    <?php else: ?>
+                        <ul class="due-list">
+                            <?php foreach ($dueTodayAssignments as $item): ?>
+                                <li class="due-item">
+                                    <div class="due-icon"><i class="fas <?= student_subject_icon($item['subject_name']) ?>"></i></div>
+                                    <div class="due-info">
+                                        <h5><?= htmlspecialchars($item['title']) ?></h5>
+                                        <span><?= htmlspecialchars($item['subject_name']) ?> · <?= htmlspecialchars(trim($item['teacher_first'] . ' ' . $item['teacher_last'])) ?></span>
+                                    </div>
+                                    <div class="due-time"><?= student_due_time($item['due_date']) ?></div>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
                 </article>
 
                 <article class="panel">
@@ -206,16 +190,26 @@ $attendanceRate     = 95;
                         <a href="assignments.php" class="panel-link">View All</a>
                     </div>
 
-                    <ul class="todo-list">
-                        <li class="todo-item">
-                            <input type="checkbox">
-                            <span class="todo-text">
-                                <span class="todo-chip">MATH</span>
-                                Math Long Quiz – Ch. 5 Polynomials
-                            </span>
-                            <span class="todo-due">Due today, 8:00 AM</span>
-                        </li>
-                    </ul>
+                    <?php if (empty($todoAssignments)): ?>
+                        <div class="panel-empty">
+                            <i class="fas fa-circle-check"></i>
+                            <p>You're all caught up!</p>
+                            <span>No pending assignments right now.</span>
+                        </div>
+                    <?php else: ?>
+                        <ul class="todo-list">
+                            <?php foreach ($todoAssignments as $item): ?>
+                                <li class="todo-item">
+                                    <input type="checkbox" disabled>
+                                    <span class="todo-text">
+                                        <span class="todo-chip"><?= student_subject_chip($item['subject_name']) ?></span>
+                                        <?= htmlspecialchars($item['title']) ?>
+                                    </span>
+                                    <span class="todo-due"><?= student_due_label($item['due_date']) ?></span>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    <?php endif; ?>
                 </article>
 
             </div>
