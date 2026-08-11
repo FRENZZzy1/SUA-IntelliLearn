@@ -37,7 +37,7 @@ header('Content-Type: application/json');
 require_once $_SERVER['DOCUMENT_ROOT'] . '/SUA-IntelliLearn/config/config.php';
 requireTeacher();
 
-$raw  = file_get_contents('php://input');
+$raw = file_get_contents('php://input');
 $body = json_decode($raw, true);
 
 if (!is_array($body)) {
@@ -52,20 +52,30 @@ if (!validateCSRFToken($body['csrf_token'] ?? '')) {
     exit();
 }
 
-$offeringId  = (int) ($body['offering_id'] ?? 0);
-$jobId       = isset($body['job_id']) ? (int) $body['job_id'] : null;
-$title       = trim($body['title'] ?? '');
+$offeringId = (int) ($body['offering_id'] ?? 0);
+$jobId = isset($body['job_id']) ? (int) $body['job_id'] : null;
+$title = trim($body['title'] ?? '');
 $description = trim($body['description'] ?? '');
-$timeLimit   = isset($body['time_limit_minutes']) && $body['time_limit_minutes'] !== '' ? (int) $body['time_limit_minutes'] : null;
+$timeLimit = isset($body['time_limit_minutes']) && $body['time_limit_minutes'] !== '' ? (int) $body['time_limit_minutes'] : null;
 $maxAttempts = max(1, (int) ($body['max_attempts'] ?? 1));
-$shuffle     = !empty($body['shuffle_questions']) ? 1 : 0;
-$status      = in_array($body['status'] ?? '', ['draft', 'published'], true) ? $body['status'] : 'draft';
-$questions   = is_array($body['questions'] ?? null) ? $body['questions'] : [];
+$shuffle = !empty($body['shuffle_questions']) ? 1 : 0;
+$status = in_array($body['status'] ?? '', ['draft', 'published'], true) ? $body['status'] : 'draft';
+$questions = is_array($body['questions'] ?? null) ? $body['questions'] : [];
+$availFrom = !empty($body['available_from']) ? date('Y-m-d H:i:s', strtotime($body['available_from'])) : null;
+$availUntil = !empty($body['available_until']) ? date('Y-m-d H:i:s', strtotime($body['available_until'])) : null;
+
+
+if ($availFrom && $availUntil && strtotime($availUntil) <= strtotime($availFrom)) {
+    $errors[] = 'Available Until (deadline) must be a date and time after Available From.';
+}
 
 $errors = [];
-if ($offeringId <= 0) $errors[] = 'Missing subject/class.';
-if ($title === '') $errors[] = 'Quiz title is required.';
-if (empty($questions)) $errors[] = 'A quiz needs at least one question.';
+if ($offeringId <= 0)
+    $errors[] = 'Missing subject/class.';
+if ($title === '')
+    $errors[] = 'Quiz title is required.';
+if (empty($questions))
+    $errors[] = 'A quiz needs at least one question.';
 
 // Validate each question shape before touching the database
 foreach ($questions as $i => $q) {
@@ -88,9 +98,11 @@ foreach ($questions as $i => $q) {
         $correctCount = 0;
         $validChoiceCount = 0;
         foreach ($choices as $c) {
-            if (trim($c['text'] ?? '') === '') continue;
+            if (trim($c['text'] ?? '') === '')
+                continue;
             $validChoiceCount++;
-            if (!empty($c['is_correct'])) $correctCount++;
+            if (!empty($c['is_correct']))
+                $correctCount++;
         }
         if ($validChoiceCount < 2) {
             $errors[] = "Question {$n}: needs at least 2 choices.";
@@ -135,12 +147,24 @@ try {
     $pdo->beginTransaction();
 
     $stmt = $pdo->prepare("
-        INSERT INTO quizzes
-            (offering_id, created_by, title, description, generation_source,
-             time_limit_minutes, max_attempts, shuffle_questions, status)
-        VALUES (?, ?, ?, ?, 'topic', ?, ?, ?, ?)
-    ");
-    $stmt->execute([$offeringId, $teacherId, $title, $description, $timeLimit, $maxAttempts, $shuffle, $status]);
+    INSERT INTO quizzes
+        (offering_id, created_by, title, description, generation_source,
+         time_limit_minutes, max_attempts, shuffle_questions, status, available_from, available_until)
+    VALUES (?, ?, ?, ?, 'topic', ?, ?, ?, ?, ?, ?)
+");
+
+    $stmt->execute([
+        $offeringId,
+        $teacherId,
+        $title,
+        $description,
+        $timeLimit,
+        $maxAttempts,
+        $shuffle,
+        $status,
+        $availFrom,
+        $availUntil
+    ]);
     $quizId = (int) $pdo->lastInsertId();
 
     $qStmt = $pdo->prepare("
@@ -154,10 +178,10 @@ try {
     ");
 
     foreach ($questions as $i => $q) {
-        $qType     = $q['question_type'];
-        $points    = isset($q['points']) && is_numeric($q['points']) ? (float) $q['points'] : 1;
-        $aiGen     = !empty($q['ai_generated']) ? 1 : 0;
-        $edited    = !empty($q['teacher_edited']) ? 1 : 0;
+        $qType = $q['question_type'];
+        $points = isset($q['points']) && is_numeric($q['points']) ? (float) $q['points'] : 1;
+        $aiGen = !empty($q['ai_generated']) ? 1 : 0;
+        $edited = !empty($q['teacher_edited']) ? 1 : 0;
 
         $qStmt->execute([$quizId, trim($q['question_text']), $qType, $points, $i, $aiGen, $edited]);
         $questionId = (int) $pdo->lastInsertId();
@@ -169,7 +193,8 @@ try {
             $order = 0;
             foreach ($q['choices'] as $c) {
                 $text = trim($c['text'] ?? '');
-                if ($text === '') continue;
+                if ($text === '')
+                    continue;
                 $cStmt->execute([$questionId, $text, !empty($c['is_correct']) ? 1 : 0, $order]);
                 $order++;
             }
@@ -186,7 +211,7 @@ try {
     echo json_encode([
         'success' => true,
         'quiz_id' => $quizId,
-        'status'  => $status,
+        'status' => $status,
         'message' => $status === 'published' ? 'Quiz published.' : 'Quiz saved as draft.',
     ]);
 } catch (Throwable $e) {

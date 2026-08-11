@@ -13,14 +13,14 @@
 
     const csrfToken = document.getElementById('qgCsrfToken').value;
 
-    const form         = document.getElementById('qgGenerateForm');
-    const loadingBox   = document.getElementById('qgLoading');
-    const genAlert     = document.getElementById('qgGenerateAlert');
+    const form = document.getElementById('qgGenerateForm');
+    const loadingBox = document.getElementById('qgLoading');
+    const genAlert = document.getElementById('qgGenerateAlert');
     const reviewSection = document.getElementById('qgReviewSection');
     const questionList = document.getElementById('qgQuestionList');
-    const modelBadge   = document.getElementById('qgModelBadge');
-    const saveAlert    = document.getElementById('qgSaveAlert');
-    const generateBtn  = document.getElementById('qgGenerateBtn');
+    const modelBadge = document.getElementById('qgModelBadge');
+    const saveAlert = document.getElementById('qgSaveAlert');
+    const generateBtn = document.getElementById('qgGenerateBtn');
 
     let state = {
         offeringId: null,
@@ -327,12 +327,14 @@
             time_limit_minutes: document.getElementById('qgTimeLimit').value || null,
             max_attempts: document.getElementById('qgMaxAttempts').value || 1,
             shuffle_questions: document.getElementById('qgShuffle').checked,
+            available_from: document.getElementById('qgAvailableFrom').value || null,
+            available_until: document.getElementById('qgAvailableUntil').value || null,
             status: status,
             questions: state.questions,
         };
 
         const saveDraftBtn = document.getElementById('qgSaveDraftBtn');
-        const publishBtn   = document.getElementById('qgPublishBtn');
+        const publishBtn = document.getElementById('qgPublishBtn');
         saveDraftBtn.disabled = true;
         publishBtn.disabled = true;
 
@@ -368,6 +370,19 @@
             publishBtn.disabled = false;
         }
     }
+
+
+
+    // Helper to return current local datetime formatted for <input type="datetime-local">
+    function getNowForInput() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        return now.toISOString().slice(0, 16);
+    }
+
+    // Inside form.addEventListener('submit', ...) after data is returned successfully:
+    document.getElementById('qgAvailableFrom').value = getNowForInput();
+    document.getElementById('qgAvailableUntil').value = ''; // clear any prior value
 
     document.getElementById('qgSaveDraftBtn').addEventListener('click', () => saveQuiz('draft'));
     document.getElementById('qgPublishBtn').addEventListener('click', () => saveQuiz('published'));
