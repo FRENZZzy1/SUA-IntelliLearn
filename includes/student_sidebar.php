@@ -83,11 +83,6 @@ $unreadAnnouncementsCount  = $unreadAnnouncementsCount ?? null;
                 class="nav-item <?= $current === 'courses.php' ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-book"></i></div>
                 <span class="nav-label">My Courses</span>
-            </a>
-            <a href="../../public/student/assignments.php"
-                class="nav-item <?= $current === 'assignments.php' ? 'active' : '' ?>">
-                <div class="nav-icon-wrap"><i class="fas fa-file-pen"></i></div>
-                <span class="nav-label">Assignments</span>
                 <?php if (!empty($assignmentsDueCount)): ?>
                     <span class="nav-badge"><?= (int) $assignmentsDueCount ?></span>
                 <?php endif; ?>
@@ -96,11 +91,6 @@ $unreadAnnouncementsCount  = $unreadAnnouncementsCount ?? null;
 
         <div class="nav-section">
             <div class="nav-section-title">Learning</div>
-            <a href="../../public/student/quizzes.php"
-                class="nav-item <?= $current === 'quizzes.php' ? 'active' : '' ?>">
-                <div class="nav-icon-wrap"><i class="fas fa-file-circle-question"></i></div>
-                <span class="nav-label">Quizzes</span>
-            </a>
             <a href="../../public/student/grades.php"
                 class="nav-item <?= $current === 'grades.php' ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-chart-line"></i></div>

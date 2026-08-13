@@ -49,7 +49,7 @@ if ($offeringIds) {
     $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
     $stmt = $pdo->prepare("
         SELECT a.assignment_id, a.title, a.due_date,
-               sub.subject_name,
+               sub.subject_id, sub.subject_name,
                t.firstname AS teacher_first, t.lastname AS teacher_last,
                sub2.status AS submission_status
         FROM assignments a
@@ -59,6 +59,11 @@ if ($offeringIds) {
         LEFT JOIN submissions sub2
                ON sub2.assignment_id = a.assignment_id
               AND sub2.student_id = ?
+              AND sub2.attempt_number = (
+                    SELECT MAX(sub2b.attempt_number)
+                    FROM submissions sub2b
+                    WHERE sub2b.assignment_id = sub2.assignment_id AND sub2b.student_id = sub2.student_id
+              )
         WHERE a.offering_id IN ($placeholders)
           AND a.status = 'published'
         ORDER BY a.due_date ASC
@@ -83,8 +88,94 @@ if ($offeringIds) {
 $pendingCount  = count($pendingAssignments);
 $dueTodayCount = count($dueTodayAssignments);
 
-// Assignments To-Do panel — the nearest pending items, capped at 5.
-$todoAssignments = array_slice($pendingAssignments, 0, 5);
+// ---- Quizzes across those offerings, with this student's latest attempt
+// (if any) attached -------------------------------------------------------
+$pendingQuizzes  = [];
+$dueTodayQuizzes = [];
+
+if ($offeringIds) {
+    $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
+    $stmt = $pdo->prepare("
+        SELECT q.quiz_id, q.title, q.available_until AS due_date,
+               sub.subject_id, sub.subject_name,
+               t.firstname AS teacher_first, t.lastname AS teacher_last,
+               qa.status AS attempt_status
+        FROM quizzes q
+        JOIN classofferings co ON co.offering_id = q.offering_id
+        JOIN subjects sub      ON sub.subject_id = co.subject_id
+        JOIN teachers t        ON t.teacher_id = co.teacher_id
+        LEFT JOIN quiz_attempts qa
+               ON qa.quiz_id = q.quiz_id
+              AND qa.student_id = ?
+              AND qa.attempt_number = (
+                    SELECT MAX(qa2.attempt_number)
+                    FROM quiz_attempts qa2
+                    WHERE qa2.quiz_id = q.quiz_id AND qa2.student_id = ?
+              )
+        WHERE q.offering_id IN ($placeholders)
+          AND q.status = 'published'
+        ORDER BY q.available_until ASC
+    ");
+    $stmt->execute(array_merge([$studentId, $studentId], $offeringIds));
+    $allQuizzes = $stmt->fetchAll();
+
+    $today = date('Y-m-d');
+    foreach ($allQuizzes as $row) {
+        // "Pending" = no attempt on file yet, or an attempt still in progress.
+        $isDone = in_array($row['attempt_status'], ['submitted', 'graded'], true);
+
+        if (!$isDone) {
+            $pendingQuizzes[] = $row;
+        }
+        if ($row['due_date'] && substr($row['due_date'], 0, 10) === $today) {
+            $dueTodayQuizzes[] = $row;
+        }
+    }
+}
+
+$pendingQuizCount  = count($pendingQuizzes);
+$dueTodayQuizCount = count($dueTodayQuizzes);
+
+// ---- Merge assignments + quizzes for the dashboard's task panels --------
+// Each merged item is tagged with 'type' so the dashboard can build the
+// right link back into the My Courses module (assignments or quizzes tab).
+function student_tag_items(array $items, string $type): array
+{
+    return array_map(function ($item) use ($type) {
+        $item['type'] = $type;
+        return $item;
+    }, $items);
+}
+
+$dueTodayTasks = array_merge(
+    student_tag_items($dueTodayAssignments, 'assignment'),
+    student_tag_items($dueTodayQuizzes, 'quiz')
+);
+usort($dueTodayTasks, fn($a, $b) => strcmp($a['due_date'] ?? '', $b['due_date'] ?? ''));
+
+$pendingTasks = array_merge(
+    student_tag_items($pendingAssignments, 'assignment'),
+    student_tag_items($pendingQuizzes, 'quiz')
+);
+usort($pendingTasks, fn($a, $b) => strcmp($a['due_date'] ?? '', $b['due_date'] ?? ''));
+
+// To-Do panel — the nearest pending items (assignments + quizzes), capped at 5.
+$todoTasks = array_slice($pendingTasks, 0, 5);
+
+/** Link back into the My Courses module, landing on the right tab/item. */
+function student_task_link(array $item): string
+{
+    $params = [
+        'subject_id' => (int) $item['subject_id'],
+        'view'       => $item['type'] === 'quiz' ? 'quizzes' : 'assignments',
+    ];
+    if ($item['type'] === 'quiz') {
+        $params['quiz_id'] = (int) $item['quiz_id'];
+    } else {
+        $params['assignment_id'] = (int) $item['assignment_id'];
+    }
+    return 'course_view.php?' . http_build_query($params);
+}
 
 // ---- Announcements visible to students ---------------------------------
 $stmt = $pdo->prepare("
@@ -123,6 +214,12 @@ function student_subject_icon(string $subjectName): string
     if (str_contains($s, 'physical') || $s === 'pe' || str_contains($s, 'p.e')) return 'fa-person-running';
 
     return 'fa-book';
+}
+
+/** Small Font Awesome badge icon distinguishing an assignment from a quiz. */
+function student_task_type_icon(string $type): string
+{
+    return $type === 'quiz' ? 'fa-file-circle-question' : 'fa-file-pen';
 }
 
 /** Short uppercase chip label for a subject, e.g. "Mathematics" -> "MATH". */

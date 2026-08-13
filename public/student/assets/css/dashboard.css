@@ -528,6 +528,16 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 10px;
+    padding: 4px;
+    margin: -4px;
+    transition: background 0.15s ease;
+}
+
+.due-item:hover {
+    background: var(--bg);
 }
 
 .due-icon {
@@ -565,7 +575,7 @@ body {
     color: var(--primary-dark);
 }
 
-/* ---------- Assignments To-Do checklist ---------- */
+/* ---------- To-Do checklist (assignments + quizzes) ---------- */
 .todo-list {
     list-style: none;
     margin: 0;
@@ -578,14 +588,31 @@ body {
 .todo-item {
     display: flex;
     align-items: center;
-    gap: 10px;
 }
 
-.todo-item input[type="checkbox"] {
+.todo-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    text-decoration: none;
+    color: inherit;
+    border-radius: 8px;
+    padding: 4px;
+    margin: -4px;
+    transition: background 0.15s ease;
+}
+
+.todo-link:hover {
+    background: var(--bg);
+}
+
+.todo-type-icon {
     width: 16px;
-    height: 16px;
-    accent-color: var(--primary);
+    text-align: center;
+    color: var(--primary);
     flex-shrink: 0;
+    font-size: 0.8rem;
 }
 
 .todo-text {

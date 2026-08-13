@@ -179,14 +179,20 @@ $assignments = [];
 if ($activeOfferingId && $activeView === 'assignments') {
     $stmt = $pdo->prepare("
         SELECT a.assignment_id, a.title, a.description, a.instructions_file_path,
-               a.due_date, a.points, a.status, a.created_at,
+               a.due_date, a.points, a.max_attempts, a.status, a.created_at,
                COUNT(sub.submission_id) AS submitted_count,
                SUM(CASE WHEN sub.status = 'graded' THEN 1 ELSE 0 END) AS graded_count
         FROM assignments a
-        LEFT JOIN submissions sub ON sub.assignment_id = a.assignment_id
+        LEFT JOIN submissions sub
+               ON sub.assignment_id = a.assignment_id
+              AND sub.attempt_number = (
+                    SELECT MAX(sub2.attempt_number)
+                    FROM submissions sub2
+                    WHERE sub2.assignment_id = sub.assignment_id AND sub2.student_id = sub.student_id
+              )
         WHERE a.offering_id = ?
         GROUP BY a.assignment_id, a.title, a.description, a.instructions_file_path,
-                 a.due_date, a.points, a.status, a.created_at
+                 a.due_date, a.points, a.max_attempts, a.status, a.created_at
         ORDER BY a.created_at DESC
     ");
     $stmt->execute([$activeOfferingId]);
@@ -196,11 +202,12 @@ if ($activeOfferingId && $activeView === 'assignments') {
 // ---- Selected assignment + its submissions/grading grid --------------------
 $selectedAssignment = null;
 $submissionRows = [];
+$attemptsByStudent = [];
 if ($activeOfferingId && $activeView === 'assignments') {
     $requestedAssignmentId = filter_input(INPUT_GET, 'assignment_id', FILTER_VALIDATE_INT);
     if ($requestedAssignmentId) {
         $stmt = $pdo->prepare("
-            SELECT assignment_id, title, description, instructions_file_path, due_date, points, status
+            SELECT assignment_id, title, description, instructions_file_path, due_date, points, max_attempts, status
             FROM assignments
             WHERE assignment_id = ? AND offering_id = ?
             LIMIT 1
@@ -209,12 +216,15 @@ if ($activeOfferingId && $activeView === 'assignments') {
         $selectedAssignment = $stmt->fetch() ?: null;
 
         if ($selectedAssignment) {
-            // Enrolled students in this offering, left-joined to their (latest) submission.
+            // Enrolled students in this offering, left-joined to their (latest) submission
+            // plus how many attempts they've used so far.
             $stmt = $pdo->prepare("
                 SELECT s.student_id, s.firstname, s.lastname, s.middlename,
-                       sub.submission_id, sub.file_path, sub.external_url, sub.submission_text,
+                       sub.submission_id, sub.attempt_number, sub.file_path, sub.external_url, sub.submission_text,
                        sub.status AS submission_status, sub.score, sub.feedback,
-                       sub.submitted_at, sub.graded_at
+                       sub.submitted_at, sub.graded_at,
+                       (SELECT COUNT(*) FROM submissions sub3
+                         WHERE sub3.assignment_id = ? AND sub3.student_id = s.student_id) AS attempts_used
                 FROM enrollments e
                 JOIN students s ON s.student_id = e.student_id
                 LEFT JOIN submissions sub
@@ -228,8 +238,44 @@ if ($activeOfferingId && $activeView === 'assignments') {
                 WHERE e.offering_id = ? AND e.status = 'active'
                 ORDER BY s.lastname, s.firstname
             ");
-            $stmt->execute([$selectedAssignment['assignment_id'], $activeOfferingId]);
+            $stmt->execute([$selectedAssignment['assignment_id'], $selectedAssignment['assignment_id'], $activeOfferingId]);
             $submissionRows = $stmt->fetchAll();
+
+            // Every attempt (not just the latest) per student, so the teacher can
+            // still open earlier files — e.g. the first submission — not only the
+            // most recent one. Grouped by student_id for easy lookup in the view.
+            $attemptsByStudent = [];
+            $stmt = $pdo->prepare("
+                SELECT submission_id, student_id, attempt_number, file_path, external_url, submission_text, status, submitted_at
+                FROM submissions
+                WHERE assignment_id = ?
+                ORDER BY student_id, attempt_number ASC
+            ");
+            $stmt->execute([$selectedAssignment['assignment_id']]);
+            $attemptRows = $stmt->fetchAll();
+
+            // All the individual files for those attempts (a submission can have
+            // several), grouped by submission_id so each attempt can list its own.
+            $filesBySubmission = [];
+            if ($attemptRows) {
+                $submissionIds = array_column($attemptRows, 'submission_id');
+                $placeholders = implode(',', array_fill(0, count($submissionIds), '?'));
+                $stmt = $pdo->prepare("
+                    SELECT submission_id, original_name, file_path, file_size
+                    FROM submission_files
+                    WHERE submission_id IN ($placeholders)
+                    ORDER BY file_id ASC
+                ");
+                $stmt->execute($submissionIds);
+                foreach ($stmt->fetchAll() as $fileRow) {
+                    $filesBySubmission[(int) $fileRow['submission_id']][] = $fileRow;
+                }
+            }
+
+            foreach ($attemptRows as $attemptRow) {
+                $attemptRow['files'] = $filesBySubmission[(int) $attemptRow['submission_id']] ?? [];
+                $attemptsByStudent[(int) $attemptRow['student_id']][] = $attemptRow;
+            }
         }
     }
 }
@@ -553,4 +599,4 @@ function quizAnswerStatusInfo(array $question): array
     return $question['is_correct']
         ? ['label' => 'Correct', 'class' => 'present']
         : ['label' => 'Incorrect', 'class' => 'absent'];
-}   
+}

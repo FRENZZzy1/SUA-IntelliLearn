@@ -83,9 +83,23 @@ $validStudentIds = array_map('intval', array_column($stmt->fetchAll(), 'student_
 $scores    = $_POST['score'] ?? [];
 $feedbacks = $_POST['feedback'] ?? [];
 
+// ---- Each student's latest attempt number, so grading always lands on the
+// submission they (and the teacher) are actually looking at, not attempt #1 ----
+$latestAttempt = [];
+$stmt = $pdo->prepare("
+    SELECT student_id, MAX(attempt_number) AS latest_attempt
+    FROM submissions
+    WHERE assignment_id = ?
+    GROUP BY student_id
+");
+$stmt->execute([$assignmentId]);
+foreach ($stmt->fetchAll() as $row) {
+    $latestAttempt[(int) $row['student_id']] = (int) $row['latest_attempt'];
+}
+
 $upsert = $pdo->prepare("
     INSERT INTO submissions (assignment_id, student_id, attempt_number, status, score, feedback, graded_by, graded_at, submitted_at)
-    VALUES (?, ?, 1, 'graded', ?, ?, ?, NOW(), NOW())
+    VALUES (?, ?, ?, 'graded', ?, ?, ?, NOW(), NOW())
     ON DUPLICATE KEY UPDATE
         score = VALUES(score),
         feedback = VALUES(feedback),
@@ -100,6 +114,8 @@ foreach ($scores as $studentId => $rawScore) {
     if (!in_array($studentId, $validStudentIds, true)) {
         continue; // not enrolled here — ignore, don't trust client-side field names
     }
+    // No submission on file yet = grading a "missing" attempt 1 placeholder.
+    $attemptNumber = $latestAttempt[$studentId] ?? 1;
 
     $rawScore = trim((string) $rawScore);
     if ($rawScore === '') {
@@ -118,7 +134,7 @@ foreach ($scores as $studentId => $rawScore) {
     $feedback = trim((string) ($feedbacks[$studentId] ?? ''));
     $feedback = $feedback === '' ? null : mb_substr($feedback, 0, 2000);
 
-    $upsert->execute([$assignmentId, $studentId, $score, $feedback, $teacherId]);
+    $upsert->execute([$assignmentId, $studentId, $attemptNumber, $score, $feedback, $teacherId]);
     $savedCount++;
 }
 

@@ -107,12 +107,19 @@ if (isset($terms[$requestedTerm]) && $terms[$requestedTerm]['offering']) {
 $activeOffering   = $activeTerm ? $terms[$activeTerm]['offering'] : null;
 $activeOfferingId = $activeOffering['offering_id'] ?? null;
 
-// ---- Active nav view (Overview / Materials / Assignments / Quizzes / Attendance) --------
-$allowedViews = ['overview', 'materials', 'assignments', 'quizzes', 'attendance'];
+// ---- Active nav view (Overview / Materials / Assignments / Quizzes) --------
+// Attendance moved out to its own module (public/student/attendance.php),
+// listed per-subject there instead of living inside a single course's tabs.
+$allowedViews = ['overview', 'materials', 'assignments', 'quizzes'];
 $activeView   = $_GET['view'] ?? 'overview';
 if (!in_array($activeView, $allowedViews, true)) {
     $activeView = 'overview';
 }
+
+// ---- CSRF token (for the assignment-submission form) + flash message
+// (set by assignment_submit.php after a submit/resubmit) ----------------
+$csrfToken = generateCSRFToken();
+$flash     = getFlashMessage();
 
 // ---- Learning materials for the active term's offering -------------------
 $materials = [];
@@ -136,10 +143,12 @@ if ($activeOfferingId && in_array($activeView, ['overview', 'assignments'], true
     $stmt = $pdo->prepare("
         SELECT
             a.assignment_id, a.title, a.description, a.instructions_file_path,
-            a.due_date, a.points, a.status AS assignment_status, a.created_at,
+            a.due_date, a.points, a.max_attempts, a.status AS assignment_status, a.created_at,
             s.submission_id, s.status AS submission_status, s.score, s.feedback,
             s.submitted_at, s.file_path AS submission_file_path, s.external_url AS submission_url,
-            s.submission_text
+            s.submission_text,
+            (SELECT COUNT(*) FROM submissions s3
+              WHERE s3.assignment_id = a.assignment_id AND s3.student_id = ?) AS attempts_used
         FROM assignments a
         LEFT JOIN submissions s
                ON s.submission_id = (
@@ -152,7 +161,7 @@ if ($activeOfferingId && in_array($activeView, ['overview', 'assignments'], true
         WHERE a.offering_id = ? AND a.status = 'published'
         ORDER BY a.due_date IS NULL, a.due_date ASC
     ");
-    $stmt->execute([$studentId, $activeOfferingId]);
+    $stmt->execute([$studentId, $studentId, $activeOfferingId]);
     $assignments = $stmt->fetchAll();
 }
 
@@ -164,10 +173,12 @@ if ($activeOfferingId && $activeView === 'assignments') {
         $stmt = $pdo->prepare("
             SELECT
                 a.assignment_id, a.title, a.description, a.instructions_file_path,
-                a.due_date, a.points, a.status AS assignment_status,
+                a.due_date, a.points, a.max_attempts, a.status AS assignment_status,
                 s.submission_id, s.status AS submission_status, s.score, s.feedback,
                 s.submitted_at, s.file_path AS submission_file_path, s.external_url AS submission_url,
-                s.submission_text
+                s.submission_text,
+                (SELECT COUNT(*) FROM submissions s3
+                  WHERE s3.assignment_id = a.assignment_id AND s3.student_id = ?) AS attempts_used
             FROM assignments a
             LEFT JOIN submissions s
                    ON s.submission_id = (
@@ -180,8 +191,63 @@ if ($activeOfferingId && $activeView === 'assignments') {
             WHERE a.assignment_id = ? AND a.offering_id = ? AND a.status = 'published'
             LIMIT 1
         ");
-        $stmt->execute([$studentId, $requestedAssignmentId, $activeOfferingId]);
+        $stmt->execute([$studentId, $studentId, $requestedAssignmentId, $activeOfferingId]);
         $selectedAssignment = $stmt->fetch() ?: null;
+
+        // ---- Files attached to that submission (a submission can have several) ----
+        if ($selectedAssignment) {
+            $selectedAssignment['files'] = [];
+            if ($selectedAssignment['submission_id']) {
+                $stmt = $pdo->prepare("
+                    SELECT original_name, file_path, file_size
+                    FROM submission_files
+                    WHERE submission_id = ?
+                    ORDER BY file_id ASC
+                ");
+                $stmt->execute([$selectedAssignment['submission_id']]);
+                $selectedAssignment['files'] = $stmt->fetchAll();
+            }
+        }
+    }
+}
+
+// ---- Every attempt this student has made on the selected assignment (not
+// just the latest one), each with the files that were attached to that
+// specific attempt — lets the student review what they turned in each time --
+$assignmentAttempts = [];
+if ($selectedAssignment) {
+    $stmt = $pdo->prepare("
+        SELECT submission_id, attempt_number, status AS submission_status, score, feedback,
+               submitted_at, file_path AS submission_file_path, external_url AS submission_url,
+               submission_text
+        FROM submissions
+        WHERE assignment_id = ? AND student_id = ?
+        ORDER BY attempt_number DESC
+    ");
+    $stmt->execute([$selectedAssignment['assignment_id'], $studentId]);
+    $assignmentAttempts = $stmt->fetchAll();
+
+    if ($assignmentAttempts) {
+        // One query for every file across all attempts, then group by submission_id,
+        // instead of one query per attempt.
+        $submissionIds = array_column($assignmentAttempts, 'submission_id');
+        $placeholders  = implode(',', array_fill(0, count($submissionIds), '?'));
+        $stmt = $pdo->prepare("
+            SELECT submission_id, original_name, file_path, file_size
+            FROM submission_files
+            WHERE submission_id IN ($placeholders)
+            ORDER BY file_id ASC
+        ");
+        $stmt->execute($submissionIds);
+        $filesBySubmission = [];
+        foreach ($stmt->fetchAll() as $f) {
+            $filesBySubmission[$f['submission_id']][] = $f;
+        }
+
+        foreach ($assignmentAttempts as &$attempt) {
+            $attempt['files'] = $filesBySubmission[$attempt['submission_id']] ?? [];
+        }
+        unset($attempt);
     }
 }
 

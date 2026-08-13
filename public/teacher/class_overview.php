@@ -366,6 +366,10 @@ if (!empty($submissionRows)) {
                             <label for="assignmentPoints">Points</label>
                             <input type="number" id="assignmentPoints" name="points" min="1" step="0.01" value="100">
                         </div>
+                        <div>
+                            <label for="assignmentMaxAttempts">Attempts allowed</label>
+                            <input type="number" id="assignmentMaxAttempts" name="max_attempts" min="1" step="1" value="1">
+                        </div>
                     </div>
 
                     <div class="form-row">
@@ -403,6 +407,7 @@ if (!empty($submissionRows)) {
                                     <div class="material-meta">
                                         <?= (int) $a['points'] ?> pts
                                         · <span class="<?= $due['overdue'] ? 'due-overdue' : '' ?>">Due <?= htmlspecialchars($due['label']) ?></span>
+                                        · <?= (int) $a['max_attempts'] ?> attempt<?= (int) $a['max_attempts'] === 1 ? '' : 's' ?> allowed
                                         · <?= (int) $a['graded_count'] ?>/<?= (int) $a['submitted_count'] ?> graded
                                     </div>
                                 </div>
@@ -441,6 +446,7 @@ if (!empty($submissionRows)) {
                     <span class="enrolled-badge">
                         <?= (int) $selectedAssignment['points'] ?> pts
                         · <span class="<?= $due['overdue'] ? 'due-overdue' : '' ?>">Due <?= htmlspecialchars($due['label']) ?></span>
+                        · <?= (int) $selectedAssignment['max_attempts'] ?> attempt<?= (int) $selectedAssignment['max_attempts'] === 1 ? '' : 's' ?> allowed
                     </span>
                 </div>
 
@@ -476,6 +482,7 @@ if (!empty($submissionRows)) {
                                     <tr>
                                         <th>Student</th>
                                         <th>Status</th>
+                                        <th>Attempts</th>
                                         <th>Submission</th>
                                         <th>Score (/ <?= (int) $selectedAssignment['points'] ?>)</th>
                                         <th>Feedback</th>
@@ -489,18 +496,34 @@ if (!empty($submissionRows)) {
                                                 $row['submitted_at'],
                                                 $selectedAssignment['due_date']
                                             );
-                                            $submissionLink = $row['external_url'] ?: $row['file_path'];
+                                            $studentAttempts = $attemptsByStudent[(int) $row['student_id']] ?? [];
                                         ?>
                                         <tr>
                                             <td class="student-name"><?= htmlspecialchars($row['lastname'] . ', ' . $row['firstname'] . ' ' . ($row['middlename'] ?? '')) ?></td>
                                             <td><span class="chip chip-<?= $statusInfo['class'] ?>"><?= $statusInfo['label'] ?></span></td>
+                                            <td><?= (int) $row['attempts_used'] ?> / <?= (int) $selectedAssignment['max_attempts'] ?></td>
                                             <td>
-                                                <?php if ($submissionLink): ?>
-                                                    <a href="<?= htmlspecialchars($submissionLink) ?>" target="_blank" rel="noopener" class="link-view">View</a>
-                                                <?php elseif (!empty($row['submission_text'])): ?>
-                                                    <span title="<?= htmlspecialchars($row['submission_text']) ?>" class="link-view link-view--text">Text answer</span>
-                                                <?php else: ?>
+                                                <?php if (empty($studentAttempts)): ?>
                                                     <span class="field-hint">—</span>
+                                                <?php else: ?>
+                                                    <ul class="attempt-file-list">
+                                                        <?php foreach ($studentAttempts as $attempt): ?>
+                                                            <li>
+                                                                <span class="attempt-file-list__label">Attempt <?= (int) $attempt['attempt_number'] ?>:</span>
+                                                                <?php if (!empty($attempt['files'])): ?>
+                                                                    <span class="attempt-file-list__files">
+                                                                        <?php foreach ($attempt['files'] as $i => $f): ?><?= $i > 0 ? ', ' : '' ?><a href="<?= htmlspecialchars($f['file_path']) ?>" target="_blank" rel="noopener" class="link-view"><?= htmlspecialchars($f['original_name']) ?></a><?php endforeach; ?>
+                                                                    </span>
+                                                                <?php elseif ($attempt['external_url'] ?: $attempt['file_path']): ?>
+                                                                    <a href="<?= htmlspecialchars($attempt['external_url'] ?: $attempt['file_path']) ?>" target="_blank" rel="noopener" class="link-view">View</a>
+                                                                <?php elseif (!empty($attempt['submission_text'])): ?>
+                                                                    <span title="<?= htmlspecialchars($attempt['submission_text']) ?>" class="link-view link-view--text">Text answer</span>
+                                                                <?php else: ?>
+                                                                    <span class="field-hint">—</span>
+                                                                <?php endif; ?>
+                                                            </li>
+                                                        <?php endforeach; ?>
+                                                    </ul>
                                                 <?php endif; ?>
                                             </td>
                                             <td>

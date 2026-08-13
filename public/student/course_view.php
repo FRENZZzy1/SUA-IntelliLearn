@@ -26,6 +26,12 @@ include 'assets/api/course_view_functions.php';
             <i class="fas fa-arrow-left"></i> Back to My Courses
         </a>
 
+        <?php if ($flash): ?>
+            <div class="class-flash class-flash-<?= htmlspecialchars($flash['type']) ?>">
+                <?= htmlspecialchars($flash['message']) ?>
+            </div>
+        <?php endif; ?>
+
         <div class="dash-page-title">
             <h1 class="dash-title">
                 <?= htmlspecialchars($classInfo['subject_name']) ?>
@@ -56,10 +62,6 @@ include 'assets/api/course_view_functions.php';
             <a class="class-nav-item <?= $activeView === 'quizzes' ? 'active' : '' ?>"
                 href="<?= quizzesUrlStudent($classInfo['subject_id'], $activeTerm) ?>">
                 <i class="fas fa-file-circle-question"></i> Quizzes
-            </a>
-            <a class="class-nav-item <?= $activeView === 'attendance' ? 'active' : '' ?>"
-                href="<?= courseViewUrl($classInfo['subject_id'], $activeTerm, 'attendance') ?>">
-                <i class="fas fa-calendar-check"></i> Attendance
             </a>
         </nav>
 
@@ -241,6 +243,7 @@ include 'assets/api/course_view_functions.php';
                                             <?= rtrim(rtrim((string) $a['points'], '0'), '.') ?> pts
                                             · <span class="<?= $due['overdue'] ? 'due-overdue' : '' ?>">Due
                                                 <?= htmlspecialchars($due['label']) ?></span>
+                                            · <?= (int) $a['attempts_used'] ?>/<?= (int) $a['max_attempts'] ?> attempts used
                                             · <span class="chip chip-<?= $statusInfo['class'] ?>"><?= $statusInfo['label'] ?></span>
                                             <?php if ($a['score'] !== null): ?>
                                                 · Score:
@@ -265,6 +268,9 @@ include 'assets/api/course_view_functions.php';
                 $statusInfo = submissionStatusInfo($selectedAssignment['submission_status'], $selectedAssignment['submitted_at'], $selectedAssignment['due_date']);
                 $attachmentUrl = resolveFileUrl($selectedAssignment['instructions_file_path']);
                 $submissionUrl = resolveFileUrl($selectedAssignment['submission_file_path'], $selectedAssignment['submission_url']);
+                $maxAttempts  = (int) $selectedAssignment['max_attempts'];
+                $attemptsUsed = (int) $selectedAssignment['attempts_used'];
+                $attemptsLeft = max(0, $maxAttempts - $attemptsUsed);
                 ?>
                 <a href="<?= assignmentsUrlStudent($classInfo['subject_id'], $activeTerm) ?>" class="breadcrumb-back">
                     <i class="fas fa-arrow-left"></i> Back to Assignments
@@ -277,6 +283,7 @@ include 'assets/api/course_view_functions.php';
                             <?= rtrim(rtrim((string) $selectedAssignment['points'], '0'), '.') ?> pts
                             · <span class="<?= $due['overdue'] ? 'due-overdue' : '' ?>">Due
                                 <?= htmlspecialchars($due['label']) ?></span>
+                            · <?= $maxAttempts ?> attempt<?= $maxAttempts === 1 ? '' : 's' ?> allowed
                         </span>
                     </div>
 
@@ -293,33 +300,98 @@ include 'assets/api/course_view_functions.php';
                     <div class="course-teacher-row" style="margin-top: 18px;">
                         <div class="course-teacher-info" style="width:100%;">
                             <div class="course-teacher-name">
-                                Your submission
+                                Your submissions
                                 <span class="chip chip-<?= $statusInfo['class'] ?>"
                                     style="margin-left:8px;"><?= $statusInfo['label'] ?></span>
                             </div>
 
-                            <?php if ($selectedAssignment['submission_id']): ?>
-                                <div class="material-meta" style="margin-top:6px;">
-                                    Submitted <?= date('M j, Y g:i A', strtotime($selectedAssignment['submitted_at'])) ?>
-                                    <?php if ($selectedAssignment['score'] !== null): ?>
-                                        · Score:
-                                        <?= rtrim(rtrim((string) $selectedAssignment['score'], '0'), '.') ?>/<?= rtrim(rtrim((string) $selectedAssignment['points'], '0'), '.') ?>
-                                    <?php endif; ?>
+                            <?php if (!empty($assignmentAttempts)): ?>
+                                <div class="attempt-history" style="margin-top:10px; display:flex; flex-direction:column; gap:12px;">
+                                    <?php foreach ($assignmentAttempts as $attempt):
+                                        $attemptSubmissionUrl = resolveFileUrl($attempt['submission_file_path'], $attempt['submission_url']);
+                                        ?>
+                                        <div class="attempt-card" style="padding:12px; border:1px solid var(--border-color, #e5e7eb); border-radius:8px;">
+                                            <div class="material-meta">
+                                                <strong>Attempt <?= (int) $attempt['attempt_number'] ?> of <?= $maxAttempts ?></strong>
+                                                · Submitted <?= date('M j, Y g:i A', strtotime($attempt['submitted_at'])) ?>
+                                                <?php if ($attempt['score'] !== null): ?>
+                                                    · Score:
+                                                    <?= rtrim(rtrim((string) $attempt['score'], '0'), '.') ?>/<?= rtrim(rtrim((string) $selectedAssignment['points'], '0'), '.') ?>
+                                                <?php endif; ?>
+                                            </div>
+
+                                            <?php if (!empty($attempt['files'])): ?>
+                                                <ul class="attempt-file-list" style="margin-top:6px;">
+                                                    <?php foreach ($attempt['files'] as $f): ?>
+                                                        <li>
+                                                            <a href="<?= htmlspecialchars(resolveFileUrl($f['file_path'])) ?>" target="_blank" rel="noopener" class="link-view">
+                                                                <?= htmlspecialchars($f['original_name']) ?>
+                                                            </a>
+                                                            <?php if ($f['file_size']): ?>
+                                                                <span class="field-hint">(<?= formatFileSize((int) $f['file_size']) ?>)</span>
+                                                            <?php endif; ?>
+                                                        </li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            <?php elseif ($attemptSubmissionUrl): ?>
+                                                <a href="<?= htmlspecialchars($attemptSubmissionUrl) ?>" target="_blank" rel="noopener"
+                                                    class="link-view">View your submission</a>
+                                            <?php endif; ?>
+
+                                            <?php if (!empty($attempt['submission_text'])): ?>
+                                                <p class="assignment-description" style="margin-top:6px;">
+                                                    <?= nl2br(htmlspecialchars($attempt['submission_text'])) ?></p>
+                                            <?php endif; ?>
+
+                                            <?php if (!empty($attempt['feedback'])): ?>
+                                                <div class="material-meta" style="margin-top:6px;"><strong>Feedback:</strong>
+                                                    <?= htmlspecialchars($attempt['feedback']) ?></div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
                                 </div>
-                                <?php if ($submissionUrl): ?>
-                                    <a href="<?= htmlspecialchars($submissionUrl) ?>" target="_blank" rel="noopener"
-                                        class="link-view">View your submission</a>
-                                <?php elseif (!empty($selectedAssignment['submission_text'])): ?>
-                                    <p class="assignment-description">
-                                        <?= nl2br(htmlspecialchars($selectedAssignment['submission_text'])) ?></p>
-                                <?php endif; ?>
-                                <?php if (!empty($selectedAssignment['feedback'])): ?>
-                                    <div class="material-meta" style="margin-top:6px;"><strong>Feedback:</strong>
-                                        <?= htmlspecialchars($selectedAssignment['feedback']) ?></div>
-                                <?php endif; ?>
                             <?php else: ?>
                                 <p class="field-hint" style="margin-top:6px;">You haven't submitted anything for this assignment
-                                    yet.</p>
+                                    yet. <?= $maxAttempts ?> attempt<?= $maxAttempts === 1 ? '' : 's' ?> allowed.</p>
+                            <?php endif; ?>
+
+                            <?php if ($selectedAssignment['score'] === null && $attemptsLeft > 0): ?>
+                                <!-- Submit / next-attempt form -->
+                                <form class="material-upload-form" id="assignmentSubmitForm"
+                                      action="assets/api/assignment_submit.php" method="POST"
+                                      enctype="multipart/form-data" style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border-color, #e5e7eb);">
+                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                                    <input type="hidden" name="assignment_id" value="<?= (int) $selectedAssignment['assignment_id'] ?>">
+                                    <input type="hidden" name="subject_id" value="<?= (int) $classInfo['subject_id'] ?>">
+                                    <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
+
+                                    <div class="form-row">
+                                        <label for="submissionFile">Attach your work (PDF, image, Office doc, or ZIP — multiple files allowed)</label>
+                                        <input type="file" id="submissionFile" name="submission_file[]" multiple
+                                               accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip">
+                                        <span class="field-hint">Max 25MB per file, up to 10 files.</span>
+                                    </div>
+
+                                    <div class="form-row">
+                                        <label for="submissionText">Note (optional)</label>
+                                        <textarea id="submissionText" name="submission_text" rows="3"
+                                                  placeholder="Add any notes for your teacher"></textarea>
+                                    </div>
+
+                                    <div class="form-actions">
+                                        <span class="field-hint" style="margin-right:auto;align-self:center;">
+                                            <?= $attemptsLeft ?> attempt<?= $attemptsLeft === 1 ? '' : 's' ?> left
+                                        </span>
+                                        <button type="submit" class="btn-primary">
+                                            <i class="fas fa-upload"></i>
+                                            <?= $selectedAssignment['submission_id'] ? 'Submit attempt ' . ($attemptsUsed + 1) : 'Submit' ?>
+                                        </button>
+                                    </div>
+                                </form>
+                            <?php elseif ($selectedAssignment['score'] === null && $attemptsLeft === 0): ?>
+                                <p class="field-hint" style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border-color, #e5e7eb);">
+                                    You've used all <?= $maxAttempts ?> allowed attempt<?= $maxAttempts === 1 ? '' : 's' ?> for this assignment.
+                                </p>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -453,19 +525,6 @@ include 'assets/api/course_view_functions.php';
                     <?php endif; ?>
                 </section>
             <?php endif; ?>
-
-        <?php elseif ($activeView === 'attendance'): ?>
-
-            <!-- Attendance intentionally left blank for now -->
-            <section class="panel panel--card">
-                <div class="panel-empty panel-empty--enhanced">
-                    <div class="panel-empty__icon">
-                        <i class="fas fa-calendar-check"></i>
-                    </div>
-                    <h3>Attendance coming soon</h3>
-                    <p>Your attendance record for this class isn't available here yet.</p>
-                </div>
-            </section>
 
         <?php endif; ?>
 

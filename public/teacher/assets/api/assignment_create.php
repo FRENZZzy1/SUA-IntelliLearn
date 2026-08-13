@@ -78,6 +78,12 @@ if ($points === false || $points === null || $points <= 0) {
 }
 $points = round($points, 2);
 
+// ---- Attempts allowed -------------------------------------------------
+$maxAttempts = filter_input(INPUT_POST, 'max_attempts', FILTER_VALIDATE_INT);
+if ($maxAttempts === false || $maxAttempts === null || $maxAttempts < 1) {
+    $maxAttempts = 1;
+}
+
 // ---- Due date (optional) --------------------------------------------
 $dueDateRaw = trim($_POST['due_date'] ?? '');
 $dueDate = null;
@@ -135,10 +141,10 @@ if (!empty($_FILES['instructions_file']) && $_FILES['instructions_file']['error'
 }
 
 $stmt = $pdo->prepare("
-    INSERT INTO assignments (offering_id, title, description, instructions_file_path, due_date, points, status, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, 'published', ?)
+    INSERT INTO assignments (offering_id, title, description, instructions_file_path, due_date, points, max_attempts, status, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'published', ?)
 ");
-$stmt->execute([$offeringId, $title, $description, $instructionsPath, $dueDate, $points, $teacherId]);
+$stmt->execute([$offeringId, $title, $description, $instructionsPath, $dueDate, $points, $maxAttempts, $teacherId]);
 
 setFlashMessage('success', 'Assignment posted.');
 header('Location: ' . $backUrl);

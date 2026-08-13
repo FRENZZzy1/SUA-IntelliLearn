@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Aug 09, 2026 at 07:19 PM
+-- Generation Time: Aug 13, 2026 at 10:50 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -56,6 +56,13 @@ CREATE TABLE `announcements` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `announcements`
+--
+
+INSERT INTO `announcements` (`announcement_id`, `posted_by`, `title`, `body`, `audience`, `priority`, `offering_id`, `status`, `is_pinned`, `created_at`, `updated_at`) VALUES
+(1, 1, 'Do your assignments', 'Gawin ang assignment para may regalo kay santa', 'students', 'important', NULL, 'published', 0, '2026-08-11 07:38:16', '2026-08-11 07:38:16');
+
 -- --------------------------------------------------------
 
 --
@@ -70,11 +77,19 @@ CREATE TABLE `assignments` (
   `instructions_file_path` varchar(500) DEFAULT NULL,
   `due_date` datetime DEFAULT NULL,
   `points` decimal(5,2) NOT NULL DEFAULT 100.00,
+  `max_attempts` int(11) NOT NULL DEFAULT 1,
   `status` enum('draft','published','closed') NOT NULL DEFAULT 'published',
   `created_by` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `assignments`
+--
+
+INSERT INTO `assignments` (`assignment_id`, `offering_id`, `title`, `description`, `instructions_file_path`, `due_date`, `points`, `max_attempts`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
+(6, 1, 'asdasd', 'adasda', NULL, '2026-08-13 16:50:00', 100.00, 2, 'published', 1, '2026-08-13 08:46:03', '2026-08-13 08:46:03');
 
 -- --------------------------------------------------------
 
@@ -114,6 +129,13 @@ CREATE TABLE `classofferings` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `classofferings`
+--
+
+INSERT INTO `classofferings` (`offering_id`, `subject_id`, `teacher_id`, `section_id`, `quarter`, `school_year_id`, `schedule_days`, `start_time`, `end_time`, `capacity`, `status`, `created_at`) VALUES
+(1, 1, 1, 1, 'TRM 1', 1, 'M - W', '07:00:00', '10:00:00', 50, 'active', '2026-08-11 07:19:02');
+
 -- --------------------------------------------------------
 
 --
@@ -127,6 +149,13 @@ CREATE TABLE `enrollments` (
   `status` enum('active','dropped','completed') NOT NULL DEFAULT 'active',
   `enrolled_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `enrollments`
+--
+
+INSERT INTO `enrollments` (`enrollment_id`, `student_id`, `offering_id`, `status`, `enrolled_at`) VALUES
+(1, 1, 1, 'active', '2026-08-11 07:19:15');
 
 -- --------------------------------------------------------
 
@@ -147,6 +176,13 @@ CREATE TABLE `enrollment_requests` (
   `decided_at` timestamp NULL DEFAULT NULL,
   `decided_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `enrollment_requests`
+--
+
+INSERT INTO `enrollment_requests` (`request_id`, `student_id`, `grade_level`, `subject_id`, `strand`, `offering_id`, `status`, `notes`, `submitted_at`, `decided_at`, `decided_by`) VALUES
+(1, 1, 7, 1, NULL, 1, 'approved', NULL, '2026-08-11 07:19:13', '2026-08-11 07:19:15', 1);
 
 -- --------------------------------------------------------
 
@@ -275,6 +311,13 @@ CREATE TABLE `quiz_generation_jobs` (
   `completed_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `quiz_generation_jobs`
+--
+
+INSERT INTO `quiz_generation_jobs` (`job_id`, `quiz_id`, `offering_id`, `requested_by`, `source_type`, `source_material_id`, `topic_prompt`, `status`, `error_message`, `created_at`, `completed_at`) VALUES
+(1, NULL, 1, 3, 'topic', NULL, 'Polynomials', 'failed', 'poolside/laguna-s-2.1:free: OPENROUTER_API_KEY is not configured in config.php. | nvidia/nemotron-3-super-120b-a12b:free: OPENROUTER_API_KEY is not configured in config.php.', '2026-08-11 07:20:29', '2026-08-11 07:20:29');
+
 -- --------------------------------------------------------
 
 --
@@ -308,6 +351,13 @@ CREATE TABLE `schoolyears` (
   `is_current` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `schoolyears`
+--
+
+INSERT INTO `schoolyears` (`school_year_id`, `label`, `start_date`, `end_date`, `is_current`) VALUES
+(1, 'SY 2026 -', '2026-08-01', '2027-08-01', 1);
+
 -- --------------------------------------------------------
 
 --
@@ -323,6 +373,13 @@ CREATE TABLE `sections` (
   `school_year_id` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `sections`
+--
+
+INSERT INTO `sections` (`section_id`, `section_name`, `grade_level`, `strand`, `adviser_id`, `school_year_id`, `created_at`) VALUES
+(1, 'A110', 7, NULL, NULL, 1, '2026-08-11 07:18:25');
 
 -- --------------------------------------------------------
 
@@ -347,6 +404,13 @@ CREATE TABLE `students` (
   `Gender` enum('Male','Female') DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `students`
+--
+
+INSERT INTO `students` (`student_id`, `user_id`, `student_lrn`, `firstname`, `lastname`, `middlename`, `email`, `birthdate`, `address`, `guardian_name`, `guardian_contact`, `created_at`, `updated_at`, `Gender`) VALUES
+(1, 4, 20003644121, 'dan', 'dan', 'dan', NULL, '2003-10-02', 'Lupang Arenda, Block 24, Mahinahon Street, Taytay, Rizal', 'Ma. Cecilia T. Aniasco', '0988695948697', '2026-08-11 07:11:30', '2026-08-11 07:11:30', 'Male');
+
 -- --------------------------------------------------------
 
 --
@@ -359,6 +423,13 @@ CREATE TABLE `subjects` (
   `description` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `subjects`
+--
+
+INSERT INTO `subjects` (`subject_id`, `subject_name`, `description`, `created_at`) VALUES
+(1, 'Math', NULL, '2026-08-11 07:16:04');
 
 -- --------------------------------------------------------
 
@@ -384,6 +455,39 @@ CREATE TABLE `submissions` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `submissions`
+--
+
+INSERT INTO `submissions` (`submission_id`, `assignment_id`, `student_id`, `attempt_number`, `submission_text`, `file_path`, `external_url`, `file_size`, `status`, `score`, `feedback`, `graded_by`, `graded_at`, `submitted_at`, `updated_at`) VALUES
+(6, 6, 1, 1, NULL, NULL, NULL, NULL, 'submitted', NULL, NULL, NULL, NULL, '2026-08-13 08:46:29', '2026-08-13 08:46:29'),
+(7, 6, 1, 2, NULL, NULL, NULL, NULL, 'submitted', NULL, NULL, NULL, NULL, '2026-08-13 08:46:36', '2026-08-13 08:46:36');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `submission_files`
+--
+
+CREATE TABLE `submission_files` (
+  `file_id` int(11) NOT NULL,
+  `submission_id` int(11) NOT NULL,
+  `original_name` varchar(255) NOT NULL,
+  `file_path` varchar(500) NOT NULL,
+  `file_size` bigint(20) DEFAULT NULL,
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `submission_files`
+--
+
+INSERT INTO `submission_files` (`file_id`, `submission_id`, `original_name`, `file_path`, `file_size`, `uploaded_at`) VALUES
+(1, 6, '069f8b09-c2db-497f-912d-7a8451ef6cca.jpg', 'assets/student_submissions/1/6/student1_069f8b09-c2db-497f-912d-7a8451ef6cca_1c26a07c857e.jpg', 83735, '2026-08-13 08:46:29'),
+(2, 6, 'a7cf85ca-d373-4373-8e2f-31f5b30ff5e1.jpg', 'assets/student_submissions/1/6/student1_a7cf85ca-d373-4373-8e2f-31f5b30ff5e1_4d9559ffce67.jpg', 70944, '2026-08-13 08:46:29'),
+(3, 7, 'Professional Modern CV Resume (3).pdf', 'assets/student_submissions/1/6/student1_Professional_Modern_CV_Resume__3__f5fcd240188b.pdf', 643222, '2026-08-13 08:46:36'),
+(4, 7, 'Professional Modern CV Resume (1).pdf', 'assets/student_submissions/1/6/student1_Professional_Modern_CV_Resume__1__1837af495be4.pdf', 103925, '2026-08-13 08:46:36');
+
 -- --------------------------------------------------------
 
 --
@@ -404,6 +508,13 @@ CREATE TABLE `teachers` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `teachers`
+--
+
+INSERT INTO `teachers` (`teacher_id`, `user_id`, `firstname`, `lastname`, `middlename`, `email`, `employment_status`, `department`, `specialization`, `created_at`, `updated_at`) VALUES
+(1, 3, 'pals', 'pals', 'pals', 'frenzypaller@gmail.com', 'full-time', 'Highschool/Senior High', 'Algebra', '2026-08-11 07:10:35', '2026-08-11 07:10:35');
+
 -- --------------------------------------------------------
 
 --
@@ -419,6 +530,15 @@ CREATE TABLE `users` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`id`, `username`, `password`, `role`, `status`, `created_at`, `updated_at`) VALUES
+(1, 'daniel', '$2y$10$4WbwkDthAIbnbCCrn9DsrO9fnB4mK9a.2jXOYKKUBrmDZFvwzbWKO', 'admin', 'active', '2026-08-11 07:09:42', '2026-08-11 07:10:00'),
+(3, 'frenzypaller@gmail.com', '$2y$10$Y7/q3aqEh1Xbed1bUjkFF.02jCXWV5vTuGNrWDfEXpJiM1eieHEH.', 'teacher', 'active', '2026-08-11 07:10:35', '2026-08-11 07:10:35'),
+(4, 'STU-4121-100203', '$2y$10$hz/tKAZprCdX1pSb.pVXfeaDd/sNx7eObvwx7W7gaffukkOKxbLri', 'student', 'active', '2026-08-11 07:11:30', '2026-08-11 07:11:30');
 
 --
 -- Indexes for dumped tables
@@ -588,6 +708,13 @@ ALTER TABLE `submissions`
   ADD KEY `fk_submissions_grader` (`graded_by`);
 
 --
+-- Indexes for table `submission_files`
+--
+ALTER TABLE `submission_files`
+  ADD PRIMARY KEY (`file_id`),
+  ADD KEY `fk_submission_files_submission` (`submission_id`);
+
+--
 -- Indexes for table `teachers`
 --
 ALTER TABLE `teachers`
@@ -616,13 +743,13 @@ ALTER TABLE `admin`
 -- AUTO_INCREMENT for table `announcements`
 --
 ALTER TABLE `announcements`
-  MODIFY `announcement_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `announcement_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `assignments`
 --
 ALTER TABLE `assignments`
-  MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `attendance`
@@ -634,19 +761,19 @@ ALTER TABLE `attendance`
 -- AUTO_INCREMENT for table `classofferings`
 --
 ALTER TABLE `classofferings`
-  MODIFY `offering_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `offering_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `enrollments`
 --
 ALTER TABLE `enrollments`
-  MODIFY `enrollment_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `enrollment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `enrollment_requests`
 --
 ALTER TABLE `enrollment_requests`
-  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `grades`
@@ -688,7 +815,7 @@ ALTER TABLE `quiz_choices`
 -- AUTO_INCREMENT for table `quiz_generation_jobs`
 --
 ALTER TABLE `quiz_generation_jobs`
-  MODIFY `job_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `job_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `quiz_questions`
@@ -700,43 +827,49 @@ ALTER TABLE `quiz_questions`
 -- AUTO_INCREMENT for table `schoolyears`
 --
 ALTER TABLE `schoolyears`
-  MODIFY `school_year_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `school_year_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `sections`
 --
 ALTER TABLE `sections`
-  MODIFY `section_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `section_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `subjects`
 --
 ALTER TABLE `subjects`
-  MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `submissions`
 --
 ALTER TABLE `submissions`
-  MODIFY `submission_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `submission_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+
+--
+-- AUTO_INCREMENT for table `submission_files`
+--
+ALTER TABLE `submission_files`
+  MODIFY `file_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `teachers`
 --
 ALTER TABLE `teachers`
-  MODIFY `teacher_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `teacher_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- Constraints for dumped tables
@@ -869,6 +1002,12 @@ ALTER TABLE `submissions`
   ADD CONSTRAINT `fk_submissions_assignment` FOREIGN KEY (`assignment_id`) REFERENCES `assignments` (`assignment_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_submissions_grader` FOREIGN KEY (`graded_by`) REFERENCES `teachers` (`teacher_id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_submissions_student` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `submission_files`
+--
+ALTER TABLE `submission_files`
+  ADD CONSTRAINT `fk_submission_files_submission` FOREIGN KEY (`submission_id`) REFERENCES `submissions` (`submission_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `teachers`

@@ -162,7 +162,7 @@ $attendanceRate     = 95;
                         <span class="panel-link" style="color: var(--text-muted); font-weight: 500;"><?= date('F j') ?></span>
                     </div>
 
-                    <?php if (empty($dueTodayAssignments)): ?>
+                    <?php if (empty($dueTodayTasks)): ?>
                         <div class="panel-empty">
                             <i class="fas fa-mug-hot"></i>
                             <p>Nothing due today.</p>
@@ -170,15 +170,15 @@ $attendanceRate     = 95;
                         </div>
                     <?php else: ?>
                         <ul class="due-list">
-                            <?php foreach ($dueTodayAssignments as $item): ?>
-                                <li class="due-item">
+                            <?php foreach ($dueTodayTasks as $item): ?>
+                                <a class="due-item" href="<?= htmlspecialchars(student_task_link($item)) ?>">
                                     <div class="due-icon"><i class="fas <?= student_subject_icon($item['subject_name']) ?>"></i></div>
                                     <div class="due-info">
                                         <h5><?= htmlspecialchars($item['title']) ?></h5>
                                         <span><?= htmlspecialchars($item['subject_name']) ?> · <?= htmlspecialchars(trim($item['teacher_first'] . ' ' . $item['teacher_last'])) ?></span>
                                     </div>
                                     <div class="due-time"><?= student_due_time($item['due_date']) ?></div>
-                                </li>
+                                </a>
                             <?php endforeach; ?>
                         </ul>
                     <?php endif; ?>
@@ -186,26 +186,28 @@ $attendanceRate     = 95;
 
                 <article class="panel">
                     <div class="panel-head">
-                        <h3><i class="fas fa-list-check"></i> Assignments To-Do</h3>
-                        <a href="assignments.php" class="panel-link">View All</a>
+                        <h3><i class="fas fa-list-check"></i> To-Do</h3>
+                        <a href="courses.php" class="panel-link">View All</a>
                     </div>
 
-                    <?php if (empty($todoAssignments)): ?>
+                    <?php if (empty($todoTasks)): ?>
                         <div class="panel-empty">
                             <i class="fas fa-circle-check"></i>
                             <p>You're all caught up!</p>
-                            <span>No pending assignments right now.</span>
+                            <span>No pending assignments or quizzes right now.</span>
                         </div>
                     <?php else: ?>
                         <ul class="todo-list">
-                            <?php foreach ($todoAssignments as $item): ?>
+                            <?php foreach ($todoTasks as $item): ?>
                                 <li class="todo-item">
-                                    <input type="checkbox" disabled>
-                                    <span class="todo-text">
-                                        <span class="todo-chip"><?= student_subject_chip($item['subject_name']) ?></span>
-                                        <?= htmlspecialchars($item['title']) ?>
-                                    </span>
-                                    <span class="todo-due"><?= student_due_label($item['due_date']) ?></span>
+                                    <a class="todo-link" href="<?= htmlspecialchars(student_task_link($item)) ?>">
+                                        <i class="fas <?= student_task_type_icon($item['type']) ?> todo-type-icon"></i>
+                                        <span class="todo-text">
+                                            <span class="todo-chip"><?= student_subject_chip($item['subject_name']) ?></span>
+                                            <?= htmlspecialchars($item['title']) ?>
+                                        </span>
+                                        <span class="todo-due"><?= student_due_label($item['due_date']) ?></span>
+                                    </a>
                                 </li>
                             <?php endforeach; ?>
                         </ul>

@@ -1,0 +1,99 @@
+/* ===================== Attendance module ===================== */
+
+.attendance-subject {
+    margin-bottom: 20px;
+}
+
+.attendance-subject-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.attendance-subject-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.attendance-subject-title h2 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.attendance-subject-meta {
+    font-size: 0.8rem;
+    color: var(--text-secondary, #6b7280);
+    margin-top: 2px;
+}
+
+.attendance-rate {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.attendance-rate-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--primary-dark, #059669);
+}
+
+.attendance-rate-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary, #6b7280);
+}
+
+.attendance-mini-counts {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.attendance-mini-counts .chip {
+    font-weight: 600;
+}
+
+.attendance-toggle {
+    background: none;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary, #6b7280);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.attendance-toggle:hover {
+    background: #f5f5f7;
+}
+
+.attendance-toggle i {
+    transition: transform 0.15s ease;
+}
+
+.attendance-subject.expanded .attendance-toggle i {
+    transform: rotate(180deg);
+}
+
+.attendance-subject-body {
+    display: none;
+    margin-top: 12px;
+}
+
+.attendance-subject.expanded .attendance-subject-body {
+    display: block;
+}
+
+.attendance-remarks-cell {
+    color: var(--text-secondary, #6b7280);
+    font-size: 0.85rem;
+}
