@@ -301,6 +301,71 @@ if ($activeOfferingId && $activeView === 'quizzes') {
     }
 }
 
+// ---- Selected attempt: full question-by-question answer review for one student ----
+$selectedAttempt  = null;
+$attemptQuestions = [];
+if ($selectedQuiz) {
+    $requestedAttemptId = filter_input(INPUT_GET, 'attempt_id', FILTER_VALIDATE_INT);
+    if ($requestedAttemptId) {
+        // Scoping to quiz_id = $selectedQuiz['quiz_id'] (which is itself already
+        // scoped to $activeOfferingId above) keeps a teacher from pulling up an
+        // attempt that belongs to a different class/offering.
+        $stmt = $pdo->prepare("
+            SELECT qa.attempt_id, qa.attempt_number, qa.status AS attempt_status,
+                   qa.score, qa.max_score, qa.started_at, qa.submitted_at,
+                   s.student_id, s.firstname, s.lastname, s.middlename
+            FROM quiz_attempts qa
+            JOIN students s ON s.student_id = qa.student_id
+            WHERE qa.attempt_id = ? AND qa.quiz_id = ?
+            LIMIT 1
+        ");
+        $stmt->execute([$requestedAttemptId, $selectedQuiz['quiz_id']]);
+        $selectedAttempt = $stmt->fetch() ?: null;
+
+        if ($selectedAttempt) {
+            // Every question in the quiz, left-joined to whatever this attempt
+            // answered (so unanswered questions still show up as "skipped").
+            $stmt = $pdo->prepare("
+                SELECT qq.question_id, qq.question_text, qq.question_type, qq.points, qq.order_index,
+                       a.answer_id, a.selected_choice_id, a.answer_text, a.is_correct, a.points_awarded
+                FROM quiz_questions qq
+                LEFT JOIN quiz_answers a
+                       ON a.question_id = qq.question_id AND a.attempt_id = ?
+                WHERE qq.quiz_id = ?
+                ORDER BY qq.order_index, qq.question_id
+            ");
+            $stmt->execute([$selectedAttempt['attempt_id'], $selectedQuiz['quiz_id']]);
+            $attemptQuestions = $stmt->fetchAll();
+
+            // Choices for the mcq/true_false questions are pulled in one batch
+            // query and grouped in PHP, so each question can show both what the
+            // student picked and which choice was actually correct.
+            $mcqQuestionIds = array_column(
+                array_filter($attemptQuestions, fn($q) => in_array($q['question_type'], ['mcq', 'true_false'], true)),
+                'question_id'
+            );
+            $choicesByQuestion = [];
+            if ($mcqQuestionIds) {
+                $placeholders = implode(',', array_fill(0, count($mcqQuestionIds), '?'));
+                $stmt = $pdo->prepare("
+                    SELECT choice_id, question_id, choice_text, is_correct, order_index
+                    FROM quiz_choices
+                    WHERE question_id IN ($placeholders)
+                    ORDER BY order_index, choice_id
+                ");
+                $stmt->execute($mcqQuestionIds);
+                foreach ($stmt->fetchAll() as $choice) {
+                    $choicesByQuestion[$choice['question_id']][] = $choice;
+                }
+            }
+            foreach ($attemptQuestions as &$q) {
+                $q['choices'] = $choicesByQuestion[$q['question_id']] ?? [];
+            }
+            unset($q);
+        }
+    }
+}
+
 $csrfToken = generateCSRFToken();
 
 /**
@@ -423,7 +488,7 @@ function submissionStatusInfo(?string $status, ?string $submittedAt, ?string $du
  * Helper: build a link to the Quizzes view, optionally deep-linking to a
  * specific quiz's score/grading grid.
  */
-function quizzesUrl(int $subjectId, int $sectionId, ?string $term, ?int $quizId = null): string
+function quizzesUrl(int $subjectId, int $sectionId, ?string $term, ?int $quizId = null, ?int $attemptId = null): string
 {
     $params = [
         'subject_id' => $subjectId,
@@ -435,6 +500,9 @@ function quizzesUrl(int $subjectId, int $sectionId, ?string $term, ?int $quizId 
     }
     if ($quizId) {
         $params['quiz_id'] = $quizId;
+    }
+    if ($attemptId) {
+        $params['attempt_id'] = $attemptId;
     }
     return 'class_overview.php?' . http_build_query($params);
 }
@@ -468,3 +536,21 @@ function quizAttemptStatusInfo(?string $status): array
         default       => ['label' => ucfirst($status), 'class' => 'missing'],
     };
 }
+
+/**
+ * Helper: display label/class for a single answer within the answer-review
+ * modal. Short-answer questions are auto-graded as NULL (is_correct) until a
+ * teacher scores them, so that's surfaced as "Needs grading" rather than wrong.
+ */
+function quizAnswerStatusInfo(array $question): array
+{
+    if ($question['answer_id'] === null) {
+        return ['label' => 'Skipped', 'class' => 'missing'];
+    }
+    if ($question['is_correct'] === null) {
+        return ['label' => 'Needs grading', 'class' => 'late'];
+    }
+    return $question['is_correct']
+        ? ['label' => 'Correct', 'class' => 'present']
+        : ['label' => 'Incorrect', 'class' => 'absent'];
+}   

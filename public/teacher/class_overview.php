@@ -634,6 +634,7 @@ if (!empty($submissionRows)) {
                                         <th>Attempt</th>
                                         <th>Submitted</th>
                                         <th>Score</th>
+                                        <th>Answers</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -658,6 +659,16 @@ if (!empty($submissionRows)) {
                                                     <span class="field-hint">—</span>
                                                 <?php endif; ?>
                                             </td>
+                                            <td>
+                                                <?php if ($row['attempt_id'] && in_array($row['attempt_status'], ['submitted', 'graded'], true)): ?>
+                                                    <a class="btn-secondary btn-view-answers"
+                                                       href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $selectedQuiz['quiz_id'], (int) $row['attempt_id']) ?>">
+                                                        <i class="fas fa-eye"></i> View Answers
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="field-hint">—</span>
+                                                <?php endif; ?>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
@@ -670,6 +681,140 @@ if (!empty($submissionRows)) {
                     </form>
                 <?php endif; ?>
             </section>
+
+            <?php if ($selectedAttempt): ?>
+                <!-- Answer review modal: question-by-question breakdown of one student's attempt,
+                     editable so the teacher can correct auto-grading or grade short answers. -->
+                <div class="modal-overlay" id="answerReviewModal">
+                    <div class="modal-box modal-box--wide">
+                        <div class="modal-header">
+                            <div>
+                                <h3>
+                                    <i class="fas fa-list-check"></i>
+                                    <?= htmlspecialchars($selectedAttempt['lastname'] . ', ' . $selectedAttempt['firstname'] . ' ' . ($selectedAttempt['middlename'] ?? '')) ?>
+                                </h3>
+                                <p class="modal-subtitle">
+                                    <?= htmlspecialchars($selectedQuiz['title']) ?>
+                                    · Attempt #<?= (int) $selectedAttempt['attempt_number'] ?>
+                                    <?php if ($selectedAttempt['submitted_at']): ?>
+                                        · Submitted <?= date('M j, Y g:i A', strtotime($selectedAttempt['submitted_at'])) ?>
+                                    <?php endif; ?>
+                                    <?php if ($selectedAttempt['score'] !== null): ?>
+                                        · Score <span id="answerReviewScoreDisplay"><?= htmlspecialchars($selectedAttempt['score']) ?></span><?= $selectedAttempt['max_score'] !== null ? ' / ' . rtrim(rtrim((string) $selectedAttempt['max_score'], '0'), '.') : '' ?>
+                                    <?php endif; ?>
+                                </p>
+                            </div>
+                            <a href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $selectedQuiz['quiz_id']) ?>"
+                               class="modal-close" aria-label="Close">
+                                <i class="fas fa-xmark"></i>
+                            </a>
+                        </div>
+
+                        <form action="assets/api/quiz_answer_save.php" method="POST" id="answerReviewForm">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                            <input type="hidden" name="attempt_id" value="<?= (int) $selectedAttempt['attempt_id'] ?>">
+                            <input type="hidden" name="quiz_id" value="<?= (int) $selectedQuiz['quiz_id'] ?>">
+                            <input type="hidden" name="offering_id" value="<?= (int) $activeOfferingId ?>">
+                            <input type="hidden" name="subject_id" value="<?= (int) $classInfo['subject_id'] ?>">
+                            <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
+                            <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
+
+                            <div class="modal-body">
+                                <?php if (empty($attemptQuestions)): ?>
+                                    <p class="field-hint">This quiz has no questions.</p>
+                                <?php else: ?>
+                                    <?php foreach ($attemptQuestions as $i => $q): ?>
+                                        <?php
+                                            $answerStatus = quizAnswerStatusInfo($q);
+                                            $wasAnswered  = $q['answer_id'] !== null;
+                                            $qPoints      = rtrim(rtrim((string) $q['points'], '0'), '.');
+                                        ?>
+                                        <div class="answer-review-item answer-review-item--<?= $answerStatus['class'] ?>">
+                                            <div class="answer-review-item__head">
+                                                <span class="answer-review-num">Q<?= $i + 1 ?></span>
+                                                <p class="answer-review-text"><?= nl2br(htmlspecialchars($q['question_text'])) ?></p>
+                                                <span class="chip chip-<?= $answerStatus['class'] ?>" data-answer-status-chip><?= $answerStatus['label'] ?></span>
+                                            </div>
+
+                                            <?php if (in_array($q['question_type'], ['mcq', 'true_false'], true)): ?>
+                                                <ul class="answer-review-choices">
+                                                    <?php foreach ($q['choices'] as $choice): ?>
+                                                        <?php
+                                                            $isSelected = $choice['choice_id'] == $q['selected_choice_id'];
+                                                            $isCorrect  = (bool) $choice['is_correct'];
+                                                            $choiceClasses = [];
+                                                            if ($isCorrect) {
+                                                                $choiceClasses[] = 'answer-review-choice--correct';
+                                                            }
+                                                            if ($isSelected && !$isCorrect) {
+                                                                $choiceClasses[] = 'answer-review-choice--wrong';
+                                                            }
+                                                            if ($isSelected) {
+                                                                $choiceClasses[] = 'answer-review-choice--selected';
+                                                            }
+                                                        ?>
+                                                        <li class="answer-review-choice <?= implode(' ', $choiceClasses) ?>">
+                                                            <?php if ($isSelected): ?>
+                                                                <i class="fas fa-circle-dot"></i>
+                                                            <?php else: ?>
+                                                                <i class="fa-regular fa-circle"></i>
+                                                            <?php endif; ?>
+                                                            <span><?= htmlspecialchars($choice['choice_text']) ?></span>
+                                                            <?php if ($isCorrect): ?>
+                                                                <i class="fas fa-check answer-review-correct-mark" title="Correct answer"></i>
+                                                            <?php endif; ?>
+                                                        </li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            <?php else: ?>
+                                                <div class="answer-review-shortanswer">
+                                                    <?php if ($q['answer_text'] !== null && $q['answer_text'] !== ''): ?>
+                                                        <?= nl2br(htmlspecialchars($q['answer_text'])) ?>
+                                                    <?php else: ?>
+                                                        <span class="field-hint">No answer submitted</span>
+                                                    <?php endif; ?>
+                                                </div>
+                                            <?php endif; ?>
+
+                                            <?php if ($wasAnswered): ?>
+                                                <div class="answer-grade-row" data-max-points="<?= $qPoints ?>">
+                                                    <div class="answer-grade-toggle">
+                                                        <label class="answer-grade-pill answer-grade-pill--correct <?= $q['is_correct'] === 1 || $q['is_correct'] === '1' ? 'checked' : '' ?>">
+                                                            <input type="radio" name="is_correct[<?= (int) $q['question_id'] ?>]" value="1"
+                                                                   <?= $q['is_correct'] === 1 || $q['is_correct'] === '1' ? 'checked' : '' ?>>
+                                                            <i class="fas fa-check"></i> Correct
+                                                        </label>
+                                                        <label class="answer-grade-pill answer-grade-pill--incorrect <?= $q['is_correct'] === 0 || $q['is_correct'] === '0' ? 'checked' : '' ?>">
+                                                            <input type="radio" name="is_correct[<?= (int) $q['question_id'] ?>]" value="0"
+                                                                   <?= $q['is_correct'] === 0 || $q['is_correct'] === '0' ? 'checked' : '' ?>>
+                                                            <i class="fas fa-xmark"></i> Incorrect
+                                                        </label>
+                                                    </div>
+                                                    <div class="answer-grade-points">
+                                                        <input type="number" class="grade-input" name="points[<?= (int) $q['question_id'] ?>]"
+                                                               min="0" max="<?= $qPoints ?>" step="0.01"
+                                                               value="<?= $q['points_awarded'] !== null ? htmlspecialchars($q['points_awarded']) : '' ?>"
+                                                               placeholder="0">
+                                                        <span class="field-hint">/ <?= $qPoints ?> pts</span>
+                                                    </div>
+                                                </div>
+                                            <?php else: ?>
+                                                <div class="answer-review-points">— / <?= $qPoints ?> pts (skipped)</div>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </div>
+
+                            <?php if (!empty($attemptQuestions) && array_filter($attemptQuestions, fn($q) => $q['answer_id'] !== null)): ?>
+                                <div class="form-actions grading-save-bar modal-save-bar">
+                                    <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Save Corrections</button>
+                                </div>
+                            <?php endif; ?>
+                        </form>
+                    </div>
+                </div>
+            <?php endif; ?>
         <?php endif; ?>
 
     <?php elseif ($activeView === 'attendance'): ?>
