@@ -158,10 +158,7 @@ function getFlashMessage() {
     return null;
 }
 
-define('OPENROUTER_API_KEY', '');   // from openrouter.ai/keys
-// No OPENROUTER_MODEL needed anymore — chatbot.php auto-selects a working
-// free model (preferred list first, then live OpenRouter free catalog as
-// fallback) via openrouter_model.php.
+ define('GEMINI_API_KEY', '');
 
 
 ?>

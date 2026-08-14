@@ -5,20 +5,23 @@
  * AJAX endpoint backing the floating "chat head" assistant on the admin
  * dashboard. Retrieves scoped, non-sensitive context from the school DB
  * (see get_chatbot_context() in dashboard_functions.php), hands it to an
- * LLM via OpenRouter (https://openrouter.ai), and returns the reply.
+ * LLM via the Gemini API (Google AI Studio, free tier), and returns the
+ * reply.
  *
  * Expects a session to already exist (admin/teacher logged in) — same
  * auth assumption as search.php.
  *
  * ---------------------------------------------------------------------
- * SETUP REQUIRED — add these two lines to config/config.php:
+ * SETUP REQUIRED — add this line to config/config.php:
  *
- *   define('OPENROUTER_API_KEY', 'sk-or-v1-...');   // from openrouter.ai/keys
- *   define('OPENROUTER_MODEL', 'meta-llama/llama-3.3-70b-instruct:free');
+ *   define('GEMINI_API_KEY', 'AIza...');   // from aistudio.google.com/apikey
  *
- * OpenRouter's free-model lineup changes over time — check
- * https://openrouter.ai/models?max_price=0 for the current list of
- * ":free" model slugs and swap OPENROUTER_MODEL if one gets retired.
+ * Google AI Studio's free tier covers the Flash / Flash-Lite model
+ * family, subject to per-project rate limits (requests/minute and
+ * requests/day). See https://ai.google.dev/gemini-api/docs/pricing for
+ * the current free-tier lineup and https://ai.google.dev/gemini-api/docs/rate-limits
+ * for limits. Edit GEMINI_PREFERRED_FREE_MODELS in gemini_model.php if
+ * that lineup changes.
  * ---------------------------------------------------------------------
  */
 
@@ -40,15 +43,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-if (!defined('OPENROUTER_API_KEY') || OPENROUTER_API_KEY === '') {
+if (!defined('GEMINI_API_KEY') || GEMINI_API_KEY === '') {
     http_response_code(500);
-    echo json_encode(['error' => 'Chat assistant is not configured yet. Add OPENROUTER_API_KEY to config.php.']);
+    echo json_encode(['error' => 'Chat assistant is not configured yet. Add GEMINI_API_KEY to config.php.']);
     exit;
 }
 
 // ================= DATA LAYER =================
 require_once 'dashboard_functions.php';
-require_once 'openrouter_model.php';
+require_once 'gemini_model.php';
 
 // ================= READ + VALIDATE REQUEST BODY =================
 $raw = file_get_contents('php://input');
@@ -71,13 +74,19 @@ if (mb_strlen($message) > 1000) {
 
 // Only keep well-formed {role, content} turns, cap to the last 8 so the
 // payload (and token usage) stays bounded, and clamp each turn's length.
+// Gemini uses "model" rather than "assistant" for the AI's turns, so we
+// translate roles here to keep the rest of the request-handling code
+// (and the frontend's history format in chatbot.js) unchanged.
 $history = [];
 foreach (array_slice($historyIn, -8) as $turn) {
     if (!is_array($turn)) continue;
     $role = $turn['role'] ?? '';
     $content = trim((string) ($turn['content'] ?? ''));
     if (!in_array($role, ['user', 'assistant'], true) || $content === '') continue;
-    $history[] = ['role' => $role, 'content' => mb_substr($content, 0, 1000)];
+    $history[] = [
+        'role' => $role === 'assistant' ? 'model' : 'user',
+        'parts' => [['text' => mb_substr($content, 0, 1000)]],
+    ];
 }
 
 // ================= RETRIEVE DB CONTEXT =================
@@ -105,39 +114,42 @@ DATABASE CONTEXT:
 {$context}
 PROMPT;
 
-$messages = array_merge(
-    [['role' => 'system', 'content' => $systemPrompt]],
+// Gemini's "contents" array is the conversation turns only (no system
+// role in-line); the system prompt goes in the separate
+// systemInstruction field instead.
+$contents = array_merge(
     $history,
-    [['role' => 'user', 'content' => $message]]
+    [['role' => 'user', 'parts' => [['text' => $message]]]]
 );
 
-// ================= CALL OPENROUTER (auto model selection + failover) =================
+// ================= CALL GEMINI (auto model selection + failover) =================
 /**
- * Attempts one chat completion against a given model. Returns a uniform
- * result shape so the try-loop below can treat "reachable but bad
- * response" and "unreachable" the same way.
+ * Attempts one chat completion against a given Gemini model. Returns a
+ * uniform result shape so the try-loop below can treat "reachable but
+ * bad response" and "unreachable" the same way.
  */
-function call_openrouter_model(string $model, array $messages): array {
+function call_gemini_model(string $model, string $systemPrompt, array $contents): array {
     $payload = json_encode([
-        'model' => $model,
-        'messages' => $messages,
-        'temperature' => 0.3,
-        'max_tokens' => 500,
+        'contents' => $contents,
+        'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],
+        'generationConfig' => [
+            'temperature' => 0.3,
+            'maxOutputTokens' => 500,
+        ],
     ]);
 
-    $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
+    $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . rawurlencode($model) . ':generateContent';
+
+    $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
         CURLOPT_POSTFIELDS => $payload,
-        CURLOPT_CONNECTTIMEOUT => 10, // fail fast if we can't even reach OpenRouter
-        CURLOPT_TIMEOUT => 45,        // free models can be slower than paid ones
+        CURLOPT_CONNECTTIMEOUT => 10, // fail fast if we can't even reach Google
+        CURLOPT_TIMEOUT => 45,
         CURLOPT_HTTPHEADER => [
             'Content-Type: application/json',
-            'Authorization: Bearer ' . OPENROUTER_API_KEY,
-            // Optional but recommended by OpenRouter for their leaderboard/analytics.
-            'HTTP-Referer: ' . ($_SERVER['HTTP_ORIGIN'] ?? ($_SERVER['HTTP_HOST'] ?? 'localhost')),
-            'X-Title: SUA IntelliLearn Admin Dashboard',
+            'x-goog-api-key: ' . GEMINI_API_KEY,
         ],
     ]);
 
@@ -150,42 +162,48 @@ function call_openrouter_model(string $model, array $messages): array {
     if ($response === false) {
         $message = ($curlErrno === CURLE_OPERATION_TIMEDOUT)
             ? ($httpCode === 0
-                ? 'Timed out trying to reach OpenRouter.'
-                : 'OpenRouter accepted the request but the model took too long to respond.')
+                ? 'Timed out trying to reach Gemini.'
+                : 'Gemini accepted the request but took too long to respond.')
             : 'Could not reach the chat assistant service: ' . $curlError;
         return ['ok' => false, 'error' => $message, 'status' => 504];
     }
 
     $decoded = json_decode($response, true);
 
-    if ($httpCode !== 200 || !isset($decoded['choices'][0]['message']['content'])) {
+    // Rate limit / quota exhaustion (common on the free tier) comes back
+    // as HTTP 429 — worth its own message so failover to the next
+    // candidate model doesn't look like a generic error.
+    if ($httpCode === 429) {
+        return ['ok' => false, 'error' => 'This model is rate-limited on the free tier right now.', 'status' => 429];
+    }
+
+    $text = $decoded['candidates'][0]['content']['parts'][0]['text'] ?? null;
+
+    if ($httpCode !== 200 || $text === null) {
+        // A response can be well-formed but empty because it was blocked
+        // (finishReason SAFETY/RECITATION/etc.) rather than because the
+        // request failed outright — surface that distinctly.
+        $finishReason = $decoded['candidates'][0]['finishReason'] ?? null;
+        if ($httpCode === 200 && $finishReason) {
+            return ['ok' => false, 'error' => 'Response was blocked by Gemini (reason: ' . $finishReason . ').', 'status' => 502];
+        }
         $apiError = $decoded['error']['message'] ?? 'Unexpected response from the chat assistant service.';
         return ['ok' => false, 'error' => $apiError, 'status' => 502];
     }
 
-    return ['ok' => true, 'reply' => trim($decoded['choices'][0]['message']['content'])];
+    return ['ok' => true, 'reply' => trim($text)];
 }
 
-$candidates = get_openrouter_model_candidates();
-$triedLiveCatalog = false;
+$candidates = get_gemini_model_candidates();
 $lastResult = null;
-$maxAttempts = 4; // don't let one slow request cascade through every free model
+$maxAttempts = min(count($candidates), 4); // don't let one slow request cascade through every model
 
-for ($i = 0, $attempts = 0; $attempts < $maxAttempts; $i++, $attempts++) {
-    // Once we've exhausted the cached + preferred list, fetch the live
-    // free-model catalog once as a last resort and keep going.
-    if ($i >= count($candidates)) {
-        if ($triedLiveCatalog) break;
-        $triedLiveCatalog = true;
-        $candidates = array_values(array_unique(array_merge($candidates, get_live_free_openrouter_models())));
-        if ($i >= count($candidates)) break;
-    }
-
+for ($i = 0; $i < $maxAttempts; $i++) {
     $model = $candidates[$i];
-    $lastResult = call_openrouter_model($model, $messages);
+    $lastResult = call_gemini_model($model, $systemPrompt, $contents);
 
     if ($lastResult['ok']) {
-        cache_working_openrouter_model($model);
+        cache_working_gemini_model($model);
         echo json_encode(['reply' => $lastResult['reply']]);
         exit;
     }
@@ -194,5 +212,5 @@ for ($i = 0, $attempts = 0; $attempts < $maxAttempts; $i++, $attempts++) {
 // Every attempted model failed.
 http_response_code($lastResult['status'] ?? 502);
 echo json_encode([
-    'error' => $lastResult['error'] ?? 'All free models failed to respond right now. Please try again shortly.',
+    'error' => $lastResult['error'] ?? 'All models failed to respond right now. Please try again shortly.',
 ]);

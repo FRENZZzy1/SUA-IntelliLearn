@@ -192,36 +192,46 @@ Requirements:
 PROMPT;
 
 // ------------------------------------------------------------------
-// Call OpenRouter — try a short list of free models in order, since
-// free-tier models can be rate-limited or temporarily unavailable.
+// Call Google Gemini — try a short list of models in order, since a
+// given model can occasionally be overloaded/rate-limited.
 // ------------------------------------------------------------------
 $preferredModels = [
-    'poolside/laguna-s-2.1:free',
-    'nvidia/nemotron-3-super-120b-a12b:free'
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-flash',
 ];
 
-function callOpenRouter(string $model, string $systemPrompt, string $userPrompt): array {
-    if (!defined('OPENROUTER_API_KEY') || OPENROUTER_API_KEY === '') {
-        return ['ok' => false, 'error' => 'OPENROUTER_API_KEY is not configured in config.php.'];
+function callGemini(string $model, string $systemPrompt, string $userPrompt): array {
+    if (!defined('GEMINI_API_KEY') || GEMINI_API_KEY === '') {
+        return ['ok' => false, 'error' => 'GEMINI_API_KEY is not configured in config.php.'];
     }
 
-    $ch = curl_init('https://openrouter.ai/api/v1/chat/completions');
+    $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent";
+
+    $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_TIMEOUT        => 45,
         CURLOPT_HTTPHEADER     => [
             'Content-Type: application/json',
-            'Authorization: Bearer ' . OPENROUTER_API_KEY,
+            'x-goog-api-key: ' . GEMINI_API_KEY,
         ],
         CURLOPT_POST       => true,
         CURLOPT_POSTFIELDS => json_encode([
-            'model'       => $model,
-            'messages'    => [
-                ['role' => 'system', 'content' => $systemPrompt],
-                ['role' => 'user',   'content' => $userPrompt],
+            'systemInstruction' => [
+                'parts' => [['text' => $systemPrompt]],
             ],
-            'temperature' => 0.7,
-            'max_tokens'  => 4000,
+            'contents' => [
+                ['role' => 'user', 'parts' => [['text' => $userPrompt]]],
+            ],
+            'generationConfig' => [
+                'temperature'      => 0.7,
+                'maxOutputTokens'  => 4000,
+                // Ask Gemini to return raw JSON directly — no markdown
+                // fences to strip, unlike the OpenRouter free models.
+                'responseMimeType' => 'application/json',
+            ],
         ]),
     ]);
 
@@ -234,17 +244,21 @@ function callOpenRouter(string $model, string $systemPrompt, string $userPrompt)
         return ['ok' => false, 'error' => "cURL error: {$curlError}"];
     }
     if ($httpCode < 200 || $httpCode >= 300) {
-        return ['ok' => false, 'error' => "OpenRouter returned HTTP {$httpCode}: " . substr($response, 0, 300)];
+        return ['ok' => false, 'error' => "Gemini returned HTTP {$httpCode}: " . substr($response, 0, 300)];
     }
 
     $decoded = json_decode($response, true);
-    $content = $decoded['choices'][0]['message']['content'] ?? null;
+    $content = $decoded['candidates'][0]['content']['parts'][0]['text'] ?? null;
 
     if (!$content) {
-        return ['ok' => false, 'error' => 'No content in OpenRouter response.'];
+        // Common cause: the response was cut off or blocked by safety
+        // filters, in which case candidates[0].finishReason explains why.
+        $finishReason = $decoded['candidates'][0]['finishReason'] ?? 'unknown';
+        return ['ok' => false, 'error' => "No content in Gemini response (finishReason: {$finishReason})."];
     }
 
-    // Strip accidental markdown fences some free models add despite instructions
+    // Belt-and-suspenders: strip markdown fences in case a model adds them
+    // despite responseMimeType being set to application/json.
     $content = trim($content);
     $content = preg_replace('/^```(?:json)?\s*/i', '', $content);
     $content = preg_replace('/```\s*$/', '', $content);
@@ -262,7 +276,7 @@ $modelUsed = null;
 $attemptErrors = [];
 
 foreach ($preferredModels as $model) {
-    $attempt = callOpenRouter($model, $systemPrompt, $userPrompt);
+    $attempt = callGemini($model, $systemPrompt, $userPrompt);
     if ($attempt['ok']) {
         $result    = $attempt['quiz'];
         $modelUsed = $model;

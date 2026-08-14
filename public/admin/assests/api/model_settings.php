@@ -2,19 +2,27 @@
 /**
  * assests/api/model_settings.php
  *
- * Admin-only endpoint backing a "chatbot model" picker on the dashboard.
+ * Admin-only endpoint backing the "chatbot model" picker on the dashboard.
  *
- *   GET  -> { models: [{id, name, context_length}, ...], selected: "id"|null }
- *           Populates a <select> with currently-free OpenRouter models,
- *           and reports whichever one is currently chosen (if any).
+ *   GET  -> { models: [{id, name}, ...], selected: "id"|null }
+ *           Populates a <select> with the curated list of free-tier
+ *           Gemini models (see GEMINI_PREFERRED_FREE_MODELS in
+ *           gemini_model.php), and reports whichever one is currently
+ *           chosen (if any).
  *
- *   POST { "model": "some/model:free" }  -> saves the admin's pick.
- *   POST { "model": "" }                 -> clears the pick (falls back
- *           to auto-selection: cache -> preferred list -> live catalog).
+ *   POST { "model": "gemini-3.5-flash-lite" }  -> saves the admin's pick.
+ *   POST { "model": "" }                       -> clears the pick (falls
+ *           back to auto-selection: cache -> preferred list).
  *
- * Only ever stores/accepts model ids that are actually in the live free
- * catalog at save time, so an admin can't accidentally lock in a paid
- * or retired model id by typo or stale page.
+ * Only ever stores/accepts model ids that are in the curated free-tier
+ * list, so an admin can't accidentally lock in a typo'd or unsupported
+ * model id.
+ *
+ * NOTE: unlike the old OpenRouter version of this file, there's no live
+ * catalog fetch here — the Gemini API doesn't expose per-model pricing,
+ * so "free" is just the curated list in gemini_model.php. Update that
+ * list (and GEMINI_MODEL_DISPLAY_NAMES) as Google's free-tier lineup
+ * changes.
  */
 
 header('Content-Type: application/json');
@@ -22,22 +30,14 @@ header('Content-Type: application/json');
 require_once '../../../../config/config.php';
 requireAdmin(); // admin-only — reuses the helper already in config.php
 
-require_once 'openrouter_model.php';
+require_once 'gemini_model.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
-    $live = get_live_free_openrouter_models_detailed();
-
-    if (empty($live)) {
-        http_response_code(502);
-        echo json_encode(['error' => 'Could not reach OpenRouter to list free models. Try again shortly.']);
-        exit;
-    }
-
     echo json_encode([
-        'models' => $live,
-        'selected' => get_selected_openrouter_model(),
+        'models' => get_free_gemini_models_detailed(),
+        'selected' => get_selected_gemini_model(),
     ]);
     exit;
 }
@@ -49,20 +49,20 @@ if ($method === 'POST') {
 
     // Clearing the selection is always allowed.
     if ($model === '') {
-        set_selected_openrouter_model(null);
+        set_selected_gemini_model(null);
         echo json_encode(['success' => true, 'selected' => null]);
         exit;
     }
 
-    // Otherwise, verify it's a real, currently-free model before saving.
-    $liveIds = array_column(get_live_free_openrouter_models_detailed(), 'id');
-    if (!in_array($model, $liveIds, true)) {
+    // Otherwise, verify it's in the curated free-tier list before saving.
+    $validIds = array_column(get_free_gemini_models_detailed(), 'id');
+    if (!in_array($model, $validIds, true)) {
         http_response_code(422);
-        echo json_encode(['success' => false, 'error' => 'That model is not currently in OpenRouter\'s free lineup.']);
+        echo json_encode(['success' => false, 'error' => 'That model is not in the supported free-tier list.']);
         exit;
     }
 
-    set_selected_openrouter_model($model);
+    set_selected_gemini_model($model);
     echo json_encode(['success' => true, 'selected' => $model]);
     exit;
 }
