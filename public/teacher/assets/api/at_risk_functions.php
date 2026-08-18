@@ -19,11 +19,21 @@
  * redistributed proportionally across whichever signals DO have data,
  * so a brand-new class isn't unfairly penalized for missing history.
  *
+ * MINIMUM SAMPLE SIZE: a single missed assignment/quiz, or a single
+ * attendance record, isn't enough to say anything meaningful about a
+ * student. Each category only counts toward the score once the teacher
+ * has logged at least RISK_MIN_DATA_POINTS items for it (e.g. at least
+ * 3 assignments that have come due) — below that, the category is
+ * treated the same as "no data yet" and its weight is redistributed
+ * like above. If every category falls short of the minimum, the
+ * student is reported as 'Insufficient Data' rather than being scored
+ * off of one or two data points.
+ *
  * risk_score = 100 - weighted performance   (0-100, higher = riskier)
  *   >= 60  -> High
  *   >= 35  -> Medium
  *   <  35  -> Low
- *   no data at all in any category -> 'Insufficient Data'
+ *   fewer than RISK_MIN_DATA_POINTS items in every category -> 'Insufficient Data'
  * -----------------------------------------------------------------
  */
 
@@ -33,6 +43,11 @@ const RISK_WEIGHT_QUIZZES     = 0.30;
 
 const RISK_THRESHOLD_HIGH   = 60.0;
 const RISK_THRESHOLD_MEDIUM = 35.0;
+
+// Minimum number of logged items (attendance records / due assignments /
+// due quizzes) a category needs before it's trusted enough to feed into
+// the risk score. Below this, that category is excluded (not zeroed).
+const RISK_MIN_DATA_POINTS = 3;
 
 /**
  * Main entry point. Returns one row per (student, offering) enrollment.
@@ -83,10 +98,22 @@ function get_at_risk_roster(PDO $pdo, array $offeringIds): array
         $asg   = $assignmentMap[$key] ?? null;
         $quiz  = $quizMap[$key] ?? null;
 
+        // Sample-size gate: a category only counts if the teacher has
+        // actually logged enough of it (>= RISK_MIN_DATA_POINTS records/
+        // due items). Otherwise treat it as if there's no data yet, so
+        // one lonely assignment can't brand a student "at risk".
+        $attCount = $att['total_cnt'] ?? 0;
+        $asgCount = $asg['total_due'] ?? 0;
+        $quizCount = $quiz['total_due'] ?? 0;
+
+        $attEnough  = $attCount  >= RISK_MIN_DATA_POINTS;
+        $asgEnough  = $asgCount  >= RISK_MIN_DATA_POINTS;
+        $quizEnough = $quizCount >= RISK_MIN_DATA_POINTS;
+
         [$riskScore, $riskLabel] = classify_risk(
-            $att['attendance_pct'] ?? null,
-            $asg['assignment_pct'] ?? null,
-            $quiz['quiz_pct'] ?? null
+            $attEnough  ? ($att['attendance_pct'] ?? null)  : null,
+            $asgEnough  ? ($asg['assignment_pct'] ?? null)  : null,
+            $quizEnough ? ($quiz['quiz_pct'] ?? null)       : null
         );
 
         $results[] = [
@@ -97,20 +124,25 @@ function get_at_risk_roster(PDO $pdo, array $offeringIds): array
             'section'      => $row['section_name'],
             'grade_level'  => (int) $row['grade_level'],
 
-            'attendance_pct'     => $att['attendance_pct'] ?? null,
-            'attendance_present' => $att['present_cnt'] ?? 0,
-            'attendance_late'    => $att['late_cnt'] ?? 0,
-            'attendance_absent'  => $att['absent_cnt'] ?? 0,
-            'attendance_excused' => $att['excused_cnt'] ?? 0,
-            'attendance_total'   => $att['total_cnt'] ?? 0,
+            'attendance_pct'      => $attEnough ? ($att['attendance_pct'] ?? null) : null,
+            'attendance_present'  => $att['present_cnt'] ?? 0,
+            'attendance_late'     => $att['late_cnt'] ?? 0,
+            'attendance_absent'   => $att['absent_cnt'] ?? 0,
+            'attendance_excused'  => $att['excused_cnt'] ?? 0,
+            'attendance_total'    => $attCount,
+            'attendance_enough'   => $attEnough,
 
-            'assignment_pct'        => $asg['assignment_pct'] ?? null,
+            'assignment_pct'        => $asgEnough ? ($asg['assignment_pct'] ?? null) : null,
             'assignment_missing'    => $asg['missing_count'] ?? 0,
-            'assignment_total_due'  => $asg['total_due'] ?? 0,
+            'assignment_total_due'  => $asgCount,
+            'assignment_enough'     => $asgEnough,
 
-            'quiz_pct'        => $quiz['quiz_pct'] ?? null,
+            'quiz_pct'        => $quizEnough ? ($quiz['quiz_pct'] ?? null) : null,
             'quiz_missing'    => $quiz['missing_count'] ?? 0,
-            'quiz_total_due'  => $quiz['total_due'] ?? 0,
+            'quiz_total_due'  => $quizCount,
+            'quiz_enough'     => $quizEnough,
+
+            'min_data_points' => RISK_MIN_DATA_POINTS,
 
             'risk_score' => $riskScore,
             'risk_label' => $riskLabel,
@@ -459,19 +491,36 @@ function ensure_at_risk_insights_table(PDO $pdo): void
             UNIQUE KEY uq_student_offering (student_id, offering_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     ");
+
+    // Older installs won't have these columns yet (lang support + the
+    // key_observations field). Add them if missing; ignore the "duplicate
+    // column" error if another request already added them concurrently.
+    foreach ([
+        "ALTER TABLE at_risk_insights ADD COLUMN lang VARCHAR(5) NOT NULL DEFAULT 'en'",
+        "ALTER TABLE at_risk_insights ADD COLUMN key_observations TEXT NULL",
+        "ALTER TABLE at_risk_insights DROP INDEX uq_student_offering",
+        "ALTER TABLE at_risk_insights ADD UNIQUE KEY uq_student_offering_lang (student_id, offering_id, lang)",
+    ] as $sql) {
+        try {
+            $pdo->exec($sql);
+        } catch (PDOException $e) {
+            // 1060 = duplicate column, 1091 = can't drop (already dropped),
+            // 1061 = duplicate key name -> all safe to ignore (already applied).
+        }
+    }
 }
 
-function get_cached_insight(PDO $pdo, int $studentId, int $offeringId, int $maxAgeSeconds = 43200): ?array
+function get_cached_insight(PDO $pdo, int $studentId, int $offeringId, string $lang = 'en', int $maxAgeSeconds = 43200): ?array
 {
     ensure_at_risk_insights_table($pdo);
     $stmt = $pdo->prepare("
-        SELECT risk_label, risk_score, why, how, recommended_actions, generated_at
+        SELECT risk_label, risk_score, why, how, key_observations, recommended_actions, generated_at
         FROM at_risk_insights
-        WHERE student_id = ? AND offering_id = ?
+        WHERE student_id = ? AND offering_id = ? AND lang = ?
           AND generated_at >= (NOW() - INTERVAL ? SECOND)
         LIMIT 1
     ");
-    $stmt->execute([$studentId, $offeringId, $maxAgeSeconds]);
+    $stmt->execute([$studentId, $offeringId, $lang, $maxAgeSeconds]);
     $row = $stmt->fetch();
     if (!$row) {
         return null;
@@ -479,25 +528,27 @@ function get_cached_insight(PDO $pdo, int $studentId, int $offeringId, int $maxA
     return [
         'why'                 => $row['why'],
         'how'                 => $row['how'],
+        'key_observations'    => json_decode($row['key_observations'] ?? '[]', true) ?: [],
         'recommended_actions' => json_decode($row['recommended_actions'], true) ?: [],
         'generated_at'        => $row['generated_at'],
         'cached'              => true,
     ];
 }
 
-function save_insight(PDO $pdo, int $studentId, int $offeringId, string $riskLabel, ?float $riskScore, string $why, string $how, array $actions): void
+function save_insight(PDO $pdo, int $studentId, int $offeringId, string $riskLabel, ?float $riskScore, string $why, string $how, array $actions, array $keyObservations = [], string $lang = 'en'): void
 {
     ensure_at_risk_insights_table($pdo);
     $stmt = $pdo->prepare("
-        INSERT INTO at_risk_insights (student_id, offering_id, risk_label, risk_score, why, how, recommended_actions, generated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO at_risk_insights (student_id, offering_id, risk_label, risk_score, why, how, key_observations, recommended_actions, lang, generated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE
             risk_label = VALUES(risk_label),
             risk_score = VALUES(risk_score),
             why = VALUES(why),
             how = VALUES(how),
+            key_observations = VALUES(key_observations),
             recommended_actions = VALUES(recommended_actions),
             generated_at = NOW()
     ");
-    $stmt->execute([$studentId, $offeringId, $riskLabel, $riskScore, $why, $how, json_encode($actions)]);
+    $stmt->execute([$studentId, $offeringId, $riskLabel, $riskScore, $why, $how, json_encode($keyObservations), json_encode($actions), $lang]);
 }

@@ -43,9 +43,10 @@ if (!function_exists('gemini_is_configured')) {
  * @param string $subjectName
  * @param string $riskLabel      'Low' | 'Medium' | 'High'
  * @param array  $metrics        Structured metrics, see at_risk_functions.php
- * @return array{success:bool, why?:string, how?:string, recommended_actions?:string[], error?:string}
+ * @param string $lang           'en' (English) or 'tl' (Tagalog/Filipino)
+ * @return array{success:bool, why?:string, how?:string, key_observations?:string[], recommended_actions?:string[], error?:string}
  */
-function gemini_analyze_student_risk(string $studentName, string $subjectName, string $riskLabel, array $metrics): array
+function gemini_analyze_student_risk(string $studentName, string $subjectName, string $riskLabel, array $metrics, string $lang = 'en'): array
 {
     if (!gemini_is_configured()) {
         return [
@@ -54,7 +55,8 @@ function gemini_analyze_student_risk(string $studentName, string $subjectName, s
         ];
     }
 
-    $prompt = build_gemini_risk_prompt($studentName, $subjectName, $riskLabel, $metrics);
+    $lang = $lang === 'tl' ? 'tl' : 'en';
+    $prompt = build_gemini_risk_prompt($studentName, $subjectName, $riskLabel, $metrics, $lang);
 
     $requestBody = [
         'contents' => [
@@ -65,26 +67,31 @@ function gemini_analyze_student_risk(string $studentName, string $subjectName, s
         ],
         'generationConfig' => [
             'temperature'      => 0.4,
-            'maxOutputTokens'  => 700,
+            'maxOutputTokens'  => 1100,
             'responseMimeType' => 'application/json',
             'responseSchema'   => [
                 'type'       => 'OBJECT',
                 'properties' => [
                     'why' => [
                         'type'        => 'STRING',
-                        'description' => '2-4 sentence, teacher-facing explanation of WHY this student is flagged at this risk level, referencing the actual numbers given.',
+                        'description' => '4-6 sentence, teacher-facing explanation of WHY this student is flagged at this risk level. Reference the actual numbers given, describe the pattern over time where possible (e.g. which area is weakest, whether it looks like a one-off dip or a sustained trend), and note any interaction between factors (e.g. absences lining up with missed assignments).',
                     ],
                     'how' => [
                         'type'        => 'STRING',
-                        'description' => '1-3 sentences explaining HOW the risk level was determined (which factors weighed most heavily).',
+                        'description' => '2-4 sentences explaining HOW the risk level was determined: which factor(s) weighed most heavily in the weighted score, and how the weighting (attendance 30%, assignments 40%, quizzes 30%) played out for this specific student.',
+                    ],
+                    'key_observations' => [
+                        'type'  => 'ARRAY',
+                        'items' => ['type' => 'STRING'],
+                        'description' => '3-6 short, specific, individually-scannable data points pulled directly from the numbers given (e.g. exact percentages, counts of missing work, attendance breakdown). Each one sentence or less. These appear as a bullet list above the "why" narrative.',
                     ],
                     'recommended_actions' => [
                         'type'  => 'ARRAY',
                         'items' => ['type' => 'STRING'],
-                        'description' => '3-5 short, concrete, actionable next steps the teacher can take this week.',
+                        'description' => '4-6 short, concrete, actionable next steps the teacher can take this week, tailored to this student\'s specific weak area(s). Avoid vague advice like "monitor closely" — be concrete (who to contact, what to adjust, what to check first).',
                     ],
                 ],
-                'required' => ['why', 'how', 'recommended_actions'],
+                'required' => ['why', 'how', 'key_observations', 'recommended_actions'],
             ],
         ],
     ];
@@ -162,6 +169,7 @@ function gemini_call_model(string $model, array $requestBody): array
             'model'               => $model,
             'why'                 => is_string($rawText) ? $rawText : 'Unable to parse structured response.',
             'how'                 => '',
+            'key_observations'    => [],
             'recommended_actions' => [],
         ];
     }
@@ -171,11 +179,12 @@ function gemini_call_model(string $model, array $requestBody): array
         'model'               => $model,
         'why'                 => (string) $parsed['why'],
         'how'                 => (string) $parsed['how'],
+        'key_observations'    => array_values(array_map('strval', (array) ($parsed['key_observations'] ?? []))),
         'recommended_actions' => array_values(array_map('strval', (array) $parsed['recommended_actions'])),
     ];
 }
 
-function build_gemini_risk_prompt(string $studentName, string $subjectName, string $riskLabel, array $metrics): string
+function build_gemini_risk_prompt(string $studentName, string $subjectName, string $riskLabel, array $metrics, string $lang = 'en'): string
 {
     $fmt = fn($v, $suffix = '%') => $v === null ? 'no data' : (round((float) $v, 1) . $suffix);
 
@@ -199,11 +208,16 @@ function build_gemini_risk_prompt(string $studentName, string $subjectName, stri
 
     $riskScore = $metrics['risk_score'] !== null ? round((float) $metrics['risk_score'], 1) : 'N/A';
 
+    $langInstruction = $lang === 'tl'
+        ? 'Write your ENTIRE response — every field ("why", "how", "key_observations", and every item in "recommended_actions") — in natural, conversational Tagalog/Filipino, the way a Filipino teacher or school guidance counselor would actually speak. Keep specific numbers, percentages, and student/subject names as-is (do not translate numbers or proper nouns). Avoid overly formal or textbook-stiff Tagalog; write it the way it would actually be said in a Philippine classroom/faculty room setting. Do not mix in English sentences — if a term has no natural Tagalog equivalent (e.g. "quiz", "grade"), it is fine to keep that specific word, but full sentences should be in Tagalog.'
+        : 'Write your entire response in clear, natural English.';
+
     return <<<PROMPT
 You are an academic early-warning assistant helping a K-12 teacher understand
 why a student was flagged by an automated at-risk detection system, and what
 to do about it. Be specific, concise, and encouraging in tone — this goes
-directly in front of a teacher, not the student.
+directly in front of a teacher, not the student. Go into real detail: don't
+just restate the risk label, actually walk through the pattern in the data.
 
 Student: {$studentName}
 Subject/Class: {$subjectName}
@@ -215,16 +229,27 @@ Underlying data used to compute this:
 - Quiz average: {$quizzes}, {$quizzesMissing}
 
 The risk score is a weighted blend: attendance 30%, assignments 40%, quizzes 30%
-(a component is skipped and weights are redistributed if that category has no
-data yet).
+(a component is skipped and weights are redistributed if that category doesn't
+yet have at least 3 logged items — so a category shown as "no data" genuinely
+isn't factored into the score, it's not being hidden).
 
 Respond with:
-1. "why" — a short, specific explanation of why this student landed at the
-   {$riskLabel} risk level, citing the actual numbers above.
-2. "how" — a brief note on which factor(s) drove the score most.
-3. "recommended_actions" — 3-5 concrete, practical steps this teacher could
+1. "why" — a detailed (4-6 sentence), specific explanation of why this student
+   landed at the {$riskLabel} risk level. Reference the actual numbers above,
+   describe whether this looks like a one-off dip or a sustained pattern, and
+   note any interaction between factors (e.g. do the absences line up with the
+   missed assignments/quizzes?).
+2. "how" — 2-4 sentences on which factor(s) drove the score most and how the
+   30/40/30 weighting played out specifically for this student.
+3. "key_observations" — 3-6 short, individually scannable bullet points, each
+   citing a specific number from the data above (e.g. exact percentage, exact
+   count of missing items, exact attendance breakdown). One short sentence each.
+4. "recommended_actions" — 4-6 concrete, practical steps this teacher could
    take this week (e.g. outreach, targeted practice, parent contact, flexible
    deadlines), tailored to the specific weak area(s) shown above. Avoid vague
-   advice like "monitor closely" — be concrete.
+   advice like "monitor closely" — be concrete about who to contact, what to
+   check first, and what to adjust.
+
+{$langInstruction}
 PROMPT;
 }

@@ -38,6 +38,7 @@ $body = json_decode($raw, true) ?: [];
 $studentId  = (int) ($body['student_id']  ?? $_POST['student_id']  ?? 0);
 $offeringId = (int) ($body['offering_id'] ?? $_POST['offering_id'] ?? 0);
 $force      = !empty($body['force']) || !empty($_POST['force']);
+$lang       = ($body['lang'] ?? $_POST['lang'] ?? 'en') === 'tl' ? 'tl' : 'en';
 
 if ($studentId <= 0 || $offeringId <= 0) {
     http_response_code(400);
@@ -56,7 +57,7 @@ if (!$stmt->fetch()) {
 
 // ---- Serve from cache unless a fresh analysis was requested -----------
 if (!$force) {
-    $cached = get_cached_insight($pdo, $studentId, $offeringId);
+    $cached = get_cached_insight($pdo, $studentId, $offeringId, $lang);
     if ($cached) {
         echo json_encode(['success' => true] + $cached);
         exit();
@@ -81,7 +82,7 @@ if (!gemini_is_configured()) {
     exit();
 }
 
-$result = gemini_analyze_student_risk($data['name'], $data['subject'], $data['risk_label'], $data);
+$result = gemini_analyze_student_risk($data['name'], $data['subject'], $data['risk_label'], $data, $lang);
 
 if (!$result['success']) {
     http_response_code(502);
@@ -97,13 +98,16 @@ save_insight(
     $data['risk_score'],
     $result['why'],
     $result['how'],
-    $result['recommended_actions']
+    $result['recommended_actions'],
+    $result['key_observations'] ?? [],
+    $lang
 );
 
 echo json_encode([
     'success'             => true,
     'why'                 => $result['why'],
     'how'                 => $result['how'],
+    'key_observations'    => $result['key_observations'] ?? [],
     'recommended_actions' => $result['recommended_actions'],
     'generated_at'        => date('c'),
     'cached'              => false,
