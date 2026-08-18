@@ -117,7 +117,7 @@ include 'assets/api/dashboard_functions.php';
                             <tr>
                                 <td><?= htmlspecialchars($s['name']) ?></td>
                                 <td><span class="chip"><?= htmlspecialchars($s['subject']) ?></span></td>
-                                <td><?= htmlspecialchars($s['avg_grade']) ?>%</td>
+                                <td><?= htmlspecialchars($s['avg_grade']) ?><?= is_numeric($s['avg_grade']) ? '%' : '' ?></td>
                                 <td><span class="risk risk--<?= strtolower($s['risk']) ?>"><?= htmlspecialchars($s['risk']) ?></span></td>
                             </tr>
                             <?php endforeach; ?>

@@ -1,5 +1,6 @@
 <?php
     require_once '../../config/config.php'; // adjust path to your actual config.php location
+    require_once __DIR__ . '/at_risk_functions.php';
 
 // ---- Access control -------------------------------------------------
 if (!isLoggedIn() || ($_SESSION['role'] ?? '') !== 'teacher') {
@@ -56,15 +57,46 @@ if ($offeringIds) {
     $totalStudents = (int) $stmt->fetchColumn();
 }
 
+// ---- At-risk detection (attendance + assignments + quizzes, weighted) --
+$atRiskRoster = $offeringIds ? get_at_risk_roster($pdo, $offeringIds) : [];
+
+$atRiskCount = 0;
+$atRiskStudents = [];
+foreach ($atRiskRoster as $row) {
+    if ($row['risk_label'] === 'High' || $row['risk_label'] === 'Medium') {
+        $atRiskCount++;
+    }
+    if ($row['risk_label'] === 'High' && count($atRiskStudents) < 5) {
+        $avg = $row['assignment_pct'] ?? $row['quiz_pct'] ?? $row['attendance_pct'];
+        $atRiskStudents[] = [
+            'name'      => $row['name'],
+            'subject'   => $row['subject'],
+            'avg_grade' => $avg !== null ? round($avg, 1) : 'N/A',
+            'risk'      => $row['risk_label'],
+        ];
+    }
+}
+
 // ---- Placeholder metrics (no backing table yet) ------------------------
 // TODO: replace with a real query once an `assignments` table exists.
 $assignmentsToGrade = null;
-// TODO: replace with a real query once grades/attendance-based risk
-// scoring is implemented (REQ018–REQ021 in the proposal).
-$atRiskCount = null;
-$atRiskStudents = []; // TODO: populate once at-risk detection exists.
-// TODO: replace once an `attendance` table exists.
+// ---- Attendance rate across this teacher's active classes -------------
 $attendanceRate = null;
+if ($offeringIds) {
+    $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
+    $stmt = $pdo->prepare("
+        SELECT
+            SUM(status IN ('Present','Late','Excused')) AS credited,
+            COUNT(*) AS total
+        FROM attendance
+        WHERE offering_id IN ($placeholders)
+    ");
+    $stmt->execute($offeringIds);
+    $row = $stmt->fetch();
+    if ($row && (int) $row['total'] > 0) {
+        $attendanceRate = round(((int) $row['credited'] / (int) $row['total']) * 100, 1);
+    }
+}
 
 // ---- Recent activity feed (announcements + materials + enrollments) ---
 $recentActivity = [];
