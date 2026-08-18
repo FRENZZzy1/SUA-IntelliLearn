@@ -3,7 +3,7 @@ require_once '../../config/config.php'; // adjust path to your actual config.php
 
 // ---- Access control -------------------------------------------------
 if (!isLoggedIn() || ($_SESSION['role'] ?? '') !== 'teacher') {
-    header('Location: ../../login.php');
+    header('Location: ../login.php');
     exit();
 }
 

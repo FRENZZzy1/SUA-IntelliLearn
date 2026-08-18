@@ -39,9 +39,20 @@ if(isset($_POST['login'])){
 
         if($passwordMatches){
 
+            // Generate a fresh session token and store it as this user's
+            // "current" session. Any other device already logged in with
+            // this account will fail isLoggedIn()'s token check on its
+            // next request and get logged out automatically.
+            $sessionToken = bin2hex(random_bytes(32));
+
+            $tokenStmt = $conn->prepare("UPDATE users SET current_session_token=? WHERE id=?");
+            $tokenStmt->bind_param("si", $sessionToken, $user['id']);
+            $tokenStmt->execute();
+
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $user['username'];
             $_SESSION['role'] = $user['role'];
+            $_SESSION['session_token'] = $sessionToken;
 
             // Redirect based on role
             if ($user['role'] === 'admin') {

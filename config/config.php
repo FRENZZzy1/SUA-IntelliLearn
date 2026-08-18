@@ -53,10 +53,40 @@ function clean($data) {
 }
 
 /**
- * Check if user is logged in
+ * Check if user is logged in.
+ *
+ * Also enforces single-device login: on every call, the session's
+ * 'session_token' (set at login time) is checked against the
+ * 'current_session_token' column in the users table. If a newer
+ * login happened elsewhere (e.g. on another device), that UPDATE
+ * overwrote the DB token, so this session's token no longer matches
+ * and the session is destroyed here — effectively logging this
+ * device out.
  */
 function isLoggedIn() {
-    return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
+    global $pdo;
+
+    if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
+        return false;
+    }
+
+    $stmt = $pdo->prepare("SELECT current_session_token FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $row = $stmt->fetch();
+
+    $sessionToken = $_SESSION['session_token'] ?? null;
+
+    if (!$row || $sessionToken === null || $row['current_session_token'] !== $sessionToken) {
+        // No matching user, or this session has been superseded by a
+        // newer login elsewhere — force this device out.
+        $_SESSION = [];
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_destroy();
+        }
+        return false;
+    }
+
+    return true;
 }
 
 /**
@@ -93,7 +123,7 @@ function requireTeacher() {
             exit();
         }
 
-        header("Location: ../../login.php");
+        header("Location: /SUA-INTELLILEARN/public/login.php");
         exit();
     }
 }
@@ -120,7 +150,7 @@ function requireAdmin() {
             exit();
         }
 
-        header("Location: ../../login.php");
+        header("Location: /SUA-INTELLILEARN/public/login.php");
         exit();
     }
 }

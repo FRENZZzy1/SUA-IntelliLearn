@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../../../config/config.php';
 
 // ---- Access control -------------------------------------------------
 if (!isLoggedIn() || ($_SESSION['role'] ?? '') !== 'teacher') {
-    header('Location: ../../login.php');
+    header('Location: ../login.php');
     exit();
 }
 
