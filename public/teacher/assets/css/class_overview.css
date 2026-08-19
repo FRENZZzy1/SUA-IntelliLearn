@@ -1289,13 +1289,65 @@
         justify-content: center;
     }
 
+    /* ---- Assignments & Quizzes list items ---- */
     .material-item {
         flex-wrap: wrap;
-        padding: 12px;
+        padding: 14px 12px;
+        gap: 10px;
+        align-items: flex-start;
     }
 
-    .material-actions {
+    .material-item .material-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 0.9rem;
+    }
+
+    .material-item .material-info {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .material-item .material-title {
+        font-size: 0.92rem;
+        line-height: 1.35;
+    }
+
+    .material-item .material-meta {
+        font-size: 0.75rem;
+        line-height: 1.5;
+    }
+
+    /* Stack action buttons below content on mobile */
+    .material-item .btn-view-submissions,
+    .material-item .btn-view-answers {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        margin-top: 4px;
+        padding: 10px 14px;
+        font-size: 0.82rem;
+    }
+
+    .material-item .material-delete-form {
+        order: 4;
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .material-item .material-delete-form .qa-btn--danger {
+        width: 100%;
+        height: 40px;
+        border-radius: 10px;
+        font-size: 0.82rem;
+        gap: 6px;
+    }
+
+    .material-item .material-actions {
+        order: 3;
         margin-left: auto;
+        display: flex;
+        gap: 6px;
     }
 
     .material-source-toggle {
@@ -1316,14 +1368,96 @@
         grid-template-columns: 1fr;
     }
 
+    /* ---- Grading tables (Assignments & Quizzes) ---- */
     .data-table {
-        min-width: 480px;
+        min-width: 520px;
     }
 
     .data-table--modern tbody td {
-        padding: 12px;
+        padding: 10px 12px;
+        font-size: 0.85rem;
     }
 
+    .data-table--modern thead th {
+        padding: 10px 12px;
+        font-size: 0.72rem;
+    }
+
+    .grading-table .student-name {
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+
+    .grading-table .grade-input {
+        max-width: 70px;
+        padding: 6px 8px;
+        font-size: 0.82rem;
+    }
+
+    .grading-table .feedback-input {
+        min-width: 120px;
+        padding: 6px 8px;
+        font-size: 0.82rem;
+    }
+
+    .grading-table .chip {
+        font-size: 0.72rem;
+        padding: 4px 10px;
+    }
+
+    .grading-table .attempt-file-list__label {
+        font-size: 0.72rem;
+    }
+
+    .grading-table .link-view {
+        font-size: 0.8rem;
+    }
+
+    .grading-table .btn-view-answers {
+        padding: 6px 10px;
+        font-size: 0.78rem;
+        white-space: nowrap;
+    }
+
+    .grading-save-bar,
+    .attendance-save-bar {
+        position: sticky;
+        bottom: 0;
+        background: var(--card, #ffffff);
+        padding: 14px 0;
+        margin-top: 10px;
+        border-top: 1px solid var(--border, #f1f5f9);
+    }
+
+    .grading-save-bar button,
+    .attendance-save-bar button {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* ---- Assignment detail header ---- */
+    .panel-header .enrolled-badge {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        line-height: 1.5;
+    }
+
+    .assignment-description {
+        font-size: 0.88rem;
+        padding: 12px 14px;
+    }
+
+    .attachment-link {
+        font-size: 0.85rem;
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* ---- Attendance ---- */
     .attendance-date-bar {
         justify-content: space-between;
     }
@@ -1358,22 +1492,6 @@
 
     .fab {
         display: flex;
-    }
-
-    .grading-save-bar,
-    .attendance-save-bar {
-        position: sticky;
-        bottom: 0;
-        background: var(--card, #ffffff);
-        padding: 14px 0;
-        margin-top: 10px;
-        border-top: 1px solid var(--border, #f1f5f9);
-    }
-
-    .grading-save-bar button,
-    .attendance-save-bar button {
-        width: 100%;
-        justify-content: center;
     }
 
     /* ---- Quiz answer review modal ---- */
