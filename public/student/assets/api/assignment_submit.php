@@ -1,23 +1,124 @@
 <?php
 require_once __DIR__ . '/../../../../config/config.php';
-if (!isLoggedIn() || ($_SESSION['role'] ?? '') !== 'student') { header('Location: ../../login.php'); exit(); }
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: ../../courses.php'); exit(); }
-$userId=(int)$_SESSION['user_id'];
-$stmt=$pdo->prepare("SELECT student_id FROM students WHERE user_id=? LIMIT 1");$stmt->execute([$userId]);$student=$stmt->fetch();if(!$student)die('Student record not found for this account.');$studentId=(int)$student['student_id'];
-$subjectId=filter_input(INPUT_POST,'subject_id',FILTER_VALIDATE_INT);$term=$_POST['term']??null;$assignmentId=filter_input(INPUT_POST,'assignment_id',FILTER_VALIDATE_INT);$backUrl='../../course_view.php?'.http_build_query(['subject_id'=>$subjectId,'term'=>$term,'view'=>'assignments','assignment_id'=>$assignmentId]);
-if(!validateCSRFToken($_POST['csrf_token']??'')){setFlashMessage('error','Your session expired. Please try again.');header('Location: '.$backUrl);exit();}
-if(!$assignmentId){setFlashMessage('error','Invalid assignment.');header('Location: ../../courses.php');exit();}
-$stmt=$pdo->prepare("SELECT a.assignment_id,a.due_date,a.offering_id,a.max_attempts FROM assignments a JOIN enrollments e ON e.offering_id=a.offering_id WHERE a.assignment_id=? AND a.status='published' AND e.student_id=? AND e.status='active' LIMIT 1");$stmt->execute([$assignmentId,$studentId]);$assignment=$stmt->fetch();
-if(!$assignment){setFlashMessage('error','Assignment not found or you do not have access to it.');header('Location: ../../courses.php');exit();}
+if (!isLoggedIn() || ($_SESSION['role'] ?? '') !== 'student') {
+    header('Location: ../../login.php');
+    exit();
+}
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('Location: ../../courses.php');
+    exit();
+}
+$userId = (int) $_SESSION['user_id'];
+$stmt = $pdo->prepare("SELECT student_id FROM students WHERE user_id=? LIMIT 1");
+$stmt->execute([$userId]);
+$student = $stmt->fetch();
+if (!$student)
+    die('Student record not found for this account.');
+$studentId = (int) $student['student_id'];
+$subjectId = filter_input(INPUT_POST, 'subject_id', FILTER_VALIDATE_INT);
+$term = $_POST['term'] ?? null;
+$assignmentId = filter_input(INPUT_POST, 'assignment_id', FILTER_VALIDATE_INT);
+$backUrl = '../../course_view.php?' . http_build_query(['subject_id' => $subjectId, 'term' => $term, 'view' => 'assignments', 'assignment_id' => $assignmentId]);
+if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+    setFlashMessage('error', 'Your session expired. Please try again.');
+    header('Location: ' . $backUrl);
+    exit();
+}
+if (!$assignmentId) {
+    setFlashMessage('error', 'Invalid assignment.');
+    header('Location: ../../courses.php');
+    exit();
+}
+$stmt = $pdo->prepare("SELECT a.assignment_id,a.due_date,a.offering_id,a.max_attempts FROM assignments a JOIN enrollments e ON e.offering_id=a.offering_id WHERE a.assignment_id=? AND a.status='published' AND e.student_id=? AND e.status='active' LIMIT 1");
+$stmt->execute([$assignmentId, $studentId]);
+$assignment = $stmt->fetch();
+if (!$assignment) {
+    setFlashMessage('error', 'Assignment not found or you do not have access to it.');
+    header('Location: ../../courses.php');
+    exit();
+}
 // Enforce the deadline on the server. Once it passes, the assignment cannot be submitted.
-if(!empty($assignment['due_date']) && strtotime($assignment['due_date']) < time()){setFlashMessage('error','This assignment is closed. The deadline has passed and late submissions are not allowed.');header('Location: '.$backUrl);exit();}
-$offeringId=(int)$assignment['offering_id'];$maxAttempts=(int)$assignment['max_attempts'];
-$stmt=$pdo->prepare("SELECT COUNT(*) FROM submissions WHERE assignment_id=? AND student_id=?");$stmt->execute([$assignmentId,$studentId]);$attemptsUsed=(int)$stmt->fetchColumn();
-if($attemptsUsed >= $maxAttempts){setFlashMessage('error',"You've already used all {$maxAttempts} allowed attempt".($maxAttempts===1?'':'s')." for this assignment.");header('Location: '.$backUrl);exit();}
-$attemptNumber=$attemptsUsed+1;$submissionText=trim($_POST['submission_text']??'');$submissionText=$submissionText===''?null:mb_substr($submissionText,0,5000);
-$uploadedFiles=[];if(!empty($_FILES['submission_file'])&&is_array($_FILES['submission_file']['name']??null)){for($i=0,$n=count($_FILES['submission_file']['name']);$i<$n;$i++){if($_FILES['submission_file']['error'][$i]===UPLOAD_ERR_NO_FILE)continue;$uploadedFiles[]=['name'=>$_FILES['submission_file']['name'][$i],'type'=>$_FILES['submission_file']['type'][$i],'tmp_name'=>$_FILES['submission_file']['tmp_name'][$i],'error'=>$_FILES['submission_file']['error'][$i],'size'=>$_FILES['submission_file']['size'][$i]];}}
-$hasFile=count($uploadedFiles)>0;if(!$hasFile&&$submissionText===null){setFlashMessage('error','Please attach a file or write a note before submitting.');header('Location: '.$backUrl);exit();}
-if(count($uploadedFiles)>10){setFlashMessage('error','You can attach at most 10 files per submission.');header('Location: '.$backUrl);exit();}
-$maxBytes=25*1024*1024;$allowed=['pdf','png','jpg','jpeg','doc','docx','ppt','pptx','xls','xlsx','txt','zip'];foreach($uploadedFiles as $file){if($file['error']!==UPLOAD_ERR_OK){setFlashMessage('error','One of the files failed to upload.');header('Location: '.$backUrl);exit();}if($file['size']>$maxBytes){setFlashMessage('error',"\"{$file['name']}\" is too large. Max size is 25MB per file.");header('Location: '.$backUrl);exit();}$ext=strtolower(pathinfo($file['name'],PATHINFO_EXTENSION));if(!in_array($ext,$allowed,true)){setFlashMessage('error',"\"{$file['name']}\" is not an allowed file type.");header('Location: '.$backUrl);exit();}}
-$uploadDir=__DIR__.'/../../../teacher/assets/student_submissions/'.$offeringId.'/'.$assignmentId.'/';if(!is_dir($uploadDir))mkdir($uploadDir,0755,true);$savedFiles=[];foreach($uploadedFiles as $file){$ext=strtolower(pathinfo($file['name'],PATHINFO_EXTENSION));$safe=preg_replace('/[^A-Za-z0-9_-]/','_',pathinfo($file['name'],PATHINFO_FILENAME));$stored='student'.$studentId.'_'.$safe.'_'.bin2hex(random_bytes(6)).'.'.$ext;if(!move_uploaded_file($file['tmp_name'],$uploadDir.$stored)){setFlashMessage('error','Could not save one of the uploaded files.');header('Location: '.$backUrl);exit();}$savedFiles[]=['original_name'=>mb_substr($file['name'],0,255),'relative_path'=>'assets/student_submissions/'.$offeringId.'/'.$assignmentId.'/'.$stored,'size'=>(int)$file['size']];}
-$stmt=$pdo->prepare("INSERT INTO submissions (assignment_id,student_id,attempt_number,submission_text,file_path,file_size,status,submitted_at) VALUES (?,?,?,?,NULL,NULL,'submitted',NOW())");$stmt->execute([$assignmentId,$studentId,$attemptNumber,$submissionText]);$submissionId=(int)$pdo->lastInsertId();if($savedFiles){$fileStmt=$pdo->prepare("INSERT INTO submission_files (submission_id,original_name,file_path,file_size) VALUES (?,?,?,?)");foreach($savedFiles as $f)$fileStmt->execute([$submissionId,$f['original_name'],$f['relative_path'],$f['size']]);}$left=$maxAttempts-$attemptNumber;setFlashMessage('success','Submitted successfully.'.($left>0?" ({$left} attempt".($left===1?'':'s')." left)":' (final attempt used)'));header('Location: '.$backUrl);exit();
+if (!empty($assignment['due_date']) && strtotime($assignment['due_date']) < time()) {
+    setFlashMessage('error', 'This assignment is closed. The deadline has passed and late submissions are not allowed.');
+    header('Location: ' . $backUrl);
+    exit();
+}
+$offeringId = (int) $assignment['offering_id'];
+$maxAttempts = (int) $assignment['max_attempts'];
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM submissions WHERE assignment_id=? AND student_id=?");
+$stmt->execute([$assignmentId, $studentId]);
+$attemptsUsed = (int) $stmt->fetchColumn();
+if ($attemptsUsed >= $maxAttempts) {
+    setFlashMessage('error', "You've already used all {$maxAttempts} allowed attempt" . ($maxAttempts === 1 ? '' : 's') . " for this assignment.");
+    header('Location: ' . $backUrl);
+    exit();
+}
+$attemptNumber = $attemptsUsed + 1;
+$submissionText = trim($_POST['submission_text'] ?? '');
+$submissionText = $submissionText === '' ? null : mb_substr($submissionText, 0, 5000);
+$uploadedFiles = [];
+if (!empty($_FILES['submission_file']) && is_array($_FILES['submission_file']['name'] ?? null)) {
+    for ($i = 0, $n = count($_FILES['submission_file']['name']); $i < $n; $i++) {
+        if ($_FILES['submission_file']['error'][$i] === UPLOAD_ERR_NO_FILE)
+            continue;
+        $uploadedFiles[] = ['name' => $_FILES['submission_file']['name'][$i], 'type' => $_FILES['submission_file']['type'][$i], 'tmp_name' => $_FILES['submission_file']['tmp_name'][$i], 'error' => $_FILES['submission_file']['error'][$i], 'size' => $_FILES['submission_file']['size'][$i]];
+    }
+}
+$hasFile = count($uploadedFiles) > 0;
+if (!$hasFile && $submissionText === null) {
+    setFlashMessage('error', 'Please attach a file or write a note before submitting.');
+    header('Location: ' . $backUrl);
+    exit();
+}
+if (count($uploadedFiles) > 10) {
+    setFlashMessage('error', 'You can attach at most 10 files per submission.');
+    header('Location: ' . $backUrl);
+    exit();
+}
+$maxBytes = 25 * 1024 * 1024;
+$allowed = ['pdf', 'png', 'jpg', 'jpeg', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'zip'];
+foreach ($uploadedFiles as $file) {
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        setFlashMessage('error', 'One of the files failed to upload.');
+        header('Location: ' . $backUrl);
+        exit();
+    }
+    if ($file['size'] > $maxBytes) {
+        setFlashMessage('error', "\"{$file['name']}\" is too large. Max size is 25MB per file.");
+        header('Location: ' . $backUrl);
+        exit();
+    }
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    if (!in_array($ext, $allowed, true)) {
+        setFlashMessage('error', "\"{$file['name']}\" is not an allowed file type.");
+        header('Location: ' . $backUrl);
+        exit();
+    }
+}
+$uploadDir = __DIR__ . '/../../../teacher/assets/student_submissions/' . $offeringId . '/' . $assignmentId . '/';
+if (!is_dir($uploadDir))
+    mkdir($uploadDir, 0755, true);
+$savedFiles = [];
+foreach ($uploadedFiles as $file) {
+    $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $safe = preg_replace('/[^A-Za-z0-9_-]/', '_', pathinfo($file['name'], PATHINFO_FILENAME));
+    $stored = 'student' . $studentId . '_' . $safe . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
+    if (!move_uploaded_file($file['tmp_name'], $uploadDir . $stored)) {
+        setFlashMessage('error', 'Could not save one of the uploaded files.');
+        header('Location: ' . $backUrl);
+        exit();
+    }
+    $savedFiles[] = ['original_name' => mb_substr($file['name'], 0, 255), 'relative_path' => 'assets/student_submissions/' . $offeringId . '/' . $assignmentId . '/' . $stored, 'size' => (int) $file['size']];
+}
+$stmt = $pdo->prepare("INSERT INTO submissions (assignment_id,student_id,attempt_number,submission_text,file_path,file_size,status,submitted_at) VALUES (?,?,?,?,NULL,NULL,'submitted',NOW())");
+$stmt->execute([$assignmentId, $studentId, $attemptNumber, $submissionText]);
+$submissionId = (int) $pdo->lastInsertId();
+if ($savedFiles) {
+    $fileStmt = $pdo->prepare("INSERT INTO submission_files (submission_id,original_name,file_path,file_size) VALUES (?,?,?,?)");
+    foreach ($savedFiles as $f)
+        $fileStmt->execute([$submissionId, $f['original_name'], $f['relative_path'], $f['size']]);
+}
+$left = $maxAttempts - $attemptNumber;
+setFlashMessage('success', 'Submitted successfully.' . ($left > 0 ? " ({$left} attempt" . ($left === 1 ? '' : 's') . " left)" : ' (final attempt used)'));
+header('Location: ' . $backUrl);
+exit();
