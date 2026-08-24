@@ -31,13 +31,46 @@ if (!$quiz) {
     die("Quiz not found or is not available.");
 }
 
-// 3. Count attempts
-$stmt = $pdo->prepare("SELECT COUNT(*) FROM quiz_attempts WHERE quiz_id = ? AND student_id = ?");
+// 3. Count attempts (only ones that were actually submitted — an in-progress
+//    row created for timer tracking shouldn't burn an attempt by itself)
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM quiz_attempts WHERE quiz_id = ? AND student_id = ? AND status != 'in_progress'");
 $stmt->execute([$quizId, $studentId]);
 $attemptCount = (int)$stmt->fetchColumn();
 
 if ($attemptCount >= $quiz['max_attempts']) {
     die("You have reached the maximum allowed attempts for this quiz.");
+}
+
+$timeLimit = (int) ($quiz['time_limit_minutes'] ?? 0); // minutes, 0 = no limit
+
+// 3b. Timer tracking: get or create the in-progress attempt row so the
+// countdown is anchored to a DB timestamp (started_at) instead of the
+// client's clock — refreshing the page can no longer reset the timer.
+$remainingSeconds = $timeLimit > 0 ? $timeLimit * 60 : null;
+
+if ($timeLimit > 0 && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $stmt = $pdo->prepare("
+        SELECT attempt_id, started_at
+        FROM quiz_attempts
+        WHERE quiz_id = ? AND student_id = ? AND status = 'in_progress'
+        ORDER BY started_at DESC LIMIT 1
+    ");
+    $stmt->execute([$quizId, $studentId]);
+    $inProgress = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($inProgress) {
+        $startedAt = new DateTime($inProgress['started_at']);
+    } else {
+        $stmtStart = $pdo->prepare("
+            INSERT INTO quiz_attempts (quiz_id, student_id, attempt_number, status, started_at)
+            VALUES (?, ?, ?, 'in_progress', NOW())
+        ");
+        $stmtStart->execute([$quizId, $studentId, $attemptCount + 1]);
+        $startedAt = new DateTime();
+    }
+
+    $elapsed = (new DateTime())->getTimestamp() - $startedAt->getTimestamp();
+    $remainingSeconds = max(0, ($timeLimit * 60) - $elapsed);
 }
 
 // 4. Handle Form Submission
@@ -53,12 +86,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $pdo->beginTransaction();
     try {
-        $stmtAttempt = $pdo->prepare("
-            INSERT INTO quiz_attempts (quiz_id, student_id, attempt_number, status, started_at, submitted_at)
-            VALUES (?, ?, ?, 'submitted', NOW(), NOW())
+        // If a timer-tracking row already exists for this quiz (created when the
+        // student opened it), finalize that same row instead of inserting a new
+        // one, so started_at / attempt_number stay accurate.
+        $stmt = $pdo->prepare("
+            SELECT attempt_id FROM quiz_attempts
+            WHERE quiz_id = ? AND student_id = ? AND status = 'in_progress'
+            ORDER BY started_at DESC LIMIT 1
         ");
-        $stmtAttempt->execute([$quizId, $studentId, $attemptCount + 1]);
-        $attemptId = $pdo->lastInsertId();
+        $stmt->execute([$quizId, $studentId]);
+        $existingAttemptId = $stmt->fetchColumn();
+
+        if ($existingAttemptId) {
+            $attemptId = (int)$existingAttemptId;
+            $stmtAttempt = $pdo->prepare("
+                UPDATE quiz_attempts SET status = 'submitted', submitted_at = NOW() WHERE attempt_id = ?
+            ");
+            $stmtAttempt->execute([$attemptId]);
+        } else {
+            $stmtAttempt = $pdo->prepare("
+                INSERT INTO quiz_attempts (quiz_id, student_id, attempt_number, status, started_at, submitted_at)
+                VALUES (?, ?, ?, 'submitted', NOW(), NOW())
+            ");
+            $stmtAttempt->execute([$quizId, $studentId, $attemptCount + 1]);
+            $attemptId = $pdo->lastInsertId();
+        }
 
         foreach ($questions as $q) {
             $qId = (int)$q['question_id'];
@@ -134,7 +186,6 @@ if (!empty($questions)) {
 
 $totalQuestions = count($questions);
 $totalPoints = array_sum(array_column($questions, 'points'));
-$timeLimit = (int) ($quiz['time_limit'] ?? 0); // minutes, 0 = no limit
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -379,10 +430,11 @@ $timeLimit = (int) ($quiz['time_limit'] ?? 0); // minutes, 0 = no limit
         }
     });
 
-    // Timer logic
+    // Timer logic — seeded from the server (started_at in quiz_attempts),
+    // not the raw time limit, so refreshing the page doesn't reset the clock.
     <?php if ($timeLimit > 0): ?>
-    const timeLimitSec = <?= $timeLimit * 60 ?>;
-    let remaining = timeLimitSec;
+    let remaining = <?= (int)$remainingSeconds ?>;
+    let autoSubmitted = false;
     const timerDisplay = document.getElementById('timerDisplay');
     const submitTimer = document.getElementById('submitTimer');
     const timerBadge = document.getElementById('timerBadge');
@@ -393,6 +445,15 @@ $timeLimit = (int) ($quiz['time_limit'] ?? 0); // minutes, 0 = no limit
         return m + ':' + s;
     }
 
+    function autoSubmit() {
+        if (autoSubmitted) return;
+        autoSubmitted = true;
+        clearInterval(timerInterval);
+        formDirty = false; // skip the beforeunload confirmation
+        if (timerDisplay) timerDisplay.textContent = "00:00";
+        form.submit();
+    }
+
     function updateTimer() {
         timerDisplay.textContent = formatTime(remaining);
         if (submitTimer) submitTimer.innerHTML = 'Time remaining: <strong>' + formatTime(remaining) + '</strong>';
@@ -401,8 +462,7 @@ $timeLimit = (int) ($quiz['time_limit'] ?? 0); // minutes, 0 = no limit
             timerBadge.classList.add('badge--urgent');
         }
         if (remaining <= 0) {
-            clearInterval(timerInterval);
-            form.submit();
+            autoSubmit();
             return;
         }
         remaining--;
@@ -410,6 +470,11 @@ $timeLimit = (int) ($quiz['time_limit'] ?? 0); // minutes, 0 = no limit
 
     updateTimer();
     const timerInterval = setInterval(updateTimer, 1000);
+
+    // Belt-and-suspenders: even if the interval gets throttled (e.g. a
+    // backgrounded mobile tab), fire an absolute deadline based on the
+    // same server-computed remaining time.
+    setTimeout(autoSubmit, (remaining + 1) * 1000);
     <?php endif; ?>
 
     // Smooth scroll for nav dots
