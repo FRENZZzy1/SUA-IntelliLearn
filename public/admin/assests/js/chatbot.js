@@ -11,6 +11,9 @@
     const MODEL_SETTINGS_ENDPOINT = 'assests/api/model_settings.php';
     const MAX_HISTORY_TURNS = 8; // sent to the server; server re-caps too
 
+    // Set the path to your custom FAB PNG icon here:
+    const FAB_ICON_PNG = 'assests/images/icon_chat.png';
+
     const SUGGESTIONS = [
         'How many students are enrolled?',
         'List teachers in the Science department',
@@ -139,6 +142,15 @@
         const style = document.createElement('style');
         style.id = 'chatAssistantStyles';
         style.textContent = `
+            @keyframes fabFloat {
+                0%, 100% {
+                    transform: translateY(0);
+                }
+                50% {
+                    transform: translateY(-8px);
+                }
+            }
+
             .chat-fab {
                 position: fixed;
                 bottom: 24px;
@@ -147,20 +159,31 @@
                 height: 60px;
                 border-radius: 50%;
                 border: none;
-                background: linear-gradient(135deg, var(--primary, #4f46e5), var(--primary-accent, #7c6cf0));
-                color: #fff;
-                font-size: 23px;
+                background: transparent;
+                padding: 0;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
-                box-shadow: 0 10px 28px rgba(79, 70, 229, 0.38);
+                box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
                 z-index: 9998;
+                animation: fabFloat 3s ease-in-out infinite;
                 transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .2s ease, opacity .2s ease;
             }
-            .chat-fab:hover { transform: scale(1.07); box-shadow: 0 14px 34px rgba(79, 70, 229, 0.46); }
+            .chat-fab:hover { 
+                animation-play-state: paused;
+                transform: scale(1.07); 
+                box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35); 
+            }
             .chat-fab:active { transform: scale(0.96); }
             .chat-fab.hidden-while-open { transform: scale(0); opacity: 0; pointer-events: none; }
+            .chat-fab img.fab-custom-icon {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                border-radius: 50%;
+                pointer-events: none;
+            }
             .chat-fab-badge {
                 position: absolute;
                 top: -2px;
@@ -177,6 +200,7 @@
                 align-items: center;
                 justify-content: center;
                 border: 2px solid #fff;
+                z-index: 2;
             }
             .chat-fab-badge.hidden { display: none; }
 
@@ -576,7 +600,7 @@
         fab.type = 'button';
         fab.title = 'Ask the IntelliLearn Assistant';
         fab.setAttribute('aria-label', 'Open chat assistant');
-        fab.innerHTML = '<i class="fas fa-robot"></i><span class="chat-fab-badge hidden" id="chatFabBadge">0</span>';
+        fab.innerHTML = `<img src="${FAB_ICON_PNG}" alt="Chat Assistant" class="fab-custom-icon"><span class="chat-fab-badge hidden" id="chatFabBadge">0</span>`;
         document.body.appendChild(fab);
 
         const panel = document.createElement('div');
