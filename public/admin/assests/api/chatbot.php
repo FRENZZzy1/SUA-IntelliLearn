@@ -42,24 +42,33 @@ if (mb_strlen($message) > 1000) {
 }
 
 $history = [];
+$retrievalHistory = [];
 foreach (array_slice($historyIn, -8) as $turn) {
     if (!is_array($turn)) continue;
     $role = $turn['role'] ?? '';
     $content = trim((string) ($turn['content'] ?? ''));
     if (!in_array($role, ['user', 'assistant'], true) || $content === '') continue;
+
     $history[] = [
         'role' => $role === 'assistant' ? 'model' : 'user',
         'parts' => [['text' => mb_substr($content, 0, 1000)]],
     ];
+
+    // Retrieval also needs the user's recent wording. This lets follow-ups
+    // such as "can you list their names?" inherit the previous student,
+    // grade, section, subject, or enrollment context instead of being
+    // treated as a brand-new unrelated query.
+    if ($role === 'user') {
+        $retrievalHistory[] = mb_substr($content, 0, 500);
+    }
 }
 
-try {
-    $context = get_chatbot_context($pdo, $message);
+$retrievalQuestion = implode("\n", array_slice($retrievalHistory, -3));
+$retrievalQuestion .= ($retrievalQuestion !== '' ? "\n" : '') . $message;
 
-    // Add a dedicated roster lookup after the general retrieval layer.
-    // This is important because generic keyword search intentionally limits
-    // user matches and therefore cannot answer "list all students" reliably.
-    $studentContext = get_chatbot_student_context($pdo, $message);
+try {
+    $context = get_chatbot_context($pdo, $retrievalQuestion);
+    $studentContext = get_chatbot_student_context($pdo, $retrievalQuestion);
     if ($studentContext !== '') {
         $context .= "\n" . $studentContext;
     }
@@ -71,6 +80,10 @@ $systemPrompt = <<<PROMPT
 You are the IntelliLearn Admin Assistant for St. Uriel Academy. You help authorized administrators and teachers with school operations, IntelliLearn workflows, and current school data.
 
 IMPORTANT: Identify the user's intent before answering. A question can be a LIVE DATA question, an ADMIN/HOW-TO question, a TROUBLESHOOTING question, or a combination.
+
+CONVERSATION CONTEXT:
+- Treat the current user message together with the recent conversation as one request when the current message contains a follow-up such as "their names", "list them", "who are they", "those students", "that class", or "show me more".
+- Do not discard filters established in the previous user message unless the current user explicitly changes them.
 
 LIVE DATA MODE:
 Use DATABASE CONTEXT for current school-specific facts such as student/teacher counts, users, classes, courses, pending enrollments, student schedules, teacher loads, sections, strands, advisers, enrollment status, class capacity, available seats, and student rosters.
@@ -128,7 +141,7 @@ DATABASE CONTEXT:
 {$context}
 
 FINAL CHECK:
-1. Did I identify the intent correctly?
+1. Did I identify the intent correctly, including any follow-up context?
 2. If this is live data, did I use only facts present in DATABASE CONTEXT?
 3. If a STUDENT ROSTER LOOKUP is present, did I actually answer the roster request using those names?
 4. If this is a how-to question, did I provide actionable guidance instead of refusing because no record was found?
