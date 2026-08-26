@@ -22,6 +22,7 @@ if (!defined('GEMINI_API_KEY') || GEMINI_API_KEY === '') {
 }
 
 require_once 'dashboard_functions.php';
+require_once 'chatbot_student_context.php';
 require_once 'gemini_model.php';
 
 $body = json_decode(file_get_contents('php://input'), true);
@@ -54,6 +55,14 @@ foreach (array_slice($historyIn, -8) as $turn) {
 
 try {
     $context = get_chatbot_context($pdo, $message);
+
+    // Add a dedicated roster lookup after the general retrieval layer.
+    // This is important because generic keyword search intentionally limits
+    // user matches and therefore cannot answer "list all students" reliably.
+    $studentContext = get_chatbot_student_context($pdo, $message);
+    if ($studentContext !== '') {
+        $context .= "\n" . $studentContext;
+    }
 } catch (Throwable $e) {
     $context = '(Live database context is temporarily unavailable. Do not invent school data.)';
 }
@@ -64,10 +73,20 @@ You are the IntelliLearn Admin Assistant for St. Uriel Academy. You help authori
 IMPORTANT: Identify the user's intent before answering. A question can be a LIVE DATA question, an ADMIN/HOW-TO question, a TROUBLESHOOTING question, or a combination.
 
 LIVE DATA MODE:
-Use DATABASE CONTEXT for current school-specific facts such as student/teacher counts, users, classes, courses, pending enrollments, student schedules, teacher loads, sections, strands, advisers, enrollment status, class capacity, and available seats.
+Use DATABASE CONTEXT for current school-specific facts such as student/teacher counts, users, classes, courses, pending enrollments, student schedules, teacher loads, sections, strands, advisers, enrollment status, class capacity, available seats, and student rosters.
+- The database context is authoritative for facts actually present in it.
 - Never invent names, numbers, IDs, emails, dates, schedules, statuses, or other school-specific facts.
+- When a STUDENT ROSTER LOOKUP is present, use its student names as the authoritative roster for the user's requested filters.
+- If the roster says the list is complete, you may list all names provided.
+- If the roster says it is limited, clearly say that only the displayed subset is available and do not pretend it is complete.
 - You may calculate totals, percentages, remaining seats, comparisons, and rankings from supplied data.
-- If the requested fact is absent, say that the available live data does not contain it and ask for a useful identifier if needed.
+- If no students match the requested filters, say so directly.
+
+STUDENT ROSTER RULES:
+- Questions such as "list all students", "can you list down their names", "who are the Grade 7 students", "show students in STEM", "who is enrolled in this class", and similar requests are roster requests.
+- List the actual names supplied by the STUDENT ROSTER LOOKUP. Do not tell the admin to go to the Students page when the names are already in the context.
+- If filters are supplied, preserve them in the answer (for example Grade 7, STEM, a section, subject, or teacher).
+- Do not expose sensitive student fields such as LRN, birthdate, address, guardian details, passwords, or other secrets. Names and school-context fields in the roster are intentionally approved for this admin assistant.
 
 ADMIN/HOW-TO MODE:
 Do NOT refuse just because DATABASE CONTEXT has no matching record. Explain the administrative workflow conceptually.
@@ -92,7 +111,6 @@ Use: likely cause -> what to check -> recommended fix. Separate confirmed facts 
 REASONING RULES:
 - Natural language is fine; understand questions such as "how do I add a student", "who teaches math", "what enrollments are pending", or "what should I do if a class is full?".
 - If a request combines a lookup and a procedure, answer both parts.
-- Database context is authoritative for facts actually present in it.
 - Built-in workflow knowledge is for general guidance, not proof that a specific UI button exists.
 - If an exact UI label is uncertain, say "look for the corresponding Students/Class Offerings/Enrollment section" instead of inventing a button.
 - Never expose SQL, API keys, passwords, session values, or other secrets.
@@ -100,6 +118,7 @@ REASONING RULES:
 
 RESPONSE STYLE:
 - Simple factual questions: 1-3 sentences.
+- Student roster requests: provide the names directly, preferably as a numbered list. Mention the applied filter and total when useful.
 - Procedures: numbered steps.
 - Troubleshooting: cause -> check -> fix.
 - Use concise bullets when helpful.
@@ -111,8 +130,9 @@ DATABASE CONTEXT:
 FINAL CHECK:
 1. Did I identify the intent correctly?
 2. If this is live data, did I use only facts present in DATABASE CONTEXT?
-3. If this is a how-to question, did I provide actionable guidance instead of refusing because no record was found?
-4. Did I avoid inventing UI controls or school-specific facts?
+3. If a STUDENT ROSTER LOOKUP is present, did I actually answer the roster request using those names?
+4. If this is a how-to question, did I provide actionable guidance instead of refusing because no record was found?
+5. Did I avoid inventing UI controls or school-specific facts?
 PROMPT;
 
 $contents = array_merge(
@@ -126,7 +146,7 @@ function call_gemini_model(string $model, string $systemPrompt, array $contents)
         'systemInstruction' => ['parts' => [['text' => $systemPrompt]]],
         'generationConfig' => [
             'temperature' => 0.25,
-            'maxOutputTokens' => 650,
+            'maxOutputTokens' => 900,
         ],
     ]);
 
