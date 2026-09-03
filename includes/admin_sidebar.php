@@ -74,9 +74,13 @@ if (function_exists('get_initials')) {
 
         <div class="nav-section">
             <div class="nav-section-title">Management</div>
-            <a href="../../public/admin/enrollment.php" class="nav-item <?= $current === 'enrollment.php' ? 'active' : '' ?>">
+            <a href="../../public/admin/enrollment.php" class="nav-item <?= in_array($current, ['enrollment.php', 'bulk_enrollment.php'], true) ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-user-plus"></i></div>
                 <span class="nav-label">Enrollment</span>
+            </a>
+            <a href="../../public/admin/bulk_enrollment.php" class="nav-item <?= $current === 'bulk_enrollment.php' ? 'active' : '' ?>">
+                <div class="nav-icon-wrap"><i class="fas fa-users"></i></div>
+                <span class="nav-label">Bulk Enrollment</span>
             </a>
             <a href="../../public/admin/announcement.php"
                 class="nav-item <?= $current === 'announcement.php' ? 'active' : '' ?>">
