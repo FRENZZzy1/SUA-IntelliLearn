@@ -10,7 +10,7 @@ include 'assests/api/add_class_modal.php';
 $flash = getFlashMessage();
 
 // ================= SUBJECT COLOR MAP =================
-// Purely cosmetic — tags/bars fall back to gray for any subject not listed here.
+// Purely cosmetic â€” tags/bars fall back to gray for any subject not listed here.
 $subjectColors = [
     'Math'                => ['bg' => '#dbeafe', 'text' => '#1d4ed8', 'bar' => '#2563eb'],
     'Science'             => ['bg' => '#dcfce7', 'text' => '#15803d', 'bar' => '#16a34a'],
@@ -114,7 +114,7 @@ if (isset($_GET['delete_subject']) && ctype_digit($_GET['delete_subject'])) {
 
 $csrfToken = generateCSRFToken();
 
-// Which view-panel (if any) should be open on load — set after a
+// Which view-panel (if any) should be open on load â€” set after a
 // Sections/Subjects add, update, or delete action so the panel doesn't
 // collapse on the user after they just worked in it.
 $openView = $_GET['open'] ?? '';
@@ -218,7 +218,7 @@ $courses = $stmt->fetchAll();
 
 $totalShown = count($courses);
 
-// ================= STATS (unaffected by filters — whole school) =================
+// ================= STATS (unaffected by filters â€” whole school) =================
 $totalCourses  = (int) $pdo->query("SELECT COUNT(*) FROM classofferings")->fetchColumn();
 $activeCourses = (int) $pdo->query("SELECT COUNT(*) FROM classofferings WHERE status = 'active'")->fetchColumn();
 
@@ -631,11 +631,11 @@ $subjectsList = $pdo->query("
                         </div>
                     </td>
                     <td class="course-name"><?= htmlspecialchars($course['section_name']) ?></td>
-                    <td>Grade <?= htmlspecialchars($course['grade_level']) ?><?= $course['strand'] ? ' · ' . htmlspecialchars($course['strand']) : '' ?></td>
+                    <td>Grade <?= htmlspecialchars($course['grade_level']) ?><?= $course['strand'] ? ' Â· ' . htmlspecialchars($course['strand']) : '' ?></td>
                     <td><?= htmlspecialchars($course['quarter']) ?></td>
-                    <td><?= $course['offering_school_year_label'] ? htmlspecialchars($course['offering_school_year_label']) : '<span class="field-note">— None —</span>' ?></td>
-                    <td><?= $scheduleDisplay ? htmlspecialchars($scheduleDisplay) : '<span class="field-note">— Not set —</span>' ?></td>
-                    <td><?= $teacherName ? htmlspecialchars($teacherName) : '— Unassigned —' ?></td>
+                    <td><?= $course['offering_school_year_label'] ? htmlspecialchars($course['offering_school_year_label']) : '<span class="field-note">â€” None â€”</span>' ?></td>
+                    <td><?= $scheduleDisplay ? htmlspecialchars($scheduleDisplay) : '<span class="field-note">â€” Not set â€”</span>' ?></td>
+                    <td><?= $teacherName ? htmlspecialchars($teacherName) : 'â€” Unassigned â€”' ?></td>
                     <td>
                         <div class="enrollment-cell">
                             <div class="enrollment-bar">
@@ -720,9 +720,9 @@ $subjectsList = $pdo->query("
                 ?>
                 <tr>
                     <td><span class="course-name"><?= htmlspecialchars($sec['section_name']) ?></span></td>
-                    <td>Grade <?= htmlspecialchars($sec['grade_level']) ?><?= $sec['strand'] ? ' · ' . htmlspecialchars($sec['strand']) : '' ?></td>
-                    <td><?= $adviserName ? htmlspecialchars($adviserName) : '— None —' ?></td>
-                    <td><?= $sec['school_year_label'] ? htmlspecialchars($sec['school_year_label']) : '— None —' ?></td>
+                    <td>Grade <?= htmlspecialchars($sec['grade_level']) ?><?= $sec['strand'] ? ' Â· ' . htmlspecialchars($sec['strand']) : '' ?></td>
+                    <td><?= $adviserName ? htmlspecialchars($adviserName) : 'â€” None â€”' ?></td>
+                    <td><?= $sec['school_year_label'] ? htmlspecialchars($sec['school_year_label']) : 'â€” None â€”' ?></td>
                     <td><?= (int) $sec['course_count'] ?></td>
                     <td><?= (int) $sec['student_count'] ?></td>
                     <td class="col-actions">
@@ -790,7 +790,7 @@ $subjectsList = $pdo->query("
                             </span>
                         </div>
                     </td>
-                    <td style="white-space: normal;"><?= $subj['description'] ? htmlspecialchars($subj['description']) : '— No description —' ?></td>
+                    <td style="white-space: normal;"><?= $subj['description'] ? htmlspecialchars($subj['description']) : 'â€” No description â€”' ?></td>
                     <td><?= (int) $subj['offering_count'] ?></td>
                     <td><?= (int) $subj['section_count'] ?></td>
                     <td class="col-actions">
@@ -831,7 +831,7 @@ $subjectsList = $pdo->query("
             <!-- Search by Teacher -->
             <div class="export-search-card">
                 <div class="export-search-card-title"><i class="fas fa-chalkboard-teacher"></i> By Teacher</div>
-                <p class="export-search-card-hint">e.g. "Rose" — exports every class that teacher handles</p>
+                <p class="export-search-card-hint">e.g. "Rose" â€” exports every class that teacher handles</p>
                 <div class="export-search-box">
                     <input type="text" id="exportTeacherInput" placeholder="Search teacher name..." autocomplete="off"
                            oninput="exportSearchInput('teacher', this.value)">
@@ -846,7 +846,7 @@ $subjectsList = $pdo->query("
             <!-- Search by Section -->
             <div class="export-search-card">
                 <div class="export-search-card-title"><i class="fas fa-layer-group"></i> By Section</div>
-                <p class="export-search-card-hint">e.g. "A110" — exports every class offered in that section</p>
+                <p class="export-search-card-hint">e.g. "A110" â€” exports every class offered in that section</p>
                 <div class="export-search-box">
                     <input type="text" id="exportSectionInput" placeholder="Search section name..." autocomplete="off"
                            oninput="exportSearchInput('section', this.value)">
@@ -861,7 +861,7 @@ $subjectsList = $pdo->query("
             <!-- Search by Student -->
             <div class="export-search-card">
                 <div class="export-search-card-title"><i class="fas fa-user-graduate"></i> By Student</div>
-                <p class="export-search-card-hint">e.g. "Frenz" — exports every class that student is enrolled in</p>
+                <p class="export-search-card-hint">e.g. "Frenz" â€” exports every class that student is enrolled in</p>
                 <div class="export-search-box">
                     <input type="text" id="exportStudentInput" placeholder="Search student name or LRN..." autocomplete="off"
                            oninput="exportSearchInput('student', this.value)">
@@ -912,7 +912,7 @@ $subjectsList = $pdo->query("
                             <option value="">Select a section</option>
                             <?php foreach ($modalSections as $sec): ?>
                                 <option value="<?= (int) $sec['section_id'] ?>">
-                                    Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?><?= $sec['strand'] ? ' (' . clean($sec['strand']) . ')' : '' ?>
+                                    Grade <?= clean($sec['grade_level']) ?> â€” <?= clean($sec['section_name']) ?><?= $sec['strand'] ? ' (' . clean($sec['strand']) . ')' : '' ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -1099,7 +1099,7 @@ $subjectsList = $pdo->query("
                     </div>
 
                     <div class="form-row">
-                        <span class="field-note">This section will be added to school year <strong><?= $currentSchoolYear ? clean($currentSchoolYear['label']) : '— none set —' ?></strong>.</span>
+                        <span class="field-note">This section will be added to school year <strong><?= $currentSchoolYear ? clean($currentSchoolYear['label']) : 'â€” none set â€”' ?></strong>.</span>
                     </div>
                 </div>
 
