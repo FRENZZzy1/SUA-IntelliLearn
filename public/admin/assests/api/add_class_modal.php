@@ -5,6 +5,7 @@ $modalSubjects = $pdo->query("SELECT subject_id, subject_name FROM subjects ORDE
 $modalSections = $pdo->query("SELECT section_id, section_name, grade_level, strand FROM sections ORDER BY grade_level, section_name")->fetchAll();
 $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teachers ORDER BY lastname, firstname")->fetchAll();
 $modalSchoolYears = $pdo->query("SELECT school_year_id, label, is_current FROM schoolyears ORDER BY start_date DESC")->fetchAll();
+$modalCurrentTerm = resolveCurrentTerm(getTermIntervals($pdo));
 
 ?>
 
@@ -57,16 +58,6 @@ $modalSchoolYears = $pdo->query("SELECT school_year_id, label, is_current FROM s
 
                 <div class="form-row-split">
                     <div class="form-row">
-                        <label for="m_quarter"><i class="fas fa-clock" aria-hidden="true"></i> Term</label>
-                        <select id="m_quarter" name="quarter" required>
-                            <option value="">Select</option>
-                            <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $q): ?>
-                                <option value="<?= $q ?>"><?= $q ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div class="form-row">
                         <label for="m_school_year_id"><i class="fas fa-calendar-alt" aria-hidden="true"></i> School Year</label>
                         <select id="m_school_year_id" name="school_year_id" required>
                             <option value="">Select</option>
@@ -106,6 +97,14 @@ $modalSchoolYears = $pdo->query("SELECT school_year_id, label, is_current FROM s
                         <label for="m_end_time"><i class="fas fa-hourglass-end" aria-hidden="true"></i> End Time</label>
                         <input type="text" id="m_end_time" name="end_time" maxlength="20" placeholder="e.g. 10:00 AM">
                     </div>
+                </div>
+
+                <div class="form-row">
+                    <?php if ($modalCurrentTerm): ?>
+                        <span class="field-note">This class will be added to the currently active term: <strong><?= clean($modalCurrentTerm) ?></strong>. Change this from "Set Term Interval" if needed.</span>
+                    <?php else: ?>
+                        <span class="field-note" style="color:#b91c1c;">No term is currently active for today's date — set your term intervals first, or this class can't be saved.</span>
+                    <?php endif; ?>
                 </div>
             </div>
 

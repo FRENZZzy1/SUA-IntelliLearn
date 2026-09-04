@@ -1,5 +1,37 @@
 /* ===================== Attendance module ===================== */
 
+.attendance-page-title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.term-filter-select {
+    padding: 8px 32px 8px 12px;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: inherit;
+    background: #fff;
+    color: var(--text, #111827);
+    outline: none;
+    cursor: pointer;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.term-filter-select:focus {
+    border-color: var(--primary, #1a5c3a);
+    box-shadow: 0 0 0 3px rgb(26 92 58 / 0.1);
+}
+
+@media (max-width: 640px) {
+    .attendance-page-title { flex-direction: column; align-items: stretch; }
+    .term-filter-select { width: 100%; }
+}
+
 .attendance-subject {
     margin-bottom: 20px;
 }
@@ -96,4 +128,37 @@
 .attendance-remarks-cell {
     color: var(--text-secondary, #6b7280);
     font-size: 0.85rem;
+}
+
+/* ---- Per-term breakdown within a subject panel ---- */
+.attendance-term-block {
+    margin-bottom: 22px;
+}
+
+.attendance-term-block:last-child {
+    margin-bottom: 0;
+}
+
+.attendance-term-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.attendance-term-header h3 {
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text, #111827);
+}
+
+.attendance-term-rate {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--primary-dark, #059669);
 }

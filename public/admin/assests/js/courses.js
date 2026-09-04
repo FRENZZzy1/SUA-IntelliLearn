@@ -237,7 +237,7 @@ function openEditCourseModal(triggerElOrData) {
     document.getElementById('e_subject_id').value = course.subject_id;
     document.getElementById('e_section_id').value = course.section_id;
     document.getElementById('e_teacher_id').value = course.teacher_id;
-    document.getElementById('e_quarter').value = course.quarter;
+    document.getElementById('e_quarter_display').textContent = course.quarter || '—';
     document.getElementById('e_school_year_id').value = course.school_year_id;
     document.getElementById('e_capacity').value = course.capacity;
     document.getElementById('e_status').value = course.status;
@@ -441,6 +441,32 @@ document.getElementById('addSectionForm').addEventListener('submit', function (e
         document.getElementById('addSectionErrors'),
         '<i class="fas fa-plus"></i> Add Section',
         'sections'
+    );
+});
+
+// ---- Set Term Interval modal ----
+function openTermIntervalModal() {
+    document.getElementById('termIntervalOverlay').classList.add('open');
+    document.getElementById('termIntervalErrors').hidden = true;
+}
+
+function closeTermIntervalModal() {
+    document.getElementById('termIntervalOverlay').classList.remove('open');
+}
+
+function toggleTermMode(n, mode) {
+    document.getElementById('term_' + n + '_month_fields').hidden = (mode !== 'month');
+    document.getElementById('term_' + n + '_date_fields').hidden = (mode !== 'date');
+}
+
+document.getElementById('termIntervalForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    submitModalForm(
+        this,
+        'save_term_intervals.php',
+        document.getElementById('termIntervalSubmitBtn'),
+        document.getElementById('termIntervalErrors'),
+        '<i class="fas fa-check"></i> Save Term Intervals'
     );
 });
 

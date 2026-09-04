@@ -188,6 +188,160 @@ function getFlashMessage() {
     return null;
 }
 
+// ============================================================
+// Term Interval Helpers
+// ============================================================
+// Term start/end is configured once (Classes & Subjects > "Set Term
+// Interval") instead of being picked per class. Each of TRM 1/2/3 can
+// either follow a recurring month range (e.g. June - September) or an
+// exact start/end date for the current cycle. Stored as a single JSON
+// blob under system_settings.setting_key = 'term_intervals'.
+
+/**
+ * Load the configured term intervals, filled in with safe defaults for
+ * any term that hasn't been set up yet (mode "month", no months/dates set).
+ */
+function getTermIntervals($pdo) {
+    $defaults = [
+        'TRM 1' => ['mode' => 'month', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
+        'TRM 2' => ['mode' => 'month', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
+        'TRM 3' => ['mode' => 'month', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
+    ];
+
+    try {
+        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
+        $stmt->execute(['term_intervals']);
+        $raw = $stmt->fetchColumn();
+
+        if ($raw) {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                foreach ($defaults as $term => $shape) {
+                    if (isset($decoded[$term]) && is_array($decoded[$term])) {
+                        $defaults[$term] = array_merge($shape, $decoded[$term]);
+                    }
+                }
+            }
+        }
+    } catch (PDOException $e) {
+        // system_settings missing/unreachable — page still renders with
+        // "not configured" defaults; saving will surface the real error.
+    }
+
+    return $defaults;
+}
+
+/**
+ * Work out which term (if any) covers a given date, based on the
+ * configured intervals. Returns 'TRM 1' / 'TRM 2' / 'TRM 3', or null if
+ * nothing is configured or the date falls outside every configured range.
+ */
+function resolveCurrentTerm(array $intervals, ?DateTime $onDate = null) {
+    $onDate = $onDate ?? new DateTime('today');
+    $month  = (int) $onDate->format('n');
+    $ymd    = $onDate->format('Y-m-d');
+
+    foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $term) {
+        $cfg = $intervals[$term] ?? null;
+        if (!$cfg) continue;
+
+        if ($cfg['mode'] === 'date') {
+            if ($cfg['start_date'] && $cfg['end_date'] && $ymd >= $cfg['start_date'] && $ymd <= $cfg['end_date']) {
+                return $term;
+            }
+        } else { // 'month'
+            $start = $cfg['start_month'] !== null ? (int) $cfg['start_month'] : null;
+            $end   = $cfg['end_month'] !== null ? (int) $cfg['end_month'] : null;
+            if ($start === null || $end === null) continue;
+
+            if ($start <= $end) {
+                if ($month >= $start && $month <= $end) return $term;
+            } else {
+                // Range wraps the new year, e.g. Nov (11) - Feb (2).
+                if ($month >= $start || $month <= $end) return $term;
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Every class offering follows the single, school-wide "current term" —
+ * there's no per-class term to edit. Whenever the active term (per
+ * resolveCurrentTerm()) has moved on, this pushes every classofferings
+ * row onto the new term so the whole school list advances together,
+ * whether those classes were created yesterday or last year.
+ *
+ * Called after "Set Term Interval" is saved, and on courses.php load, so
+ * it also picks up a term boundary being crossed purely by the passage
+ * of time (no admin action needed).
+ *
+ * Rows are updated one at a time (not a single bulk UPDATE) so that a
+ * unique-key collision on one row — e.g. two classes for the same
+ * subject/section/school-year that would otherwise land on the same term
+ * value — doesn't block every other row from advancing. Colliding rows
+ * are simply left on their previous term until the collision is resolved.
+ */
+function syncCourseTermsToCurrent($pdo) {
+    $currentTerm = resolveCurrentTerm(getTermIntervals($pdo));
+    if ($currentTerm === null) {
+        return; // No interval configured / today falls outside every range — leave classes as-is.
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT offering_id FROM classofferings WHERE quarter <> ?");
+        $stmt->execute([$currentTerm]);
+        $staleIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        return;
+    }
+
+    if (!$staleIds) {
+        return;
+    }
+
+    $update = $pdo->prepare("UPDATE classofferings SET quarter = ? WHERE offering_id = ?");
+    foreach ($staleIds as $offeringId) {
+        try {
+            $update->execute([$currentTerm, $offeringId]);
+        } catch (PDOException $e) {
+            // Duplicate (subject_id, section_id, quarter, school_year_id) —
+            // another class already occupies that slot. Skip and leave this
+            // one on its previous term rather than failing the whole sync.
+            continue;
+        }
+    }
+}
+
+// Canonical display order for attendance term breakdowns: the three
+// configured terms, then a catch-all bucket for dates that don't fall
+// inside any configured interval.
+const ATTENDANCE_TERM_ORDER = ['TRM 1', 'TRM 2', 'TRM 3', 'Unscheduled'];
+
+/**
+ * Which term (TRM 1/2/3) a given date falls into, per the configured
+ * term intervals. Used to label attendance records by term.
+ *
+ * This is deliberately independent of classofferings.quarter, which only
+ * reflects whichever term is *currently* active (it advances
+ * automatically as terms roll over — see syncCourseTermsToCurrent()
+ * above) and so can't be used to tell which term an attendance record
+ * taken weeks or months ago actually belonged to. Instead, each
+ * attendance_date is resolved against the intervals independently, the
+ * same way "Set Term Interval" resolves today's date.
+ *
+ * Falls back to 'Unscheduled' for dates outside every configured range
+ * (e.g. attendance was recorded before intervals were set up).
+ */
+function attendanceTermForDate(array $termIntervals, string $dateStr): string {
+    $date = DateTime::createFromFormat('Y-m-d', $dateStr);
+    if (!$date) {
+        return 'Unscheduled';
+    }
+    return resolveCurrentTerm($termIntervals, $date) ?? 'Unscheduled';
+}
+
  define('GEMINI_API_KEY', '');
 
 

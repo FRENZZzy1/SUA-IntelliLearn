@@ -540,24 +540,14 @@ $panelIcons = [
                                 <?php endforeach; ?>
                             </select>
                         </div>
-
-                        <div class="form-row">
-                            <label for="es_term">Term</label>
-                            <select id="es_term" name="term" required>
-                                <option value="">Select</option>
-                                <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $t): ?>
-                                    <option value="<?= $t ?>"><?= $t ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
                     </div>
 
                     <div class="form-row">
                         <label for="es_section_id">Section</label>
                         <select id="es_section_id" name="section_id" required disabled>
-                            <option value="">Select grade level, strand, and term first</option>
+                            <option value="">Select grade level and strand first</option>
                         </select>
-                        <span class="field-note" id="es_section_note">Pick a section to see the subjects offered in it.</span>
+                        <span class="field-note" id="es_section_note">Pick a section to see the subjects offered in it. Sections are matched to the current term automatically.</span>
                     </div>
 
                     <div class="form-row">
@@ -622,8 +612,8 @@ $panelIcons = [
         studentSearchInput.value = '';
         studentHiddenInput.value = '';
         closeStudentDropdown();
-        resetSectionSelect('Select grade level, strand, and term first');
-        resetSubjectList('Select grade level, strand, term, and section first');
+        resetSectionSelect('Select grade level and strand first');
+        resetSubjectList('Select grade level and section first');
     }
 
     // ---- Searchable student picker ----
@@ -673,16 +663,17 @@ $panelIcons = [
         if (!studentPicker.contains(e.target)) closeStudentDropdown();
     });
 
-    // ---- Section dropdown, driven by grade level + strand + term ----
+    // ---- Section dropdown, driven by grade level + strand. Term is no
+    // longer picked here — the backend matches against whatever term is
+    // currently active per "Set Term Interval". ----
     const gradeLevelSelect = document.getElementById('es_grade_level');
     const strandSelect     = document.getElementById('es_strand');
-    const termSelect       = document.getElementById('es_term');
     const sectionSelect    = document.getElementById('es_section_id');
     const sectionNote      = document.getElementById('es_section_note');
     const subjectList      = document.getElementById('es_subject_list');
     const subjectNote      = document.getElementById('es_subject_note');
 
-    const SECTION_DEFAULT_NOTE = 'Pick a section to see the subjects offered in it.';
+    const SECTION_DEFAULT_NOTE = 'Pick a section to see the subjects offered in it. Sections are matched to the current term automatically.';
     const SUBJECT_DEFAULT_NOTE = 'Check every subject to request for this student in this section. Creates one pending request per subject checked.';
 
     function resetSectionSelect(message) {
@@ -699,18 +690,17 @@ $panelIcons = [
     function refreshSectionOptions() {
         const gradeLevel = gradeLevelSelect.value;
         const strand     = strandSelect.value;
-        const term       = termSelect.value;
 
-        resetSubjectList('Select grade level, strand, term, and section first');
+        resetSubjectList('Select grade level and section first');
 
-        if (!gradeLevel || !term) {
-            resetSectionSelect('Select grade level, strand, and term first');
+        if (!gradeLevel) {
+            resetSectionSelect('Select grade level and strand first');
             return;
         }
 
         resetSectionSelect('Loading sections...');
 
-        const params = new URLSearchParams({ grade_level: gradeLevel, term: term, strand: strand });
+        const params = new URLSearchParams({ grade_level: gradeLevel, strand: strand });
 
         fetch('get_offering_sections.php?' + params.toString(), {
             headers: { 'Accept': 'application/json' }
@@ -723,7 +713,7 @@ $panelIcons = [
                 return;
             }
             if (data.options.length === 0) {
-                sectionSelect.innerHTML = '<option value="">No open sections for this grade/strand/term</option>';
+                sectionSelect.innerHTML = '<option value="">No open sections for this grade/strand right now</option>';
                 sectionSelect.disabled = true;
                 sectionNote.textContent = 'Create a class offering for this combination in Courses & Subjects first.';
                 return;
@@ -743,18 +733,17 @@ $panelIcons = [
     function refreshSubjectOptions() {
         const gradeLevel = gradeLevelSelect.value;
         const strand     = strandSelect.value;
-        const term       = termSelect.value;
         const sectionId  = sectionSelect.value;
 
-        if (!gradeLevel || !term || !sectionId) {
-            resetSubjectList('Select grade level, strand, term, and section first');
+        if (!gradeLevel || !sectionId) {
+            resetSubjectList('Select grade level and section first');
             return;
         }
 
         resetSubjectList('Loading subjects...');
 
         const params = new URLSearchParams({
-            section_id: sectionId, grade_level: gradeLevel, term: term, strand: strand
+            section_id: sectionId, grade_level: gradeLevel, strand: strand
         });
 
         fetch('get_section_offerings.php?' + params.toString(), {
@@ -767,7 +756,7 @@ $panelIcons = [
                 return;
             }
             if (data.options.length === 0) {
-                resetSubjectList('No class offerings exist for this section and term yet.');
+                resetSubjectList('No class offerings exist for this section in the current term yet.');
                 return;
             }
             subjectList.innerHTML = data.options.map(o => `
@@ -785,7 +774,7 @@ $panelIcons = [
         });
     }
 
-    [gradeLevelSelect, strandSelect, termSelect].forEach(el => el.addEventListener('change', refreshSectionOptions));
+    [gradeLevelSelect, strandSelect].forEach(el => el.addEventListener('change', refreshSectionOptions));
     sectionSelect.addEventListener('change', refreshSubjectOptions);
 
     // ---- Check all / Uncheck all for the subject checkbox list ----

@@ -20,11 +20,19 @@ include 'assets/api/attendance_functions.php';
 
     <?php include '../../includes/student_header.php'; ?>
 
-    <div class="dash-page-title">
-        <h1 class="dash-title">Attendance</h1>
-        <?php if ($schoolYearLabel): ?>
-            <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
-        <?php endif; ?>
+    <div class="dash-page-title attendance-page-title">
+        <div>
+            <h1 class="dash-title">Attendance</h1>
+            <?php if ($schoolYearLabel): ?>
+                <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
+            <?php endif; ?>
+        </div>
+        <select id="termFilter" class="term-filter-select" onchange="goToTerm(this.value)" title="Records are grouped by whichever term their date actually fell in">
+            <option value="all" <?= $termFilter === 'all' ? 'selected' : '' ?>>All Terms</option>
+            <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $t): ?>
+                <option value="<?= $t ?>" <?= $termFilter === $t ? 'selected' : '' ?>><?= $t ?><?= $t === $activeTerm ? ' (current)' : '' ?></option>
+            <?php endforeach; ?>
+        </select>
     </div>
 
     <?php if (empty($subjects)): ?>
@@ -119,37 +127,60 @@ include 'assets/api/attendance_functions.php';
                 </div>
 
                 <div class="attendance-subject-body">
-                    <?php if (empty($subject['records'])): ?>
+                    <?php if (empty($subject['terms'])): ?>
                         <div class="panel-empty panel-empty--enhanced">
                             <div class="panel-empty__icon">
                                 <i class="fas fa-calendar-xmark"></i>
                             </div>
-                            <h3>No attendance recorded yet</h3>
-                            <p>Your teacher hasn't taken attendance for this class yet.</p>
+                            <?php if ($termFilter === 'all'): ?>
+                                <h3>No attendance recorded yet</h3>
+                                <p>Your teacher hasn't taken attendance for this class yet.</p>
+                            <?php else: ?>
+                                <h3>No attendance recorded for <?= htmlspecialchars($termFilter) ?></h3>
+                                <p>Try switching to another term or "All Terms" above.</p>
+                            <?php endif; ?>
                         </div>
                     <?php else: ?>
-                        <div class="table-scroll">
-                            <table class="data-table data-table--modern">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Status</th>
-                                        <th>Remarks</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($subject['records'] as $record):
-                                        $statusInfo = attendanceStatusInfo($record['status']);
-                                        ?>
-                                        <tr>
-                                            <td><?= date('M j, Y (D)', strtotime($record['attendance_date'])) ?></td>
-                                            <td><span class="chip chip-<?= $statusInfo['class'] ?>"><?= htmlspecialchars($statusInfo['label']) ?></span></td>
-                                            <td class="attendance-remarks-cell"><?= $record['remarks'] ? htmlspecialchars($record['remarks']) : '—' ?></td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
+                        <?php foreach ($subject['terms'] as $termLabel => $termBucket): ?>
+                            <div class="attendance-term-block">
+                                <div class="attendance-term-header">
+                                    <h3><?= htmlspecialchars($termLabel) ?></h3>
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <?php if ($termBucket['present_rate'] !== null): ?>
+                                            <span class="attendance-term-rate"><?= $termBucket['present_rate'] ?>% attendance</span>
+                                        <?php endif; ?>
+                                        <div class="attendance-mini-counts">
+                                            <span class="chip chip-present"><?= (int) $termBucket['counts']['Present'] ?> Present</span>
+                                            <span class="chip chip-late"><?= (int) $termBucket['counts']['Late'] ?> Late</span>
+                                            <span class="chip chip-absent"><?= (int) $termBucket['counts']['Absent'] ?> Absent</span>
+                                            <span class="chip chip-excused"><?= (int) $termBucket['counts']['Excused'] ?> Excused</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="table-scroll">
+                                    <table class="data-table data-table--modern">
+                                        <thead>
+                                            <tr>
+                                                <th>Date</th>
+                                                <th>Status</th>
+                                                <th>Remarks</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php foreach ($termBucket['records'] as $record):
+                                                $statusInfo = attendanceStatusInfo($record['status']);
+                                                ?>
+                                                <tr>
+                                                    <td><?= date('M j, Y (D)', strtotime($record['attendance_date'])) ?></td>
+                                                    <td><span class="chip chip-<?= $statusInfo['class'] ?>"><?= htmlspecialchars($statusInfo['label']) ?></span></td>
+                                                    <td class="attendance-remarks-cell"><?= $record['remarks'] ? htmlspecialchars($record['remarks']) : '—' ?></td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     <?php endif; ?>
                 </div>
             </section>
@@ -160,6 +191,16 @@ include 'assets/api/attendance_functions.php';
 </main>
 
 <script>
+function goToTerm(term) {
+    const url = new URL(window.location.href);
+    if (term === 'all') {
+        url.searchParams.delete('term');
+    } else {
+        url.searchParams.set('term', term);
+    }
+    window.location.href = url.toString();
+}
+
 (function () {
     document.querySelectorAll('[data-attendance-toggle]').forEach(function (btn) {
         btn.addEventListener('click', function () {

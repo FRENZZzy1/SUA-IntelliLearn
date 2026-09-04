@@ -62,6 +62,25 @@ $stmt = $pdo->prepare("
 $stmt->execute([$studentId, $schoolYearId, $schoolYearId]);
 $enrollmentRows = $stmt->fetchAll();
 
+// ---- Term intervals, used to work out which term each attendance date
+// actually fell in. A class's classofferings.quarter only reflects
+// whichever term is *currently* active (it advances automatically as
+// terms roll over — see syncCourseTermsToCurrent() in config.php), so it
+// can't be used to label attendance taken in an earlier term. Instead,
+// each attendance_date is resolved against the configured intervals
+// independently, the same way "Set Term Interval" resolves today's date.
+$termIntervals = getTermIntervals($pdo);
+
+// ---- Term filter (mirrors public/teacher/attendance.php) ----------------
+// Lets the student scope the whole page down to one term instead of always
+// seeing every term stacked. Defaults to the currently active term, same
+// as the teacher dashboard, with "All Terms" available to see everything.
+$activeTerm = resolveCurrentTerm($termIntervals);
+$termFilter = $_GET['term'] ?? ($activeTerm ?? 'all');
+if (!in_array($termFilter, ['all', 'TRM 1', 'TRM 2', 'TRM 3'], true)) {
+    $termFilter = 'all';
+}
+
 // ---- Collapse per-term rows into one entry per subject -------------------
 $subjects = [];
 foreach ($enrollmentRows as $row) {
@@ -76,14 +95,17 @@ foreach ($enrollmentRows as $row) {
 }
 $subjects = array_values($subjects);
 
-// ---- Attendance history + per-subject stats -----------------------------
+// ---- Attendance history + per-subject, per-term stats --------------------
 // One query per subject, scoped to all its offering_ids, newest first.
+// Records are then split into a TRM 1 / TRM 2 / TRM 3 (/ Unscheduled)
+// bucket per subject, based on the date each record was taken.
 $overallCounts = ['Present' => 0, 'Absent' => 0, 'Late' => 0, 'Excused' => 0];
 
 foreach ($subjects as &$subject) {
     $offeringIds = $subject['offering_ids'];
     $subject['records'] = [];
     $subject['counts']  = ['Present' => 0, 'Absent' => 0, 'Late' => 0, 'Excused' => 0];
+    $subject['terms']   = [];
 
     if ($offeringIds) {
         $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
@@ -94,14 +116,56 @@ foreach ($subjects as &$subject) {
             ORDER BY attendance_date DESC
         ");
         $stmt->execute(array_merge($offeringIds, [$studentId]));
-        $subject['records'] = $stmt->fetchAll();
+        $allRecords = $stmt->fetchAll();
+
+        // Tag each record with the term its date actually fell in, then
+        // scope everything below (counts, present rate, term buckets) to
+        // the selected term filter — same as the teacher dashboard.
+        foreach ($allRecords as &$r) {
+            $r['term'] = attendanceTermForDate($termIntervals, $r['attendance_date']);
+        }
+        unset($r);
+
+        $subject['records'] = $termFilter === 'all'
+            ? $allRecords
+            : array_values(array_filter($allRecords, fn($r) => $r['term'] === $termFilter));
 
         foreach ($subject['records'] as $r) {
             if (isset($subject['counts'][$r['status']])) {
                 $subject['counts'][$r['status']]++;
                 $overallCounts[$r['status']]++;
             }
+
+            $term = $r['term'];
+            if (!isset($subject['terms'][$term])) {
+                $subject['terms'][$term] = [
+                    'records' => [],
+                    'counts'  => ['Present' => 0, 'Absent' => 0, 'Late' => 0, 'Excused' => 0],
+                ];
+            }
+            $subject['terms'][$term]['records'][] = $r;
+            if (isset($subject['terms'][$term]['counts'][$r['status']])) {
+                $subject['terms'][$term]['counts'][$r['status']]++;
+            }
         }
+
+        // Order the per-term buckets TRM 1 -> TRM 2 -> TRM 3 -> Unscheduled,
+        // and compute each bucket's own present rate.
+        $ordered = [];
+        foreach (ATTENDANCE_TERM_ORDER as $termLabel) {
+            if (isset($subject['terms'][$termLabel])) {
+                $ordered[$termLabel] = $subject['terms'][$termLabel];
+            }
+        }
+        foreach ($ordered as $termLabel => &$bucket) {
+            $bucketTotal = count($bucket['records']);
+            $bucket['total_recorded'] = $bucketTotal;
+            $bucket['present_rate'] = $bucketTotal > 0
+                ? round((($bucket['counts']['Present'] + $bucket['counts']['Late'] + $bucket['counts']['Excused']) / $bucketTotal) * 100)
+                : null;
+        }
+        unset($bucket);
+        $subject['terms'] = $ordered;
     }
 
     $subject['total_recorded'] = count($subject['records']);

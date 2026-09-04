@@ -25,7 +25,6 @@ if (!validateCSRFToken($_POST['csrf'] ?? '')) {
 $subject_id      = $_POST['subject_id'] ?? '';
 $section_id      = $_POST['section_id'] ?? '';
 $teacher_id      = $_POST['teacher_id'] ?? '';
-$quarter         = $_POST['quarter'] ?? '';
 $school_year_id  = $_POST['school_year_id'] ?? '';
 $capacity        = $_POST['capacity'] ?? 50;
 $status          = $_POST['status'] ?? 'active';
@@ -33,10 +32,16 @@ $schedule_days   = trim($_POST['schedule_days'] ?? '');
 $start_time_raw  = trim($_POST['start_time'] ?? '');
 $end_time_raw    = trim($_POST['end_time'] ?? '');
 
+// Term is no longer picked in the modal — it's derived from today's date
+// against the intervals configured via "Set Term Interval".
+$quarter = resolveCurrentTerm(getTermIntervals($pdo));
+if ($quarter === null) {
+    $errors[] = 'No term is currently active based on today\'s date. Set the term intervals first (Search & Export bar > "Set Term Interval").';
+}
+
 if (!ctype_digit((string) $subject_id)) $errors[] = 'Please choose a subject.';
 if (!ctype_digit((string) $section_id)) $errors[] = 'Please choose a section.';
 if (!ctype_digit((string) $teacher_id)) $errors[] = 'Please choose a teacher.';
-if (!in_array((string) $quarter, ['TRM 1', 'TRM 2', 'TRM 3'], true)) $errors[] = 'Please choose a term.';
 if (!ctype_digit((string) $school_year_id)) $errors[] = 'Please choose a school year.';
 if (!ctype_digit((string) $capacity) || (int) $capacity < 1) $errors[] = 'Capacity must be a positive number.';
 if (!in_array($status, ['active', 'inactive'], true)) $errors[] = 'Invalid status.';

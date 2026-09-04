@@ -114,6 +114,17 @@ if (isset($_GET['delete_subject']) && ctype_digit($_GET['delete_subject'])) {
 
 $csrfToken = generateCSRFToken();
 
+// ================= TERM INTERVALS =================
+// Configured once via "Set Term Interval" instead of being picked per
+// class offering. Every class always follows this single, school-wide
+// current term — sync stale rows onto it before we read the class list
+// below, so classes advance automatically as terms roll over, not just
+// when an admin re-saves the intervals.
+syncCourseTermsToCurrent($pdo);
+
+$termIntervals = getTermIntervals($pdo);
+$currentTerm   = resolveCurrentTerm($termIntervals);
+
 // Which view-panel (if any) should be open on load — set after a
 // Sections/Subjects add, update, or delete action so the panel doesn't
 // collapse on the user after they just worked in it.
@@ -568,6 +579,7 @@ $subjectsList = $pdo->query("
                 <button class="btn-secondary <?= $openView === 'subjects' ? 'active' : '' ?>" id="toggleSubjectsBtn" onclick="togglePanel('subjects', this)"><i class="fas fa-list"></i> Subjects</button>
                 <button class="btn-secondary <?= $openView === 'sections' ? 'active' : '' ?>" id="toggleSectionsBtn" onclick="togglePanel('sections', this)"><i class="fas fa-list"></i> Sections</button>
                 <button class="btn-secondary <?= $openView === 'export' ? 'active' : '' ?>" id="toggleExportBtn" onclick="togglePanel('export', this)"><i class="fas fa-file-export"></i> Search &amp; Export</button>
+                <button class="btn-secondary" id="toggleTermIntervalBtn" onclick="openTermIntervalModal()"><i class="fas fa-calendar-days"></i> Set Term Interval</button>
             </div>
             <div class="action-bar-group">
                 <span class="action-bar-group-label">Create</span>
@@ -928,17 +940,11 @@ $subjectsList = $pdo->query("
                         </select>
                     </div>
 
-                    <div class="form-row-split">
-                        <div class="form-row">
-                            <label for="e_quarter">Term</label>
-                            <select id="e_quarter" name="quarter" required>
-                                <option value="">Select</option>
-                                <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $q): ?>
-                                    <option value="<?= $q ?>"><?= $q ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                    <div class="form-row">
+                        <span class="field-note">Term: <strong id="e_quarter_display">—</strong> (follows the school-wide current term — not set per class)</span>
+                    </div>
 
+                    <div class="form-row-split">
                         <div class="form-row">
                             <label for="e_school_year_id">School Year</label>
                             <select id="e_school_year_id" name="school_year_id" required>
@@ -985,6 +991,93 @@ $subjectsList = $pdo->query("
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="closeEditCourseModal()">Cancel</button>
                     <button type="submit" class="btn-primary" id="editCourseSubmitBtn"><i class="fas fa-check"></i> Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Set Term Interval Modal -->
+    <div class="modal-overlay" id="termIntervalOverlay" onclick="if (event.target === this) closeTermIntervalModal()">
+        <div class="modal-box" style="max-width: 640px;">
+            <div class="modal-header">
+                <h2>Set Term Interval</h2>
+                <button type="button" class="modal-close" onclick="closeTermIntervalModal()" aria-label="Close">&times;</button>
+            </div>
+
+            <div class="modal-errors" id="termIntervalErrors" hidden></div>
+
+            <form id="termIntervalForm">
+                <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
+
+                <div class="modal-body">
+                    <div class="form-row">
+                        <span class="field-note">
+                            New classes are automatically placed in whichever term covers today's date.
+                            Currently active: <strong><?= $currentTerm ? clean($currentTerm) : 'None — not configured' ?></strong>.
+                        </span>
+                    </div>
+
+                    <?php
+                    $monthNames = [1=>'January',2=>'February',3=>'March',4=>'April',5=>'May',6=>'June',7=>'July',8=>'August',9=>'September',10=>'October',11=>'November',12=>'December'];
+                    $termNums   = ['TRM 1' => 1, 'TRM 2' => 2, 'TRM 3' => 3];
+                    foreach ($termNums as $termLabel => $n):
+                        $cfg = $termIntervals[$termLabel];
+                        $isDateMode = $cfg['mode'] === 'date';
+                    ?>
+                    <fieldset style="border:1px solid var(--border,#e2e8f0); border-radius:8px; padding:14px 16px; margin-bottom:16px;">
+                        <legend style="padding:0 6px; font-weight:600;"><?= clean($termLabel) ?></legend>
+
+                        <div class="form-row" style="display:flex; gap:20px; margin-bottom:12px;">
+                            <label style="font-weight:400; display:flex; align-items:center; gap:6px;">
+                                <input type="radio" name="term_<?= $n ?>_mode" value="month" style="width:auto;"
+                                       onchange="toggleTermMode(<?= $n ?>, 'month')" <?= !$isDateMode ? 'checked' : '' ?>>
+                                By Month
+                            </label>
+                            <label style="font-weight:400; display:flex; align-items:center; gap:6px;">
+                                <input type="radio" name="term_<?= $n ?>_mode" value="date" style="width:auto;"
+                                       onchange="toggleTermMode(<?= $n ?>, 'date')" <?= $isDateMode ? 'checked' : '' ?>>
+                                Specific Dates
+                            </label>
+                        </div>
+
+                        <div class="form-row-split" id="term_<?= $n ?>_month_fields" <?= $isDateMode ? 'hidden' : '' ?>>
+                            <div class="form-row">
+                                <label for="term_<?= $n ?>_start_month">Start Month</label>
+                                <select id="term_<?= $n ?>_start_month" name="term_<?= $n ?>_start_month">
+                                    <option value="">Select</option>
+                                    <?php foreach ($monthNames as $mNum => $mName): ?>
+                                        <option value="<?= $mNum ?>" <?= (int) $cfg['start_month'] === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <label for="term_<?= $n ?>_end_month">End Month</label>
+                                <select id="term_<?= $n ?>_end_month" name="term_<?= $n ?>_end_month">
+                                    <option value="">Select</option>
+                                    <?php foreach ($monthNames as $mNum => $mName): ?>
+                                        <option value="<?= $mNum ?>" <?= (int) $cfg['end_month'] === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row-split" id="term_<?= $n ?>_date_fields" <?= !$isDateMode ? 'hidden' : '' ?>>
+                            <div class="form-row">
+                                <label for="term_<?= $n ?>_start_date">Start Date</label>
+                                <input type="date" id="term_<?= $n ?>_start_date" name="term_<?= $n ?>_start_date" value="<?= clean($cfg['start_date'] ?? '') ?>">
+                            </div>
+                            <div class="form-row">
+                                <label for="term_<?= $n ?>_end_date">End Date</label>
+                                <input type="date" id="term_<?= $n ?>_end_date" name="term_<?= $n ?>_end_date" value="<?= clean($cfg['end_date'] ?? '') ?>">
+                            </div>
+                        </div>
+                    </fieldset>
+                    <?php endforeach; ?>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" onclick="closeTermIntervalModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="termIntervalSubmitBtn"><i class="fas fa-check"></i> Save Term Intervals</button>
                 </div>
             </form>
         </div>

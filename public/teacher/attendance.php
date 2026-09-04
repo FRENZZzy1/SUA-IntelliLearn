@@ -15,6 +15,20 @@ $schoolYearLabel = $schoolYear['label'] ?? 'Current School Year';
 $selectedDate = $_GET['date'] ?? date('Y-m-d');
 if (!DateTime::createFromFormat('Y-m-d', $selectedDate)) $selectedDate = date('Y-m-d');
 
+// ---- Term intervals + filter ----------------------------------------
+// Attendance is grouped by whichever term each record's date actually
+// fell in (see attendanceTermForDate() in config.php) — not by a class's
+// classofferings.quarter, which only reflects today's currently active
+// term and advances automatically as terms roll over. Defaults to
+// today's active term so the dashboard opens scoped to "this term" by
+// default, with the option to look at another term or everything.
+$termIntervals = getTermIntervals($pdo);
+$activeTerm    = resolveCurrentTerm($termIntervals);
+$termFilter    = $_GET['term'] ?? ($activeTerm ?? 'all');
+if (!in_array($termFilter, ['all', 'TRM 1', 'TRM 2', 'TRM 3'], true)) {
+    $termFilter = 'all';
+}
+
 $stmt = $pdo->prepare("SELECT co.offering_id, co.subject_id, co.section_id, s.subject_name, sec.section_name, sec.grade_level, sec.strand
 FROM classofferings co JOIN subjects s ON s.subject_id = co.subject_id JOIN sections sec ON sec.section_id = co.section_id
 WHERE co.teacher_id = ? AND co.status = 'active' AND (co.school_year_id = ? OR ? IS NULL)
@@ -22,41 +36,103 @@ ORDER BY sec.grade_level, sec.section_name, s.subject_name");
 $stmt->execute([$teacherId, $schoolYearId, $schoolYearId]);
 $classes = $stmt->fetchAll();
 
-$stmt = $pdo->prepare("SELECT COUNT(*) total_records, SUM(a.status = 'Present') present_count, SUM(a.status = 'Absent') absent_count, SUM(a.status = 'Late') late_count, SUM(a.status = 'Excused') excused_count
-FROM attendance a JOIN classofferings co ON co.offering_id = a.offering_id
-WHERE co.teacher_id = ? AND co.status = 'active' AND (co.school_year_id = ? OR ? IS NULL)");
+// ---- Pull every attendance record for this teacher's active classes,
+// then bucket by term in PHP (see attendanceTermForDate() above) and
+// apply the term filter before computing any of the aggregates below.
+$stmt = $pdo->prepare("
+    SELECT a.attendance_id, a.attendance_date, a.status, a.remarks, a.offering_id, a.student_id,
+        co.subject_id, co.section_id, s.subject_name, sec.section_name, st.firstname, st.lastname
+    FROM attendance a
+    JOIN classofferings co ON co.offering_id = a.offering_id
+    JOIN subjects s        ON s.subject_id = co.subject_id
+    JOIN sections sec      ON sec.section_id = co.section_id
+    JOIN students st       ON st.student_id = a.student_id
+    WHERE co.teacher_id = ? AND co.status = 'active' AND (co.school_year_id = ? OR ? IS NULL)
+");
 $stmt->execute([$teacherId, $schoolYearId, $schoolYearId]);
-$overall = $stmt->fetch() ?: [];
-$totalRecords = (int)($overall['total_records'] ?? 0);
-$present = (int)($overall['present_count'] ?? 0); $absent = (int)($overall['absent_count'] ?? 0); $late = (int)($overall['late_count'] ?? 0); $excused = (int)($overall['excused_count'] ?? 0);
+$allAttendanceRows = $stmt->fetchAll();
+
+foreach ($allAttendanceRows as &$row) {
+    $row['term'] = attendanceTermForDate($termIntervals, $row['attendance_date']);
+}
+unset($row);
+
+$attendanceRows = $termFilter === 'all'
+    ? $allAttendanceRows
+    : array_values(array_filter($allAttendanceRows, fn($r) => $r['term'] === $termFilter));
+
+// ---- Overall stat cards ------------------------------------------------
+$totalRecords = count($attendanceRows);
+$present = $absent = $late = $excused = 0;
+foreach ($attendanceRows as $r) {
+    if ($r['status'] === 'Present') $present++;
+    elseif ($r['status'] === 'Absent') $absent++;
+    elseif ($r['status'] === 'Late') $late++;
+    elseif ($r['status'] === 'Excused') $excused++;
+}
 $attendanceRate = $totalRecords ? round((($present + $late) / $totalRecords) * 100, 1) : 0;
 
+// ---- Per-class stats (attendance rate shown against each class row) ----
 $classStats = [];
 foreach ($classes as $class) {
-    $stmt = $pdo->prepare("SELECT COUNT(*) total, SUM(status='Present') present, SUM(status='Absent') absent, SUM(status='Late') late, SUM(status='Excused') excused FROM attendance WHERE offering_id = ?");
-    $stmt->execute([(int)$class['offering_id']]);
-    $stat = $stmt->fetch() ?: []; $total = (int)($stat['total'] ?? 0);
-    $classStats[$class['offering_id']] = ['total'=>$total,'present'=>(int)($stat['present']??0),'absent'=>(int)($stat['absent']??0),'late'=>(int)($stat['late']??0),'excused'=>(int)($stat['excused']??0),'rate'=>$total ? round(((($stat['present']??0)+($stat['late']??0))/$total)*100,1) : 0];
+    $rows = array_filter($attendanceRows, fn($r) => (int) $r['offering_id'] === (int) $class['offering_id']);
+    $total = count($rows);
+    $p = $a = $l = $e = 0;
+    foreach ($rows as $r) {
+        if ($r['status'] === 'Present') $p++;
+        elseif ($r['status'] === 'Absent') $a++;
+        elseif ($r['status'] === 'Late') $l++;
+        elseif ($r['status'] === 'Excused') $e++;
+    }
+    $classStats[$class['offering_id']] = [
+        'total' => $total, 'present' => $p, 'absent' => $a, 'late' => $l, 'excused' => $e,
+        'rate' => $total ? round((($p + $l) / $total) * 100, 1) : 0,
+    ];
 }
 
-$atRiskStmt = $pdo->prepare("SELECT st.student_id, CONCAT(st.firstname, ' ', st.lastname) student_name,
-sec.section_name, s.subject_name, COUNT(a.attendance_id) total,
-SUM(a.status='Present') present, SUM(a.status='Late') late, SUM(a.status='Absent') absent
-FROM attendance a JOIN students st ON st.student_id = a.student_id JOIN classofferings co ON co.offering_id = a.offering_id
-JOIN subjects s ON s.subject_id = co.subject_id JOIN sections sec ON sec.section_id = co.section_id
-WHERE co.teacher_id = ? AND co.status = 'active' AND (co.school_year_id = ? OR ? IS NULL)
-GROUP BY st.student_id, st.firstname, st.lastname, sec.section_name, s.subject_name
-HAVING COUNT(a.attendance_id) > 0 AND ((SUM(a.status='Present') + SUM(a.status='Late')) / COUNT(a.attendance_id)) < 0.75
-ORDER BY ((SUM(a.status='Present') + SUM(a.status='Late')) / COUNT(a.attendance_id)) ASC, SUM(a.status='Absent') DESC LIMIT 10");
-$atRiskStmt->execute([$teacherId, $schoolYearId, $schoolYearId]);
-$atRisk = $atRiskStmt->fetchAll();
+// ---- Students needing attention (below 75%), scoped to the term filter ----
+$atRiskGroups = [];
+foreach ($attendanceRows as $r) {
+    $key = $r['student_id'] . ':' . $r['subject_id'] . ':' . $r['section_id'];
+    if (!isset($atRiskGroups[$key])) {
+        $atRiskGroups[$key] = [
+            'student_name' => trim($r['firstname'] . ' ' . $r['lastname']),
+            'subject_name' => $r['subject_name'],
+            'section_name' => $r['section_name'],
+            'total' => 0, 'present' => 0, 'late' => 0, 'absent' => 0,
+        ];
+    }
+    $atRiskGroups[$key]['total']++;
+    if ($r['status'] === 'Present') $atRiskGroups[$key]['present']++;
+    elseif ($r['status'] === 'Late') $atRiskGroups[$key]['late']++;
+    elseif ($r['status'] === 'Absent') $atRiskGroups[$key]['absent']++;
+}
+$atRisk = array_values(array_filter($atRiskGroups, function ($g) {
+    return $g['total'] > 0 && (($g['present'] + $g['late']) / $g['total']) < 0.75;
+}));
+usort($atRisk, function ($x, $y) {
+    $rx = $x['total'] ? ($x['present'] + $x['late']) / $x['total'] : 0;
+    $ry = $y['total'] ? ($y['present'] + $y['late']) / $y['total'] : 0;
+    if ($rx !== $ry) return $rx <=> $ry;
+    return $y['absent'] <=> $x['absent'];
+});
+$atRisk = array_slice($atRisk, 0, 10);
 
-$trendStmt = $pdo->prepare("SELECT a.attendance_date, ROUND(100 * SUM(a.status IN ('Present','Late')) / COUNT(*), 1) rate
-FROM attendance a JOIN classofferings co ON co.offering_id = a.offering_id
-WHERE co.teacher_id = ? AND co.status = 'active' AND (co.school_year_id = ? OR ? IS NULL)
-GROUP BY a.attendance_date ORDER BY a.attendance_date DESC LIMIT 7");
-$trendStmt->execute([$teacherId, $schoolYearId, $schoolYearId]);
-$trend = array_reverse($trendStmt->fetchAll());
+// ---- 7-day trend, scoped to the term filter ----------------------------
+$trendByDate = [];
+foreach ($attendanceRows as $r) {
+    $d = $r['attendance_date'];
+    if (!isset($trendByDate[$d])) $trendByDate[$d] = ['total' => 0, 'good' => 0];
+    $trendByDate[$d]['total']++;
+    if (in_array($r['status'], ['Present', 'Late'], true)) $trendByDate[$d]['good']++;
+}
+krsort($trendByDate);
+$trendByDate = array_slice($trendByDate, 0, 7, true);
+$trend = [];
+foreach ($trendByDate as $date => $stats) {
+    $trend[] = ['attendance_date' => $date, 'rate' => round(100 * $stats['good'] / $stats['total'], 1)];
+}
+$trend = array_reverse($trend);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -196,6 +272,12 @@ $trend = array_reverse($trendStmt->fetchAll());
   color: var(--text);
 }
 .att-panel h2 i { color: var(--primary-light); }
+.panel-term-note {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 2px;
+}
 
 /* Layout */
 .att-layout {
@@ -498,6 +580,28 @@ $trend = array_reverse($trendStmt->fetchAll());
 .date-bar .date-nav:hover { background: var(--bg); color: var(--primary); border-color: var(--primary-soft); }
 .date-bar .date-nav:active { transform: scale(0.95); }
 
+.term-filter-select {
+  margin-left: auto;
+  padding: 8px 32px 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  background: var(--surface);
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.term-filter-select:focus {
+  border-color: var(--primary-soft);
+  box-shadow: 0 0 0 3px rgb(45 106 79 / 0.1);
+}
+@media (max-width: 640px) {
+  .term-filter-select { margin-left: 0; width: 100%; }
+}
+
 /* Animations */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(12px); }
@@ -578,6 +682,13 @@ $trend = array_reverse($trendStmt->fetchAll());
     <input type="date" id="datePicker" value="<?= htmlspecialchars($selectedDate) ?>" onchange="goToDate(this.value)">
     <button class="date-nav" onclick="changeDate(1)" aria-label="Next day"><i class="fas fa-chevron-right"></i></button>
     <button class="date-nav" onclick="goToDate('<?= date('Y-m-d') ?>')" title="Today" aria-label="Go to today"><i class="fas fa-calendar-check"></i></button>
+
+    <select id="termFilter" class="term-filter-select" onchange="goToTerm(this.value)" title="Records are grouped by whichever term their date actually fell in">
+      <option value="all" <?= $termFilter === 'all' ? 'selected' : '' ?>>All Terms</option>
+      <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $t): ?>
+        <option value="<?= $t ?>" <?= $termFilter === $t ? 'selected' : '' ?>><?= $t ?><?= $t === $activeTerm ? ' (current)' : '' ?></option>
+      <?php endforeach; ?>
+    </select>
   </div>
 
   <!-- Stats Cards -->
@@ -654,7 +765,7 @@ $trend = array_reverse($trendStmt->fetchAll());
 
     <!-- Trend Panel -->
     <section class="att-panel animate-in">
-      <h2><i class="fas fa-chart-bar"></i> Attendance Trend</h2>
+      <h2><i class="fas fa-chart-bar"></i> Attendance Trend <span class="panel-term-note">(<?= $termFilter === 'all' ? 'all terms' : htmlspecialchars($termFilter) ?>)</span></h2>
       <?php if (!$trend): ?>
         <div class="empty">
           <i class="fas fa-chart-bar"></i>
@@ -682,7 +793,7 @@ $trend = array_reverse($trendStmt->fetchAll());
 
   <!-- At Risk Panel -->
   <section class="att-panel animate-in">
-    <h2><i class="fas fa-triangle-exclamation"></i> Students Needing Attention</h2>
+    <h2><i class="fas fa-triangle-exclamation"></i> Students Needing Attention <span class="panel-term-note">(<?= $termFilter === 'all' ? 'all terms' : htmlspecialchars($termFilter) ?>)</span></h2>
     <?php if (!$atRisk): ?>
       <div class="empty">
         <i class="fas fa-check-circle"></i>
@@ -730,6 +841,15 @@ function goToDate(date) {
   if (!date) return;
   const url = new URL(window.location.href);
   url.searchParams.set('date', date);
+  window.location.href = url.toString();
+}
+function goToTerm(term) {
+  const url = new URL(window.location.href);
+  if (term === 'all') {
+    url.searchParams.delete('term');
+  } else {
+    url.searchParams.set('term', term);
+  }
   window.location.href = url.toString();
 }
 function changeDate(days) {

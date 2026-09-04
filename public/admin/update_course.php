@@ -28,7 +28,6 @@ $offering_id   = $_POST['offering_id'] ?? '';
 $subject_id    = $_POST['subject_id'] ?? '';
 $section_id    = $_POST['section_id'] ?? '';
 $teacher_id    = $_POST['teacher_id'] ?? '';
-$quarter       = $_POST['quarter'] ?? '';
 $school_year_id = $_POST['school_year_id'] ?? '';
 $capacity      = $_POST['capacity'] ?? 50;
 $status        = $_POST['status'] ?? 'active';
@@ -40,7 +39,6 @@ if (!ctype_digit((string) $offering_id)) $errors[] = 'Missing or invalid course 
 if (!ctype_digit((string) $subject_id)) $errors[] = 'Please choose a subject.';
 if (!ctype_digit((string) $section_id)) $errors[] = 'Please choose a section.';
 if (!ctype_digit((string) $teacher_id)) $errors[] = 'Please choose a teacher.';
-if (!in_array((string) $quarter, ['TRM 1', 'TRM 2', 'TRM 3'], true)) $errors[] = 'Please choose a term.';
 if (!ctype_digit((string) $school_year_id)) $errors[] = 'Please choose a school year.';
 if (!ctype_digit((string) $capacity) || (int) $capacity < 1) $errors[] = 'Capacity must be a positive number.';
 if (!in_array($status, ['active', 'inactive'], true)) $errors[] = 'Invalid status.';
@@ -86,16 +84,19 @@ if (!$check->fetch()) {
 }
 
 try {
+    // quarter is intentionally left out of this UPDATE — it's not a
+    // per-class field. It's kept in sync school-wide by
+    // syncCourseTermsToCurrent(), called whenever term intervals are
+    // saved and whenever courses.php loads.
     $stmt = $pdo->prepare("
         UPDATE classofferings
-        SET subject_id = ?, teacher_id = ?, section_id = ?, quarter = ?, school_year_id = ?, schedule_days = ?, start_time = ?, end_time = ?, capacity = ?, status = ?
+        SET subject_id = ?, teacher_id = ?, section_id = ?, school_year_id = ?, schedule_days = ?, start_time = ?, end_time = ?, capacity = ?, status = ?
         WHERE offering_id = ?
     ");
     $stmt->execute([
         (int) $subject_id,
         (int) $teacher_id,
         (int) $section_id,
-        $quarter,
         (int) $school_year_id,
         $schedule_days !== '' ? $schedule_days : null,
         $start_time,

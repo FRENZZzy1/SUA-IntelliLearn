@@ -3,9 +3,9 @@
  * Backend endpoint for the "Section" dropdown in the Enroll Student
  * modal on enrollment.php. Returns the sections that have at least one
  * open (active, seats-available) class offering for the given
- * grade level + strand + term, so the admin picks a section up
- * front and then the specific subjects offered in it. Called via
- * fetch() — always returns JSON, never renders a page.
+ * grade level + strand, matched against whichever term is currently
+ * active per "Set Term Interval". Called via fetch() — always returns
+ * JSON, never renders a page.
  *
  * Unlike subject-first lookups, this is intentionally subject-agnostic:
  * a section can host several class offerings (subjects) for the same
@@ -20,7 +20,6 @@ requireAdmin();
 header('Content-Type: application/json');
 
 $gradeLevel = $_GET['grade_level'] ?? '';
-$term       = $_GET['term'] ?? '';
 $strand     = trim($_GET['strand'] ?? '');
 
 if (!in_array((string) $gradeLevel, ['7', '8', '9', '10', '11', '12'], true)) {
@@ -28,13 +27,16 @@ if (!in_array((string) $gradeLevel, ['7', '8', '9', '10', '11', '12'], true)) {
     exit();
 }
 
-if (!in_array($term, ['TRM 1', 'TRM 2', 'TRM 3'], true)) {
-    echo json_encode(['success' => false, 'errors' => ['Term is required.']]);
+if ($strand !== '' && !in_array($strand, ['STEM', 'ABM', 'HUMSS', 'TVL'], true)) {
+    echo json_encode(['success' => false, 'errors' => ['Invalid strand.']]);
     exit();
 }
 
-if ($strand !== '' && !in_array($strand, ['STEM', 'ABM', 'HUMSS', 'TVL'], true)) {
-    echo json_encode(['success' => false, 'errors' => ['Invalid strand.']]);
+// Term is no longer picked in the modal — every enrollment is matched
+// against whichever term is currently active, same as new classes.
+$term = resolveCurrentTerm(getTermIntervals($pdo));
+if ($term === null) {
+    echo json_encode(['success' => false, 'errors' => ['No term is currently active based on today\'s date. Set the term intervals first (Classes & Subjects > "Set Term Interval").']]);
     exit();
 }
 
