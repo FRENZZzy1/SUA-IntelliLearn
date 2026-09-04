@@ -88,7 +88,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                     <div class="aum-row">
                         <div class="aum-group">
                             <label>Email</label>
-                            <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="email" name="email" id="aumStudentEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph" data-student-required></div>
+                            <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="email" name="student_email" id="aumStudentEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph" data-student-required></div>
                         </div>
                         <div class="aum-group">
                             <label>Birthdate <span class="aum-req">*</span></label>
@@ -493,7 +493,7 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
         document.querySelectorAll('#aumOverlay [data-student-required]').forEach(function (i) { i.required = isStudent; });
         document.querySelectorAll('#aumOverlay [data-staff-required]').forEach(function (i) { i.required = !isStudent; });
 
-        if (!isStudent) aumToggleStaffSubFields(role);
+        aumToggleStaffSubFields(role);
     };
 
     window.aumSetStatus = function (el) {
@@ -503,17 +503,25 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
     };
 
     function aumToggleStaffSubFields(role) {
-        var isTeacher = role === 'teacher';
-        document.getElementById('aumTeacherNameRow').style.display = isTeacher ? '' : 'none';
-        document.getElementById('aumTeacherMiddleNameRow').style.display = isTeacher ? '' : 'none';
-        document.getElementById('aumContactFieldGroup').style.display = isTeacher ? '' : 'none';
-        document.getElementById('aumDepartmentRow').style.display = isTeacher ? '' : 'none';
-        document.getElementById('aumTeacherOnlyFields').style.display = isTeacher ? '' : 'none';
-        document.getElementById('aumAdminOnlyFields').style.display = isTeacher ? 'none' : '';
-        document.getElementById('aumTeacherEmailHint').style.display = isTeacher ? '' : 'none';
-        document.querySelectorAll('#aumOverlay [data-teacher-required]').forEach(function (i) { i.required = isTeacher; });
-        document.querySelectorAll('#aumOverlay [data-admin-required]').forEach(function (i) { i.required = !isTeacher; });
-    }
+    var isTeacher = role === 'teacher';
+    var isAdmin = role === 'admin';
+
+    document.getElementById('aumTeacherNameRow').style.display = isTeacher ? '' : 'none';
+    document.getElementById('aumTeacherMiddleNameRow').style.display = isTeacher ? '' : 'none';
+    document.getElementById('aumContactFieldGroup').style.display = isTeacher ? '' : 'none';
+    document.getElementById('aumDepartmentRow').style.display = isTeacher ? '' : 'none';
+    document.getElementById('aumTeacherOnlyFields').style.display = isTeacher ? '' : 'none';
+    document.getElementById('aumAdminOnlyFields').style.display = isAdmin ? '' : 'none';
+    document.getElementById('aumTeacherEmailHint').style.display = isTeacher ? '' : 'none';
+
+    document.querySelectorAll('#aumOverlay [data-teacher-required]').forEach(function (i) {
+        i.required = isTeacher;
+    });
+
+    document.querySelectorAll('#aumOverlay [data-admin-required]').forEach(function (i) {
+        i.required = isAdmin;
+    });
+}
 
     function aumResetForm() {
         var form = document.getElementById('aumForm');

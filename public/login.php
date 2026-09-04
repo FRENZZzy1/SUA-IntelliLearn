@@ -21,12 +21,9 @@ if(isset($_POST['login'])){
 
         $passwordMatches = false;
 
-        // Check if the stored password is already a bcrypt hash
         if(password_get_info($user['password'])['algo'] !== null){
-            // Stored value is a proper hash — verify normally
             $passwordMatches = password_verify($password, $user['password']);
         } else {
-            // Stored value is plain text — compare directly, then upgrade it to a hash
             if($password === $user['password']){
                 $passwordMatches = true;
 
@@ -38,11 +35,6 @@ if(isset($_POST['login'])){
         }
 
         if($passwordMatches){
-
-            // Generate a fresh session token and store it as this user's
-            // "current" session. Any other device already logged in with
-            // this account will fail isLoggedIn()'s token check on its
-            // next request and get logged out automatically.
             $sessionToken = bin2hex(random_bytes(32));
 
             $tokenStmt = $conn->prepare("UPDATE users SET current_session_token=? WHERE id=?");
@@ -54,7 +46,6 @@ if(isset($_POST['login'])){
             $_SESSION['role'] = $user['role'];
             $_SESSION['session_token'] = $sessionToken;
 
-            // Redirect based on role
             if ($user['role'] === 'admin') {
                 header("Location: admin/dashboard.php");
             } elseif ($user['role'] === 'teacher') {
@@ -83,6 +74,136 @@ if(isset($_POST['login'])){
 <link rel="stylesheet" href="../public/assests/styles/style.css">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+.forgot-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(5px);
+}
+
+.forgot-modal-overlay.active {
+    display: flex;
+}
+
+.forgot-modal {
+    width: 100%;
+    max-width: 460px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 30px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: forgotModalIn 0.25s ease-out;
+}
+
+@keyframes forgotModalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.forgot-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 17px;
+    border: 0;
+    background: transparent;
+    color: #6c757d;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.forgot-modal-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, #1B5E20, #2E7D32);
+    color: #fff;
+    font-size: 25px;
+}
+
+.forgot-modal h3 {
+    margin: 0 0 10px;
+    color: #1a1a2e;
+    font-size: 23px;
+}
+
+.forgot-modal p {
+    margin: 0 0 18px;
+    color: #6c757d;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.forgot-contact-box {
+    background: #f8f9fa;
+    border-left: 4px solid #2E7D32;
+    border-radius: 10px;
+    padding: 15px 16px;
+    margin-bottom: 18px;
+}
+
+.forgot-contact-box strong {
+    display: block;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+}
+
+.forgot-contact-box span {
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.forgot-details {
+    margin: 0 0 20px 20px;
+    padding: 0;
+    color: #495057;
+    font-size: 14px;
+    line-height: 1.9;
+}
+
+.forgot-fb-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    padding: 13px 18px;
+    border-radius: 11px;
+    background: #1877F2;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    transition: 0.2s ease;
+}
+
+.forgot-fb-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.forgot-modal-note {
+    text-align: center;
+    margin-top: 14px !important;
+    margin-bottom: 0 !important;
+    font-size: 12px !important;
+}
+
+@media (max-width: 480px) {
+    .forgot-modal {
+        padding: 25px 20px;
+    }
+}
+</style>
 </head>
 <body>
 
@@ -92,7 +213,6 @@ if(isset($_POST['login'])){
 
     <div class="login-wrapper">
 
-        <!-- Left Side - School Branding -->
         <div class="branding-side">
             <div class="branding-content">
                 <div class="logo-container">
@@ -137,7 +257,6 @@ if(isset($_POST['login'])){
             </div>
         </div>
 
-        <!-- Right Side - Login Form -->
         <div class="login-side">
             <div class="login-card">
 
@@ -179,7 +298,7 @@ if(isset($_POST['login'])){
                             <span class="checkmark"></span>
                             Remember me
                         </label>
-                        <a href="#" class="forgot-link">Forgot password?</a>
+                        <a href="#" class="forgot-link" id="forgotPasswordLink">Forgot password?</a>
                     </div>
 
                     <button type="submit" name="login" class="login-btn">
@@ -204,8 +323,41 @@ if(isset($_POST['login'])){
 
 </div>
 
+<!-- Forgot Password Instructions Modal -->
+<div class="forgot-modal-overlay" id="forgotPasswordModal" role="dialog" aria-modal="true" aria-labelledby="forgotPasswordTitle">
+    <div class="forgot-modal">
+        <button type="button" class="forgot-modal-close" id="forgotPasswordClose" aria-label="Close">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <div class="forgot-modal-icon">
+            <i class="fas fa-key"></i>
+        </div>
+
+        <h3 id="forgotPasswordTitle">Forgot your password?</h3>
+        <p>To reset your password, please contact the following person through Facebook.</p>
+
+        <div class="forgot-contact-box">
+            <strong>Noel a Baga</strong>
+            <span>Facebook account: Jhay tee</span>
+        </div>
+
+        <p>Please include the following information in your message:</p>
+        <ul class="forgot-details">
+            <li>Your <strong>LRN</strong></li>
+            <li>Your <strong>Full Name</strong></li>
+        </ul>
+
+        <a href="https://www.facebook.com/jhaytee011" target="_blank" rel="noopener noreferrer" class="forgot-fb-btn">
+            <i class="fab fa-facebook-f"></i>
+            Message Jhay tee on Facebook
+        </a>
+
+        <p class="forgot-modal-note">For your security, do not send your password.</p>
+    </div>
+</div>
+
 <script>
-// Floating particles animation
 function createParticles() {
     const container = document.getElementById('particles');
     const colors = ['#1B5E20', '#2E7D32', '#FDD835', '#FFEB3B', '#4CAF50'];
@@ -226,7 +378,6 @@ function createParticles() {
 
 createParticles();
 
-// Password toggle
 function togglePassword() {
     const passwordInput = document.getElementById('password');
     const eyeIcon = document.getElementById('eye-icon');
@@ -242,7 +393,6 @@ function togglePassword() {
     }
 }
 
-// Input focus effects
 document.querySelectorAll('.input-group input').forEach(input => {
     input.addEventListener('focus', function() {
         this.parentElement.classList.add('focused');
@@ -250,6 +400,37 @@ document.querySelectorAll('.input-group input').forEach(input => {
     input.addEventListener('blur', function() {
         this.parentElement.classList.remove('focused');
     });
+});
+
+// Forgot password instructions popup
+const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+const forgotPasswordModal = document.getElementById('forgotPasswordModal');
+const forgotPasswordClose = document.getElementById('forgotPasswordClose');
+
+function openForgotPasswordModal(event) {
+    event.preventDefault();
+    forgotPasswordModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeForgotPasswordModal() {
+    forgotPasswordModal.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+forgotPasswordLink.addEventListener('click', openForgotPasswordModal);
+forgotPasswordClose.addEventListener('click', closeForgotPasswordModal);
+
+forgotPasswordModal.addEventListener('click', function(event) {
+    if (event.target === forgotPasswordModal) {
+        closeForgotPasswordModal();
+    }
+});
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && forgotPasswordModal.classList.contains('active')) {
+        closeForgotPasswordModal();
+    }
 });
 </script>
 

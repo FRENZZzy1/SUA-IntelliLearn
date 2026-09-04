@@ -39,7 +39,7 @@ if ($role === 'student') {
     $lastname         = trim($_POST['lastname'] ?? '');
     $middlename       = trim($_POST['middlename'] ?? '');
     $lrn              = trim($_POST['lrn'] ?? '');
-    $email            = trim($_POST['email'] ?? '');
+    $email            = trim($_POST['student_email'] ?? '');
     $gender           = trim($_POST['gender'] ?? '');
     $birthdate        = trim($_POST['birthdate'] ?? '');
     $address          = trim($_POST['address'] ?? '');
