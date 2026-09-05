@@ -1,0 +1,96 @@
+name: Apply Permanent Class Term Fix
+
+on:
+  push:
+    branches:
+      - feature/permanent-class-terms
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch term behavior
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          config = Path('config/config.php')
+          text = config.read_text(encoding='utf-8')
+          pattern = re.compile(
+              r"function syncCourseTermsToCurrent\(\$pdo\) \{.*?\n\}\n\n(?=// Canonical display order)",
+              re.S,
+          )
+          replacement = '''function syncCourseTermsToCurrent($pdo) {
+    // Class offerings keep the term they were assigned when created.
+    // Term intervals determine the current term for new class creation
+    // and date-based features, but existing class offerings are never
+    // rewritten when the calendar moves to another term.
+    return;
+}
+
+'''
+          new_text, count = pattern.subn(replacement, text, count=1)
+          if count != 1:
+              raise SystemExit('Could not locate syncCourseTermsToCurrent() in config/config.php')
+          config.write_text(new_text, encoding='utf-8')
+
+          courses = Path('public/admin/courses.php')
+          text = courses.read_text(encoding='utf-8')
+          old = '''// ================= TERM INTERVALS =================
+// Configured once via "Set Term Interval" instead of being picked per
+// class offering. Every class always follows this single, school-wide
+// current term — sync stale rows onto it before we read the class list
+// below, so classes advance automatically as terms roll over, not just
+// when an admin re-saves the intervals.
+syncCourseTermsToCurrent($pdo);
+
+$termIntervals = getTermIntervals($pdo);'''
+          new = '''// ================= TERM INTERVALS =================
+// Configured once via "Set Term Interval". The current term is used for
+// new class creation and other date-based features. Existing class
+// offerings keep the term they were originally assigned.
+$termIntervals = getTermIntervals($pdo);'''
+          if old not in text:
+              raise SystemExit('Could not locate term block in public/admin/courses.php')
+          courses.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          save = Path('public/admin/save_term_intervals.php')
+          text = save.read_text(encoding='utf-8')
+          old = '''    // Every class follows the single school-wide current term — push all
+    // of them onto whatever term these new intervals resolve to today,
+    // whether they were created just now or last school year.
+    syncCourseTermsToCurrent($pdo);
+
+'''
+          if old not in text:
+              raise SystemExit('Could not locate sync call in public/admin/save_term_intervals.php')
+          save.write_text(text.replace(old, '', 1), encoding='utf-8')
+
+      - name: Verify no automatic term migration remains
+        shell: bash
+        run: |
+          php -l config/config.php
+          php -l public/admin/courses.php
+          php -l public/admin/save_term_intervals.php
+          if grep -n "syncCourseTermsToCurrent(\$pdo)" public/admin/courses.php public/admin/save_term_intervals.php; then
+            echo "Unexpected active sync call remains."
+            exit 1
+          fi
+
+      - name: Commit changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add config/config.php public/admin/courses.php public/admin/save_term_intervals.php .github/workflows/apply-permanent-term-fix.yml
+          git commit -m "fix: keep class offerings in their assigned term" || exit 0
+          git push origin HEAD:feature/permanent-class-terms
