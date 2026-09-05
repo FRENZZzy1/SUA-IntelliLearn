@@ -267,21 +267,37 @@ function resolveCurrentTerm(array $intervals, ?DateTime $onDate = null) {
 }
 
 /**
- * Every class offering follows the single, school-wide "current term" —
- * there's no per-class term to edit. Whenever the active term (per
- * resolveCurrentTerm()) has moved on, this pushes every classofferings
- * row onto the new term so the whole school list advances together,
- * whether those classes were created yesterday or last year.
+ * Every class offering follows the single, school-wide "current term".
+ * Whenever the active term (per resolveCurrentTerm()) has moved on, this
+ * makes sure every subject/section that was running in the previous term
+ * gets a *new* classofferings row for the new term — it never rewrites
+ * the old row in place. The old row (and everything hung off its
+ * offering_id: enrollments, attendance, assignments, grades, quizzes,
+ * announcements, materials) is left exactly as it was, so past terms
+ * stay permanent, queryable records instead of being overwritten.
  *
  * Called after "Set Term Interval" is saved, and on courses.php load, so
  * it also picks up a term boundary being crossed purely by the passage
  * of time (no admin action needed).
  *
- * Rows are updated one at a time (not a single bulk UPDATE) so that a
- * unique-key collision on one row — e.g. two classes for the same
- * subject/section/school-year that would otherwise land on the same term
- * value — doesn't block every other row from advancing. Colliding rows
- * are simply left on their previous term until the collision is resolved.
+ * Only touches the school year currently flagged is_current on
+ * schoolyears — classofferings from any other school year are history
+ * and must never be advanced or cloned.
+ *
+ * A subject+section pairing is treated as one "lineage" across terms.
+ * For each lineage, this finds whichever row already reached the
+ * furthest term, and — if that's still behind the school-wide current
+ * term — clones it forward one term at a time (TRM 1 -> TRM 2 -> TRM 3),
+ * carrying over teacher/schedule/capacity/status from the term it's
+ * cloned from, plus every actively-enrolled student (so the roster
+ * continues instead of starting empty). This also naturally catches up
+ * a lineage that's more than one term behind, e.g. nobody opened the
+ * site while TRM 2 was active.
+ *
+ * Cloning stops for a lineage as soon as a row already exists at the
+ * next term (e.g. an admin added it manually) — that row is left as-is
+ * and the lineage isn't advanced past it, rather than erroring out or
+ * clobbering a manually-created class.
  */
 function syncCourseTermsToCurrent($pdo) {
     $currentTerm = resolveCurrentTerm(getTermIntervals($pdo));
@@ -289,27 +305,103 @@ function syncCourseTermsToCurrent($pdo) {
         return; // No interval configured / today falls outside every range — leave classes as-is.
     }
 
+    $termOrder    = ['TRM 1', 'TRM 2', 'TRM 3'];
+    $currentIndex = array_search($currentTerm, $termOrder, true);
+
     try {
-        $stmt = $pdo->prepare("SELECT offering_id FROM classofferings WHERE quarter <> ?");
-        $stmt->execute([$currentTerm]);
-        $staleIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $schoolYearId = $pdo->query("SELECT school_year_id FROM schoolyears WHERE is_current = 1 LIMIT 1")->fetchColumn();
+    } catch (PDOException $e) {
+        return;
+    }
+    if (!$schoolYearId) {
+        return; // No current school year configured — nothing to advance.
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            SELECT offering_id, subject_id, section_id, teacher_id, schedule_days, start_time, end_time, capacity, status, quarter
+            FROM classofferings
+            WHERE school_year_id = ?
+        ");
+        $stmt->execute([$schoolYearId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
         return;
     }
 
-    if (!$staleIds) {
+    if (!$rows) {
         return;
     }
 
-    $update = $pdo->prepare("UPDATE classofferings SET quarter = ? WHERE offering_id = ?");
-    foreach ($staleIds as $offeringId) {
-        try {
-            $update->execute([$currentTerm, $offeringId]);
-        } catch (PDOException $e) {
-            // Duplicate (subject_id, section_id, quarter, school_year_id) —
-            // another class already occupies that slot. Skip and leave this
-            // one on its previous term rather than failing the whole sync.
+    // Keep only the furthest-along row per (subject_id, section_id) lineage.
+    $latest = [];
+    foreach ($rows as $row) {
+        $idx = array_search($row['quarter'], $termOrder, true);
+        if ($idx === false) {
             continue;
+        }
+        $key = $row['subject_id'] . ':' . $row['section_id'];
+        if (!isset($latest[$key]) || $idx > $latest[$key]['idx']) {
+            $row['idx']  = $idx;
+            $latest[$key] = $row;
+        }
+    }
+
+    $insertOffering = $pdo->prepare("
+        INSERT INTO classofferings (subject_id, teacher_id, section_id, quarter, school_year_id, schedule_days, start_time, end_time, capacity, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ");
+    $copyEnrollments = $pdo->prepare("
+        INSERT INTO enrollments (student_id, offering_id, status)
+        SELECT student_id, ?, 'active' FROM enrollments WHERE offering_id = ? AND status = 'active'
+    ");
+
+    foreach ($latest as $source) {
+        $idx = $source['idx'];
+
+        while ($idx < $currentIndex) {
+            $idx++;
+            $nextTerm = $termOrder[$idx];
+
+            try {
+                $pdo->beginTransaction();
+
+                $insertOffering->execute([
+                    $source['subject_id'],
+                    $source['teacher_id'],
+                    $source['section_id'],
+                    $nextTerm,
+                    $schoolYearId,
+                    $source['schedule_days'],
+                    $source['start_time'],
+                    $source['end_time'],
+                    $source['capacity'],
+                    $source['status'],
+                ]);
+                $newOfferingId = (int) $pdo->lastInsertId();
+
+                // Carry the roster forward: everyone still actively
+                // enrolled in the term being left behind is re-enrolled
+                // in the new term's offering.
+                $copyEnrollments->execute([$newOfferingId, $source['offering_id']]);
+
+                $pdo->commit();
+            } catch (PDOException $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                // Duplicate (subject_id, section_id, quarter, school_year_id)
+                // — a row for this term already exists (e.g. added
+                // manually). Leave it as-is and stop advancing this
+                // lineage rather than clobbering it or failing every
+                // other lineage's sync.
+                break;
+            }
+
+            // The next loop iteration (if the lineage is more than one
+            // term behind) clones from the row we just created, so it
+            // carries forward whatever the newest term's state is.
+            $source['offering_id'] = $newOfferingId;
         }
     }
 }

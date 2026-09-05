@@ -76,10 +76,39 @@ function submitModalForm(form, url, submitBtn, errorBox, idleLabel, openPanel) {
     });
 }
 
+// ---- Term-sibling accordion: each class's older terms are rendered as
+// hidden .sibling-row rows sharing the same data-group as their primary
+// (most-recent-term) row. The toggle button just flips them between
+// display:none and visible, and flips its own arrow/label to match.
+function toggleCourseSiblings(btn) {
+    const key = btn.dataset.group;
+    const expand = btn.getAttribute('aria-expanded') !== 'true';
+    const siblings = document.querySelectorAll(
+        '#courseTableBody tr.sibling-row[data-group="' + CSS.escape(key) + '"]'
+    );
+
+    siblings.forEach(row => {
+        row.style.display = expand ? '' : 'none';
+        row.dataset.expanded = expand ? 'true' : 'false';
+    });
+
+    btn.setAttribute('aria-expanded', expand ? 'true' : 'false');
+    btn.querySelector('.chevron').textContent = expand ? '▾' : '▸';
+}
+
 // ---- Live search: instantly filters the Class List table ----
 // Matches each row's pre-baked data-search string (subject + section +
 // teacher name, all lowercase) against whatever the admin types.
 // No server round-trip — pure client-side show/hide.
+//
+// Sibling (older-term) rows are collapsed by default, so a plain
+// row-by-row filter would either leave a matching sibling hidden or
+// force every sibling open once the box is cleared. Instead this groups
+// rows by data-group first: if anything in a group matches, the primary
+// row is always shown for context, and while actively searching every
+// sibling in that group is revealed too (so the matching term is visible
+// without hunting for the toggle). Clearing the search restores each
+// group to whatever its toggle arrow was last set to.
 let noResultsRow = null;
 
 function getOrCreateNoResultsRow() {
@@ -94,17 +123,47 @@ function getOrCreateNoResultsRow() {
 
 function filterCourseList(rawValue) {
     const q = rawValue.trim().toLowerCase();
-    const rows = document.querySelectorAll('#courseTableBody tr.course-row');
     const clearBtn = document.getElementById('liveSearchClearBtn');
     clearBtn.classList.toggle('show', q.length > 0);
+    const searching = q !== '';
 
-    let visible = 0;
-    rows.forEach(row => {
-        const match = q === '' || row.dataset.search.includes(q);
-        row.style.display = match ? '' : 'none';
-        if (match) visible++;
+    const groups = new Map();
+    document.querySelectorAll('#courseTableBody tr.course-row').forEach(row => {
+        const key = row.dataset.group || row;
+        if (!groups.has(key)) groups.set(key, { primary: null, siblings: [] });
+        const group = groups.get(key);
+        if (row.classList.contains('sibling-row')) {
+            group.siblings.push(row);
+        } else {
+            group.primary = row;
+        }
     });
 
+    let visible = 0;
+    groups.forEach(group => {
+        const allRows = [group.primary, ...group.siblings].filter(Boolean);
+        const groupMatches = allRows.some(row => q === '' || row.dataset.search.includes(q));
+
+        if (!groupMatches) {
+            allRows.forEach(row => { row.style.display = 'none'; });
+            return;
+        }
+
+        group.primary.style.display = '';
+        visible++;
+
+        group.siblings.forEach(sib => {
+            if (searching) {
+                sib.style.display = '';
+                visible++;
+            } else {
+                // Restore each sibling to whatever the toggle arrow last set.
+                sib.style.display = sib.dataset.expanded === 'true' ? '' : 'none';
+            }
+        });
+    });
+
+    const rows = document.querySelectorAll('#courseTableBody tr.course-row');
     const noRow = getOrCreateNoResultsRow();
     noRow.style.display = (visible === 0 && rows.length > 0) ? '' : 'none';
 
