@@ -505,6 +505,48 @@ body {
     gap: 10px;
 }
 
+/* ---------- Term-sibling accordion ---------- */
+.course-table tbody tr.sibling-row {
+    background: var(--bg-page);
+}
+
+.course-table tbody tr.sibling-row td {
+    color: var(--text-muted);
+}
+
+.sibling-indent {
+    display: inline-block;
+    margin-right: 4px;
+    color: var(--text-muted);
+}
+
+.term-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-page);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+
+.term-toggle:hover {
+    background: rgba(26, 92, 58, 0.08);
+    color: var(--text-main);
+}
+
+.term-toggle .chevron {
+    display: inline-block;
+    font-size: 0.65rem;
+}
+
 .subject-tag {
     font-size: 0.68rem;
     font-weight: 700;

@@ -229,6 +229,33 @@ $courses = $stmt->fetchAll();
 
 $totalShown = count($courses);
 
+// ================= GROUP TERM SIBLINGS FOR DISPLAY =================
+// Each subject+section+school-year can now have a row per term (TRM 1/2/3
+// each get their own permanent classofferings row — see
+// syncCourseTermsToCurrent() in config.php). Rather than listing every
+// term as its own line and cluttering the table, show only the
+// most-recent term per class by default, with the older terms nested
+// underneath as collapsed "sibling" rows an admin can expand.
+$termOrder = ['TRM 1' => 0, 'TRM 2' => 1, 'TRM 3' => 2];
+$courseGroups = [];
+foreach ($courses as $course) {
+    $groupKey = $course['subject_id'] . ':' . $course['section_id'] . ':' . $course['school_year_id'];
+    $courseGroups[$groupKey][] = $course;
+}
+
+$orderedRows = [];
+foreach ($courseGroups as $groupKey => $groupRows) {
+    usort($groupRows, static fn($a, $b) => ($termOrder[$a['quarter']] ?? 0) <=> ($termOrder[$b['quarter']] ?? 0));
+
+    $primary  = array_pop($groupRows); // Highest term reached so far = most recent.
+    $siblings = $groupRows;            // Whatever's left, oldest term first.
+
+    $orderedRows[] = ['course' => $primary, 'is_sibling' => false, 'group_key' => $groupKey, 'sibling_count' => count($siblings)];
+    foreach ($siblings as $sibling) {
+        $orderedRows[] = ['course' => $sibling, 'is_sibling' => true, 'group_key' => $groupKey, 'sibling_count' => count($siblings)];
+    }
+}
+
 // ================= STATS (unaffected by filters — whole school) =================
 $totalCourses  = (int) $pdo->query("SELECT COUNT(*) FROM classofferings")->fetchColumn();
 $activeCourses = (int) $pdo->query("SELECT COUNT(*) FROM classofferings WHERE status = 'active'")->fetchColumn();
@@ -621,7 +648,11 @@ $subjectsList = $pdo->query("
                 </tr>
                 <?php endif; ?>
 
-                <?php foreach ($courses as $course):
+                <?php foreach ($orderedRows as $entry):
+                    $course       = $entry['course'];
+                    $isSibling    = $entry['is_sibling'];
+                    $groupKey     = $entry['group_key'];
+                    $siblingCount = $entry['sibling_count'];
                     $colors = $subjectColors[$course['subject_name']] ?? ['bg' => '#e5e7eb', 'text' => '#374151', 'bar' => '#9ca3af'];
                     $pct = $course['capacity'] > 0 ? round(($course['enrolled_count'] / $course['capacity']) * 100) : 0;
                     $teacherName = $course['teacher_id'] ? trim($course['teacher_firstname'] . ' ' . $course['teacher_lastname']) : null;
@@ -634,7 +665,10 @@ $subjectsList = $pdo->query("
                         ($teacherName ?? '')
                     ));
                 ?>
-                <tr class="course-row" data-search="<?= htmlspecialchars($searchBlob) ?>">
+                <tr class="course-row<?= $isSibling ? ' sibling-row' : '' ?>"
+                    data-search="<?= htmlspecialchars($searchBlob) ?>"
+                    data-group="<?= htmlspecialchars($groupKey) ?>"
+                    <?= $isSibling ? 'data-expanded="false" style="display:none"' : '' ?>>
                     <td>
                         <div class="course-cell">
                             <span class="subject-tag" style="background: <?= $colors['bg'] ?>; color: <?= $colors['text'] ?>;">
@@ -642,9 +676,18 @@ $subjectsList = $pdo->query("
                             </span>
                         </div>
                     </td>
-                    <td class="course-name"><?= htmlspecialchars($course['section_name']) ?></td>
+                    <td class="course-name"><?= $isSibling ? '<span class="sibling-indent">↳</span> ' : '' ?><?= htmlspecialchars($course['section_name']) ?></td>
                     <td>Grade <?= htmlspecialchars($course['grade_level']) ?><?= $course['strand'] ? ' · ' . htmlspecialchars($course['strand']) : '' ?></td>
-                    <td><?= htmlspecialchars($course['quarter']) ?></td>
+                    <td>
+                        <?= htmlspecialchars($course['quarter']) ?>
+                        <?php if (!$isSibling && $siblingCount > 0): ?>
+                            <button type="button" class="term-toggle" data-group="<?= htmlspecialchars($groupKey) ?>"
+                                    aria-expanded="false" onclick="toggleCourseSiblings(this)">
+                                <span class="chevron">▸</span>
+                                <?= $siblingCount ?> earlier <?= $siblingCount === 1 ? 'term' : 'terms' ?>
+                            </button>
+                        <?php endif; ?>
+                    </td>
                     <td><?= $course['offering_school_year_label'] ? htmlspecialchars($course['offering_school_year_label']) : '<span class="field-note">— None —</span>' ?></td>
                     <td><?= $scheduleDisplay ? htmlspecialchars($scheduleDisplay) : '<span class="field-note">— Not set —</span>' ?></td>
                     <td><?= $teacherName ? htmlspecialchars($teacherName) : '— Unassigned —' ?></td>
