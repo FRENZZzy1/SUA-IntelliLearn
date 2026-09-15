@@ -31,7 +31,6 @@ $errors = [];
 
 $schoolName        = trim($_POST['school_name'] ?? '');
 $defaultCapacity   = $_POST['default_class_capacity'] ?? '';
-$passingGrade      = $_POST['passing_grade'] ?? '';
 $autoApprove       = isset($_POST['auto_approve_enrollment']) ? '1' : '0';
 $enrollmentOpen    = isset($_POST['enrollment_open']) ? '1' : '0';
 
@@ -41,9 +40,7 @@ if ($schoolName === '' || mb_strlen($schoolName) > 150) {
 if (!ctype_digit((string) $defaultCapacity) || (int) $defaultCapacity < 1 || (int) $defaultCapacity > 500) {
     $errors[] = 'Default class capacity must be a number between 1 and 500.';
 }
-if (!is_numeric($passingGrade) || (float) $passingGrade < 0 || (float) $passingGrade > 100) {
-    $errors[] = 'Passing grade must be a number between 0 and 100.';
-}
+
 
 if (!empty($errors)) {
     http_response_code(422);
@@ -54,7 +51,6 @@ if (!empty($errors)) {
 $values = [
     'school_name'             => $schoolName,
     'default_class_capacity'  => (string) (int) $defaultCapacity,
-    'passing_grade'           => (string) (float) $passingGrade,
     'auto_approve_enrollment' => $autoApprove,
     'enrollment_open'         => $enrollmentOpen,
 ];
