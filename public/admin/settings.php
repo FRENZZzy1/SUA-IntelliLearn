@@ -19,7 +19,6 @@ $defaults = [
     'default_class_capacity'  => '50',
     'auto_approve_enrollment' => '0',
     'enrollment_open'         => '1',
-    'passing_grade'           => '75',
 ];
 
 $settings = $defaults;
@@ -183,13 +182,6 @@ $schoolYears = $pdo->query("SELECT * FROM schoolyears ORDER BY start_date DESC")
                             <small>Used as the pre-filled capacity when a new class offering is created.</small>
                         </div>
 
-                        <div class="form-group">
-                            <label><i class="fas fa-percent"></i> Passing Grade</label>
-                            <input type="number" name="passing_grade" min="0" max="100" step="0.01"
-                                value="<?= clean($settings['passing_grade']) ?>" required>
-                            <small>Minimum final average considered passing for a subject.</small>
-                        </div>
-
                         <div class="toggle-row">
                             <div class="toggle-row-text">
                                 <strong>Auto-approve enrollment requests</strong>
@@ -232,7 +224,6 @@ $schoolYears = $pdo->query("SELECT * FROM schoolyears ORDER BY start_date DESC")
                     <form id="generalForm">
                         <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
                         <input type="hidden" name="default_class_capacity" value="<?= clean($settings['default_class_capacity']) ?>">
-                        <input type="hidden" name="passing_grade" value="<?= clean($settings['passing_grade']) ?>">
                         <input type="hidden" name="auto_approve_enrollment" value="<?= $settings['auto_approve_enrollment'] === '1' ? '1' : '0' ?>">
                         <input type="hidden" name="enrollment_open" value="<?= $settings['enrollment_open'] === '1' ? '1' : '0' ?>">
                         <div class="form-alert" id="generalFormError" hidden></div>
