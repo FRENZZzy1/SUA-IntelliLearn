@@ -16,6 +16,5 @@ INSERT INTO `system_settings` (`setting_key`, `setting_value`) VALUES
   ('school_name', 'St. Uriel Academy'),
   ('default_class_capacity', '50'),
   ('auto_approve_enrollment', '0'),
-  ('enrollment_open', '1'),
-  ('passing_grade', '75')
+  ('enrollment_open', '1')
 ON DUPLICATE KEY UPDATE setting_key = setting_key;
