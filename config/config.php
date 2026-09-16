@@ -4,13 +4,18 @@
  * Supports BOTH MySQLi (for existing login.php) AND PDO (for new features)
  */
 
-// Configure the PHP session cookie before starting the session.
-// A normal session remains available across tab closes. The login page
-// extends the cookie lifetime only when "Remember me" is selected.
+// Configure the PHP session cookie BEFORE starting the session.
+// If the browser has a valid Remember Me cookie, keep the PHP session
+// cookie persistent for the same period. Otherwise use a normal browser
+// session cookie.
+$rememberCookieName = 'sua_remember_token';
+$rememberDays = 30;
+$hasRememberCookie = !empty($_COOKIE[$rememberCookieName]);
+$sessionLifetime = $hasRememberCookie ? ($rememberDays * 24 * 60 * 60) : 0;
 $sessionSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443);
 
 session_set_cookie_params([
-    'lifetime' => 0,
+    'lifetime' => $sessionLifetime,
     'path' => '/',
     'secure' => $sessionSecure,
     'httponly' => true,
@@ -411,43 +416,13 @@ function syncCourseTermsToCurrent($pdo) {
                 break;
             }
 
-            // The next loop iteration (if the lineage is more than one
-            // term behind) clones from the row we just created, so it
-            // carries forward whatever the newest term's state is.
+            // The newly created row becomes the source if another term
+            // still needs to be caught up.
             $source['offering_id'] = $newOfferingId;
         }
     }
 }
 
-// Canonical display order for attendance term breakdowns: the three
-// configured terms, then a catch-all bucket for dates that don't fall
-// inside any configured interval.
-const ATTENDANCE_TERM_ORDER = ['TRM 1', 'TRM 2', 'TRM 3', 'Unscheduled'];
-
-/**
- * Which term (TRM 1/2/3) a given date falls into, per the configured
- * term intervals. Used to label attendance records by term.
- *
- * This is deliberately independent of classofferings.quarter, which only
- * reflects whichever term is *currently* active (it advances
- * automatically as terms roll over — see syncCourseTermsToCurrent()
- * above) and so can't be used to tell which term an attendance record
- * taken weeks or months ago actually belonged to. Instead, each
- * attendance_date is resolved against the intervals independently, the
- * same way "Set Term Interval" resolves today's date.
- *
- * Falls back to 'Unscheduled' for dates outside every configured range
- * (e.g. attendance was recorded before intervals were set up).
- */
-function attendanceTermForDate(array $termIntervals, string $dateStr): string {
-    $date = DateTime::createFromFormat('Y-m-d', $dateStr);
-    if (!$date) {
-        return 'Unscheduled';
-    }
-    return resolveCurrentTerm($termIntervals, $date) ?? 'Unscheduled';
-}
-
- define('GEMINI_API_KEY', '');
-
-
-?>
+// ============================================================
+// Other project helpers continue below this point.
+// ============================================================
