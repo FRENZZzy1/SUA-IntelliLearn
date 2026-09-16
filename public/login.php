@@ -56,11 +56,11 @@ if(isset($_POST['login'])){
             exit();
 
         } else {
-            $message = "Invalid Password";
+            $message = "Invalid Username or Password";
         }
 
     } else {
-        $message = "User not found";
+        $message = "Invalid Username or Password";
     }
 }
 ?>
