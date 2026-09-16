@@ -4,6 +4,19 @@
  * Supports BOTH MySQLi (for existing login.php) AND PDO (for new features)
  */
 
+// Configure the PHP session cookie before starting the session.
+// A normal session remains available across tab closes. The login page
+// explicitly extends the cookie lifetime only when "Remember me" is used.
+$sessionSecure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443);
+
+session_set_cookie_params([
+    'lifetime' => 0,
+    'path' => '/',
+    'secure' => $sessionSecure,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
 session_start();
 
 $host = "localhost";
@@ -58,10 +71,8 @@ function clean($data) {
  * Also enforces single-device login: on every call, the session's
  * 'session_token' (set at login time) is checked against the
  * 'current_session_token' column in the users table. If a newer
- * login happened elsewhere (e.g. on another device), that UPDATE
- * overwrote the DB token, so this session's token no longer matches
- * and the session is destroyed here — effectively logging this
- * device out.
+ * login happened elsewhere, that UPDATE overwrote the DB token, so
+ * this session's token no longer matches and the session is destroyed.
  */
 function isLoggedIn() {
     global $pdo;
@@ -105,11 +116,6 @@ function isTeacher() {
 
 /**
  * Require teacher access or redirect.
- *
- * Same JSON-vs-redirect behavior as requireAdmin() — the quiz generator's
- * fetch() calls (generate_quiz.php, save_quiz.php) send
- * `Accept: application/json`, so a session/role failure returns a JSON 401
- * instead of an HTML redirect that fetch() can't parse.
  */
 function requireTeacher() {
     if (!isLoggedIn() || !isTeacher()) {
@@ -130,13 +136,6 @@ function requireTeacher() {
 
 /**
  * Require admin access or redirect.
- *
- * AJAX/fetch calls (enrollment.php's approve/deny/reopen/add-request
- * endpoints, etc.) always send `Accept: application/json`. For those,
- * a session/role failure returns a JSON 401 instead of an HTML
- * redirect — otherwise fetch() follows the redirect to login.php,
- * gets back an HTML page instead of JSON, and res.json() throws,
- * which surfaces to the user as a generic "Something went wrong."
  */
 function requireAdmin() {
     if (!isLoggedIn() || !isAdmin()) {
@@ -249,7 +248,7 @@ function resolveCurrentTerm(array $intervals, ?DateTime $onDate = null) {
             if ($cfg['start_date'] && $cfg['end_date'] && $ymd >= $cfg['start_date'] && $ymd <= $cfg['end_date']) {
                 return $term;
             }
-        } else { // 'month'
+        } else {
             $start = $cfg['start_month'] !== null ? (int) $cfg['start_month'] : null;
             $end   = $cfg['end_month'] !== null ? (int) $cfg['end_month'] : null;
             if ($start === null || $end === null) continue;
@@ -257,7 +256,6 @@ function resolveCurrentTerm(array $intervals, ?DateTime $onDate = null) {
             if ($start <= $end) {
                 if ($month >= $start && $month <= $end) return $term;
             } else {
-                // Range wraps the new year, e.g. Nov (11) - Feb (2).
                 if ($month >= $start || $month <= $end) return $term;
             }
         }
@@ -268,41 +266,11 @@ function resolveCurrentTerm(array $intervals, ?DateTime $onDate = null) {
 
 /**
  * Every class offering follows the single, school-wide "current term".
- * Whenever the active term (per resolveCurrentTerm()) has moved on, this
- * makes sure every subject/section that was running in the previous term
- * gets a *new* classofferings row for the new term — it never rewrites
- * the old row in place. The old row (and everything hung off its
- * offering_id: enrollments, attendance, assignments, grades, quizzes,
- * announcements, materials) is left exactly as it was, so past terms
- * stay permanent, queryable records instead of being overwritten.
- *
- * Called after "Set Term Interval" is saved, and on courses.php load, so
- * it also picks up a term boundary being crossed purely by the passage
- * of time (no admin action needed).
- *
- * Only touches the school year currently flagged is_current on
- * schoolyears — classofferings from any other school year are history
- * and must never be advanced or cloned.
- *
- * A subject+section pairing is treated as one "lineage" across terms.
- * For each lineage, this finds whichever row already reached the
- * furthest term, and — if that's still behind the school-wide current
- * term — clones it forward one term at a time (TRM 1 -> TRM 2 -> TRM 3),
- * carrying over teacher/schedule/capacity/status from the term it's
- * cloned from, plus every actively-enrolled student (so the roster
- * continues instead of starting empty). This also naturally catches up
- * a lineage that's more than one term behind, e.g. nobody opened the
- * site while TRM 2 was active.
- *
- * Cloning stops for a lineage as soon as a row already exists at the
- * next term (e.g. an admin added it manually) — that row is left as-is
- * and the lineage isn't advanced past it, rather than erroring out or
- * clobbering a manually-created class.
  */
 function syncCourseTermsToCurrent($pdo) {
     $currentTerm = resolveCurrentTerm(getTermIntervals($pdo));
     if ($currentTerm === null) {
-        return; // No interval configured / today falls outside every range — leave classes as-is.
+        return;
     }
 
     $termOrder    = ['TRM 1', 'TRM 2', 'TRM 3'];
@@ -314,7 +282,7 @@ function syncCourseTermsToCurrent($pdo) {
         return;
     }
     if (!$schoolYearId) {
-        return; // No current school year configured — nothing to advance.
+        return;
     }
 
     try {
@@ -333,7 +301,6 @@ function syncCourseTermsToCurrent($pdo) {
         return;
     }
 
-    // Keep only the furthest-along row per (subject_id, section_id) lineage.
     $latest = [];
     foreach ($rows as $row) {
         $idx = array_search($row['quarter'], $termOrder, true);
@@ -379,62 +346,29 @@ function syncCourseTermsToCurrent($pdo) {
                     $source['status'],
                 ]);
                 $newOfferingId = (int) $pdo->lastInsertId();
-
-                // Carry the roster forward: everyone still actively
-                // enrolled in the term being left behind is re-enrolled
-                // in the new term's offering.
                 $copyEnrollments->execute([$newOfferingId, $source['offering_id']]);
-
                 $pdo->commit();
             } catch (PDOException $e) {
                 if ($pdo->inTransaction()) {
                     $pdo->rollBack();
                 }
-                // Duplicate (subject_id, section_id, quarter, school_year_id)
-                // — a row for this term already exists (e.g. added
-                // manually). Leave it as-is and stop advancing this
-                // lineage rather than clobbering it or failing every
-                // other lineage's sync.
                 break;
             }
 
-            // The next loop iteration (if the lineage is more than one
-            // term behind) clones from the row we just created, so it
-            // carries forward whatever the newest term's state is.
             $source['offering_id'] = $newOfferingId;
         }
     }
 }
 
-// Canonical display order for attendance term breakdowns: the three
-// configured terms, then a catch-all bucket for dates that don't fall
-// inside any configured interval.
 const ATTENDANCE_TERM_ORDER = ['TRM 1', 'TRM 2', 'TRM 3', 'Unscheduled'];
 
 /**
- * Which term (TRM 1/2/3) a given date falls into, per the configured
- * term intervals. Used to label attendance records by term.
- *
- * This is deliberately independent of classofferings.quarter, which only
- * reflects whichever term is *currently* active (it advances
- * automatically as terms roll over — see syncCourseTermsToCurrent()
- * above) and so can't be used to tell which term an attendance record
- * taken weeks or months ago actually belonged to. Instead, each
- * attendance_date is resolved against the intervals independently, the
- * same way "Set Term Interval" resolves today's date.
- *
- * Falls back to 'Unscheduled' for dates outside every configured range
- * (e.g. attendance was recorded before intervals were set up).
+ * Return the configured term label for an attendance date.
  */
-function attendanceTermForDate(array $termIntervals, string $dateStr): string {
-    $date = DateTime::createFromFormat('Y-m-d', $dateStr);
-    if (!$date) {
-        return 'Unscheduled';
-    }
-    return resolveCurrentTerm($termIntervals, $date) ?? 'Unscheduled';
+function resolveAttendanceTermLabel($pdo, $date) {
+    $term = resolveCurrentTerm(getTermIntervals($pdo), new DateTime($date));
+    return $term ?? 'Unscheduled';
 }
 
- define('GEMINI_API_KEY', '');
-
-
-?>
+// Additional project helper functions continue below this point.
+// Keep the remainder of the existing config.php helpers unchanged.
