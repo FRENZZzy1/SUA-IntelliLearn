@@ -1,0 +1,5 @@
+# Enforce quiz availability before the student quiz page executes.
+# The guard performs the server-side available_from / available_until check,
+# then includes the existing take_quiz.php when access is allowed.
+RewriteEngine On
+RewriteRule ^take_quiz\.php$ quiz_deadline_guard.php [END,QSA]
