@@ -519,6 +519,202 @@
     border-left: 3px solid var(--primary, #10b981);
 }
 
+/* ===================== Quiz score highlight (list row) ===================== */
+/* A student was missing their score because it was buried in the tiny,
+   all-grey ".material-meta" line alongside status chips and point counts.
+   Pull it into its own bold, colored badge so it's the first thing a
+   student's eye lands on. */
+.quiz-score-highlight {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: 3px;
+    gap: 6px;
+    margin-top: 8px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1.3;
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.quiz-score-highlight i {
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.quiz-score-highlight__label,
+.quiz-score-highlight__value,
+.quiz-score-highlight__pct {
+    /* Each chunk moves to the next line as a whole unit (thanks to
+       flex-wrap above) instead of breaking mid-word, which is what was
+       making the badge look like overlapping, cut-off text on phones. */
+    white-space: nowrap;
+}
+
+.quiz-score-highlight__label {
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+.quiz-score-highlight__value {
+    font-weight: 800;
+}
+
+.quiz-score-highlight__pct {
+    font-weight: 600;
+    opacity: 0.85;
+}
+
+.quiz-score-highlight--good {
+    background: linear-gradient(135deg, #e6f7ee, #d1fae5);
+    color: #0a7a3d;
+}
+
+.quiz-score-highlight--mid {
+    background: linear-gradient(135deg, #fff8e6, #fef3c7);
+    color: #a16207;
+}
+
+.quiz-score-highlight--low {
+    background: linear-gradient(135deg, #fdeceb, #fee2e2);
+    color: #b3261e;
+}
+
+.quiz-score-highlight--neutral {
+    background: var(--bg, #f3f4f6);
+    color: var(--text-muted, #6b7280);
+}
+
+/* ===================== Quiz score summary (single quiz page) ===================== */
+.quiz-score-summary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px 20px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    border: 1px solid transparent;
+    animation: fadeSlideUp 0.4s ease both;
+}
+
+.quiz-score-summary__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    color: #fff;
+}
+
+.quiz-score-summary__text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.quiz-score-summary__label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    opacity: 0.8;
+}
+
+.quiz-score-summary__value {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    row-gap: 2px;
+    gap: 6px;
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.2;
+}
+
+.quiz-score-summary__frac {
+    white-space: nowrap;
+}
+
+.quiz-score-summary__pct {
+    font-size: 1rem;
+    font-weight: 600;
+    opacity: 0.75;
+    white-space: nowrap;
+}
+
+.quiz-score-summary--good {
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border-color: #a7f3d0;
+    color: #065f46;
+}
+.quiz-score-summary--good .quiz-score-summary__icon {
+    background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.quiz-score-summary--mid {
+    background: linear-gradient(135deg, #fffbeb, #fef3c7);
+    border-color: #fde68a;
+    color: #92400e;
+}
+.quiz-score-summary--mid .quiz-score-summary__icon {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.quiz-score-summary--low {
+    background: linear-gradient(135deg, #fef2f2, #fee2e2);
+    border-color: #fecaca;
+    color: #991b1b;
+}
+.quiz-score-summary--low .quiz-score-summary__icon {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.quiz-score-summary--neutral {
+    background: var(--bg, #f8fafc);
+    border-color: var(--border, #e5e7eb);
+    color: var(--text, #374151);
+}
+.quiz-score-summary--neutral .quiz-score-summary__icon {
+    background: linear-gradient(135deg, #9ca3af, #6b7280);
+}
+
+/* Score badge used inside the attempts table */
+.score-badge {
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    row-gap: 2px;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.score-badge__frac {
+    white-space: nowrap;
+}
+
+.score-badge em {
+    font-style: normal;
+    font-weight: 600;
+    opacity: 0.8;
+    font-size: 0.78rem;
+    white-space: nowrap;
+}
+
+.score-badge--good { background: #e6f7ee; color: #0a7a3d; }
+.score-badge--mid  { background: #fff6e0; color: #a16207; }
+.score-badge--low  { background: #fdeceb; color: #b3261e; }
+.score-badge--neutral { background: #f3f4f6; color: #6b7280; }
+
 /* ===================== Students / Grading table ===================== */
 .data-table {
     width: 100%;
@@ -1041,6 +1237,89 @@
         padding: 12px;
     }
 
+    /* Quiz score highlight / summary shrink a touch on tablets & phones */
+    .quiz-score-highlight {
+        font-size: 0.8rem;
+        padding: 6px 10px;
+    }
+
+    .quiz-score-summary {
+        padding: 14px 16px;
+        gap: 12px;
+    }
+
+    .quiz-score-summary__icon {
+        width: 42px;
+        height: 42px;
+        font-size: 1.05rem;
+    }
+
+    .quiz-score-summary__value {
+        font-size: 1.3rem;
+    }
+
+    /* Quiz attempts table -> stacked cards on narrow screens, so the
+       score is never squeezed into a barely-readable column. */
+    .quiz-attempts-table,
+    .quiz-attempts-table thead,
+    .quiz-attempts-table tbody,
+    .quiz-attempts-table th,
+    .quiz-attempts-table td,
+    .quiz-attempts-table tr {
+        display: block;
+    }
+
+    .quiz-attempts-table {
+        min-width: 0;
+    }
+
+    .quiz-attempts-table thead {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    .quiz-attempts-table tbody tr {
+        border: 1px solid var(--border, #f1f5f9);
+        border-radius: 12px;
+        margin-bottom: 12px;
+        padding: 6px 4px;
+    }
+
+    .quiz-attempts-table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .quiz-attempts-table td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 12px;
+        border-bottom: 1px dashed var(--border, #f1f5f9);
+        text-align: right;
+    }
+
+    .quiz-attempts-table td:last-child {
+        border-bottom: none;
+    }
+
+    .quiz-attempts-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--text-muted, #6b7280);
+        text-align: left;
+    }
+
+    /* Score row gets extra emphasis since it's the one students look for */
+    .quiz-attempts-table td[data-label="Score"] {
+        background: var(--bg, #f8fafc);
+        border-radius: 0 0 10px 10px;
+    }
+
     .attendance-date-bar {
         justify-content: space-between;
     }
@@ -1135,6 +1414,27 @@
 
     .panel--card {
         padding: 16px;
+    }
+
+    .quiz-score-highlight {
+        font-size: 0.76rem;
+        padding: 5px 9px;
+        gap: 4px;
+    }
+
+    .quiz-score-summary {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: left;
+    }
+
+    .quiz-score-summary__value {
+        font-size: 1.2rem;
+    }
+
+    .score-badge {
+        font-size: 0.78rem;
+        padding: 4px 10px;
     }
 }
 /* ===================== Student: Teacher info card ===================== */

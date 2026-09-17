@@ -2,16 +2,30 @@
 /**
  * logout.php
  *
- * Destroys the current session and sends the user back to the login
- * page. Linked from the profile dropdown in includes/admin_header.php.
- *
- * NOTE: placed next to login.php (same folder) so the '../config/config.php'
- * path below matches the one login.php already uses. If your login.php
- * lives somewhere else, move this file alongside it and adjust the
- * require path + the href in admin_header.php to match.
+ * Destroys the current session and invalidates the persistent Remember Me
+ * token so logging out cannot immediately sign the user back in.
  */
 
-require_once '../config/config.php'; // starts the session (same as config.php does for login.php)
+require_once '../config/config.php';
+
+// Invalidate the server-side token first. This also preserves the existing
+// single-device rule: any current session/remember cookie using this token
+// becomes invalid immediately.
+if (!empty($_SESSION['user_id'])) {
+    $clearTokenStmt = $conn->prepare("UPDATE users SET current_session_token=NULL WHERE id=?");
+    $clearTokenStmt->bind_param("i", $_SESSION['user_id']);
+    $clearTokenStmt->execute();
+}
+
+// Clear the persistent Remember Me cookie.
+$secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443);
+setcookie('sua_remember_token', '', [
+    'expires' => time() - 3600,
+    'path' => '/',
+    'secure' => $secure,
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
 
 $_SESSION = [];
 

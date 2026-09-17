@@ -149,6 +149,71 @@ if (function_exists('get_initials')) {
     .shp-profile-item.shp-logout { color: #b91c1c; margin-top: 4px; }
     .shp-profile-item.shp-logout i { color: #b91c1c; }
     .shp-profile-item.shp-logout:hover { background: #fef2f2; }
+
+    /* ==========================================================
+       Defensive mobile refinements layered on top of header.css's
+       existing 768px breakpoint (.top-header left:0 !important,
+       .header-search width:200px). These target phones where even
+       a 200px search bar + icons + named profile pill get tight.
+       ========================================================== */
+    @media (max-width: 768px) {
+        .top-header {
+            padding-left: 14px;
+            padding-right: 14px;
+            /* Reserve space on the left for the fixed hamburger button
+               from student_sidebar.css (top:14px; left:14px; width:42px).
+               Without this, the search box renders underneath it. */
+            padding-left: 64px;
+        }
+
+        .header-search {
+            width: auto;
+            flex: 1 1 auto;
+            min-width: 0;
+            margin-right: 8px;
+        }
+
+        .search-results-dropdown {
+            left: 0;
+            width: min(380px, calc(100vw - 28px));
+        }
+
+        .header-actions {
+            flex: 0 0 auto;
+            gap: 4px;
+        }
+
+        /* Collapse the profile trigger to avatar + chevron only —
+           the name is still shown inside the open dropdown header. */
+        .shp-profile-trigger span {
+            display: none;
+        }
+        .shp-profile-trigger {
+            padding: 0 6px !important;
+        }
+
+        .shp-profile-menu {
+            width: 200px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .header-search input { width: 100%; }
+    }
+
+    @media (max-width: 400px) {
+        /* Header is position:fixed with a fixed height — wrapping to
+           a second row would overlap page content, so we keep it to
+           one row and just shrink further instead. */
+        .header-btn {
+            width: 34px;
+            height: 34px;
+        }
+        .header-search input {
+            padding: 8px 12px 8px 34px;
+            font-size: 0.8rem;
+        }
+    }
 </style>
 <header class="top-header">
     <div class="header-search">

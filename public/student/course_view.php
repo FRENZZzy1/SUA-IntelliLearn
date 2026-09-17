@@ -460,6 +460,16 @@ include 'assets/api/course_view_functions.php';
                                 $qStatus = quizStatusInfo($q['quiz_status']);
                                 $attemptStatus = quizAttemptStatusInfo($q['attempt_status']);
                                 ?>
+                                <?php
+                                    // Pull the score out of the small meta line and into its
+                                    // own high-visibility badge — the old inline "· Score: X/Y"
+                                    // text was easy to miss next to the other meta chips.
+                                    $qScorePct = null;
+                                    if ($q['score'] !== null && $q['max_score'] !== null && (float) $q['max_score'] > 0) {
+                                        $qScorePct = (int) round(((float) $q['score'] / (float) $q['max_score']) * 100);
+                                    }
+                                    $qScoreTier = $qScorePct === null ? 'neutral' : ($qScorePct >= 80 ? 'good' : ($qScorePct >= 50 ? 'mid' : 'low'));
+                                ?>
                                 <li class="material-item">
                                     <div class="material-icon material-icon--quiz"><i class="fas fa-file-circle-question"></i></div>
                                     <div class="material-info">
@@ -474,21 +484,28 @@ include 'assets/api/course_view_functions.php';
                                             · <?= rtrim(rtrim((string) $q['total_points'], '0'), '.') ?> pts
                                             · <span
                                                 class="chip chip-<?= $attemptStatus['class'] ?>"><?= $attemptStatus['label'] ?></span>
-                                            <?php if ($q['score'] !== null): ?>
-                                                · Score:
-                                                <?= rtrim(rtrim((string) $q['score'], '0'), '.') ?>                    <?php if ($q['max_score'] !== null): ?>/<?= rtrim(rtrim((string) $q['max_score'], '0'), '.') ?><?php endif; ?>
-                                            <?php endif; ?>
                                         </div>
+                                        <?php if ($q['score'] !== null): ?>
+                                            <div class="quiz-score-highlight quiz-score-highlight--<?= $qScoreTier ?>">
+                                                <i class="fas fa-trophy"></i>
+                                                <span class="quiz-score-highlight__label">Your score:</span>
+                                                <span class="quiz-score-highlight__value"><?= rtrim(rtrim((string) $q['score'], '0'), '.') ?><?php if ($q['max_score'] !== null): ?>/<?= rtrim(rtrim((string) $q['max_score'], '0'), '.') ?><?php endif; ?></span>
+                                                <?php if ($qScorePct !== null): ?>
+                                                    <span class="quiz-score-highlight__pct"><?= $qScorePct ?>%</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
-                                    <a class="btn-secondary btn-view-submissions"
-                                        href="<?= quizzesUrlStudent($classInfo['subject_id'], $activeTerm, (int) $q['quiz_id']) ?>">
-                                        View
-                                    </a>
+                                    <div class="material-actions material-actions--quiz">
+                                        <a class="btn-secondary btn-view-submissions"
+                                            href="<?= quizzesUrlStudent($classInfo['subject_id'], $activeTerm, (int) $q['quiz_id']) ?>">
+                                            View
+                                        </a>
 
-                                    <a href="take_quiz.php?quiz_id=<?= (int) $q['quiz_id'] ?>" class="btn-primary">
-                                        Take Quiz
-                                    </a>
-
+                                        <a href="take_quiz.php?quiz_id=<?= (int) $q['quiz_id'] ?>" class="btn-primary">
+                                            Take Quiz
+                                        </a>
+                                    </div>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
@@ -520,6 +537,40 @@ include 'assets/api/course_view_functions.php';
                         <p class="assignment-description"><?= nl2br(htmlspecialchars($selectedQuiz['description'])) ?></p>
                     <?php endif; ?>
 
+                    <?php
+                        // Find the best graded attempt so the student's headline score is
+                        // front and center, instead of buried in a table they have to scan.
+                        $bestAttempt = null;
+                        $bestPct = -1;
+                        foreach ($quizAttempts as $row) {
+                            if ($row['score'] === null || $row['max_score'] === null || (float) $row['max_score'] <= 0) {
+                                continue;
+                            }
+                            $pct = ((float) $row['score'] / (float) $row['max_score']) * 100;
+                            if ($pct > $bestPct) {
+                                $bestPct = $pct;
+                                $bestAttempt = $row;
+                            }
+                        }
+                        $bestPctRounded = $bestAttempt ? (int) round($bestPct) : null;
+                        $bestTier = $bestPctRounded === null ? 'neutral' : ($bestPctRounded >= 80 ? 'good' : ($bestPctRounded >= 50 ? 'mid' : 'low'));
+                    ?>
+
+                    <?php if ($bestAttempt): ?>
+                        <div class="quiz-score-summary quiz-score-summary--<?= $bestTier ?>">
+                            <div class="quiz-score-summary__icon"><i class="fas fa-trophy"></i></div>
+                            <div class="quiz-score-summary__text">
+                                <span class="quiz-score-summary__label">
+                                    Your best score<?= count($quizAttempts) > 1 ? ' (Attempt #' . (int) $bestAttempt['attempt_number'] . ')' : '' ?>
+                                </span>
+                                <span class="quiz-score-summary__value">
+                                    <span class="quiz-score-summary__frac"><?= rtrim(rtrim((string) $bestAttempt['score'], '0'), '.') ?>/<?= rtrim(rtrim((string) $bestAttempt['max_score'], '0'), '.') ?></span>
+                                    <span class="quiz-score-summary__pct">(<?= $bestPctRounded ?>%)</span>
+                                </span>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+
                     <div class="panel-header" style="margin-top: 8px;">
                         <h2 style="font-size:1rem;"><i class="fas fa-list-check"></i> Your attempts</h2>
                     </div>
@@ -534,7 +585,7 @@ include 'assets/api/course_view_functions.php';
                         </div>
                     <?php else: ?>
                         <div class="table-scroll">
-                            <table class="data-table data-table--modern">
+                            <table class="data-table data-table--modern quiz-attempts-table">
                                 <thead>
                                     <tr>
                                         <th>Attempt</th>
@@ -545,15 +596,30 @@ include 'assets/api/course_view_functions.php';
                                 </thead>
                                 <tbody>
                                     <?php foreach ($quizAttempts as $row): ?>
-                                        <?php $attemptStatus = quizAttemptStatusInfo($row['attempt_status']); ?>
+                                        <?php
+                                            $attemptStatus = quizAttemptStatusInfo($row['attempt_status']);
+                                            $rowPct = null;
+                                            if ($row['score'] !== null && $row['max_score'] !== null && (float) $row['max_score'] > 0) {
+                                                $rowPct = (int) round(((float) $row['score'] / (float) $row['max_score']) * 100);
+                                            }
+                                            $rowTier = $rowPct === null ? 'neutral' : ($rowPct >= 80 ? 'good' : ($rowPct >= 50 ? 'mid' : 'low'));
+                                        ?>
                                         <tr>
-                                            <td>#<?= (int) $row['attempt_number'] ?></td>
-                                            <td><span
+                                            <td data-label="Attempt">#<?= (int) $row['attempt_number'] ?></td>
+                                            <td data-label="Status"><span
                                                     class="chip chip-<?= $attemptStatus['class'] ?>"><?= $attemptStatus['label'] ?></span>
                                             </td>
-                                            <td><?= $row['submitted_at'] ? date('M j, Y g:i A', strtotime($row['submitted_at'])) : '—' ?>
+                                            <td data-label="Submitted"><?= $row['submitted_at'] ? date('M j, Y g:i A', strtotime($row['submitted_at'])) : '—' ?>
                                             </td>
-                                            <td><?= $row['score'] !== null ? rtrim(rtrim((string) $row['score'], '0'), '.') . ($row['max_score'] !== null ? '/' . rtrim(rtrim((string) $row['max_score'], '0'), '.') : '') : '—' ?>
+                                            <td data-label="Score">
+                                                <?php if ($row['score'] !== null): ?>
+                                                    <span class="score-badge score-badge--<?= $rowTier ?>">
+                                                        <span class="score-badge__frac"><?= rtrim(rtrim((string) $row['score'], '0'), '.') ?><?php if ($row['max_score'] !== null): ?>/<?= rtrim(rtrim((string) $row['max_score'], '0'), '.') ?><?php endif; ?></span>
+                                                        <?php if ($rowPct !== null): ?><em><?= $rowPct ?>%</em><?php endif; ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    —
+                                                <?php endif; ?>
                                             </td>
                                         </tr>
                                     <?php endforeach; ?>
