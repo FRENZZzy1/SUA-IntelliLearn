@@ -370,6 +370,13 @@ if (!empty($submissionRows)) {
                             <label for="assignmentMaxAttempts">Attempts allowed</label>
                             <input type="number" id="assignmentMaxAttempts" name="max_attempts" min="1" step="1" value="1">
                         </div>
+                        <div>
+                            <label for="assignmentType">Grading category</label>
+                            <select id="assignmentType" name="type">
+                                <option value="Activity">Activity (Performance Task)</option>
+                                <option value="Exam">Exam</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="form-row">
@@ -405,7 +412,8 @@ if (!empty($submissionRows)) {
                                         <?= htmlspecialchars($a['title']) ?>
                                     </a>
                                     <div class="material-meta">
-                                        <?= (int) $a['points'] ?> pts
+                                        <?= htmlspecialchars($a['type'] ?? 'Activity') ?>
+                                        · <?= (int) $a['points'] ?> pts
                                         · <span class="<?= $due['overdue'] ? 'due-overdue' : '' ?>">Due <?= htmlspecialchars($due['label']) ?></span>
                                         · <?= (int) $a['max_attempts'] ?> attempt<?= (int) $a['max_attempts'] === 1 ? '' : 's' ?> allowed
                                         · <?= (int) $a['graded_count'] ?>/<?= (int) $a['submitted_count'] ?> graded
@@ -444,7 +452,8 @@ if (!empty($submissionRows)) {
                 <div class="panel-header">
                     <h2><i class="fas fa-marker"></i> <?= htmlspecialchars($selectedAssignment['title']) ?></h2>
                     <span class="enrolled-badge">
-                        <?= (int) $selectedAssignment['points'] ?> pts
+                        <?= htmlspecialchars($selectedAssignment['type'] ?? 'Activity') ?>
+                        · <?= (int) $selectedAssignment['points'] ?> pts
                         · <span class="<?= $due['overdue'] ? 'due-overdue' : '' ?>">Due <?= htmlspecialchars($due['label']) ?></span>
                         · <?= (int) $selectedAssignment['max_attempts'] ?> attempt<?= (int) $selectedAssignment['max_attempts'] === 1 ? '' : 's' ?> allowed
                     </span>

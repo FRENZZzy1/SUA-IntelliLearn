@@ -1,0 +1,397 @@
+/* ==========================================================
+   My Grades — public/student/assets/css/grades.css
+   Builds on dashboard.css's shared tokens (--primary, --card,
+   --border, etc.) and .stats-bar/.stat-card/.panel-empty classes
+   from dashboard.css, same way courses.css does.
+   ========================================================== */
+
+.dash-subtitle {
+    margin: 4px 0 0;
+    font-size: 0.9rem;
+    color: var(--text-muted, #6b7280);
+    font-weight: 500;
+}
+
+/* ---------- Stats Bar (same pattern as courses.css/course_view.css) ---------- */
+.stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 16px;
+    padding: 18px 20px;
+    box-shadow: var(--shadow, 0 1px 3px rgba(0,0,0,0.04));
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(16, 40, 30, 0.08);
+}
+
+.stat-card__icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.stat-card__icon--green { background: linear-gradient(135deg, #10b981, #059669); }
+.stat-card__icon--blue  { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.stat-card__icon--amber { background: linear-gradient(135deg, #f59e0b, #d97706); }
+.stat-card__icon--red   { background: linear-gradient(135deg, #ef4444, #dc2626); }
+
+.stat-card__value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary-dark, #064e3b);
+    line-height: 1;
+}
+
+.stat-card__label {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-muted, #6b7280);
+    margin-top: 4px;
+    font-weight: 500;
+}
+
+/* ---------- Empty State (same pattern as courses.css) ---------- */
+.panel-empty--enhanced {
+    text-align: center;
+    padding: 60px 24px;
+}
+
+.panel-empty__icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 20px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, var(--primary-light, #d1fae5), var(--bg, #ecfdf5));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: var(--primary, #10b981);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.panel-empty--enhanced h3 {
+    font-size: 1.25rem;
+    color: var(--primary-dark, #064e3b);
+    margin: 0 0 8px;
+    font-weight: 700;
+}
+
+.panel-empty--enhanced p {
+    color: var(--text-muted, #6b7280);
+    font-size: 0.95rem;
+    margin: 0 0 6px;
+}
+
+.panel-empty__hint {
+    display: block;
+    font-size: 0.82rem;
+    color: #9ca3af;
+    margin-top: 8px;
+}
+
+/* ---------- Year selector ---------- */
+.grades-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.year-select {
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.gwa-pill {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 18px;
+}
+
+.gwa-pill .gwa-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    font-weight: 700;
+}
+
+.gwa-pill .gwa-value {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--primary);
+}
+
+/* ---------- Term tabs ---------- */
+.term-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+
+.term-tab {
+    border: none;
+    background: none;
+    padding: 10px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.term-tab:hover {
+    color: var(--primary);
+}
+
+.term-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.term-tab .term-tab-count {
+    background: var(--bg);
+    color: var(--text-muted);
+    border-radius: 20px;
+    padding: 1px 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+
+.term-tab.active .term-tab-count {
+    background: var(--primary);
+    color: #fff;
+}
+
+/* ---------- Term panel + GWA sub-header ---------- */
+.term-panel {
+    display: none;
+}
+
+.term-panel.active {
+    display: block;
+}
+
+.term-panel-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.term-panel-head h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.term-panel-head .term-avg {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.term-panel-head .term-avg strong {
+    color: var(--primary);
+    font-size: 0.95rem;
+}
+
+/* ---------- Grade cards ---------- */
+.grade-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 16px;
+}
+
+.grade-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 14px);
+    padding: 18px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.grade-card.is-dropped {
+    opacity: 0.6;
+}
+
+.grade-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.grade-card-subject h4 {
+    margin: 0 0 4px;
+    font-size: 1.05rem;
+    color: var(--text);
+}
+
+.grade-card-subject p {
+    margin: 0;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-pill {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.status-pill--pass {
+    background: rgba(34, 197, 94, 0.12);
+    color: #15803d;
+}
+
+.status-pill--fail {
+    background: rgba(239, 68, 68, 0.12);
+    color: #b91c1c;
+}
+
+.status-pill--pending {
+    background: rgba(245, 158, 11, 0.14);
+    color: #b45309;
+}
+
+.status-pill--dropped {
+    background: rgba(107, 114, 128, 0.14);
+    color: #4b5563;
+}
+
+.grade-display {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 14px 16px;
+}
+
+.grade-display .grade-number {
+    font-size: 2.1rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text);
+}
+
+.grade-display .grade-number.pass {
+    color: #15803d;
+}
+
+.grade-display .grade-number.fail {
+    color: #b91c1c;
+}
+
+.grade-display .grade-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.grade-display .grade-meta strong {
+    font-size: 0.8rem;
+    color: var(--text);
+}
+
+.grade-display .grade-meta span {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.grade-pending-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.grade-pending-note i {
+    color: var(--warn);
+    margin-top: 1px;
+}
+
+.grade-remarks {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    border-top: 1px dashed var(--border);
+    padding-top: 10px;
+}
+
+.grade-remarks i {
+    margin-top: 2px;
+    color: var(--text-muted);
+}
+
+@media (max-width: 480px) {
+    .grade-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .grades-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .gwa-pill {
+        justify-content: space-between;
+    }
+}

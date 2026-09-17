@@ -28,16 +28,17 @@ $assignments = [];
 $quizzes = [];
 $aScores = [];
 $qScores = [];
+$finalized = [];
 if ($offeringId) {
-    $stmt = $pdo->prepare("SELECT s.student_id,s.student_lrn,s.firstname,s.lastname,s.middlename FROM enrollments e JOIN students s ON s.student_id=e.student_id WHERE e.offering_id=? AND e.status='active' ORDER BY s.lastname,s.firstname");
+    $stmt = $pdo->prepare("SELECT e.enrollment_id,s.student_id,s.student_lrn,s.firstname,s.lastname,s.middlename FROM enrollments e JOIN students s ON s.student_id=e.student_id WHERE e.offering_id=? AND e.status='active' ORDER BY s.lastname,s.firstname");
     $stmt->execute([$offeringId]);
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    $stmt = $pdo->prepare("SELECT a.assignment_id,a.title,a.points,sub.student_id,sub.score FROM assignments a LEFT JOIN submissions sub ON sub.assignment_id=a.assignment_id AND sub.attempt_number=(SELECT MAX(x.attempt_number) FROM submissions x WHERE x.assignment_id=a.assignment_id AND x.student_id=sub.student_id) WHERE a.offering_id=? ORDER BY a.created_at,a.assignment_id");
+    $stmt = $pdo->prepare("SELECT a.assignment_id,a.title,a.points,a.type,sub.student_id,sub.score FROM assignments a LEFT JOIN submissions sub ON sub.assignment_id=a.assignment_id AND sub.attempt_number=(SELECT MAX(x.attempt_number) FROM submissions x WHERE x.assignment_id=a.assignment_id AND x.student_id=sub.student_id) WHERE a.offering_id=? ORDER BY a.created_at,a.assignment_id");
     $stmt->execute([$offeringId]);
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $id = (int) $r['assignment_id'];
         if (!isset($assignments[$id]))
-            $assignments[$id] = ['id' => $id, 'title' => $r['title'], 'points' => (float) $r['points']];
+            $assignments[$id] = ['id' => $id, 'title' => $r['title'], 'points' => (float) $r['points'], 'type' => $r['type'] ?: 'Activity'];
         if ($r['student_id'] !== null)
             $aScores[(int) $r['student_id']][$id] = $r['score'] !== null ? (float) $r['score'] : null;
     }
@@ -55,6 +56,12 @@ if ($offeringId) {
         }
     }
     $quizzes = array_values($qm);
+    // Already-finalized official grades (grades.quarter='Final' = the one
+    // computed, DepEd-weighted final grade of record for this offering/term).
+    $stmt = $pdo->prepare("SELECT g.enrollment_id,g.grade,g.updated_at FROM grades g JOIN enrollments e ON e.enrollment_id=g.enrollment_id WHERE e.offering_id=? AND g.quarter='Final'");
+    $stmt->execute([$offeringId]);
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r)
+        $finalized[(int) $r['enrollment_id']] = ['grade' => (float) $r['grade'], 'updated_at' => $r['updated_at']];
 }
 function avgGrade($v)
 {
@@ -74,17 +81,28 @@ $aa = [];
 $dist = ['90+' => 0, '80–89' => 0, '75–79' => 0, '<75' => 0];
 foreach ($students as $s) {
     $sid = (int) $s['student_id'];
+    $eid = (int) $s['enrollment_id'];
     $av = [];
+    $ptv = [];
+    $examv = [];
     $qv = [];
     foreach ($assignments as $a) {
         $x = $aScores[$sid][$a['id']] ?? null;
-        $av[] = $x !== null && $a['points'] > 0 ? ($x / $a['points']) * 100 : null;
+        $pct = $x !== null && $a['points'] > 0 ? ($x / $a['points']) * 100 : null;
+        $av[] = $pct;
+        if ($a['type'] === 'Exam')
+            $examv[] = $pct;
+        else
+            $ptv[] = $pct;
     }
     foreach ($quizzes as $q)
         $qv[] = $qScores[$sid][$q['id']] ?? null;
     $a = avgGrade($av);
     $q = avgGrade($qv);
+    $pt = avgGrade($ptv);
+    $exam = avgGrade($examv);
     $o = avgGrade(array_filter([$a, $q], fn($x) => $x !== null));
+    $computedFinal = computeWeightedFinalGrade($q, $pt, $exam);
     if ($a !== null)
         $aa[] = $a;
     if ($q !== null) {
@@ -93,12 +111,24 @@ foreach ($students as $s) {
     }
     if ($o !== null)
         $all[] = $o;
-    $rows[] = ['student' => $s, 'a' => $a, 'q' => $q, 'o' => $o];
+    $rows[] = [
+        'student' => $s,
+        'a' => $a,
+        'q' => $q,
+        'o' => $o,
+        'pt' => $pt,
+        'exam' => $exam,
+        'computed_final' => $computedFinal,
+        'official' => $finalized[$eid]['grade'] ?? null,
+        'official_at' => $finalized[$eid]['updated_at'] ?? null,
+    ];
 }
 $classAvg = avgGrade($all);
 $quizAvg = avgGrade($qa);
 $assignmentAvg = avgGrade($aa);
 $first = htmlspecialchars($teacher['firstname']);
+$csrfToken = generateCSRFToken();
+$flash = getFlashMessage();
 ?><!doctype html>
 <html lang="en">
 
@@ -113,6 +143,9 @@ $first = htmlspecialchars($teacher['firstname']);
 <body><?php include '../../includes/teachers_sidebar.php'; ?>
     <main class="main-content"><?php include '../../includes/teacher_header.php'; ?>
         <div class="page-wrap">
+            <?php if ($flash): ?>
+                <div class="flash-message flash-<?= htmlspecialchars($flash["type"]) ?>"><?= htmlspecialchars($flash["message"]) ?></div>
+            <?php endif; ?>
             <section class="page-heading">
                 <div>
                     <p class="eyebrow">TEACHER ANALYTICS</p>
@@ -251,6 +284,66 @@ $first = htmlspecialchars($teacher['firstname']);
                                     </tr><?php endforeach; ?><?php if (!$rows): ?>
                                     <tr>
                                         <td colspan="5" class="no-data">No enrolled students in this class.</td>
+                                    </tr><?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                <section class="gradebook-section final-grades-section">
+                    <div class="section-title-row">
+                        <div>
+                            <h2>Final Grades</h2><span>Written Work (quizzes) · Performance Task (activities) · Exam,
+                                weighted <?= (int) round(GRADE_COMPONENT_WEIGHTS['written_work'] * 100) ?>/<?= (int) round(GRADE_COMPONENT_WEIGHTS['performance_task'] * 100) ?>/<?= (int) round(GRADE_COMPONENT_WEIGHTS['exam'] * 100) ?>.</span>
+                        </div>
+                        <form action="assets/api/grade_finalize.php" method="POST" onsubmit="return confirm('Finalize grades for every active student in this class? This will overwrite any previously finalized grade for this term.');">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                            <input type="hidden" name="offering_id" value="<?= (int) $offeringId ?>">
+                            <button type="submit" class="btn-primary" <?= $rows ? '' : 'disabled' ?>><i class="fas fa-check-double"></i> Finalize Grades for This Class</button>
+                        </form>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="grade-table">
+                            <thead>
+                                <tr>
+                                    <th class="student-col">Student</th>
+                                    <th>Written Work</th>
+                                    <th>Performance Task</th>
+                                    <th>Exam</th>
+                                    <th>Computed Final</th>
+                                    <th>Official Grade</th>
+                                </tr>
+                            </thead>
+                            <tbody><?php foreach ($rows as $r):
+                                $s = $r['student'];
+                                $needsUpdate = $r['official'] !== null && $r['computed_final'] !== null && abs($r['official'] - $r['computed_final']) >= 0.01; ?>
+                                    <tr>
+                                        <td class="student-cell">
+                                            <div class="avatar">
+                                                <?= strtoupper(substr($s['firstname'], 0, 1) . substr($s['lastname'], 0, 1)) ?></div>
+                                            <div>
+                                                <strong><?= htmlspecialchars($s['lastname'] . ', ' . $s['firstname']) ?></strong><small><?= htmlspecialchars($s['student_lrn']) ?></small>
+                                            </div>
+                                        </td>
+                                        <td><span
+                                                class="grade-pill <?= gradeClass($r['q']) ?>"><?= $r['q'] !== null ? $r['q'] . '%' : 'N/A' ?></span>
+                                        </td>
+                                        <td><span
+                                                class="grade-pill <?= gradeClass($r['pt']) ?>"><?= $r['pt'] !== null ? $r['pt'] . '%' : 'N/A' ?></span>
+                                        </td>
+                                        <td><span
+                                                class="grade-pill <?= gradeClass($r['exam']) ?>"><?= $r['exam'] !== null ? $r['exam'] . '%' : 'N/A' ?></span>
+                                        </td>
+                                        <td><strong
+                                                class="overall-grade <?= gradeClass($r['computed_final']) ?>"><?= $r['computed_final'] !== null ? $r['computed_final'] . '%' : 'N/A' ?></strong>
+                                        </td>
+                                        <td><?php if ($r['official'] !== null): ?><strong
+                                                    class="overall-grade <?= gradeClass($r['official']) ?>"><?= $r['official'] ?>%</strong>
+                                                <span class="finalize-status <?= $needsUpdate ? 'stale' : 'current' ?>"><?= $needsUpdate ? 'Needs re-finalizing' : 'Up to date' ?></span>
+                                            <?php else: ?><span class="finalize-status pending">Not finalized</span><?php endif; ?>
+                                        </td>
+                                    </tr><?php endforeach; ?><?php if (!$rows): ?>
+                                    <tr>
+                                        <td colspan="6" class="no-data">No enrolled students in this class.</td>
                                     </tr><?php endif; ?>
                             </tbody>
                         </table>

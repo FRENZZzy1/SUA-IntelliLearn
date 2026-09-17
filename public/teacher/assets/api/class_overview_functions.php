@@ -179,7 +179,7 @@ $assignments = [];
 if ($activeOfferingId && $activeView === 'assignments') {
     $stmt = $pdo->prepare("
         SELECT a.assignment_id, a.title, a.description, a.instructions_file_path,
-               a.due_date, a.points, a.max_attempts, a.status, a.created_at,
+               a.due_date, a.points, a.type, a.max_attempts, a.status, a.created_at,
                COUNT(sub.submission_id) AS submitted_count,
                SUM(CASE WHEN sub.status = 'graded' THEN 1 ELSE 0 END) AS graded_count
         FROM assignments a
@@ -192,7 +192,7 @@ if ($activeOfferingId && $activeView === 'assignments') {
               )
         WHERE a.offering_id = ?
         GROUP BY a.assignment_id, a.title, a.description, a.instructions_file_path,
-                 a.due_date, a.points, a.max_attempts, a.status, a.created_at
+                 a.due_date, a.points, a.type, a.max_attempts, a.status, a.created_at
         ORDER BY a.created_at DESC
     ");
     $stmt->execute([$activeOfferingId]);
@@ -207,7 +207,7 @@ if ($activeOfferingId && $activeView === 'assignments') {
     $requestedAssignmentId = filter_input(INPUT_GET, 'assignment_id', FILTER_VALIDATE_INT);
     if ($requestedAssignmentId) {
         $stmt = $pdo->prepare("
-            SELECT assignment_id, title, description, instructions_file_path, due_date, points, max_attempts, status
+            SELECT assignment_id, title, description, instructions_file_path, due_date, points, type, max_attempts, status
             FROM assignments
             WHERE assignment_id = ? AND offering_id = ?
             LIMIT 1

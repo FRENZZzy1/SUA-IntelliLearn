@@ -247,6 +247,41 @@ function syncCourseTermsToCurrent($pdo) {
     }
 }
 
+// ---- Final grade weighting (DepEd-style: Written Work / Performance Task / Exam) ----
+// Written Work  = average of all quiz percentages for the offering.
+// Performance Task = average of all assignments tagged type='Activity'.
+// Exam          = average of all assignments tagged type='Exam'.
+const GRADE_COMPONENT_WEIGHTS = [
+    'written_work'     => 0.30,
+    'performance_task' => 0.50,
+    'exam'             => 0.20,
+];
+
+/**
+ * Combine the three DepEd-style grading components into one weighted final
+ * grade. Any component with no graded items yet (null) is left out and the
+ * remaining weights are renormalized, so a class that hasn't given an exam
+ * yet still gets a fair grade from Written Work + Performance Task alone.
+ */
+function computeWeightedFinalGrade(?float $writtenWork, ?float $performanceTask, ?float $exam): ?float {
+    $components = [
+        'written_work'     => $writtenWork,
+        'performance_task' => $performanceTask,
+        'exam'             => $exam,
+    ];
+    $available = array_filter($components, fn($v) => $v !== null);
+    if (!$available) {
+        return null;
+    }
+    $weightTotal = 0.0;
+    $scoreTotal = 0.0;
+    foreach ($available as $key => $value) {
+        $weightTotal += GRADE_COMPONENT_WEIGHTS[$key];
+        $scoreTotal += $value * GRADE_COMPONENT_WEIGHTS[$key];
+    }
+    return round($scoreTotal / $weightTotal, 2);
+}
+
 const ATTENDANCE_TERM_ORDER = ['TRM 1', 'TRM 2', 'TRM 3', 'Unscheduled'];
 
 function attendanceTermForDate(array $termIntervals, string $dateStr): string {

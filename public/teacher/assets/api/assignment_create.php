@@ -84,6 +84,12 @@ if ($maxAttempts === false || $maxAttempts === null || $maxAttempts < 1) {
     $maxAttempts = 1;
 }
 
+// ---- Grading category (used by the Finalize Grades calculation) -----
+$type = $_POST['type'] ?? 'Activity';
+if (!in_array($type, ['Activity', 'Exam'], true)) {
+    $type = 'Activity';
+}
+
 // ---- Due date (optional) --------------------------------------------
 $dueDateRaw = trim($_POST['due_date'] ?? '');
 $dueDate = null;
@@ -141,10 +147,10 @@ if (!empty($_FILES['instructions_file']) && $_FILES['instructions_file']['error'
 }
 
 $stmt = $pdo->prepare("
-    INSERT INTO assignments (offering_id, title, description, instructions_file_path, due_date, points, max_attempts, status, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 'published', ?)
+    INSERT INTO assignments (offering_id, title, description, instructions_file_path, due_date, points, type, max_attempts, status, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'published', ?)
 ");
-$stmt->execute([$offeringId, $title, $description, $instructionsPath, $dueDate, $points, $maxAttempts, $teacherId]);
+$stmt->execute([$offeringId, $title, $description, $instructionsPath, $dueDate, $points, $type, $maxAttempts, $teacherId]);
 
 setFlashMessage('success', 'Assignment posted.');
 header('Location: ' . $backUrl);
