@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 try {
     $token = $_POST['csrf_token'] ?? '';
-    if (!function_exists('verifyCSRFToken') || !verifyCSRFToken($token)) {
+    if (!validateCSRFToken($token)) {
         throw new RuntimeException('Invalid or expired security token.');
     }
 
@@ -59,7 +59,6 @@ try {
 
         $stmt = $pdo->prepare("UPDATE students SET email = ?, updated_at = NOW() WHERE user_id = ?");
         $stmt->execute([$email !== '' ? $email : null, $userId]);
-
         echo json_encode(['success' => true]);
         exit();
     }
@@ -75,11 +74,7 @@ try {
         if ($new !== $confirm) $errors[] = 'New password and confirmation do not match.';
         if ($new === $current && $new !== '') $errors[] = 'New password must be different from your current password.';
 
-        $stored = (string) $student['password'];
-        $passwordValid = function_exists('verify_user_password')
-            ? verify_user_password($current, $stored)
-            : password_verify($current, $stored);
-
+        $passwordValid = password_verify($current, (string) $student['password']);
         if ($current !== '' && !$passwordValid) {
             $errors[] = 'Current password is incorrect.';
         }
