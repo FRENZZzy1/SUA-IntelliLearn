@@ -6,6 +6,17 @@ $modalSections = $pdo->query("SELECT section_id, section_name, grade_level, stra
 $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teachers ORDER BY lastname, firstname")->fetchAll();
 $modalSchoolYears = $pdo->query("SELECT school_year_id, label, is_current FROM schoolyears ORDER BY start_date DESC")->fetchAll();
 $modalCurrentTerm = resolveCurrentTerm(getTermIntervals($pdo));
+$modalDefaultCapacity = 50;
+try {
+    $capacityStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'default_class_capacity' LIMIT 1");
+    $capacityStmt->execute();
+    $savedCapacity = $capacityStmt->fetchColumn();
+    if (ctype_digit((string) $savedCapacity) && (int) $savedCapacity >= 1 && (int) $savedCapacity <= 500) {
+        $modalDefaultCapacity = (int) $savedCapacity;
+    }
+} catch (PDOException $e) {
+    // Keep the safe fallback if system_settings is unavailable.
+}
 
 ?>
 
@@ -69,7 +80,8 @@ $modalCurrentTerm = resolveCurrentTerm(getTermIntervals($pdo));
 
                     <div class="form-row">
                         <label for="m_capacity"><i class="fas fa-hashtag" aria-hidden="true"></i> Capacity</label>
-                        <input type="number" id="m_capacity" name="capacity" min="1" value="50" required>
+                        <input type="number" id="m_capacity" name="capacity" min="1" max="500" value="<?= $modalDefaultCapacity ?>" required>
+                        <span class="field-note">Default from Settings &rarr; Enrollment Rules. You can still adjust this for this class.</span>
                     </div>
 
                     <div class="form-row">
