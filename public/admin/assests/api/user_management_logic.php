@@ -222,6 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         VALUES (?, ?, ?, ?, NOW())
                     ");
                     $stmt->execute([$user_id, $email, $access_level, $position]);
+                    saveAdminPermissions($pdo, (int)$user_id, $access_level, $_POST['permissions_json'] ?? '');
                 }
 
                 $pdo->commit();
@@ -380,6 +381,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             elseif ($role === 'admin') {
                 $stmt = $pdo->prepare("UPDATE Admin SET email = ?, access_level = ?, position = ? WHERE user_id = ?");
                 $stmt->execute([$email, $access_level, $position, $user_id]);
+                saveAdminPermissions($pdo, (int)$user_id, $access_level, $_POST['permissions_json'] ?? '');
             }
 
             $pdo->commit();
