@@ -319,7 +319,7 @@ function update_admin_profile(PDO $pdo, int $adminId, string $email, string $pos
         $errors[] = 'Please enter a valid email address.';
     }
  
-    $validPositions = ['principal', 'registrar', 'staff'];
+    $validPositions = ['principal', 'registrar', 'it_administrator'];
     if (!in_array($position, $validPositions, true)) {
         $errors[] = 'Invalid position.';
     }
