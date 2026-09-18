@@ -300,6 +300,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors = [];
             if (!in_array($position, ['principal', 'registrar', 'it_administrator'])) $errors[] = "Invalid position selected.";
             if (!in_array($access_level, ['full', 'limited', 'read_only'])) $errors[] = "Invalid access level selected.";
+            if ($access_level !== 'full') {
+                $decodedPermissions = json_decode($_POST['permissions_json'] ?? '', true);
+                if (!is_array($decodedPermissions) || empty($decodedPermissions)) $errors[] = "Select at least one module permission for this admin account.";
+            }
 
             if (!empty($errors)) {
                 setFlashMessage('error', implode(" ", $errors));
@@ -537,6 +541,7 @@ $sql = "SELECT
     s.guardian_contact,
     a.access_level as admin_access_level,
     a.position as admin_position,
+    COALESCE((SELECT JSON_OBJECTAGG(ap.module_key, JSON_OBJECT('permission', ap.permission, 'can_approve_enrollment', ap.can_approve_enrollment)) FROM admin_permissions ap WHERE ap.user_id = u.id), '{}') as admin_permissions,
     (
         SELECT sec.grade_level
         FROM enrollments e
