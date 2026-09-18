@@ -40,7 +40,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                                 </div>
                                 <div class="aum-pill" data-role="admin" onclick="aumSetRole(this)">
                                     <div class="aum-pill-icon"><i class="fas fa-user-shield"></i></div>
-                                    <div class="aum-pill-text"><strong>Admin</strong><small>Staff account</small></div>
+                                    <div class="aum-pill-text"><strong>Admin</strong><small>IT Administrator account</small></div>
                                 </div>
                             </div>
                             <input type="hidden" name="role" id="aumRoleInput" value="student">
@@ -133,7 +133,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                 <div id="aumStaffFields" style="display:none;" class="aum-section aum-fields-section">
                     <div class="aum-section-title">
                         <span class="aum-section-line"></span>
-                        <span><i class="fas fa-briefcase"></i> Staff Information</span>
+                        <span><i class="fas fa-briefcase"></i> IT Administrator Information</span>
                         <span class="aum-section-line"></span>
                     </div>
                     <div class="aum-row" id="aumTeacherNameRow" style="display:none;">
@@ -189,7 +189,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                     <div class="aum-row" id="aumAdminOnlyFields" style="display:none;">
                         <div class="aum-group">
                             <label>Position <span class="aum-req">*</span></label>
-                            <div class="aum-input-wrap"><i class="fas fa-crown aum-input-icon"></i><select name="position" class="aum-control" data-admin-required><option value="principal">Principal</option><option value="registrar">Registrar</option><option value="staff" selected>Staff</option></select></div>
+                            <div class="aum-input-wrap"><i class="fas fa-crown aum-input-icon"></i><select name="position" class="aum-control" data-admin-required><option value="principal">Principal</option><option value="registrar">Registrar</option><option value="it_administrator" selected>IT Administrator</option></select></div>
                         </div>
                         <div class="aum-group">
                             <label>Access Level <span class="aum-req">*</span></label>
