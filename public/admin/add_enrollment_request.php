@@ -19,6 +19,22 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $errors = [];
 
+// Enrollment can be disabled from Admin Settings. Never rely on the disabled
+// button alone because this endpoint can also be called directly.
+$enrollmentOpen = true;
+try {
+    $enrollmentOpenStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'enrollment_open' LIMIT 1");
+    $enrollmentOpenStmt->execute();
+    $enrollmentOpen = $enrollmentOpenStmt->fetchColumn() !== '0';
+} catch (PDOException $e) {
+    // Preserve legacy behavior if the settings table/key is unavailable.
+}
+if (!$enrollmentOpen) {
+    http_response_code(423);
+    echo json_encode(['success' => false, 'errors' => ['Enrollment is currently closed. Re-open enrollment in Admin Settings before adding a new enrollment.']]);
+    exit();
+}
+
 if (!validateCSRFToken($_POST['csrf'] ?? '')) {
     $errors[] = 'Your session expired. Please refresh the page and try again.';
 }
