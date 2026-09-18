@@ -163,6 +163,10 @@ if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_st
 if ($role === 'admin') {
     if (!in_array($position, ['principal', 'registrar', 'it_administrator'])) $errors[] = "Invalid position selected.";
     if (!in_array($access_level, ['full', 'limited', 'read_only'])) $errors[] = "Invalid access level selected.";
+    if ($access_level !== 'full') {
+        $decodedPermissions = json_decode($_POST['permissions_json'] ?? '', true);
+        if (!is_array($decodedPermissions) || empty($decodedPermissions)) $errors[] = "Select at least one module permission for this admin account.";
+    }
 }
 
 if (empty($errors)) {
