@@ -32,7 +32,7 @@ CREATE TABLE `admin` (
   `user_id` int(11) NOT NULL,
   `email` varchar(255) NOT NULL,
   `access_level` enum('full','limited','read_only') NOT NULL DEFAULT 'limited',
-  `position` enum('principal','registrar','staff') NOT NULL,
+  `position` enum('principal','registrar','it_administrator') NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
