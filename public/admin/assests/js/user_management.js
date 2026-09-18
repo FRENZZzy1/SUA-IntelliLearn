@@ -98,6 +98,8 @@
         if (role === 'admin') {
             document.getElementById('editPosition').value = card.dataset.position || 'it_administrator';
             document.getElementById('editAccessLevel').value = card.dataset.accessLevel || 'limited';
+            const permissionsField = document.getElementById('editPermissionsJson');
+            if (permissionsField) permissionsField.value = card.dataset.adminPermissions || '';
         }
 
         if (role === 'student') {

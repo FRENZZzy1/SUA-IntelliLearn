@@ -24,6 +24,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
             <form id="aumForm" novalidate>
                 <input type="hidden" name="csrf_token" id="aumCsrf" value="<?= htmlspecialchars($aum_csrf) ?>">
                 <input type="hidden" name="action" value="create">
+                <input type="hidden" name="permissions_json" value="">
 
                 <div class="aum-section aum-section-pills">
                     <div class="aum-row">

@@ -24,6 +24,7 @@ require_once 'assests/api/user_management_logic.php';
     $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
 $aum_endpoint = '/SUA-IntelliLearn/public/admin/assests/api/add_user_handler.php';
 include 'assests/api/add_user_modal.php';
+include 'assests/api/access_permissions_modal.php';
 
 ?>
 
@@ -45,9 +46,10 @@ include 'assests/api/add_user_modal.php';
             <h1>User Management</h1>
             <p>Manage teacher and student accounts across St. Uriel Academy.</p>
         </div>
-        <button class="btn-primary" id="newUserBtn" onclick="openAddUserModal()">
+        <?php $canManageUsers = adminCanWrite('users'); ?>
+        <?php if ($canManageUsers): ?><button class="btn-primary" id="newUserBtn" onclick="openAddUserModal()">
             <i class="fas fa-user-plus"></i> Add User
-        </button>
+        </button><?php endif; ?>
     </div>
 
     <!-- Quick Stats -->
@@ -96,6 +98,7 @@ include 'assests/api/add_user_modal.php';
                 <input type="hidden" name="action" value="update">
                 <input type="hidden" name="user_id" id="editUserId">
                 <input type="hidden" name="role" id="editRoleInput">
+                <input type="hidden" name="permissions_json" id="editPermissionsJson" value="">
 
                 <!-- Student & Teacher: separate name fields (matches Students / Teachers columns).
                      Admin has NO name field at all — admin table has no name columns. -->
@@ -394,7 +397,7 @@ include 'assests/api/add_user_modal.php';
                     data-role="<?= $user['role'] ?>" data-status="<?= $user['status'] ?>"
                     data-department="<?= clean($user['department']) ?>" data-notes="<?= clean($user['notes']) ?>"
                     data-employment-status="<?= clean($user['employment_status'] ?? '') ?>"
-                    data-position="<?= clean($user['admin_position'] ?? '') ?>" data-access-level="<?= clean($user['admin_access_level'] ?? '') ?>"
+                    data-position="<?= clean($user['admin_position'] ?? '') ?>" data-access-level="<?= clean($user['admin_access_level'] ?? '') ?>" data-admin-permissions="<?= clean($user['admin_permissions'] ?? '{}') ?>"
                     data-username="<?= clean($user['username']) ?>" data-created="<?= $user['created_at'] ?>"
                     data-lrn="<?= clean($user['student_lrn'] ?? '') ?>" data-middlename="<?= clean($user['middlename'] ?? '') ?>"
                     data-gender="<?= clean($user['gender'] ?? '') ?>"
@@ -427,8 +430,8 @@ include 'assests/api/add_user_modal.php';
                     <td class="td-actions" data-label="Actions">
                         <div class="t-actions">
                             <div class="icon-btn" title="View Profile" onclick="viewUser(<?= $user['id'] ?>)"><i class="fas fa-eye"></i></div>
-                            <div class="icon-btn" title="Edit" onclick="editUser(<?= $user['id'] ?>)"><i class="fas fa-pen"></i></div>
-                            <?php if ($user['id'] != $_SESSION['user_id']): ?>
+                            <?php if ($canManageUsers): ?><div class="icon-btn" title="Edit" onclick="editUser(<?= $user['id'] ?>)"><i class="fas fa-pen"></i></div><?php endif; ?>
+                            <?php if ($canManageUsers && $user['id'] != $_SESSION['user_id']): ?>
                             <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Are you sure you want to deactivate this user?');">
                                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
                                 <input type="hidden" name="action" value="delete">
