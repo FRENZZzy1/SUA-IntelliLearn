@@ -159,7 +159,7 @@ include 'assests/api/add_user_modal.php';
                         <select name="position" id="editPosition" class="form-control">
                             <option value="principal">Principal</option>
                             <option value="registrar">Registrar</option>
-                            <option value="staff">Staff</option>
+                            <option value="it_administrator">IT Administrator</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -381,8 +381,8 @@ include 'assests/api/add_user_modal.php';
                             ? '<span class="chip"><i class="fas fa-building"></i> ' . clean($user['department']) . '</span>'
                             : '<span class="t-muted">Not assigned</span>';
                     } elseif ($user['role'] === 'admin') {
-                        $position_labels = ['principal' => 'Principal', 'registrar' => 'Registrar', 'staff' => 'Staff'];
-                        $position_text = $position_labels[$user['admin_position'] ?? ''] ?? 'Staff';
+                        $position_labels = ['principal' => 'Principal', 'registrar' => 'Registrar', 'it_administrator' => 'IT Administrator'];
+                        $position_text = $position_labels[$user['admin_position'] ?? ''] ?? 'IT Administrator';
                         $details_html = '<span class="chip"><i class="fas fa-user-tie"></i> ' . clean($position_text) . '</span>';
                     } else {
                         $details_html = '<span class="t-muted">—</span>';
