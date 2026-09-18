@@ -161,7 +161,7 @@ if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_st
     $errors[] = "Invalid employment status selected.";
 }
 if ($role === 'admin') {
-    if (!in_array($position, ['principal', 'registrar', 'staff'])) $errors[] = "Invalid position selected.";
+    if (!in_array($position, ['principal', 'registrar', 'it_administrator'])) $errors[] = "Invalid position selected.";
     if (!in_array($access_level, ['full', 'limited', 'read_only'])) $errors[] = "Invalid access level selected.";
 }
 
