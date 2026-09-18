@@ -142,7 +142,7 @@ $memberSince = date('F j, Y', strtotime($profile['created_at']));
                                         <select id="position" name="position" required>
                                             <option value="principal" <?php echo $profile['position'] === 'principal' ? 'selected' : ''; ?>>Principal</option>
                                             <option value="registrar" <?php echo $profile['position'] === 'registrar' ? 'selected' : ''; ?>>Registrar</option>
-                                            <option value="staff" <?php echo $profile['position'] === 'staff' ? 'selected' : ''; ?>>Staff</option>
+                                            <option value="it_administrator" <?php echo $profile['position'] === 'it_administrator' ? 'selected' : ''; ?>>IT Administrator</option>
                                         </select>
                                         <span class="input-icon"><i class="fas fa-chevron-down"></i></span>
                                     </div>

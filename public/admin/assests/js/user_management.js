@@ -96,7 +96,7 @@
         }
 
         if (role === 'admin') {
-            document.getElementById('editPosition').value = card.dataset.position || 'staff';
+            document.getElementById('editPosition').value = card.dataset.position || 'it_administrator';
             document.getElementById('editAccessLevel').value = card.dataset.accessLevel || 'limited';
         }
 
@@ -162,7 +162,7 @@
                 </div>
             `;
         } else if (card.dataset.role === 'admin') {
-            const positionLabels = { principal: 'Principal', registrar: 'Registrar', staff: 'Staff' };
+            const positionLabels = { principal: 'Principal', registrar: 'Registrar', it_administrator: 'IT Administrator' };
             const accessLabels = { full: 'Full', limited: 'Limited', read_only: 'Read Only' };
             extraRows = `
                 <div class="detail-row">

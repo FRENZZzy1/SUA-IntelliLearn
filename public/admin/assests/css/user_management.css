@@ -720,7 +720,7 @@ textarea.form-control {
     background: var(--purple);
 }
 
-.role-strip.staff {
+.role-strip.it_administrator {
     background: var(--info);
 }
 
@@ -799,7 +799,7 @@ textarea.form-control {
     color: var(--purple);
 }
 
-.badge.staff {
+.badge.it_administrator {
     background: rgba(59, 130, 246, 0.12);
     color: var(--info);
 }
