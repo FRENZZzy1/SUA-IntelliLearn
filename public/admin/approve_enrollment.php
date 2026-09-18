@@ -28,6 +28,22 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit();
 }
 
+// Closing enrollment also blocks approval of pending requests so the rule
+// cannot be bypassed by approving an older pending request.
+$enrollmentOpen = true;
+try {
+    $enrollmentOpenStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'enrollment_open' LIMIT 1");
+    $enrollmentOpenStmt->execute();
+    $enrollmentOpen = $enrollmentOpenStmt->fetchColumn() !== '0';
+} catch (PDOException $e) {
+    // Preserve legacy behavior if the settings table/key is unavailable.
+}
+if (!$enrollmentOpen) {
+    http_response_code(423);
+    echo json_encode(['success' => false, 'errors' => ['Enrollment is currently closed. Re-open enrollment in Admin Settings before approving enrollment requests.']]);
+    exit();
+}
+
 if (!validateCSRFToken($_POST['csrf'] ?? '')) {
     http_response_code(419);
     echo json_encode(['success' => false, 'errors' => ['Your session expired. Please refresh the page and try again.']]);
