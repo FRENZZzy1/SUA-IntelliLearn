@@ -218,6 +218,7 @@ try {
             VALUES (?, ?, ?, ?, NOW())
         ");
         $stmt->execute([$user_id, $email, $access_level, $position]);
+        saveAdminPermissions($pdo, (int)$user_id, $access_level, $_POST['permissions_json'] ?? '');
     }
 
     $pdo->commit();
