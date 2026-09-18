@@ -306,4 +306,8 @@ if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'login.php' && isLoggedIn())
     }
     exit();
 }
+
+// Load granular admin module permissions after the core session/database helpers are defined.
+require_once __DIR__ . '/../includes/access_control.php';
+enforceCurrentAdminModuleAccess();
 ?>
