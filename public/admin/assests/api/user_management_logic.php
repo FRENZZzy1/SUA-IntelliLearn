@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = "Invalid employment status selected.";
         }
         if ($role === 'admin') {
-            if (!in_array($position, ['principal', 'registrar', 'staff'])) $errors[] = "Invalid position selected.";
+            if (!in_array($position, ['principal', 'registrar', 'it_administrator'])) $errors[] = "Invalid position selected.";
             if (!in_array($access_level, ['full', 'limited', 'read_only'])) $errors[] = "Invalid access level selected.";
         }
 
@@ -297,7 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Validate admin-specific fields before touching the database
         if ($role === 'admin') {
             $errors = [];
-            if (!in_array($position, ['principal', 'registrar', 'staff'])) $errors[] = "Invalid position selected.";
+            if (!in_array($position, ['principal', 'registrar', 'it_administrator'])) $errors[] = "Invalid position selected.";
             if (!in_array($access_level, ['full', 'limited', 'read_only'])) $errors[] = "Invalid access level selected.";
 
             if (!empty($errors)) {
