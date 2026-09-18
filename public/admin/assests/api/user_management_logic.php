@@ -541,7 +541,7 @@ $sql = "SELECT
     s.guardian_contact,
     a.access_level as admin_access_level,
     a.position as admin_position,
-    COALESCE((SELECT JSON_OBJECTAGG(ap.module_key, JSON_OBJECT('permission', ap.permission, 'can_approve_enrollment', ap.can_approve_enrollment)) FROM admin_permissions ap WHERE ap.user_id = u.id), '{}') as admin_permissions,
+   '{}' AS admin_permissions,
     (
         SELECT sec.grade_level
         FROM enrollments e
