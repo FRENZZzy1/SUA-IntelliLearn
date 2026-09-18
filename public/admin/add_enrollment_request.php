@@ -22,10 +22,16 @@ $errors = [];
 // Enrollment can be disabled from Admin Settings. Never rely on the disabled
 // button alone because this endpoint can also be called directly.
 $enrollmentOpen = true;
+$autoApprove = false;
 try {
-    $enrollmentOpenStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'enrollment_open' LIMIT 1");
-    $enrollmentOpenStmt->execute();
-    $enrollmentOpen = $enrollmentOpenStmt->fetchColumn() !== '0';
+    $settingsStmt = $pdo->prepare("SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('enrollment_open', 'auto_approve_enrollment')");
+    $settingsStmt->execute();
+    $settings = [];
+    foreach ($settingsStmt->fetchAll(PDO::FETCH_ASSOC) as $setting) {
+        $settings[$setting['setting_key']] = $setting['setting_value'];
+    }
+    $enrollmentOpen = ($settings['enrollment_open'] ?? '1') !== '0';
+    $autoApprove = ($settings['auto_approve_enrollment'] ?? '0') === '1';
 } catch (PDOException $e) {
     // Preserve legacy behavior if the settings table/key is unavailable.
 }
@@ -189,6 +195,57 @@ try {
         exit();
     }
 
+    // Auto-approve is controlled by Admin Settings. Closing enrollment
+    // is checked above first, so auto-approval can never bypass a closed
+    // enrollment period.
+    if ($autoApprove) {
+        $pdo->beginTransaction();
+
+        // Re-check capacity inside the transaction to reduce the chance of
+        // two simultaneous auto-approvals exceeding the class capacity.
+        $lockStmt = $pdo->prepare("
+            SELECT co.offering_id, co.capacity,
+                (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
+            FROM classofferings co
+            WHERE co.offering_id = ? AND co.status = 'active'
+            FOR UPDATE
+        ");
+        $lockStmt->execute([$offering_id]);
+        $lockedOffering = $lockStmt->fetch();
+
+        if (!$lockedOffering || (int) $lockedOffering['enrolled_count'] >= (int) $lockedOffering['capacity']) {
+            $pdo->rollBack();
+            http_response_code(422);
+            echo json_encode(['success' => false, 'errors' => ['That section just reached full capacity. Please choose another section.']]);
+            exit();
+        }
+
+        $enrollStmt = $pdo->prepare("
+            INSERT INTO enrollments (student_id, offering_id, status)
+            VALUES (?, ?, 'active')
+        ");
+        $enrollStmt->execute([$student_id, $offering_id]);
+
+        $requestStmt = $pdo->prepare("
+            INSERT INTO enrollment_requests (student_id, grade_level, subject_id, strand, offering_id, status, decided_at, decided_by)
+            VALUES (?, ?, ?, ?, ?, 'approved', NOW(), ?)
+        ");
+        $requestStmt->execute([
+            $student_id,
+            $grade_level,
+            $subject_id,
+            $strand !== '' ? $strand : null,
+            $offering_id,
+            $_SESSION['user_id'] ?? null,
+        ]);
+
+        $pdo->commit();
+
+        setFlashMessage('success', 'Enrollment approved automatically.');
+        echo json_encode(['success' => true, 'status' => 'approved', 'auto_approved' => true]);
+        exit();
+    }
+
     $stmt = $pdo->prepare("
         INSERT INTO enrollment_requests (student_id, grade_level, subject_id, strand, offering_id, status)
         VALUES (?, ?, ?, ?, ?, 'pending')
@@ -202,7 +259,7 @@ try {
     ]);
 
     setFlashMessage('success', 'Enrollment request submitted.');
-    echo json_encode(['success' => true]);
+    echo json_encode(['success' => true, 'status' => 'pending', 'auto_approved' => false]);
 } catch (PDOException $e) {
     http_response_code(422);
     echo json_encode(['success' => false, 'errors' => ['Database error: ' . $e->getMessage()]]);
