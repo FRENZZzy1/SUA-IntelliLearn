@@ -10,6 +10,18 @@ $flash = getFlashMessage();
 
 $csrfToken = generateCSRFToken();
 
+// ================= ENROLLMENT AVAILABILITY =================
+// This controls whether the admin can create new enrollment requests.
+// Existing enrollment records remain visible even when enrollment is closed.
+$enrollmentOpen = true;
+try {
+    $enrollmentOpenStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'enrollment_open' LIMIT 1");
+    $enrollmentOpenStmt->execute();
+    $enrollmentOpen = $enrollmentOpenStmt->fetchColumn() !== '0';
+} catch (PDOException $e) {
+    // Keep enrollment open if the settings table/key is unavailable.
+}
+
 // ================= TAB / FILTER INPUTS =================
 $tab          = $_GET['tab'] ?? 'pending';                // pending | approved | denied | all
 if (!in_array($tab, ['pending', 'approved', 'denied', 'all'], true)) {
@@ -376,7 +388,15 @@ $panelIcons = [
         </div>
 
         <div class="action-bar" style="justify-content: flex-end; border-top: none; padding-top: 0;">
-            <button class="btn-primary" onclick="openEnrollStudentModal()"><i class="fas fa-user-plus"></i> Enroll Student</button>
+            <?php if ($enrollmentOpen): ?>
+            <button type="button" class="btn-primary" onclick="openEnrollStudentModal()">
+                <i class="fas fa-user-plus"></i> Enroll Student
+            </button>
+            <?php else: ?>
+            <button type="button" class="btn-primary" disabled title="Enrollment is currently closed." style="opacity:.6; cursor:not-allowed;">
+                <i class="fas fa-lock"></i> Enrollment Closed
+            </button>
+            <?php endif; ?>
         </div>
     </div>
 
