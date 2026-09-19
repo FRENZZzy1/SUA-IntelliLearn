@@ -83,7 +83,7 @@ if ($role === 'student') {
             $counter++;
         }
 
-        $password_plain = $lastname . $bday_code;
+        $password_plain = ucfirst(strtolower($lastname)) . $bday_code . '!';
         $password_hash = password_hash($password_plain, PASSWORD_DEFAULT);
 
         $stmt = $pdo->prepare("
@@ -154,7 +154,11 @@ if ($role !== 'admin') {
     if (empty($lastname)) $errors[] = "Last name is required.";
 }
 if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Valid email is required.";
-if (empty($password) || strlen($password) < 6) $errors[] = "Password must be at least 6 characters.";
+if (empty($password)) {
+    $errors[] = "Password is required.";
+} else {
+    $errors = array_merge($errors, validate_password_policy($password));
+}
 if (!in_array($role, ['admin', 'teacher'])) $errors[] = "Invalid role selected.";
 if (!in_array($status, ['active', 'inactive', 'suspended'])) $errors[] = "Invalid status selected.";
 if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_status, ['full-time', 'part-time'])) {
