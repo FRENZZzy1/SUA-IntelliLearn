@@ -87,9 +87,9 @@ if (function_exists('get_initials')) {
 
         <div class="nav-section">
             <div class="nav-section-title">Reports</div>
-            <a href="#" class="nav-item" onclick="setActive(this)">
+            <?php if (adminCanRead('analytics')): ?><a href="../../public/admin/evaluation_analytics.php" class="nav-item <?= $current === 'evaluation_analytics.php' ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-chart-line"></i></div>
-                <span class="nav-label">System Analytics</span>
+                <span class="nav-label">System Analytics</span></a><?php endif; ?>
             </a>
             <?php if (adminCanRead('settings')): ?><a href="../../public/admin/settings.php" class="nav-item" onclick="setActive(this)">
                 <div class="nav-icon-wrap"><i class="fas fa-cog"></i></div>
