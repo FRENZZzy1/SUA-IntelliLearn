@@ -270,3 +270,51 @@ body:has(#sidebar.collapsed) .main-content {
 @media (max-width: 768px) {
     .form-row { grid-template-columns: 1fr; }
 }
+
+/* --------------------------------------------
+   Teacher Evaluation tab
+   -------------------------------------------- */
+a.btn { text-decoration: none; }
+.form-group input:disabled,
+.form-group select:disabled { background: #f3f4f6; color: var(--text-muted); cursor: not-allowed; }
+
+.eval-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 4px solid var(--warning);
+    color: #92400e;
+    border-radius: var(--radius-sm);
+    padding: 14px 18px;
+    font-size: 0.86rem;
+    margin-bottom: 20px;
+}
+.eval-notice i { margin-top: 2px; }
+
+.eval-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+    border: 1.5px solid var(--primary);
+    background: rgba(26, 92, 58, 0.04);
+    border-radius: var(--radius-sm);
+    margin-bottom: 20px;
+}
+.eval-status-main strong { display: block; font-size: 0.98rem; color: var(--text-dark); }
+.eval-status-main span { font-size: 0.82rem; color: var(--text-muted); }
+
+.eval-progress { margin-bottom: 20px; }
+.eval-progress-head { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+.eval-progress-head strong { color: var(--primary); }
+.eval-progress-track { height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; }
+.eval-progress-fill { height: 100%; background: var(--primary); border-radius: 999px; transition: width 0.4s ease; }
+
+.eval-actions { gap: 10px; flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+    .eval-status { flex-direction: column; align-items: flex-start; }
+}

@@ -40,6 +40,16 @@ $footerSubline = $studentGradeSection ?? $roleLabel;
 // Pass these from the including page before requiring this file.
 $assignmentsDueCount       = $assignmentsDueCount ?? null;
 $unreadAnnouncementsCount  = $unreadAnnouncementsCount ?? null;
+
+// ================= TEACHER EVALUATION SURVEY =================
+// Show the "Teacher Evaluation" link only while a survey is live and this
+// student has classes to evaluate. Fails quietly (no link) if the feature's
+// tables haven't been migrated yet, so it can never break a student page.
+$tevalNav = ['round' => null, 'total' => 0, 'pending' => 0];
+if (isset($pdo) && $pdo instanceof PDO) {
+    require_once __DIR__ . '/teacher_evaluation.php';
+    $tevalNav = teval_status_for_user($pdo, (int) ($_SESSION['user_id'] ?? 0));
+}
 ?>
 <!-- Sidebar Stylesheet -->
 <link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/student_sidebar.css">
@@ -101,6 +111,16 @@ $unreadAnnouncementsCount  = $unreadAnnouncementsCount ?? null;
                 <div class="nav-icon-wrap"><i class="fas fa-clipboard-check"></i></div>
                 <span class="nav-label">Attendance</span>
             </a>
+            <?php if ($tevalNav['round'] && $tevalNav['total'] > 0): ?>
+            <a href="../../public/student/teacher_evaluation.php"
+                class="nav-item <?= $current === 'teacher_evaluation.php' ? 'active' : '' ?>">
+                <div class="nav-icon-wrap"><i class="fas fa-chalkboard-user"></i></div>
+                <span class="nav-label">Teacher Evaluation</span>
+                <?php if ($tevalNav['pending'] > 0): ?>
+                    <span class="nav-badge" id="tevNavBadge"><?= (int) $tevalNav['pending'] ?></span>
+                <?php endif; ?>
+            </a>
+            <?php endif; ?>
         </div>
 
         <div class="nav-section">

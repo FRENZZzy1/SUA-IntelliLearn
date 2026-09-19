@@ -35,6 +35,19 @@ try {
 
 // ---- Load school years ----
 $schoolYears = $pdo->query("SELECT * FROM schoolyears ORDER BY start_date DESC")->fetchAll();
+
+// ---- Teacher evaluation survey state ----
+require_once '../../includes/teacher_evaluation.php';
+$isFullAdmin   = adminAccessLevel() === 'full';   // only Full Access admins may send/close a survey
+$tevalReady    = teval_tables_ready($pdo);
+$tevalOpen     = $tevalReady ? teval_get_open_round($pdo) : null;
+$tevalRounds   = $tevalReady ? teval_get_rounds($pdo, 6) : [];
+$tevalProgress = $tevalOpen ? teval_round_results($pdo, $tevalOpen)['overview'] : null;
+$tevalDefaultTerm = resolveCurrentTerm(getTermIntervals($pdo)) ?? 'TRM 1';
+$currentYearLabel = '';
+foreach ($schoolYears as $sy) {
+    if ($sy['is_current']) { $currentYearLabel = trim($sy['label']); break; }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -84,6 +97,9 @@ $schoolYears = $pdo->query("SELECT * FROM schoolyears ORDER BY start_date DESC")
                 </button>
                 <button class="settings-tab" data-tab="general" onclick="switchTab(this)">
                     <i class="fas fa-building-columns"></i> General
+                </button>
+                <button class="settings-tab" data-tab="teacher-evaluation" onclick="switchTab(this)">
+                    <i class="fas fa-chalkboard-user"></i> Teacher Evaluation
                 </button>
             </div>
 
@@ -245,6 +261,151 @@ $schoolYears = $pdo->query("SELECT * FROM schoolyears ORDER BY start_date DESC")
                 </div>
             </div>
 
+            <!-- ================= TEACHER EVALUATION ================= -->
+            <div class="settings-panel" id="panel-teacher-evaluation">
+
+                <?php if (!$tevalReady): ?>
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <h2><i class="fas fa-database"></i> Setup required</h2>
+                        <p>The teacher evaluation tables don't exist yet. Run <code>teacher_evaluation_migration.sql</code> against the <code>lms</code> database, then reload this page.</p>
+                    </div>
+                </div>
+                <?php else: ?>
+
+                <?php if (!$isFullAdmin): ?>
+                <div class="eval-notice">
+                    <i class="fas fa-lock"></i>
+                    <span>Only administrators with <strong>Full Access</strong> can send or close a teacher evaluation survey. You can still review the status here.</span>
+                </div>
+                <?php endif; ?>
+
+                <?php if ($tevalOpen): ?>
+                <!-- A survey is live -->
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <h2><i class="fas fa-paper-plane"></i> Survey in progress</h2>
+                        <p>Students can see this survey on their dashboard and under <em>Teacher Evaluation</em>.</p>
+                    </div>
+
+                    <div class="eval-status">
+                        <div class="eval-status-main">
+                            <strong><?= clean($tevalOpen['title']) ?></strong>
+                            <span>
+                                <?= clean($tevalOpen['school_year_label']) ?> &middot; <?= clean($tevalOpen['term']) ?>
+                                &middot;
+                                <?= $tevalOpen['closes_on']
+                                    ? 'Closes ' . clean(date('M j, Y', strtotime($tevalOpen['closes_on'])))
+                                    : 'No deadline' ?>
+                            </span>
+                        </div>
+                        <span class="badge-current">Open</span>
+                    </div>
+
+                    <div class="eval-progress" aria-label="Survey completion">
+                        <div class="eval-progress-head">
+                            <span><?= (int) $tevalProgress['submitted'] ?> of <?= (int) $tevalProgress['expected'] ?> class evaluations submitted</span>
+                            <strong><?= (int) $tevalProgress['rate'] ?>%</strong>
+                        </div>
+                        <div class="eval-progress-track"><div class="eval-progress-fill" style="width: <?= (int) $tevalProgress['rate'] ?>%"></div></div>
+                    </div>
+
+                    <div class="form-alert" id="closeSurveyError" hidden></div>
+                    <div class="form-actions eval-actions">
+                        <a class="btn btn-outline" href="analytics.php?round=<?= (int) $tevalOpen['round_id'] ?>">
+                            <i class="fas fa-chart-line"></i> View results
+                        </a>
+                        <?php if ($isFullAdmin): ?>
+                        <button type="button" class="btn btn-primary" id="closeSurveyBtn"
+                            onclick="closeSurvey(<?= (int) $tevalOpen['round_id'] ?>, this)">
+                            <i class="fas fa-circle-stop"></i> Close survey
+                        </button>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <?php else: ?>
+                <!-- No live survey: form to send one -->
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <h2><i class="fas fa-paper-plane"></i> Send a teacher evaluation survey</h2>
+                        <p>
+                            Students rate each teacher they're enrolled with for the chosen term.
+                            Answers are saved <strong>anonymously</strong> (no student name or ID is attached), and
+                            results appear under <em>System Analytics</em> with an AI-generated summary.
+                        </p>
+                    </div>
+
+                    <form id="sendSurveyForm">
+                        <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
+                        <input type="hidden" name="action" value="open">
+                        <div class="form-alert" id="sendSurveyError" hidden></div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-heading"></i> Survey title</label>
+                                <input type="text" name="title" maxlength="150"
+                                    placeholder="Teacher Evaluation - <?= clean($currentYearLabel) ?> <?= clean($tevalDefaultTerm) ?>"
+                                    <?= $isFullAdmin ? '' : 'disabled' ?>>
+                                <small>Optional. Leave blank to use the default.</small>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-layer-group"></i> Term to evaluate</label>
+                                <select name="term" required <?= $isFullAdmin ? '' : 'disabled' ?>>
+                                    <?php foreach (TEACHER_EVAL_TERMS as $term): ?>
+                                    <option value="<?= clean($term) ?>" <?= $term === $tevalDefaultTerm ? 'selected' : '' ?>><?= clean($term) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small>Applies to the current school year<?= $currentYearLabel !== '' ? ' (' . clean($currentYearLabel) . ')' : '' ?>.</small>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label><i class="fas fa-calendar-day"></i> Deadline</label>
+                            <input type="date" name="closes_on" min="<?= date('Y-m-d') ?>" <?= $isFullAdmin ? '' : 'disabled' ?>>
+                            <small>Optional. Students can't submit after this date.</small>
+                        </div>
+
+                        <?php if ($isFullAdmin): ?>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary" id="sendSurveyBtn">
+                                <i class="fas fa-paper-plane"></i> Send survey to students
+                            </button>
+                        </div>
+                        <?php endif; ?>
+                    </form>
+                </div>
+                <?php endif; ?>
+
+                <!-- Past surveys -->
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <h2><i class="fas fa-clock-rotate-left"></i> Recent surveys</h2>
+                        <p>Open any survey's results in System Analytics.</p>
+                    </div>
+                    <div class="year-list">
+                        <?php foreach ($tevalRounds as $r): $live = teval_round_is_live($r); ?>
+                        <div class="year-row <?= $live ? 'is-current' : '' ?>">
+                            <div class="year-row-info">
+                                <div class="year-icon"><i class="fas fa-clipboard-list"></i></div>
+                                <div>
+                                    <strong><?= clean($r['title']) ?></strong>
+                                    <span><?= clean($r['school_year_label']) ?> &middot; <?= clean($r['term']) ?> &middot; Sent <?= clean(date('M j, Y', strtotime($r['opened_at']))) ?></span>
+                                </div>
+                            </div>
+                            <a class="btn btn-outline btn-sm" href="analytics.php?round=<?= (int) $r['round_id'] ?>">
+                                <?= $live ? 'Open' : 'Results' ?>
+                            </a>
+                        </div>
+                        <?php endforeach; ?>
+                        <?php if (empty($tevalRounds)): ?>
+                        <p style="color: var(--text-muted); font-size: 0.88rem;">No surveys have been sent yet.</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <?php endif; ?>
+            </div>
+
         </div>
     </div>
 
@@ -315,6 +476,67 @@ $schoolYears = $pdo->query("SELECT * FROM schoolyears ORDER BY start_date DESC")
                 '<i class="fas fa-floppy-disk"></i> Save Changes'
             );
         });
+
+        // ---- Teacher evaluation tab ----
+        // Re-open the tab named in the URL hash (the page reloads after a save).
+        (function () {
+            const wanted = location.hash.replace('#', '');
+            const tab = wanted ? document.querySelector('.settings-tab[data-tab="' + wanted + '"]') : null;
+            if (tab) switchTab(tab);
+        })();
+
+        const sendSurveyForm = document.getElementById('sendSurveyForm');
+        if (sendSurveyForm) {
+            sendSurveyForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                if (!confirm('Send this survey to students now? They will be asked to evaluate each of their teachers.')) return;
+                location.hash = 'teacher-evaluation';
+                submitForm(
+                    this, 'teacher_evaluation_round.php',
+                    document.getElementById('sendSurveyBtn'),
+                    document.getElementById('sendSurveyError'),
+                    '<i class="fas fa-paper-plane"></i> Send survey to students'
+                );
+            });
+        }
+
+        function closeSurvey(roundId, btn) {
+            if (!confirm('Close this survey? Students will no longer be able to submit evaluations.')) return;
+            const errorBox = document.getElementById('closeSurveyError');
+            const original = btn.innerHTML;
+            errorBox.hidden = true;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Closing...';
+
+            const form = new FormData();
+            form.append('csrf', document.querySelector('input[name="csrf"]').value);
+            form.append('action', 'close');
+            form.append('round_id', roundId);
+
+            fetch('teacher_evaluation_round.php', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json' },
+                body: form
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    location.hash = 'teacher-evaluation';
+                    location.reload();
+                } else {
+                    errorBox.innerHTML = data.errors.map(err => '<div>' + err + '</div>').join('');
+                    errorBox.hidden = false;
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                }
+            })
+            .catch(() => {
+                errorBox.innerHTML = '<div>Something went wrong. Please try again.</div>';
+                errorBox.hidden = false;
+                btn.disabled = false;
+                btn.innerHTML = original;
+            });
+        }
 
         function setCurrentYear(id, btn) {
             const original = btn.innerHTML;

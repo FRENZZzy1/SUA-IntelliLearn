@@ -170,6 +170,8 @@ function adminModuleForCurrentScript(): ?string {
 
         'announcement.php' => 'announcements',
 
+        'analytics.php' => 'analytics',
+
         'settings.php' => 'settings',
         'save_settings.php' => 'settings',
         'save_term_intervals.php' => 'settings',

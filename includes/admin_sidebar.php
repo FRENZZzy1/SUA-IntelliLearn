@@ -87,11 +87,11 @@ if (function_exists('get_initials')) {
 
         <div class="nav-section">
             <div class="nav-section-title">Reports</div>
-            <a href="#" class="nav-item" onclick="setActive(this)">
+            <?php if (adminCanRead('analytics')): ?><a href="../../public/admin/analytics.php" class="nav-item <?= $current === 'analytics.php' ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-chart-line"></i></div>
                 <span class="nav-label">System Analytics</span>
-            </a>
-            <?php if (adminCanRead('settings')): ?><a href="../../public/admin/settings.php" class="nav-item" onclick="setActive(this)">
+            </a><?php endif; ?>
+            <?php if (adminCanRead('settings')): ?><a href="../../public/admin/settings.php" class="nav-item <?= $current === 'settings.php' ? 'active' : '' ?>" onclick="setActive(this)">
                 <div class="nav-icon-wrap"><i class="fas fa-cog"></i></div>
                 <span class="nav-label">Settings</span>
             </a><?php endif; ?>

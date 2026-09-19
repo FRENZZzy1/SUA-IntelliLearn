@@ -41,6 +41,10 @@ $studentGradeSection = $sectionRow
 // ---- Real dashboard data: enrolled subjects, assignments, announcements
 require_once __DIR__ . '/assets/api/dashboard_functions.php';
 
+// ---- Teacher evaluation survey (banner shows only if evaluations are pending)
+require_once __DIR__ . '/../../includes/teacher_evaluation.php';
+$tevalStatus = teval_status_for_user($pdo, $userId);
+
 // ---- Still placeholder: no grades/attendance data exists yet to average.
 // TODO: replace once the grades and attendance tables have real rows.
 $overallAvgGrade    = 88;
@@ -55,6 +59,7 @@ $attendanceRate     = 95;
     <title>Dashboard · SUA IntelliLearn</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/dashboard.css">
+    <link rel="stylesheet" href="assets/css/teacher_evaluation.css">
 </head>
 
 <body>
@@ -72,6 +77,20 @@ $attendanceRate     = 95;
                 <p>Here's a look at your classes and tasks for today — <?= $todayLabel ?></p>
             </div>
         </section>
+
+        <?php if ($tevalStatus['round'] && $tevalStatus['pending'] > 0): ?>
+        <!-- Teacher evaluation survey is open -->
+        <a class="tev-banner" href="teacher_evaluation.php">
+            <div class="tev-banner-icon"><i class="fas fa-chalkboard-user"></i></div>
+            <div class="tev-banner-text">
+                <strong>Teacher evaluation is open</strong>
+                <span>
+                    You have <?= (int) $tevalStatus['pending'] ?> <?= $tevalStatus['pending'] === 1 ? 'teacher' : 'teachers' ?> left to evaluate. It's anonymous and takes a few minutes.
+                </span>
+            </div>
+            <span class="tev-banner-go">Start <i class="fas fa-arrow-right"></i></span>
+        </a>
+        <?php endif; ?>
 
         <!-- Metric cards -->
         <section class="metric-grid">
