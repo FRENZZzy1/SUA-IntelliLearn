@@ -383,9 +383,10 @@ function change_user_password(PDO $pdo, int $userId, string $currentPassword, st
     }
  
     $errors = [];
-    if (strlen($newPassword) < 8) {
-        $errors[] = 'New password must be at least 8 characters.';
-    }
+    $errors = array_merge($errors, array_map(
+        fn($error) => 'New ' . strtolower($error),
+        validate_password_policy($newPassword)
+    ));
     if ($newPassword !== $confirmPassword) {
         $errors[] = 'New password and confirmation do not match.';
     }
