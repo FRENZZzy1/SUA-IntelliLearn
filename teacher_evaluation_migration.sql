@@ -59,21 +59,6 @@ CREATE TABLE IF NOT EXISTS evaluation_answers (
   CONSTRAINT fk_ea_question FOREIGN KEY (question_id) REFERENCES evaluation_questions(question_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE IF NOT EXISTS evaluation_ai_summaries (
-  summary_id INT NOT NULL AUTO_INCREMENT,
-  evaluation_id INT NOT NULL,
-  teacher_id INT NOT NULL,
-  summary_text TEXT NOT NULL,
-  strengths TEXT NULL,
-  improvements TEXT NULL,
-  source_hash CHAR(64) NULL,
-  model VARCHAR(120) NULL,
-  generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (summary_id),
-  UNIQUE KEY uq_eas_teacher (evaluation_id,teacher_id),
-  CONSTRAINT fk_eas_evaluation FOREIGN KEY (evaluation_id) REFERENCES teacher_evaluations(evaluation_id) ON DELETE CASCADE,
-  CONSTRAINT fk_eas_teacher FOREIGN KEY (teacher_id) REFERENCES teachers(teacher_id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO system_settings (setting_key, setting_value)
 VALUES ('teacher_evaluation_enabled','0')
