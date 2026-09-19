@@ -3,7 +3,7 @@ require_once '../../config/config.php'; requireAdminModule('settings','write'); 
 if(!validateCSRFToken($_POST['csrf']??'')){http_response_code(419);exit('Session expired.');}
 $action=$_POST['action']??'';
 try{
- if($action==='toggle'){ $v=(($_POST['enabled']??'0')==='1')?'1':'0'; $s=$pdo->prepare("INSERT INTO system_settings(setting_key,setting_value,updated_by) VALUES('teacher_evaluation_enabled',?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_by=VALUES(updated_by)");$s->execute([$v,$_SESSION['user_id']??null]);}
+ if($action==='toggle'){ $v=(($_POST['enabled']??'0')==='1')?'1':'0'; if($v==='0') $pdo->exec("UPDATE teacher_evaluations SET status='closed' WHERE status='open'"); $s=$pdo->prepare("INSERT INTO system_settings(setting_key,setting_value,updated_by) VALUES('teacher_evaluation_enabled',?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value),updated_by=VALUES(updated_by)");$s->execute([$v,$_SESSION['user_id']??null]);}
  elseif($action==='create'){
   $sy=(int)$_POST['school_year_id'];$title=trim($_POST['title']??'');$desc=trim($_POST['description']??'');$start=str_replace('T',' ',trim($_POST['start_date']??''));$end=str_replace('T',' ',trim($_POST['end_date']??''));
   if(!$title||!$start||!$end||strtotime($end)<=strtotime($start)) throw new Exception('Enter a valid title and date range.');
