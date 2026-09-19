@@ -3,7 +3,7 @@ require_once '../../../config/config.php';
 if(($_SESSION['role']??'')!=='student'){http_response_code(403);exit('Access denied.');}
 if(!validateCSRFToken($_POST['csrf']??'')){http_response_code(419);exit('Session expired.');}
 $uid=(int)($_SESSION['user_id']??0);$s=$pdo->prepare("SELECT student_id FROM students WHERE user_id=? LIMIT 1");$s->execute([$uid]);$studentId=(int)$s->fetchColumn();$offeringId=(int)($_POST['offering_id']??0);
-$e=$pdo->query("SELECT * FROM teacher_evaluations WHERE status='open' AND NOW() BETWEEN start_date AND end_date ORDER BY evaluation_id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$eStmt=$pdo->prepare("SELECT * FROM teacher_evaluations WHERE evaluation_id=? AND status='open' AND NOW() BETWEEN start_date AND end_date LIMIT 1");$eStmt->execute([$evaluationId]);$e=$eStmt->fetch(PDO::FETCH_ASSOC);
 if(!$e)exit('No active evaluation.');
 $ok=$pdo->prepare("SELECT 1 FROM enrollments WHERE student_id=? AND offering_id=? AND status='active' LIMIT 1");$ok->execute([$studentId,$offeringId]);if(!$ok->fetchColumn())exit('You are not enrolled in this class.');
 $q=$pdo->prepare("SELECT * FROM evaluation_questions WHERE evaluation_id=? ORDER BY sort_order");$q->execute([$e['evaluation_id']]);$questions=$q->fetchAll(PDO::FETCH_ASSOC);
