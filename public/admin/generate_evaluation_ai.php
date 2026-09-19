@@ -1,0 +1,15 @@
+<?php
+require_once '../../config/config.php';requireAdminModule('analytics','write');if(!validateCSRFToken($_POST['csrf']??'')){http_response_code(419);exit('Session expired.');}
+$evaluationId=(int)($_POST['evaluation_id']??0);require_once '../../includes/gemini_client.php';require_once '../../public/admin/assests/api/gemini_model.php';
+$teachers=$pdo->prepare("SELECT DISTINCT t.teacher_id,t.firstname,t.lastname FROM evaluation_responses er JOIN classofferings co ON co.offering_id=er.offering_id JOIN teachers t ON t.teacher_id=co.teacher_id WHERE er.evaluation_id=?");$teachers->execute([$evaluationId]);$teachers=$teachers->fetchAll(PDO::FETCH_ASSOC);
+foreach($teachers as $t){
+ $st=$pdo->prepare("SELECT eq.category,ROUND(AVG(ea.rating),2) avg,COUNT(ea.answer_id) n FROM evaluation_responses er JOIN classofferings co ON co.offering_id=er.offering_id JOIN evaluation_answers ea ON ea.response_id=er.response_id JOIN evaluation_questions eq ON eq.question_id=ea.question_id WHERE er.evaluation_id=? AND co.teacher_id=? AND eq.question_type='rating' GROUP BY eq.category");$st->execute([$evaluationId,$t['teacher_id']]);$cats=$st->fetchAll(PDO::FETCH_ASSOC);
+ $cm=$pdo->prepare("SELECT ea.text_answer FROM evaluation_responses er JOIN classofferings co ON co.offering_id=er.offering_id JOIN evaluation_answers ea ON ea.response_id=er.response_id JOIN evaluation_questions eq ON eq.question_id=ea.question_id WHERE er.evaluation_id=? AND co.teacher_id=? AND eq.question_type='text' AND ea.text_answer<>'' ORDER BY er.submitted_at DESC LIMIT 30");$cm->execute([$evaluationId,$t['teacher_id']]);$comments=array_column($cm->fetchAll(PDO::FETCH_ASSOC),'text_answer');
+ $payload=json_encode(['categories'=>$cats,'comments'=>$comments],JSON_UNESCAPED_UNICODE);
+ $prompt="You are summarizing anonymous student feedback for a school administrator. Do not identify students or invent facts. Based only on this aggregated data, write a concise professional summary with: Overall summary, Strengths, Areas for improvement. Do not assign an official teacher rating and do not make disciplinary recommendations. DATA: ".$payload;
+ $body=['contents'=>[['role'=>'user','parts'=>[['text'=>$prompt]]]],'generationConfig'=>['temperature'=>0.3,'maxOutputTokens'=>700]];
+ $result=null;$last='Gemini unavailable.';foreach(get_gemini_model_candidates() as $model){$r=gemini_call_model($model,$body);if($r['success']){$result=$r;$modelUsed=$model;break;}$last=$r['error'];if(!in_array($r['http_code']??0,[404,429,503,0],true))break;}
+ if(!$result)continue;
+ $hash=hash('sha256',$payload);$s=$pdo->prepare("INSERT INTO evaluation_ai_summaries(evaluation_id,teacher_id,summary_text,strengths,improvements,source_hash,model) VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE summary_text=VALUES(summary_text),source_hash=VALUES(source_hash),model=VALUES(model),generated_at=CURRENT_TIMESTAMP");$s->execute([$evaluationId,$t['teacher_id'],$result['why']??($result['raw']??'Summary generated.'),null,null,$hash,$modelUsed]);
+}
+header('Location: evaluation_analytics.php?evaluation_id='.$evaluationId);exit;
