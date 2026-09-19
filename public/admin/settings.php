@@ -82,6 +82,9 @@ $schoolYears = $pdo->query("SELECT * FROM schoolyears ORDER BY start_date DESC")
                 <button class="settings-tab" data-tab="enrollment" onclick="switchTab(this)">
                     <i class="fas fa-user-plus"></i> Enrollment Rules
                 </button>
+                <button class="settings-tab" data-tab="teacher-evaluation" onclick="switchTab(this)">
+                    <i class="fas fa-clipboard-check"></i> Teacher Evaluation
+                </button>
                 <button class="settings-tab" data-tab="general" onclick="switchTab(this)">
                     <i class="fas fa-building-columns"></i> General
                 </button>
@@ -212,6 +215,19 @@ $schoolYears = $pdo->query("SELECT * FROM schoolyears ORDER BY start_date DESC")
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- ================= TEACHER EVALUATION ================= -->
+            <div class="settings-panel" id="panel-teacher-evaluation">
+                <div class="settings-card">
+                    <div class="settings-card-header">
+                        <h2><i class="fas fa-clipboard-check"></i> Teacher Evaluation</h2>
+                        <p>Open a student feedback survey. It will appear as a task in eligible students' To-Do list.</p>
+                    </div>
+                    <div class="form-actions">
+                        <a href="teacher_evaluation.php" class="btn btn-primary"><i class="fas fa-clipboard-check"></i> Manage Teacher Evaluation</a>
+                    </div>
                 </div>
             </div>
 
