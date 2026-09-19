@@ -126,7 +126,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                         <div class="aum-hint-icon"><i class="fas fa-lightbulb"></i></div>
                         <div class="aum-hint-text">
                             <strong>Auto-generated credentials:</strong><br>
-                            <span class="aum-hint-detail"><strong>Username:</strong> STU-(last 4 digits of LRN)-(birthdate as MMDDYY)<br><strong>Password:</strong> Last name + birthdate as MMDDYY</span>
+                            <span class="aum-hint-detail"><strong>Username:</strong> STU-(last 4 digits of LRN)-(birthdate as MMDDYY)<br><strong>Password:</strong> Last name (capitalized) + birthdate as MMDDYY + !</span>
                         </div>
                     </div>
                 </div>
@@ -199,8 +199,8 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                     </div>
                     <div class="aum-row">
                         <div class="aum-group">
-                            <label>Password <span class="aum-req">*</span> <small>(min 6 characters)</small></label>
-                            <div class="aum-input-wrap"><i class="fas fa-key aum-input-icon"></i><input type="password" name="password" class="aum-control" placeholder="Enter secure password" minlength="6" data-staff-required></div>
+                            <label>Password <span class="aum-req">*</span> <small>(min 8 characters, 1 uppercase, 1 special character)</small></label>
+                            <div class="aum-input-wrap"><i class="fas fa-key aum-input-icon"></i><input type="password" name="password" class="aum-control" placeholder="Enter secure password" minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" data-staff-required></div>
                         </div>
                     </div>
                 </div>
