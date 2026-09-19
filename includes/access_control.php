@@ -171,6 +171,10 @@ function adminModuleForCurrentScript(): ?string {
         'announcement.php' => 'announcements',
 
         'settings.php' => 'settings',
+        'teacher_evaluation.php' => 'settings',
+        'teacher_evaluation_action.php' => 'settings',
+        'evaluation_analytics.php' => 'analytics',
+        'generate_evaluation_ai.php' => 'analytics',
         'save_settings.php' => 'settings',
         'save_term_intervals.php' => 'settings',
         'set_current_school_year.php' => 'settings',
