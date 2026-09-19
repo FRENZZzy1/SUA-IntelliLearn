@@ -86,6 +86,7 @@ button.submit{width:100%;margin-top:14px;padding:11px;border:0;border-radius:9px
 <?php else: ?>
 <form method="post" action="assets/api/submit_teacher_evaluation.php">
 <input type="hidden" name="offering_id" value="<?= (int)$class['offering_id'] ?>">
+<input type="hidden" name="csrf" value="<?= htmlspecialchars(generateCSRFToken()) ?>">
 <?php
 $questions = [
  ['rating_teaching_quality','Teaching quality and clarity'],
