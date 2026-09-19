@@ -177,10 +177,10 @@ $csrfToken = generateCSRFToken();
                             <div class="form-group">
                                 <label for="new_password"><i class="fas fa-shield-halved"></i> New Password</label>
                                 <div class="input-wrap">
-                                    <input type="password" id="new_password" name="new_password" required minlength="8" autocomplete="new-password">
+                                    <input type="password" id="new_password" name="new_password" required minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" autocomplete="new-password">
                                     <button type="button" class="input-icon toggle-password" data-target="new_password" aria-label="Show new password"><i class="fas fa-eye"></i></button>
                                 </div>
-                                <small>At least 8 characters.</small>
+                                <small>Minimum 8 characters, including at least one uppercase letter and one special character.</small>
                                 <div class="password-strength" id="passwordStrength">
                                     <div class="strength-bar"><span></span></div>
                                     <span class="strength-text">Password strength</span>
@@ -190,7 +190,7 @@ $csrfToken = generateCSRFToken();
                             <div class="form-group">
                                 <label for="confirm_password"><i class="fas fa-check-double"></i> Confirm New Password</label>
                                 <div class="input-wrap">
-                                    <input type="password" id="confirm_password" name="confirm_password" required minlength="8" autocomplete="new-password">
+                                    <input type="password" id="confirm_password" name="confirm_password" required minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" autocomplete="new-password">
                                     <button type="button" class="input-icon toggle-password" data-target="confirm_password" aria-label="Show password confirmation"><i class="fas fa-eye"></i></button>
                                 </div>
                                 <div class="match-indicator" id="matchIndicator"></div>

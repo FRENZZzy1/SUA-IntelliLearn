@@ -230,7 +230,7 @@ include 'assests/api/access_permissions_modal.php';
                     </div>
                     <div class="form-group">
                         <label>New Password <small>(leave blank to keep current)</small></label>
-                        <input type="password" name="new_password" id="editNewPassword" class="form-control" placeholder="Min 6 characters" minlength="6">
+                        <input type="password" name="new_password" id="editNewPassword" class="form-control" placeholder="Min 8 characters, 1 uppercase, 1 special character" minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}">
                     </div>
                 </div>
 

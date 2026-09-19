@@ -72,6 +72,7 @@ try {
         if ($current === '') $errors[] = 'Current password is required.';
         if (strlen($new) < 8) $errors[] = 'New password must be at least 8 characters.';
         if ($new !== $confirm) $errors[] = 'New password and confirmation do not match.';
+        $errors = array_merge($errors, validate_password_policy($new));
         if ($new === $current && $new !== '') $errors[] = 'New password must be different from your current password.';
 
         $passwordValid = password_verify($current, (string) $student['password']);
