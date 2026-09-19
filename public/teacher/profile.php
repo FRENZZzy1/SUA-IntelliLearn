@@ -211,7 +211,7 @@ $memberSince = date('F j, Y', strtotime($profile['created_at']));
                                         <i class="fas fa-shield-halved"></i> New Password
                                     </label>
                                     <div class="input-wrap">
-                                        <input type="password" id="new_password" name="new_password" required minlength="8" autocomplete="new-password" aria-describedby="password-help">
+                                        <input type="password" id="new_password" name="new_password" required minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" autocomplete="new-password" aria-describedby="password-help">
                                         <span class="input-icon toggle-password" data-target="new_password">
                                             <i class="fas fa-eye"></i>
                                         </span>
@@ -228,7 +228,7 @@ $memberSince = date('F j, Y', strtotime($profile['created_at']));
                                         <i class="fas fa-check-double"></i> Confirm New Password
                                     </label>
                                     <div class="input-wrap">
-                                        <input type="password" id="confirm_password" name="confirm_password" required minlength="8" autocomplete="new-password">
+                                        <input type="password" id="confirm_password" name="confirm_password" required minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" autocomplete="new-password">
                                         <span class="input-icon toggle-password" data-target="confirm_password">
                                             <i class="fas fa-eye"></i>
                                         </span>
