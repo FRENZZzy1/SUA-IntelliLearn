@@ -155,7 +155,8 @@ usort($dueTodayTasks, fn($a, $b) => strcmp($a['due_date'] ?? '', $b['due_date'] 
 
 $pendingTasks = array_merge(
     student_tag_items($pendingAssignments, 'assignment'),
-    student_tag_items($pendingQuizzes, 'quiz')
+    student_tag_items($pendingQuizzes, 'quiz'),
+    $evaluationTasks
 );
 usort($pendingTasks, fn($a, $b) => strcmp($a['due_date'] ?? '', $b['due_date'] ?? ''));
 
@@ -171,10 +172,42 @@ function student_task_link(array $item): string
     ];
     if ($item['type'] === 'quiz') {
         $params['quiz_id'] = (int) $item['quiz_id'];
+    } elseif ($item['type'] === 'evaluation') {
+        return 'teacher_evaluation.php?evaluation_id=' . (int)$item['evaluation_id'] . '&offering_id=' . (int)$item['offering_id'];
     } else {
         $params['assignment_id'] = (int) $item['assignment_id'];
     }
     return 'course_view.php?' . http_build_query($params);
+}
+
+
+// ---- Active teacher evaluation as a To-Do task ---------------------------
+$evaluationTasks = [];
+try {
+    $ev = $pdo->query("SELECT evaluation_id,title,end_date FROM teacher_evaluations WHERE status='open' AND NOW() BETWEEN start_date AND end_date ORDER BY evaluation_id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+    if ($ev && $offeringIds) {
+        $ph = implode(',', array_fill(0, count($offeringIds), '?'));
+        $doneStmt = $pdo->prepare("SELECT offering_id FROM evaluation_responses WHERE evaluation_id=? AND student_id=? AND offering_id IN ($ph)");
+        $doneStmt->execute(array_merge([(int)$ev['evaluation_id'], $studentId], $offeringIds));
+        $done = array_flip(array_map('intval', $doneStmt->fetchAll(PDO::FETCH_COLUMN)));
+        foreach ($activeOfferings as $offering) {
+            $oid=(int)$offering['offering_id'];
+            if (isset($done[$oid])) continue;
+            $evaluationTasks[]=[
+                'type'=>'evaluation',
+                'evaluation_id'=>(int)$ev['evaluation_id'],
+                'offering_id'=>$oid,
+                'title'=>$ev['title'],
+                'due_date'=>$ev['end_date'],
+                'subject_id'=>0,
+                'subject_name'=>$offering['subject_name'],
+                'teacher_first'=>$offering['teacher_first'],
+                'teacher_last'=>$offering['teacher_last'],
+            ];
+        }
+    }
+} catch (Throwable $e) {
+    // Teacher evaluation tables may not have been migrated yet.
 }
 
 // ---- Announcements visible to students ---------------------------------
@@ -219,7 +252,7 @@ function student_subject_icon(string $subjectName): string
 /** Small Font Awesome badge icon distinguishing an assignment from a quiz. */
 function student_task_type_icon(string $type): string
 {
-    return $type === 'quiz' ? 'fa-file-circle-question' : 'fa-file-pen';
+    return match ($type) { 'quiz' => 'fa-file-circle-question', 'evaluation' => 'fa-clipboard-check', default => 'fa-file-pen' };
 }
 
 /** Short uppercase chip label for a subject, e.g. "Mathematics" -> "MATH". */
