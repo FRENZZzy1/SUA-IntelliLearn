@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     // Build password: Lastname + birthdate as MMDDYY (e.g. Paller091105)
-                    $password_plain = $lastname . $bday_code;
+                    $password_plain = ucfirst(strtolower($lastname)) . $bday_code . '!';
                     $password_hash = password_hash($password_plain, PASSWORD_DEFAULT);
 
                     // Insert into Users
@@ -150,7 +150,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($lastname)) $errors[] = "Last name is required.";
         }
         if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Valid email is required.";
-        if (empty($password) || strlen($password) < 6) $errors[] = "Password must be at least 6 characters.";
+        if (empty($password)) {
+            $errors[] = "Password is required.";
+        } else {
+            $errors = array_merge($errors, validate_password_policy($password));
+        }
         if (!in_array($role, ['admin', 'teacher'])) $errors[] = "Invalid role selected.";
         if (!in_array($status, ['active', 'inactive', 'suspended'])) $errors[] = "Invalid status selected.";
         if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_status, ['full-time', 'part-time'])) {
@@ -330,7 +334,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->beginTransaction();
 
             // Update Users table
-            if (!empty($new_password) && strlen($new_password) >= 6) {
+            if ($new_password !== '') {
+                $passwordErrors = validate_password_policy($new_password);
+                if (!empty($passwordErrors)) {
+                    $errors = array_merge($errors, $passwordErrors);
+                }
+            }
+            if (empty($errors) && $new_password !== '') {
                 $password_hash = password_hash($new_password, PASSWORD_DEFAULT);
                 $stmt = $pdo->prepare("UPDATE Users SET password = ?, status = ?, " . ($new_username !== null ? "username = ?, " : "") . "updated_at = NOW() WHERE id = ?");
                 $stmt->execute($new_username !== null
