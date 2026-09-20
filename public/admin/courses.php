@@ -283,13 +283,17 @@ $sectionsList = $pdo->query("
         t.lastname  AS adviser_lastname,
         sy.label AS school_year_label,
         (SELECT COUNT(*) FROM classofferings co
-            WHERE co.section_id = sec.section_id) AS course_count,
+            WHERE co.section_id = sec.section_id
+              AND co.school_year_id = sec.school_year_id) AS course_count,
         (SELECT COUNT(*) FROM enrollments e
             JOIN classofferings co2 ON co2.offering_id = e.offering_id
-            WHERE co2.section_id = sec.section_id AND e.status = 'active') AS student_count
+            WHERE co2.section_id = sec.section_id
+              AND co2.school_year_id = sec.school_year_id
+              AND e.status = 'active') AS student_count
     FROM sections sec
     LEFT JOIN teachers t     ON t.teacher_id = sec.adviser_id
     LEFT JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id
+    WHERE sec.school_year_id = " . (int)($currentSchoolYear['school_year_id'] ?? 0) . "
     ORDER BY sec.grade_level ASC, sec.section_name ASC
 ")->fetchAll();
 
@@ -617,259 +621,146 @@ $subjectsList = $pdo->query("
         </div>
     </div>
 
-    <!-- Course List -->
-    <div class="list-panel">
-        <div class="list-panel-header">
-            <h2>Class List</h2>
-            <span class="count-note" id="courseCountTop">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
+    <!-- Simplified Classes Browser -->
+    <div class="classes-browser">
+        <div class="classes-browser-header">
+            <div>
+                <h2>Classes</h2>
+                <p>Choose a section to view and manage its class offerings.</p>
+            </div>
+            <div class="classes-browser-actions">
+                <button class="btn-secondary" onclick="openAddSectionModal()"><i class="fas fa-layer-group"></i> New Section</button>
+                <button class="btn-primary" onclick="openAddCourseModal()"><i class="fas fa-plus"></i> Add Class</button>
+            </div>
         </div>
 
-        <table class="course-table" id="courseTable">
-            <thead>
-                <tr>
-                    <th>Course / Subject</th>
-                    <th>Section</th>
-                    <th>Grade Level/Strand</th>
-                    <th>Term</th>
-                    <th>School Year</th>
-                    <th>Schedule</th>
-                    <th>Teacher Assigned</th>
-                    <th>Enrollment</th>
-                    <th>Status</th>
-                    <th class="col-actions">Actions</th>
-                </tr>
-            </thead>
-            <tbody id="courseTableBody">
-                <?php if (empty($courses)): ?>
-                <tr class="empty-row">
-                    <td colspan="10">
-                        No courses match these filters.
-                    </td>
-                </tr>
-                <?php endif; ?>
+        <?php if ($currentSchoolYear): ?>
+            <div class="current-year-banner">
+                <i class="fas fa-calendar-check"></i>
+                <span>Current School Year: <strong><?= clean($currentSchoolYear['label']) ?></strong></span>
+            </div>
+        <?php endif; ?>
 
-                <?php foreach ($orderedRows as $entry):
-                    $course       = $entry['course'];
-                    $isSibling    = $entry['is_sibling'];
-                    $groupKey     = $entry['group_key'];
-                    $siblingCount = $entry['sibling_count'];
-                    $colors = $subjectColors[$course['subject_name']] ?? ['bg' => '#e5e7eb', 'text' => '#374151', 'bar' => '#9ca3af'];
-                    $pct = $course['capacity'] > 0 ? round(($course['enrolled_count'] / $course['capacity']) * 100) : 0;
-                    $teacherName = $course['teacher_id'] ? trim($course['teacher_firstname'] . ' ' . $course['teacher_lastname']) : null;
-                    $scheduleDisplay = formatScheduleDisplay($course['schedule_days'], $course['start_time'], $course['end_time']);
-                    // Pre-baked lowercase blob this row matches against for the
-                    // instant client-side search box (subject + section + teacher name).
-                    $searchBlob = mb_strtolower(trim(
-                        $course['subject_name'] . ' ' .
-                        $course['section_name'] . ' ' .
-                        ($teacherName ?? '')
+        <div class="grade-groups">
+            <?php for ($grade = 7; $grade <= 12; $grade++): ?>
+                <?php
+                    $gradeSections = array_values(array_filter(
+                        $sectionsList,
+                        static fn($sec) => (int)$sec['grade_level'] === $grade
                     ));
                 ?>
-                <tr class="course-row<?= $isSibling ? ' sibling-row' : '' ?>"
-                    data-search="<?= htmlspecialchars($searchBlob) ?>"
-                    data-group="<?= htmlspecialchars($groupKey) ?>"
-                    <?= $isSibling ? 'data-expanded="false" style="display:none"' : '' ?>>
-                    <td>
-                        <div class="course-cell">
-                            <span class="subject-tag" style="background: <?= $colors['bg'] ?>; color: <?= $colors['text'] ?>;">
-                                <?= htmlspecialchars($course['subject_name']) ?>
-                            </span>
+                <section class="grade-group">
+                    <div class="grade-group-title">
+                        <div>
+                            <h3>Grade <?= $grade ?></h3>
+                            <span><?= count($gradeSections) ?> <?= count($gradeSections) === 1 ? 'section' : 'sections' ?></span>
                         </div>
-                    </td>
-                    <td class="course-name"><?= $isSibling ? '<span class="sibling-indent">↳</span> ' : '' ?><?= htmlspecialchars($course['section_name']) ?></td>
-                    <td>Grade <?= htmlspecialchars($course['grade_level']) ?><?= $course['strand'] ? ' · ' . htmlspecialchars($course['strand']) : '' ?></td>
-                    <td>
-                        <?= htmlspecialchars($course['quarter']) ?>
-                        <?php if (!$isSibling && $siblingCount > 0): ?>
-                            <button type="button" class="term-toggle" data-group="<?= htmlspecialchars($groupKey) ?>"
-                                    aria-expanded="false" onclick="toggleCourseSiblings(this)">
-                                <span class="chevron">▸</span>
-                                <?= $siblingCount ?> earlier <?= $siblingCount === 1 ? 'term' : 'terms' ?>
-                            </button>
-                        <?php endif; ?>
-                    </td>
-                    <td><?= $course['offering_school_year_label'] ? htmlspecialchars($course['offering_school_year_label']) : '<span class="field-note">— None —</span>' ?></td>
-                    <td><?= $scheduleDisplay ? htmlspecialchars($scheduleDisplay) : '<span class="field-note">— Not set —</span>' ?></td>
-                    <td><?= $teacherName ? htmlspecialchars($teacherName) : '— Unassigned —' ?></td>
-                    <td>
-                        <div class="enrollment-cell">
-                            <div class="enrollment-bar">
-                                <div class="enrollment-bar-fill" style="width: <?= min($pct, 100) ?>%; background: <?= $colors['bar'] ?>;"></div>
-                            </div>
-                            <span class="enrollment-fraction"><?= htmlspecialchars($course['enrolled_count']) ?>/<?= htmlspecialchars($course['capacity']) ?></span>
-                        </div>
-                    </td>
-                    <td>
-                        <span class="status-dot-badge <?= $course['status'] ?>">
-                            <span class="dot"></span>
-                            <?= $course['status'] === 'active' ? 'Active' : 'Inactive' ?>
-                        </span>
-                    </td>
-                    <td class="col-actions">
-                        <div class="row-actions">
-                            <a href="javascript:void(0)"
-                               onclick="openViewStudentsModal(<?= (int) $course['offering_id'] ?>)">View Students</a>
-                            <a href="javascript:void(0)"
-                               data-course="<?= htmlspecialchars(json_encode([
-                                   'offering_id'   => (int) $course['offering_id'],
-                                   'subject_id'    => (int) $course['subject_id'],
-                                   'section_id'    => (int) $course['section_id'],
-                                   'teacher_id'    => $course['teacher_id'] ? (int) $course['teacher_id'] : '',
-                                   'quarter'       => $course['quarter'],
-                                   'school_year_id' => (int) $course['school_year_id'],
-                                   'schedule_days' => $course['schedule_days'] ?? '',
-                                   'start_time'    => $course['start_time'] ? date('g:i A', strtotime($course['start_time'])) : '',
-                                   'end_time'      => $course['end_time'] ? date('g:i A', strtotime($course['end_time'])) : '',
-                                   'capacity'      => (int) $course['capacity'],
-                                   'status'        => $course['status'],
-                               ]), ENT_QUOTES, 'UTF-8') ?>"
-                               onclick="openEditCourseModal(this)">Update</a>
-                            <a class="delete" href="courses.php?delete=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&strand=<?= urlencode($strandFilter) ?>&q=<?= urlencode($searchQuery) ?>"
-                               onclick="return confirmDelete('course')">Delete</a>
-                        </div>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                    </div>
 
-        <div class="list-panel-footer">
-            <span class="count-note" id="courseCountBottom">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
+                    <?php if (empty($gradeSections)): ?>
+                        <div class="section-empty">No sections created for Grade <?= $grade ?> yet.</div>
+                    <?php else: ?>
+                        <div class="section-card-grid">
+                            <?php foreach ($gradeSections as $sec): ?>
+                                <?php
+                                    $adviserName = trim(($sec['adviser_firstname'] ?? '') . ' ' . ($sec['adviser_lastname'] ?? ''));
+                                    $sectionPayload = [
+                                        'section_id' => (int)$sec['section_id'],
+                                        'section_name' => $sec['section_name'],
+                                        'grade_level' => (int)$sec['grade_level'],
+                                        'strand' => $sec['strand'] ?? '',
+                                        'adviser_id' => $sec['adviser_id'] ? (int)$sec['adviser_id'] : ''
+                                    ];
+                                ?>
+                                <article class="section-card" onclick="openSectionClassesModal(<?= (int)$sec['section_id'] ?>, <?= htmlspecialchars(json_encode($sec['section_name']), ENT_QUOTES, 'UTF-8') ?>, <?= (int)$sec['grade_level'] ?>)">
+                                    <div class="section-card-icon"><i class="fas fa-users"></i></div>
+                                    <div class="section-card-main">
+                                        <div class="section-card-title"> <?= clean($sec['section_name']) ?></div>
+                                        <?php if (!empty($sec['strand'])): ?>
+                                            <div class="section-card-meta"><?= clean($sec['strand']) ?></div>
+                                        <?php endif; ?>
+                                        <div class="section-card-meta">
+                                            <i class="fas fa-user-tie"></i>
+                                            <?= $adviserName !== '' ? clean($adviserName) : 'No adviser assigned' ?>
+                                        </div>
+                                    </div>
+                                    <div class="section-card-count">
+                                        <strong><?= (int)$sec['course_count'] ?></strong>
+                                        <span><?= (int)$sec['course_count'] === 1 ? 'class' : 'classes' ?></span>
+                                    </div>
+                                    <div class="section-card-arrow"><i class="fas fa-chevron-right"></i></div>
+                                </article>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </section>
+            <?php endfor; ?>
         </div>
     </div>
-    <!-- /Course List -->
 
-    <!-- Sections List (hidden until "View Sections" is clicked) -->
-    <div class="view-panel <?= $openView === 'sections' ? 'open' : '' ?>" id="view-sections">
-    <div class="list-panel">
-        <div class="list-panel-header">
-            <h2>Sections List</h2>
-            <span class="count-note"><?= htmlspecialchars(count($sectionsList)) ?> sections</span>
-        </div>
-
-        <table class="course-table">
-            <thead>
-                <tr>
-                    <th>Section</th>
-                    <th>Grade Level/Strand</th>
-                    <th>Adviser</th>
-                    <th>School Year</th>
-                    <th>Courses Offered</th>
-                    <th>Enrolled Students</th>
-                    <th class="col-actions">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php if (empty($sectionsList)): ?>
-                <tr class="empty-row">
-                    <td colspan="7">
-                        No sections found. Use "New Section" to add one.
-                    </td>
-                </tr>
-                <?php endif; ?>
-
-                <?php foreach ($sectionsList as $sec):
-                    $adviserName = $sec['adviser_firstname']
-                        ? trim($sec['adviser_firstname'] . ' ' . $sec['adviser_lastname'])
-                        : null;
-                ?>
-                <tr>
-                    <td><span class="course-name"><?= htmlspecialchars($sec['section_name']) ?></span></td>
-                    <td>Grade <?= htmlspecialchars($sec['grade_level']) ?><?= $sec['strand'] ? ' · ' . htmlspecialchars($sec['strand']) : '' ?></td>
-                    <td><?= $adviserName ? htmlspecialchars($adviserName) : '— None —' ?></td>
-                    <td><?= $sec['school_year_label'] ? htmlspecialchars($sec['school_year_label']) : '— None —' ?></td>
-                    <td><?= (int) $sec['course_count'] ?></td>
-                    <td><?= (int) $sec['student_count'] ?></td>
-                    <td class="col-actions">
-                        <div class="row-actions">
-                            <a href="javascript:void(0)"
-                               data-section="<?= htmlspecialchars(json_encode([
-                                   'section_id'   => (int) $sec['section_id'],
-                                   'section_name' => $sec['section_name'],
-                                   'grade_level'  => (int) $sec['grade_level'],
-                                   'strand'       => $sec['strand'] ?? '',
-                                   'adviser_id'   => $sec['adviser_id'] ? (int) $sec['adviser_id'] : '',
-                               ]), ENT_QUOTES, 'UTF-8') ?>"
-                               onclick="openEditSectionModal(this)">Update</a>
-                            <a class="delete" href="courses.php?delete_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
-                               onclick="return confirmDelete('section')">Delete</a>
-                        </div>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-
-        <div class="list-panel-footer">
-            <span class="count-note"><?= htmlspecialchars(count($sectionsList)) ?> sections total</span>
+    <!-- Section Classes Modal -->
+    <div class="section-classes-overlay" id="sectionClassesOverlay" onclick="if(event.target===this) closeSectionClassesModal()">
+        <div class="section-classes-modal" role="dialog" aria-modal="true" aria-labelledby="sectionClassesTitle">
+            <div class="section-classes-header">
+                <div>
+                    <div class="section-classes-eyebrow">SECTION CLASSES</div>
+                    <h2 id="sectionClassesTitle">Classes</h2>
+                    <p id="sectionClassesSubtitle">Loading...</p>
+                </div>
+                <button type="button" class="modal-close" onclick="closeSectionClassesModal()" aria-label="Close">&times;</button>
+            </div>
+            <div class="section-classes-toolbar">
+                <span class="count-note" id="sectionClassesCount">Loading...</span>
+                <button type="button" class="btn-primary" id="sectionAddClassBtn"><i class="fas fa-plus"></i> Add Class</button>
+            </div>
+            <div class="section-classes-body" id="sectionClassesBody">
+                <div class="section-classes-loading"><i class="fas fa-spinner fa-spin"></i> Loading classes...</div>
+            </div>
         </div>
     </div>
-    </div>
-    <!-- /Sections List -->
 
-    <!-- Subjects List (hidden until "View Subjects" is clicked) -->
-    <div class="view-panel <?= $openView === 'subjects' ? 'open' : '' ?>" id="view-subjects">
-    <div class="list-panel">
-        <div class="list-panel-header">
-            <h2>Subjects List</h2>
-            <span class="count-note"><?= htmlspecialchars(count($subjectsList)) ?> subjects</span>
-        </div>
-
-        <table class="course-table">
-            <thead>
-                <tr>
-                    <th>Subject</th>
-                    <th>Description</th>
-                    <th>Courses Offered</th>
-                    <th>Sections Covered</th>
-                    <th class="col-actions">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
+    <!-- Subjects Management -->
+    <div class="view-panel open" id="view-subjects">
+        <div class="list-panel">
+            <div class="list-panel-header">
+                <div>
+                    <h2>Subjects</h2>
+                    <span class="count-note"><?= htmlspecialchars(count($subjectsList)) ?> subjects</span>
+                </div>
+                <button class="btn-secondary" onclick="openAddSubjectModal()"><i class="fas fa-plus"></i> New Subject</button>
+            </div>
+            <div class="compact-subject-list">
                 <?php if (empty($subjectsList)): ?>
-                <tr class="empty-row">
-                    <td colspan="5">
-                        No subjects found. Use "New Subject" to add one.
-                    </td>
-                </tr>
+                    <div class="section-empty">No subjects found. Use "New Subject" to add one.</div>
+                <?php else: ?>
+                    <?php foreach ($subjectsList as $subj): ?>
+                        <div class="compact-subject-row">
+                            <div>
+                                <strong><?= clean($subj['subject_name']) ?></strong>
+                                <?php if (!empty($subj['description'])): ?>
+                                    <span><?= clean($subj['description']) ?></span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="compact-subject-meta">
+                                <?= (int)$subj['offering_count'] ?> classes · <?= (int)$subj['section_count'] ?> sections
+                            </div>
+                            <?php
+                                $subjectPayload = [
+                                    'subject_id' => (int)$subj['subject_id'],
+                                    'subject_name' => $subj['subject_name'],
+                                    'description' => $subj['description'] ?? ''
+                                ];
+                            ?>
+                            <button class="row-action-btn" type="button"
+                                data-subject="<?= htmlspecialchars(json_encode($subjectPayload), ENT_QUOTES, 'UTF-8') ?>"
+                                onclick="openEditSubjectModal(this)" aria-label="Edit subject">
+                                <i class="fas fa-pen"></i>
+                            </button>
+                        </div>
+                    <?php endforeach; ?>
                 <?php endif; ?>
-
-                <?php foreach ($subjectsList as $subj):
-                    $colors = $subjectColors[$subj['subject_name']] ?? ['bg' => '#e5e7eb', 'text' => '#374151', 'bar' => '#9ca3af'];
-                ?>
-                <tr>
-                    <td>
-                        <div class="course-cell">
-                            <span class="subject-tag" style="background: <?= $colors['bg'] ?>; color: <?= $colors['text'] ?>;">
-                                <?= htmlspecialchars($subj['subject_name']) ?>
-                            </span>
-                        </div>
-                    </td>
-                    <td style="white-space: normal;"><?= $subj['description'] ? htmlspecialchars($subj['description']) : '— No description —' ?></td>
-                    <td><?= (int) $subj['offering_count'] ?></td>
-                    <td><?= (int) $subj['section_count'] ?></td>
-                    <td class="col-actions">
-                        <div class="row-actions">
-                            <a href="javascript:void(0)"
-                               data-subject="<?= htmlspecialchars(json_encode([
-                                   'subject_id'   => (int) $subj['subject_id'],
-                                   'subject_name' => $subj['subject_name'],
-                                   'description'  => $subj['description'] ?? '',
-                               ]), ENT_QUOTES, 'UTF-8') ?>"
-                               onclick="openEditSubjectModal(this)">Update</a>
-                            <a class="delete" href="courses.php?delete_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
-                               onclick="return confirmDelete('subject')">Delete</a>
-                        </div>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-
-        <div class="list-panel-footer">
-            <span class="count-note"><?= htmlspecialchars(count($subjectsList)) ?> subjects total</span>
+            </div>
         </div>
-    </div>
     </div>
     <!-- /Subjects List -->
 
@@ -1377,6 +1268,81 @@ $subjectsList = $pdo->query("
     </div>
 
 </div>
+
+<script>
+let activeSectionId = null;
+
+function openSectionClassesModal(sectionId, sectionName, gradeLevel) {
+    activeSectionId = sectionId;
+    document.getElementById('sectionClassesTitle').textContent = 'Grade ' + gradeLevel + ' — ' + sectionName;
+    document.getElementById('sectionClassesSubtitle').textContent = 'Classes offered for this section in the current school year.';
+    document.getElementById('sectionClassesCount').textContent = 'Loading...';
+    document.getElementById('sectionClassesBody').innerHTML = '<div class="section-classes-loading"><i class="fas fa-spinner fa-spin"></i> Loading classes...</div>';
+    document.getElementById('sectionClassesOverlay').classList.add('open');
+
+    fetch('get_section_classes.php?section_id=' + encodeURIComponent(sectionId), {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) throw new Error((data.errors || ['Unable to load classes.'])[0]);
+        renderSectionClasses(data.classes || []);
+    })
+    .catch(err => {
+        document.getElementById('sectionClassesCount').textContent = 'Unable to load';
+        document.getElementById('sectionClassesBody').innerHTML =
+            '<div class="section-classes-empty"><i class="fas fa-circle-exclamation"></i><p>' +
+            escapeSectionHtml(err.message || 'Unable to load classes.') + '</p><button class="btn-secondary" type="button" onclick="openSectionClassesModal(' +
+            sectionId + ', ' + JSON.stringify(sectionName) + ', ' + gradeLevel + ')">Try Again</button></div>';
+    });
+}
+
+function renderSectionClasses(classes) {
+    const body = document.getElementById('sectionClassesBody');
+    document.getElementById('sectionClassesCount').textContent =
+        classes.length + ' ' + (classes.length === 1 ? 'class' : 'classes');
+
+    if (!classes.length) {
+        body.innerHTML = '<div class="section-classes-empty"><i class="fas fa-book-open"></i><p>No classes have been added to this section for the current term.</p><button class="btn-primary" type="button" onclick="openAddCourseModal(); closeSectionClassesModal();"><i class="fas fa-plus"></i> Add First Class</button></div>';
+        return;
+    }
+
+    body.innerHTML = classes.map(function(item) {
+        const schedule = item.schedule || 'Schedule not set';
+        const teacher = item.teacher_name || 'No teacher assigned';
+        const enrollment = item.enrolled_count + ' / ' + item.capacity;
+        return '<div class="class-offering-row">' +
+            '<div class="class-offering-icon"><i class="fas fa-book"></i></div>' +
+            '<div class="class-offering-main"><strong>' + escapeSectionHtml(item.subject_name) + '</strong>' +
+            '<span><i class="fas fa-user-tie"></i> ' + escapeSectionHtml(teacher) + '</span></div>' +
+            '<div class="class-offering-info"><span class="class-term">' + escapeSectionHtml(item.quarter || 'Current Term') + '</span>' +
+            '<span>' + escapeSectionHtml(schedule) + '</span></div>' +
+            '<div class="class-offering-enrollment">' + escapeSectionHtml(enrollment) + '</div>' +
+            '<span class="status-dot-badge ' + (item.status === 'active' ? 'active' : 'inactive') + '"><span class="dot"></span>' + escapeSectionHtml(item.status) + '</span>' +
+            '<button type="button" class="row-action-btn" data-course="' + escapeSectionHtml(JSON.stringify(item)) + '" onclick="openEditCourseModal(this)" aria-label="Edit class"><i class="fas fa-pen"></i></button>' +
+            '</div>';
+    }).join('');
+}
+
+function closeSectionClassesModal() {
+    document.getElementById('sectionClassesOverlay').classList.remove('open');
+    activeSectionId = null;
+}
+
+document.getElementById('sectionAddClassBtn').addEventListener('click', function() {
+    const sectionId = activeSectionId;
+    closeSectionClassesModal();
+    openAddCourseModal();
+    const sectionSelect = document.getElementById('m_section_id');
+    if (sectionSelect && sectionId) sectionSelect.value = sectionId;
+});
+
+function escapeSectionHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function(ch) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[ch];
+    });
+}
+</script>
 
 <script src="assests/js/courses.js"></script>
 
