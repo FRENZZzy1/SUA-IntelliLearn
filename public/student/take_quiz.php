@@ -31,6 +31,15 @@ if (!$quiz) {
     die("Quiz not found or is not available.");
 }
 
+// 2b. The student must have an ACTIVE enrollment in the class this quiz belongs
+//     to. Unenrolled ('dropped') students, and students who were never in the
+//     class, can't open or submit it even if they have the direct URL.
+$stmt = $pdo->prepare("SELECT 1 FROM enrollments WHERE student_id = ? AND offering_id = ? AND status = 'active' LIMIT 1");
+$stmt->execute([$studentId, $quiz['offering_id']]);
+if (!$stmt->fetchColumn()) {
+    die("You are not enrolled in this class.");
+}
+
 // 3. Count attempts (only ones that were actually submitted — an in-progress
 //    row created for timer tracking shouldn't burn an attempt by itself)
 $stmt = $pdo->prepare("SELECT COUNT(*) FROM quiz_attempts WHERE quiz_id = ? AND student_id = ? AND status != 'in_progress'");

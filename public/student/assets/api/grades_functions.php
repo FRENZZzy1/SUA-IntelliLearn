@@ -49,13 +49,16 @@ if (!$student) {
 $studentId       = (int) $student['student_id'];
 $studentFullName = trim($student['firstname'] . ' ' . $student['lastname']);
 
-// ---- School years this student has ANY enrollment in --------------------
+// ---- School years this student has an enrollment in ---------------------
+// Enrollments the admin has unenrolled ('dropped') are excluded everywhere on
+// this page, so a school year that only contains dropped classes isn't listed.
 $stmt = $pdo->prepare("
     SELECT DISTINCT sy.school_year_id, sy.label, sy.is_current
     FROM enrollments e
     JOIN classofferings co ON co.offering_id = e.offering_id
     JOIN schoolyears sy    ON sy.school_year_id = co.school_year_id
     WHERE e.student_id = ?
+      AND e.status <> 'dropped'
     ORDER BY sy.start_date DESC
 ");
 $stmt->execute([$studentId]);
@@ -90,7 +93,8 @@ foreach ($schoolYears as $sy) {
     }
 }
 
-// ---- Enrollments (any status) for the selected school year, with grade ---
+// ---- Enrollments (except unenrolled/dropped ones) for the selected school
+//      year, with grade ---------------------------------------------------
 $enrollmentRows = [];
 if ($selectedYearId !== null) {
     $stmt = $pdo->prepare("
@@ -106,6 +110,7 @@ if ($selectedYearId !== null) {
         JOIN sections sec      ON sec.section_id = co.section_id
         JOIN teachers t        ON t.teacher_id = co.teacher_id
         WHERE e.student_id = ? AND co.school_year_id = ?
+          AND e.status <> 'dropped'
         ORDER BY sub.subject_name, co.quarter
     ");
     $stmt->execute([$studentId, $selectedYearId]);
@@ -198,7 +203,7 @@ foreach ($enrollmentRows as $row) {
     $isPosted     = $postedFinal !== null;
 
     $currentStanding = null;
-    if (!$isPosted && $row['enrollment_status'] !== 'dropped') {
+    if (!$isPosted) {
         $currentStanding = computeCurrentStanding($pdo, (int) $row['offering_id'], $studentId);
     }
 

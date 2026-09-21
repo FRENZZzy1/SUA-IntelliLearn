@@ -1127,7 +1127,7 @@ $subjectsList = $pdo->query("
     </div>
 
     <!-- View Students Modal -->
-    <div class="modal-overlay" id="viewStudentsOverlay" onclick="if (event.target === this) closeViewStudentsModal()">
+    <div class="modal-overlay" id="viewStudentsOverlay" data-csrf="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>" onclick="if (event.target === this) closeViewStudentsModal()">
         <div class="modal-box" style="max-width: 900px; width: 90vw;">
             <div class="modal-header">
                 <h2 id="vsModalTitle">Enrolled Students</h2>
@@ -1155,6 +1155,9 @@ $subjectsList = $pdo->query("
                 <table class="course-table">
                     <thead>
                         <tr>
+                            <th style="width:40px; padding-right:0;">
+                                <input type="checkbox" id="vsSelectAll" onchange="toggleVsSelectAll(this.checked)" aria-label="Select all students" disabled>
+                            </th>
                             <th>LRN</th>
                             <th>Name</th>
                             <th>Email</th>
@@ -1165,7 +1168,7 @@ $subjectsList = $pdo->query("
                     </thead>
                     <tbody id="vsStudentsTableBody">
                         <tr>
-                            <td colspan="5" style="text-align:center; padding: 24px; color: var(--text-muted);">
+                            <td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">
                                 Loading...
                             </td>
                         </tr>
@@ -1174,6 +1177,9 @@ $subjectsList = $pdo->query("
             </div>
 
             <div class="modal-footer">
+                <button type="button" class="btn-secondary vs-unenroll-btn" id="vsUnenrollBtn" onclick="unenrollSelectedStudents()" disabled>
+                    <i class="fas fa-user-minus"></i> <span id="vsUnenrollLabel">Unenroll</span>
+                </button>
                 <button type="button" class="btn-secondary" id="vsExportBtn" onclick="exportViewStudents()" disabled>
                     <i class="fas fa-file-csv"></i> Export to Excel
                 </button>

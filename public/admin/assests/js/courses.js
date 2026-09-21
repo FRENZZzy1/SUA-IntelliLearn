@@ -350,6 +350,8 @@ function escapeHtml(str) {
 let currentViewOfferingId = null;
 let vsAllStudents = [];   // full roster for the currently open offering
 let vsCourseInfo = null;  // { subject_name, section_name, grade_level, strand, capacity }
+let vsSelected = new Set(); // student_ids ticked for unenrolling (survives search/filter changes)
+let vsChanged = false;      // true once something was unenrolled -> refresh page counts on close
 
 function openViewStudentsModal(offeringId) {
     const overlay = document.getElementById('viewStudentsOverlay');
@@ -364,7 +366,10 @@ function openViewStudentsModal(offeringId) {
     currentViewOfferingId = offeringId;
     vsAllStudents = [];
     vsCourseInfo = null;
+    vsSelected = new Set();
+    vsChanged = false;
     exportBtn.disabled = true;
+    updateVsUnenrollState();
 
     // reset search/filter state each time the modal is opened for a course
     searchInput.value = '';
@@ -373,7 +378,7 @@ function openViewStudentsModal(offeringId) {
     errorBox.hidden = true;
     title.textContent = 'Enrolled Students';
     subtitle.textContent = '';
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td></tr>';
     overlay.classList.add('open');
 
     fetch('assests/api/get_course_students.php?offering_id=' + encodeURIComponent(offeringId), {
@@ -413,17 +418,20 @@ function renderVsStudents(list) {
 
     if (vsCourseInfo) {
         const filtered = list.length !== vsAllStudents.length;
+        const activeCount = vsAllStudents.filter(function (s) { return s.status === 'active'; }).length;
         subtitle.textContent = 'Grade ' + vsCourseInfo.grade_level + (vsCourseInfo.strand ? ' · ' + vsCourseInfo.strand : '')
-            + ' · ' + (filtered ? list.length + ' of ' + vsAllStudents.length + ' shown' : vsAllStudents.length + '/' + vsCourseInfo.capacity + ' enrolled');
+            + ' · ' + (filtered ? list.length + ' of ' + vsAllStudents.length + ' shown' : activeCount + '/' + vsCourseInfo.capacity + ' enrolled');
     }
 
     if (vsAllStudents.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">No students enrolled in this course yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No students enrolled in this course yet.</td></tr>';
+        updateVsUnenrollState();
         return;
     }
 
     if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">No students match your search.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No students match your search.</td></tr>';
+        updateVsUnenrollState();
         return;
     }
 
@@ -432,7 +440,12 @@ function renderVsStudents(list) {
         const statusLabel = s.status.charAt(0).toUpperCase() + s.status.slice(1);
         const enrolledDate = s.enrolled_at ? new Date(s.enrolled_at.replace(' ', 'T')).toLocaleDateString() : '—';
         const genderLabel = s.Gender ? (s.Gender.charAt(0).toUpperCase() + s.Gender.slice(1)) : '—';
+        const isActive = s.status === 'active';
+        const checked = vsSelected.has(String(s.student_id)) ? ' checked' : '';
         return '<tr>'
+            + '<td class="vs-check-cell">' + (isActive
+                ? '<input type="checkbox" class="vs-row-check" value="' + escapeHtml(s.student_id) + '"' + checked + ' onchange="toggleVsStudent(this)" aria-label="Select ' + escapeHtml(fullName) + '">'
+                : '') + '</td>'
             + '<td>' + escapeHtml(s.student_lrn) + '</td>'
             + '<td>' + escapeHtml(fullName) + '</td>'
             + '<td>' + (s.email ? escapeHtml(s.email) : '— None —') + '</td>'
@@ -441,6 +454,105 @@ function renderVsStudents(list) {
             + '<td>' + escapeHtml(enrolledDate) + '</td>'
             + '</tr>';
     }).join('');
+
+    updateVsUnenrollState();
+}
+
+// ---- Unenroll (single or bulk) ----
+function toggleVsStudent(checkbox) {
+    if (checkbox.checked) {
+        vsSelected.add(String(checkbox.value));
+    } else {
+        vsSelected.delete(String(checkbox.value));
+    }
+    updateVsUnenrollState();
+}
+
+// "Select all" ticks/unticks every active student currently visible
+// (so it respects the search box and gender filter).
+function toggleVsSelectAll(checked) {
+    document.querySelectorAll('#vsStudentsTableBody .vs-row-check').forEach(function (cb) {
+        cb.checked = checked;
+        if (checked) {
+            vsSelected.add(String(cb.value));
+        } else {
+            vsSelected.delete(String(cb.value));
+        }
+    });
+    updateVsUnenrollState();
+}
+
+// Keeps the footer button label/enabled state and the header checkbox in sync.
+function updateVsUnenrollState() {
+    const btn = document.getElementById('vsUnenrollBtn');
+    const label = document.getElementById('vsUnenrollLabel');
+    const selectAll = document.getElementById('vsSelectAll');
+    if (!btn || !label || !selectAll) return;
+
+    const rowChecks = document.querySelectorAll('#vsStudentsTableBody .vs-row-check');
+    const checkedCount = Array.prototype.filter.call(rowChecks, function (cb) { return cb.checked; }).length;
+
+    btn.disabled = vsSelected.size === 0;
+    label.textContent = vsSelected.size > 0 ? 'Unenroll (' + vsSelected.size + ')' : 'Unenroll';
+
+    selectAll.disabled = rowChecks.length === 0;
+    selectAll.checked = rowChecks.length > 0 && checkedCount === rowChecks.length;
+    selectAll.indeterminate = checkedCount > 0 && checkedCount < rowChecks.length;
+}
+
+function unenrollSelectedStudents() {
+    if (!currentViewOfferingId || vsSelected.size === 0) return;
+
+    const ids = Array.from(vsSelected);
+    const message = ids.length === 1
+        ? 'Unenroll this student from the class? They will lose access to it, but their records are kept.'
+        : 'Unenroll ' + ids.length + ' students from the class? They will lose access to it, but their records are kept.';
+    if (!confirm(message)) return;
+
+    const overlay = document.getElementById('viewStudentsOverlay');
+    const errorBox = document.getElementById('viewStudentsErrors');
+    const btn = document.getElementById('vsUnenrollBtn');
+
+    const body = new URLSearchParams();
+    body.append('csrf', overlay.dataset.csrf || '');
+    body.append('offering_id', currentViewOfferingId);
+    ids.forEach(function (id) { body.append('student_ids[]', id); });
+
+    errorBox.hidden = true;
+    btn.disabled = true;
+
+    fetch('assests/api/unenroll_students.php', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: body
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            errorBox.innerHTML = (data.errors || ['Something went wrong.']).map(err => '<div>' + escapeHtml(err) + '</div>').join('');
+            errorBox.hidden = false;
+            updateVsUnenrollState();
+            return;
+        }
+
+        // Reflect the change locally — no need to refetch the roster.
+        const done = new Set(ids);
+        vsAllStudents.forEach(function (s) {
+            if (done.has(String(s.student_id))) s.status = 'dropped';
+        });
+        // Keep active students on top, matching the server's ordering.
+        vsAllStudents.sort(function (a, b) {
+            return (b.status === 'active') - (a.status === 'active');
+        });
+        vsSelected = new Set();
+        vsChanged = true;
+        filterViewStudents();
+    })
+    .catch(() => {
+        errorBox.innerHTML = '<div>Something went wrong. Please try again.</div>';
+        errorBox.hidden = false;
+        updateVsUnenrollState();
+    });
 }
 
 // Applies the current search text + gender filter to the in-memory
@@ -470,10 +582,19 @@ function filterViewStudents() {
 }
 
 function closeViewStudentsModal() {
-    document.getElementById('viewStudentsOverlay').classList.remove('open');
+    const overlay = document.getElementById('viewStudentsOverlay');
+    const wasOpen = overlay.classList.contains('open');
+    overlay.classList.remove('open');
     currentViewOfferingId = null;
     vsAllStudents = [];
     vsCourseInfo = null;
+    vsSelected = new Set();
+
+    // Enrollment numbers on the page behind the modal are now stale.
+    if (wasOpen && vsChanged) {
+        vsChanged = false;
+        window.location.reload();
+    }
 }
 
 function exportViewStudents() {

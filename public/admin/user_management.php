@@ -224,7 +224,6 @@ include 'assests/api/access_permissions_modal.php';
                         <label>Status</label>
                         <select name="status" id="editStatus" class="form-control">
                             <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
                             <option value="suspended">Suspended</option>
                         </select>
                     </div>
@@ -273,7 +272,6 @@ include 'assests/api/access_permissions_modal.php';
         <select name="status" class="select-filter" onchange="this.form.submit()">
             <option value="all" <?= $status_filter === 'all' ? 'selected' : '' ?>>All Status</option>
             <option value="active" <?= $status_filter === 'active' ? 'selected' : '' ?>>Active</option>
-            <option value="inactive" <?= $status_filter === 'inactive' ? 'selected' : '' ?>>Inactive</option>
             <option value="suspended" <?= $status_filter === 'suspended' ? 'selected' : '' ?>>Suspended</option>
         </select>
         <?php if ($role_filter === 'all' || $role_filter === 'teacher'): ?>

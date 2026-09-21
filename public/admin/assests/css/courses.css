@@ -688,3 +688,31 @@ body {
         justify-content: flex-start;
     }
 }
+/* ---------- View Students modal: unenroll ---------- */
+.modal-footer .btn-secondary.vs-unenroll-btn {
+    color: var(--danger, #ef4444);
+    border-color: rgba(239, 68, 68, 0.35);
+    margin-right: auto;
+}
+
+.modal-footer .btn-secondary.vs-unenroll-btn:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: var(--danger, #ef4444);
+    color: var(--danger, #ef4444);
+}
+
+.modal-footer .btn-secondary.vs-unenroll-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.course-table .vs-check-cell {
+    width: 40px;
+    padding-right: 0;
+}
+
+.course-table .vs-check-cell input,
+#vsSelectAll {
+    accent-color: var(--primary, #1a5c3a);
+    cursor: pointer;
+}

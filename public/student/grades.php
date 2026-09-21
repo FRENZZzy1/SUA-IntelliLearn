@@ -132,19 +132,15 @@ $termLabels = [
 
             <div class="grade-cards">
                 <?php foreach ($rows as $g):
-                    $isDropped = $g['enrollment_status'] === 'dropped';
                     $statusClass = 'status-pill--pending';
                     $statusText  = 'Not Yet Posted';
-                    if ($isDropped) {
-                        $statusClass = 'status-pill--dropped';
-                        $statusText  = 'Dropped';
-                    } elseif ($g['is_posted']) {
+                    if ($g['is_posted']) {
                         $statusClass = $g['is_passing'] ? 'status-pill--pass' : 'status-pill--fail';
                         $statusText  = $g['is_passing'] ? 'Passed' : 'Failed';
                     }
                     $scheduleText = $g['schedule_days'] ?? 'TBA';
                 ?>
-                <article class="grade-card <?= $isDropped ? 'is-dropped' : '' ?>">
+                <article class="grade-card">
                     <div class="grade-card-top">
                         <div class="grade-card-subject">
                             <h4><?= htmlspecialchars($g['subject_name']) ?></h4>
@@ -169,11 +165,6 @@ $termLabels = [
                                 <span><?= htmlspecialchars($g['remarks']) ?></span>
                             </div>
                         <?php endif; ?>
-                    <?php elseif ($isDropped): ?>
-                        <div class="grade-pending-note">
-                            <i class="fas fa-circle-info"></i>
-                            <span>You dropped this class before a final grade was posted.</span>
-                        </div>
                     <?php elseif ($g['current_standing'] !== null): ?>
                         <div class="grade-display">
                             <span class="grade-number">

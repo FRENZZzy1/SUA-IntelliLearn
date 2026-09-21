@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email address is invalid.";
             $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
             if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
-            if (!in_array($status, ['active', 'inactive', 'suspended'])) $errors[] = "Invalid status selected.";
+            if (!in_array($status, ['active', 'suspended'])) $errors[] = "Invalid status selected.";
 
             if (empty($errors)) {
                 try {
@@ -145,7 +145,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors = array_merge($errors, validate_password_policy($password));
         }
         if (!in_array($role, ['admin', 'teacher'])) $errors[] = "Invalid role selected.";
-        if (!in_array($status, ['active', 'inactive', 'suspended'])) $errors[] = "Invalid status selected.";
+        if (!in_array($status, ['active', 'suspended'])) $errors[] = "Invalid status selected.";
         if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_status, ['full-time', 'part-time'])) {
             $errors[] = "Invalid employment status selected.";
         }
@@ -459,7 +459,7 @@ if ($role_filter !== 'all' && in_array($role_filter, ['admin', 'teacher', 'stude
     $params[] = $role_filter;
 }
 
-if ($status_filter !== 'all' && in_array($status_filter, ['active', 'inactive', 'suspended'])) {
+if ($status_filter !== 'all' && in_array($status_filter, ['active', 'suspended'])) {
     $where_clauses[] = "u.status = ?";
     $params[] = $status_filter;
 }
@@ -615,7 +615,6 @@ function getDisplayName($user): string {
 function getStatusClass(string $status): string {
     return match($status) {
         'active' => 'active',
-        'inactive' => 'pending',
         'suspended' => 'inactive',
         default => 'pending',
     };
@@ -625,7 +624,6 @@ function getStatusClass(string $status): string {
 function getStatusLabel(string $status): string {
     return match($status) {
         'active' => 'Active',
-        'inactive' => 'inactive',
         'suspended' => 'Suspended',
         default => 'Unknown',
     };

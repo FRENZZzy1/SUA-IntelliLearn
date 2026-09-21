@@ -147,8 +147,23 @@ if ((int) $dupStmt->fetchColumn() > 0) {
 try {
     $pdo->beginTransaction();
 
-    $pdo->prepare("INSERT INTO enrollments (student_id, offering_id, status) VALUES (?, ?, 'active')")
+    $pdo->prepare("INSERT INTO enrollments (student_id, offering_id, status) VALUES (?, ?, 'active') ON DUPLICATE KEY UPDATE status = 'active', enrolled_at = NOW()")
         ->execute([(int) $req['student_id'], (int) $selected['offering_id']]);
+
+    // Re-enrolling brings back the student's other dropped term offerings of
+    // this same class (subject + section + school year), mirroring how
+    // unenrolling drops all of them together.
+    $pdo->prepare("
+        UPDATE enrollments e
+        JOIN classofferings co     ON co.offering_id = e.offering_id
+        JOIN classofferings target ON target.offering_id = ?
+        SET e.status = 'active'
+        WHERE e.student_id = ?
+          AND e.status = 'dropped'
+          AND co.subject_id     = target.subject_id
+          AND co.section_id     = target.section_id
+          AND co.school_year_id = target.school_year_id
+    ")->execute([(int) $selected['offering_id'], (int) $req['student_id']]);
 
     $pdo->prepare("UPDATE enrollment_requests SET status = 'approved', offering_id = ?, decided_at = NOW(), decided_by = ? WHERE request_id = ?")
         ->execute([(int) $selected['offering_id'], $_SESSION['user_id'] ?? null, $requestId]);

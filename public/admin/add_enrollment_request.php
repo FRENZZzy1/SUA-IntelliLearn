@@ -223,8 +223,24 @@ try {
         $enrollStmt = $pdo->prepare("
             INSERT INTO enrollments (student_id, offering_id, status)
             VALUES (?, ?, 'active')
+            ON DUPLICATE KEY UPDATE status = 'active', enrolled_at = NOW()
         ");
         $enrollStmt->execute([$student_id, $offering_id]);
+
+    // Re-enrolling brings back the student's other dropped term offerings of
+    // this same class (subject + section + school year), mirroring how
+    // unenrolling drops all of them together.
+    $pdo->prepare("
+        UPDATE enrollments e
+        JOIN classofferings co     ON co.offering_id = e.offering_id
+        JOIN classofferings target ON target.offering_id = ?
+        SET e.status = 'active'
+        WHERE e.student_id = ?
+          AND e.status = 'dropped'
+          AND co.subject_id     = target.subject_id
+          AND co.section_id     = target.section_id
+          AND co.school_year_id = target.school_year_id
+    ")->execute([$offering_id, $student_id]);
 
         $requestStmt = $pdo->prepare("
             INSERT INTO enrollment_requests (student_id, grade_level, subject_id, strand, offering_id, status, decided_at, decided_by)

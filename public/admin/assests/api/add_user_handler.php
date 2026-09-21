@@ -54,7 +54,7 @@ if ($role === 'student') {
     if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email address is invalid.";
     $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
     if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
-    if (!in_array($status, ['active', 'inactive', 'suspended'])) $errors[] = "Invalid status selected.";
+    if (!in_array($status, ['active', 'suspended'])) $errors[] = "Invalid status selected.";
 
     if (!empty($errors)) {
         aum_json(false, ['errors' => $errors]);
@@ -151,7 +151,7 @@ if (empty($password)) {
     $errors = array_merge($errors, validate_password_policy($password));
 }
 if (!in_array($role, ['admin', 'teacher'])) $errors[] = "Invalid role selected.";
-if (!in_array($status, ['active', 'inactive', 'suspended'])) $errors[] = "Invalid status selected.";
+if (!in_array($status, ['active', 'suspended'])) $errors[] = "Invalid status selected.";
 if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_status, ['full-time', 'part-time'])) {
     $errors[] = "Invalid employment status selected.";
 }

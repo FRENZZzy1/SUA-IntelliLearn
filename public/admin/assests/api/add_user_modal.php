@@ -52,7 +52,6 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                             <label class="aum-section-label"><i class="fas fa-toggle-on"></i> Account Status</label>
                             <div class="aum-pills aum-pills-compact">
                                 <div class="aum-pill active" data-status="active" onclick="aumSetStatus(this)"><span class="aum-dot aum-dot-green"></span> Active</div>
-                                <div class="aum-pill" data-status="inactive" onclick="aumSetStatus(this)"><span class="aum-dot aum-dot-gray"></span> Inactive</div>
                                 <div class="aum-pill" data-status="suspended" onclick="aumSetStatus(this)"><span class="aum-dot aum-dot-red"></span> Suspended</div>
                             </div>
                             <input type="hidden" name="status" id="aumStatusInput" value="active">
