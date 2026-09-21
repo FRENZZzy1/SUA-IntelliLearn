@@ -145,10 +145,12 @@ if ($role !== 'admin') {
     if (empty($lastname)) $errors[] = "Last name is required.";
 }
 if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Valid email is required.";
-if (empty($password)) {
-    $errors[] = "Password is required.";
-} else {
-    $errors = array_merge($errors, validate_password_policy($password));
+if ($role === 'admin') {
+    if (empty($password)) {
+        $errors[] = "Password is required.";
+    } else {
+        $errors = array_merge($errors, validate_password_policy($password));
+    }
 }
 if (!in_array($role, ['admin', 'teacher'])) $errors[] = "Invalid role selected.";
 if (!in_array($status, ['active', 'inactive', 'suspended'])) $errors[] = "Invalid status selected.";
@@ -189,7 +191,11 @@ try {
     $pdo->beginTransaction();
 
     $username = $email;
-    $password_hash = password_hash($password, PASSWORD_DEFAULT);
+    // Teachers receive a one-time setup link instead of an admin-created password.
+    // The setup token is stateless (HMAC-signed) so no new database table/column is required.
+    $password_hash = $role === 'teacher'
+        ? password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT)
+        : password_hash($password, PASSWORD_DEFAULT);
 
     $stmt = $pdo->prepare("
         INSERT INTO Users (username, password, role, status, created_at, updated_at)
@@ -222,10 +228,41 @@ try {
 
     $pdo->commit();
 
-    // TODO: if ($send_email) { trigger your welcome-email routine here }
+    if ($role === 'teacher') {
+        require_once __DIR__ . '/../../../../config/teacher_account_setup.php';
+        $setupUrl = teacher_setup_url((int)$user_id, $email);
+
+        $subject = 'SUA IntelliLearn Teacher Account Setup';
+        $safeName = htmlspecialchars($fullname, ENT_QUOTES, 'UTF-8');
+        $safeUrl = htmlspecialchars($setupUrl, ENT_QUOTES, 'UTF-8');
+        $messageBody = "Hello {$safeName},\n\n"
+            . "An administrator created your SUA IntelliLearn teacher account.\n\n"
+            . "Username: {$username}\n\n"
+            . "Please use the secure link below to set your own password:\n"
+            . "{$setupUrl}\n\n"
+            . "This setup link expires in 24 hours and can only be used once.\n\n"
+            . "If you did not expect this account, please contact your school administrator.\n\n"
+            . "SUA IntelliLearn";
+
+        $headers = "From: SUA IntelliLearn <" . TEACHER_SETUP_FROM_EMAIL . ">\r\n"
+                 . "Reply-To: " . TEACHER_SETUP_FROM_EMAIL . "\r\n"
+                 . "Content-Type: text/plain; charset=UTF-8\r\n";
+
+        if (!mail($email, $subject, $messageBody, $headers)) {
+            // The account remains created, but tell the admin the invite could not be sent.
+            aum_json(true, [
+                'message' => "Teacher '$fullname' was created, but the setup email could not be sent. Please verify the server mail configuration.",
+                'email_sent' => false,
+                'user' => ['id' => $user_id, 'role' => $role, 'status' => $status, 'name' => $fullname, 'username' => $username],
+            ]);
+        }
+    }
 
     aum_json(true, [
-        'message' => "User '$fullname' created successfully with username: $username",
+        'message' => $role === 'teacher'
+            ? "Teacher '$fullname' created. A password setup link was sent to $email."
+            : "User '$fullname' created successfully with username: $username",
+        'email_sent' => $role === 'teacher',
         'user' => [
             'id' => $user_id, 'role' => $role, 'status' => $status,
             'name' => $fullname, 'username' => $username,
