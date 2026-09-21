@@ -193,8 +193,9 @@ try {
     $username = $email;
     // Teachers receive a one-time setup link instead of an admin-created password.
     // The setup token is stateless (HMAC-signed) so no new database table/column is required.
+    $teacherSetupToken = null;
     $password_hash = $role === 'teacher'
-        ? password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT)
+        ? password_hash('SETUP|' . ($teacherSetupToken = teacher_generate_setup_token()), PASSWORD_DEFAULT)
         : password_hash($password, PASSWORD_DEFAULT);
 
     $stmt = $pdo->prepare("
