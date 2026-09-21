@@ -19,7 +19,10 @@ function teacher_setup_url(int $userId, string $email): string {
         throw new RuntimeException('Teacher setup token is unavailable.');
     }
 
-    $base = '/SUA-IntelliLearn/public/teacher/setup_account.php';
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    $basePath = preg_replace('#/public/admin/assests/api/[^/]+$#', '', $scriptName);
+    $basePath = rtrim($basePath ?: '', '/');
+    $base = $basePath . '/public/teacher/setup_account.php';
     $query = http_build_query([
         'uid' => $userId,
         'token' => $teacherSetupToken,
