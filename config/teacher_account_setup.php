@@ -9,6 +9,14 @@
 const TEACHER_SETUP_TTL = 86400;
 const TEACHER_SETUP_FROM_EMAIL = 'pallerxdfrenz@gmail.com';
 
+function teacher_env(string $key, string $default = ''): string {
+    $value = getenv($key);
+    if ($value !== false && $value !== '') return trim($value);
+    if (isset($_ENV[$key]) && $_ENV[$key] !== '') return trim((string)$_ENV[$key]);
+    if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') return trim((string)$_SERVER[$key]);
+    return $default;
+}
+
 function teacher_generate_setup_token(): string {
     return time() . '.' . bin2hex(random_bytes(32));
 }
@@ -84,8 +92,8 @@ function send_teacher_setup_email(string $to, string $teacherName, string $usern
     $mail->isSMTP();
     $mail->Host = 'smtp.gmail.com';
     $mail->SMTPAuth = true;
-    $mail->Username = getenv('SUA_SMTP_USERNAME') ?: TEACHER_SETUP_FROM_EMAIL;
-    $mail->Password = getenv('SUA_SMTP_PASSWORD') ?: '';
+    $mail->Username = teacher_env('SUA_SMTP_USERNAME', TEACHER_SETUP_FROM_EMAIL);
+    $mail->Password = teacher_env('SUA_SMTP_PASSWORD');
     $mail->SMTPSecure = PHPMailer\\PHPMailer\\PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port = 587;
     $mail->CharSet = 'UTF-8';
