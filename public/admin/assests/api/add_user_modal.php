@@ -498,8 +498,10 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
 
         aumToggleStaffSubFields(role);
         var passwordInput = document.querySelector('#aumOverlay [data-teacher-password]');
+        var passwordRow = document.getElementById('aumTeacherPasswordRow');
         var passwordHint = document.getElementById('aumTeacherPasswordHint');
         var sendEmail = document.getElementById('aumSendEmail');
+        if (passwordRow) passwordRow.style.display = isTeacher ? 'none' : '';
         if (passwordInput) {
             passwordInput.required = !isStudent && !isTeacher;
             passwordInput.placeholder = isTeacher ? 'Leave blank — system generates it' : 'Enter secure password';
