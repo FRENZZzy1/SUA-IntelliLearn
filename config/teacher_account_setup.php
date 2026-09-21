@@ -1,11 +1,11 @@
 <?php
 /**
- * Stateless teacher account setup using the existing Users.password column.
- * No new database table or column is required.
+ * Teacher account setup helpers.
  *
- * A setup token is random, stored only as a password hash prefixed with
- * "SETUP|", and carries its creation timestamp for a 24-hour expiry.
+ * Uses the existing Users.password field for the one-time setup secret.
+ * No new database table/column is required.
  */
+
 const TEACHER_SETUP_TTL = 86400;
 const TEACHER_SETUP_FROM_EMAIL = 'pallerxdfrenz@gmail.com';
 
@@ -13,7 +13,7 @@ function teacher_generate_setup_token(): string {
     return time() . '.' . bin2hex(random_bytes(32));
 }
 
-function teacher_setup_url(int $userId, string $email): string {
+function teacher_setup_url(int $userId): string {
     global $teacherSetupToken;
     if (empty($teacherSetupToken)) {
         throw new RuntimeException('Teacher setup token is unavailable.');
@@ -22,15 +22,10 @@ function teacher_setup_url(int $userId, string $email): string {
     $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
     $basePath = preg_replace('#/public/admin/assests/api/[^/]+$#', '', $scriptName);
     $basePath = rtrim($basePath ?: '', '/');
-    $base = $basePath . '/public/teacher/setup_account.php';
-    $query = http_build_query([
+    return ($basePath ?: '') . '/public/teacher/setup_account.php?' . http_build_query([
         'uid' => $userId,
         'token' => $teacherSetupToken,
     ]);
-
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    return $scheme . '://' . $host . $base . '?' . $query;
 }
 
 function teacher_setup_token_is_valid(string $token): bool {
@@ -39,39 +34,91 @@ function teacher_setup_token_is_valid(string $token): bool {
         return false;
     }
 
-    $createdAt = (int)$parts[0];
-    return $createdAt > 0 && (time() - $createdAt) >= 0 && (time() - $createdAt) <= TEACHER_SETUP_TTL;
+    $age = time() - (int)$parts[0];
+    return $age >= 0 && $age <= TEACHER_SETUP_TTL;
 }
 
-function teacher_setup_mail(string $to, string $teacherName, string $username, string $setupUrl): bool {
-    $subject = 'SUA IntelliLearn Teacher Account Setup';
-    $body = "Hello {$teacherName},
+/**
+ * Load PHPMailer from Composer if installed, or from a local PHPMailer folder.
+ * The project does not commit vendor dependencies.
+ */
+function load_teacher_mailer(): array {
+    $autoloadCandidates = [
+        __DIR__ . '/../vendor/autoload.php',
+        __DIR__ . '/../public/vendor/autoload.php',
+    ];
 
-"
-          . "An administrator created your SUA IntelliLearn teacher account.
+    foreach ($autoloadCandidates as $autoload) {
+        if (is_file($autoload)) {
+            require_once $autoload;
+            if (class_exists('PHPMailer\\PHPMailer\\PHPMailer')) {
+                return ['autoloaded' => true];
+            }
+        }
+    }
 
-"
-          . "Username: {$username}
+    $localCandidates = [
+        __DIR__ . '/../vendor/phpmailer/phpmailer/src',
+        __DIR__ . '/../PHPMailer/src',
+        __DIR__ . '/../public/PHPMailer/src',
+    ];
 
-"
-          . "Set your password using this secure link:
-{$setupUrl}
+    foreach ($localCandidates as $dir) {
+        if (is_file($dir . '/PHPMailer.php')) {
+            require_once $dir . '/Exception.php';
+            require_once $dir . '/PHPMailer.php';
+            require_once $dir . '/SMTP.php';
+            return ['autoloaded' => true];
+        }
+    }
 
-"
-          . "This link expires in 24 hours and can only be used once.
+    throw new RuntimeException(
+        'PHPMailer is not installed. Install phpmailer/phpmailer or place its src folder in the project.'
+    );
+}
 
-"
-          . "If you did not expect this account, please contact your school administrator.
+function send_teacher_setup_email(string $to, string $teacherName, string $username, string $setupUrl): void {
+    load_teacher_mailer();
 
-"
-          . "SUA IntelliLearn";
+    $mail = new PHPMailer\\PHPMailer\\PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host = 'smtp.gmail.com';
+    $mail->SMTPAuth = true;
+    $mail->Username = getenv('SUA_SMTP_USERNAME') ?: TEACHER_SETUP_FROM_EMAIL;
+    $mail->Password = getenv('SUA_SMTP_PASSWORD') ?: '';
+    $mail->SMTPSecure = PHPMailer\\PHPMailer\\PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->Port = 587;
+    $mail->CharSet = 'UTF-8';
 
-    $headers = "From: SUA IntelliLearn <" . TEACHER_SETUP_FROM_EMAIL . ">
-"
-             . "Reply-To: " . TEACHER_SETUP_FROM_EMAIL . "
-"
-             . "Content-Type: text/plain; charset=UTF-8
-";
+    if ($mail->Password === '') {
+        throw new RuntimeException('SMTP password is not configured. Set SUA_SMTP_PASSWORD in the server environment.');
+    }
 
-    return mail($to, $subject, $body, $headers);
+    $mail->setFrom($mail->Username, 'SUA IntelliLearn');
+    $mail->addAddress($to, $teacherName);
+    $mail->isHTML(true);
+    $mail->Subject = 'SUA IntelliLearn Teacher Account Setup';
+
+    $safeName = htmlspecialchars($teacherName, ENT_QUOTES, 'UTF-8');
+    $safeUsername = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+    $safeUrl = htmlspecialchars($setupUrl, ENT_QUOTES, 'UTF-8');
+
+    $mail->Body = <<<HTML
+<p>Hello {$safeName},</p>
+<p>An administrator created your SUA IntelliLearn teacher account.</p>
+<p><strong>Username:</strong> {$safeUsername}</p>
+<p>Please click the button below to create your password:</p>
+<p><a href="{$safeUrl}" style="display:inline-block;padding:12px 18px;background:#124029;color:#fff;text-decoration:none;border-radius:6px;">Set Up My Password</a></p>
+<p>This link expires in 24 hours and can only be used once.</p>
+<p>If you did not expect this account, please contact your school administrator.</p>
+<p>SUA IntelliLearn</p>
+HTML;
+
+    $mail->AltBody = "Hello {$teacherName},\n\n"
+        . "Your SUA IntelliLearn teacher account was created.\n"
+        . "Username: {$username}\n\n"
+        . "Set your password here: {$setupUrl}\n\n"
+        . "This link expires in 24 hours and can only be used once.";
+
+    $mail->send();
 }
