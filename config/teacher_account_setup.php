@@ -88,13 +88,13 @@ function load_teacher_mailer(): array {
 function send_teacher_setup_email(string $to, string $teacherName, string $username, string $setupUrl): void {
     load_teacher_mailer();
 
-    $mail = new PHPMailer\\PHPMailer\\PHPMailer(true);
+    $mail = new PHPMailer\PHPMailer\PHPMailer(true);
     $mail->isSMTP();
     $mail->Host = 'smtp.gmail.com';
     $mail->SMTPAuth = true;
     $mail->Username = teacher_env('SUA_SMTP_USERNAME', TEACHER_SETUP_FROM_EMAIL);
     $mail->Password = teacher_env('SUA_SMTP_PASSWORD');
-    $mail->SMTPSecure = PHPMailer\\PHPMailer\\PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->SMTPSecure = PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
     $mail->Port = 587;
     $mail->CharSet = 'UTF-8';
 
