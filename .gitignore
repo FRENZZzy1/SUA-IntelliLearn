@@ -1,0 +1,5 @@
+# Dependencies
+/vendor/
+
+# Local secrets
+/config/mail_config.php
