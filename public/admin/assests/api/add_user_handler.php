@@ -11,6 +11,7 @@
    relative to this file's final location.
 ===================================================================== */
 require_once __DIR__ . '/../../../../config/config.php'; // <-- adjust path as needed
+require_once __DIR__ . '/../../../../config/teacher_account_setup.php';
 requireAdmin();
 
 header('Content-Type: application/json');
@@ -230,7 +231,6 @@ try {
     $pdo->commit();
 
     if ($role === 'teacher') {
-        require_once __DIR__ . '/../../../../config/teacher_account_setup.php';
         $setupUrl = teacher_setup_url((int)$user_id, $email);
 
         $subject = 'SUA IntelliLearn Teacher Account Setup';
