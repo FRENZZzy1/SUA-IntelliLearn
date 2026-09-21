@@ -144,6 +144,15 @@ $access_level      = trim($_POST['access_level'] ?? '');
 $password          = $_POST['password'] ?? '';
 $send_email        = isset($_POST['send_email']) ? 1 : 0;
 
+// Teachers no longer require the admin to type a password. Generate a
+// strong temporary password server-side and send it to the teacher's email.
+if ($role === 'teacher' && $password === '') {
+    $password = bin2hex(random_bytes(4)) . 'Aa!';
+}
+if ($role === 'teacher') {
+    $send_email = 1;
+}
+
 $fullname = $role === 'admin'
     ? $email
     : preg_replace('/\s+/', ' ', trim("$firstname $middlename $lastname"));
@@ -229,12 +238,27 @@ try {
         saveAdminPermissions($pdo, (int)$user_id, $access_level, $_POST['permissions_json'] ?? '');
     }
 
+    // Send the teacher's credentials only after all database inserts succeed.
+    // If SMTP fails, roll back the account so the admin can retry safely.
+    if ($role === 'teacher' && $send_email) {
+        try {
+            require_once __DIR__ . '/../../../../config/mailer.php';
+            sendTeacherWelcomeEmail($email, $fullname, $username, $password);
+        } catch (Throwable $mailError) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('SUA IntelliLearn teacher welcome email failed: ' . $mailError->getMessage());
+            aum_json(false, ['message' => 'Teacher account was not created because the welcome email could not be sent. Check SMTP settings and try again.']);
+        }
+    }
+
     $pdo->commit();
 
-    // TODO: if ($send_email) { trigger your welcome-email routine here }
-
     aum_json(true, [
-        'message' => "User '$fullname' created successfully with username: $username",
+        'message' => $role === 'teacher'
+            ? "Teacher '$fullname' created successfully. Login credentials were sent to $email."
+            : "User '$fullname' created successfully with username: $username",
         'user' => [
             'id' => $user_id, 'role' => $role, 'status' => $status,
             'name' => $fullname, 'username' => $username,
