@@ -126,7 +126,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                         <div class="aum-hint-icon"><i class="fas fa-lightbulb"></i></div>
                         <div class="aum-hint-text">
                             <strong>Auto-generated credentials:</strong><br>
-                            <span class="aum-hint-detail"><strong>Username:</strong> STU-(last 4 digits of LRN)-(birthdate as MMDDYY)<br><strong>Password:</strong> Last name (capitalized) + birthdate as MMDDYY + !</span>
+                            <span class="aum-hint-detail"><strong>Username:</strong> STU-(7 random digits)<br><strong>Password:</strong> Last name (capitalized) + birthdate as MMDDYY + !</span>
                         </div>
                     </div>
                 </div>

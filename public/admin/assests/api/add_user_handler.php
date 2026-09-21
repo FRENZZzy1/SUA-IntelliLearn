@@ -69,19 +69,10 @@ if ($role === 'student') {
             throw new Exception("A student with this LRN already exists.");
         }
 
-        $last4 = substr($lrn, -4);
-        $bday_code = $bday_obj->format('mdy');
+        $bday_code = $bday_obj->format('mdy'); // still used for the password
 
-        $username_base = "STU-{$last4}-{$bday_code}";
-        $username = $username_base;
-        $counter = 1;
-        while (true) {
-            $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
-            $check->execute([$username]);
-            if (!$check->fetch()) break;
-            $username = $username_base . '-' . $counter;
-            $counter++;
-        }
+        // Username: STU-(7 random digits)
+        $username = generateStudentUsername($pdo);
 
         $password_plain = ucfirst(strtolower($lastname)) . $bday_code . '!';
         $password_hash = password_hash($password_plain, PASSWORD_DEFAULT);

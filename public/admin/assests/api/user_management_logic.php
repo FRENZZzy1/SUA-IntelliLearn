@@ -59,20 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new Exception("A student with this LRN already exists.");
                     }
 
-                    // Build username: STU-(last 4 digits of LRN)-(birthdate as MMDDYY)
-                    $last4 = substr($lrn, -4);
-                    $bday_code = $bday_obj->format('mdy'); // e.g. 091105
-
-                    $username_base = "STU-{$last4}-{$bday_code}";
-                    $username = $username_base;
-                    $counter = 1;
-                    while (true) {
-                        $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
-                        $check->execute([$username]);
-                        if (!$check->fetch()) break;
-                        $username = $username_base . '-' . $counter;
-                        $counter++;
-                    }
+                    // Build username: STU-(7 random digits)
+                    $bday_code = $bday_obj->format('mdy'); // e.g. 091105 (still used for the password)
+                    $username = generateStudentUsername($pdo);
 
                     // Build password: Lastname + birthdate as MMDDYY (e.g. Paller091105)
                     $password_plain = ucfirst(strtolower($lastname)) . $bday_code . '!';

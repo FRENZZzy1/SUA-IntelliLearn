@@ -54,6 +54,23 @@ function clean($data) {
     return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
 }
 
+/**
+ * Generate a unique student username in the format STU-[7 random digits].
+ * Uses random_int() (CSPRNG) and zero-pads so leading zeros are allowed.
+ * Retries on the (rare) chance of a collision with an existing username.
+ */
+function generateStudentUsername(PDO $pdo): string {
+    $check = $pdo->prepare("SELECT 1 FROM Users WHERE username = ? LIMIT 1");
+    for ($i = 0; $i < 20; $i++) {
+        $username = 'STU-' . str_pad((string) random_int(0, 9999999), 7, '0', STR_PAD_LEFT);
+        $check->execute([$username]);
+        if (!$check->fetch()) {
+            return $username;
+        }
+    }
+    throw new Exception("Could not generate a unique username. Please try again.");
+}
+
 function isLoggedIn() {
     global $pdo;
     if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
