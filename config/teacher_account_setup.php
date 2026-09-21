@@ -27,10 +27,25 @@ function teacher_setup_url(int $userId): string {
         throw new RuntimeException('Teacher setup token is unavailable.');
     }
 
-    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    // Email links must be absolute. Build the application URL from the
+    // current request so this works on both XAMPP and the production domain.
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? ($_SERVER['PHP_SELF'] ?? '');
     $basePath = preg_replace('#/public/admin/assests/api/[^/]+$#', '', $scriptName);
     $basePath = rtrim($basePath ?: '', '/');
-    return ($basePath ?: '') . '/public/teacher/setup_account.php?' . http_build_query([
+
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https')
+        || ((int)($_SERVER['SERVER_PORT'] ?? 0) === 443);
+    $scheme = $https ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+
+    if ($host === '') {
+        throw new RuntimeException('Unable to determine the application host for the teacher setup link.');
+    }
+
+    $url = $scheme . '://' . $host . ($basePath ?: '');
+
+    return rtrim($url, '/') . '/public/teacher/setup_account.php?' . http_build_query([
         'uid' => $userId,
         'token' => $teacherSetupToken,
     ]);
