@@ -197,18 +197,19 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                             <div class="aum-input-wrap"><i class="fas fa-lock aum-input-icon"></i><select name="access_level" class="aum-control" data-admin-required><option value="full">Full</option><option value="limited" selected>Limited</option><option value="read_only">Read Only</option></select></div>
                         </div>
                     </div>
-                    <div class="aum-row">
+                    <div class="aum-row" id="aumTeacherPasswordRow">
                         <div class="aum-group">
-                            <label>Password <span class="aum-req">*</span> <small>(min 8 characters, 1 uppercase, 1 special character)</small></label>
-                            <div class="aum-input-wrap"><i class="fas fa-key aum-input-icon"></i><input type="password" name="password" class="aum-control" placeholder="Enter secure password" minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" data-staff-required></div>
+                            <label>Password</label>
+                            <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="password" name="password" class="aum-control" placeholder="Automatically generated for teachers" minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" data-teacher-password></div>
+                            <small id="aumTeacherPasswordHint" class="aum-help-text" style="display:none;"><i class="fas fa-info-circle"></i> A secure temporary password will be generated automatically and emailed to the teacher.</small>
                         </div>
                     </div>
                 </div>
 
                 <div class="aum-actions">
                     <label class="aum-checkbox">
-                        <div class="aum-checkbox-box"><input type="checkbox" name="send_email" value="1"><span class="aum-checkmark"><i class="fas fa-check"></i></span></div>
-                        <span class="aum-checkbox-label"><i class="fas fa-envelope"></i> Send welcome email</span>
+                        <div class="aum-checkbox-box"><input type="checkbox" name="send_email" value="1" id="aumSendEmail" checked><span class="aum-checkmark"><i class="fas fa-check"></i></span></div>
+                        <span class="aum-checkbox-label" id="aumSendEmailLabel"><i class="fas fa-envelope"></i> Send welcome email</span>
                     </label>
                     <div class="aum-actions-right">
                         <button type="button" class="aum-btn-secondary" onclick="closeAddUserModal()"><i class="fas fa-times"></i> Cancel</button>
@@ -489,12 +490,25 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
         document.getElementById('aumRoleInput').value = role;
 
         var isStudent = role === 'student';
+        var isTeacher = role === 'teacher';
         document.getElementById('aumStudentFields').style.display = isStudent ? '' : 'none';
         document.getElementById('aumStaffFields').style.display = isStudent ? 'none' : '';
         document.querySelectorAll('#aumOverlay [data-student-required]').forEach(function (i) { i.required = isStudent; });
-        document.querySelectorAll('#aumOverlay [data-staff-required]').forEach(function (i) { i.required = !isStudent; });
+        document.querySelectorAll('#aumOverlay [data-staff-required]').forEach(function (i) { i.required = !isStudent && !isTeacher; });
 
         aumToggleStaffSubFields(role);
+        var passwordInput = document.querySelector('#aumOverlay [data-teacher-password]');
+        var passwordHint = document.getElementById('aumTeacherPasswordHint');
+        var sendEmail = document.getElementById('aumSendEmail');
+        if (passwordInput) {
+            passwordInput.required = !isStudent && !isTeacher;
+            passwordInput.placeholder = isTeacher ? 'Leave blank — system generates it' : 'Enter secure password';
+        }
+        if (passwordHint) passwordHint.style.display = isTeacher ? '' : 'none';
+        if (sendEmail) {
+            sendEmail.checked = isTeacher;
+            sendEmail.disabled = isTeacher;
+        }
     };
 
     window.aumSetStatus = function (el) {
