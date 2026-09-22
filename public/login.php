@@ -87,7 +87,7 @@ if(isset($_POST['login'])){
     $password = trim($_POST['password']);
     $remember = isset($_POST['remember']) && $_POST['remember'] === '1';
 
-    $stmt = $conn->prepare("SELECT * FROM users WHERE username=?");
+    $stmt = $conn->prepare("SELECT * FROM users WHERE username=? AND status='active'");
     $stmt->bind_param("s", $username);
     $stmt->execute();
 
