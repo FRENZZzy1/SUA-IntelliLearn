@@ -1,0 +1,4 @@
+/vendor/
+/.env
+/.env.local
+/config/mail_config.php

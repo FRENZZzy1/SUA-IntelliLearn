@@ -11,6 +11,7 @@
    relative to this file's final location.
 ===================================================================== */
 require_once __DIR__ . '/../../../../config/config.php'; // <-- adjust path as needed
+require_once __DIR__ . '/../../../../config/teacher_account_setup.php';
 requireAdmin();
 
 header('Content-Type: application/json');
@@ -133,7 +134,6 @@ $employment_status = trim($_POST['employment_status'] ?? '');
 $position          = trim($_POST['position'] ?? '');
 $access_level      = trim($_POST['access_level'] ?? '');
 $password          = $_POST['password'] ?? '';
-$send_email        = isset($_POST['send_email']) ? 1 : 0;
 
 $fullname = $role === 'admin'
     ? $email
@@ -145,10 +145,12 @@ if ($role !== 'admin') {
     if (empty($lastname)) $errors[] = "Last name is required.";
 }
 if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Valid email is required.";
-if (empty($password)) {
-    $errors[] = "Password is required.";
-} else {
-    $errors = array_merge($errors, validate_password_policy($password));
+if ($role === 'admin') {
+    if (empty($password)) {
+        $errors[] = "Password is required.";
+    } else {
+        $errors = array_merge($errors, validate_password_policy($password));
+    }
 }
 if (!in_array($role, ['admin', 'teacher'])) $errors[] = "Invalid role selected.";
 if (!in_array($status, ['active', 'suspended'])) $errors[] = "Invalid status selected.";
@@ -189,7 +191,12 @@ try {
     $pdo->beginTransaction();
 
     $username = $email;
-    $password_hash = password_hash($password, PASSWORD_DEFAULT);
+    // Teachers receive a one-time setup link instead of an admin-created password.
+    // The setup token is stateless (HMAC-signed) so no new database table/column is required.
+    $teacherSetupToken = null;
+    $password_hash = $role === 'teacher'
+        ? password_hash('SETUP|' . ($teacherSetupToken = teacher_generate_setup_token()), PASSWORD_DEFAULT)
+        : password_hash($password, PASSWORD_DEFAULT);
 
     $stmt = $pdo->prepare("
         INSERT INTO Users (username, password, role, status, created_at, updated_at)
@@ -222,10 +229,27 @@ try {
 
     $pdo->commit();
 
-    // TODO: if ($send_email) { trigger your welcome-email routine here }
+    if ($role === 'teacher') {
+        $setupUrl = teacher_setup_url((int)$user_id);
+
+        try {
+            send_teacher_setup_email($email, $fullname, $username, $setupUrl);
+        } catch (Throwable $mailError) {
+            error_log('Teacher setup email failed for user ' . $user_id . ': ' . $mailError->getMessage());
+
+            aum_json(true, [
+                'message' => "Teacher '$fullname' was created, but the setup email could not be sent. " . $mailError->getMessage(),
+                'email_sent' => false,
+                'user' => ['id' => $user_id, 'role' => $role, 'status' => $status, 'name' => $fullname, 'username' => $username],
+            ]);
+        }
+    }
 
     aum_json(true, [
-        'message' => "User '$fullname' created successfully with username: $username",
+        'message' => $role === 'teacher'
+            ? "Teacher '$fullname' created. A password setup link was sent to $email."
+            : "User '$fullname' created successfully with username: $username",
+        'email_sent' => $role === 'teacher',
         'user' => [
             'id' => $user_id, 'role' => $role, 'status' => $status,
             'name' => $fullname, 'username' => $username,
