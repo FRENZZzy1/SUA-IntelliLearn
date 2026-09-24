@@ -54,7 +54,7 @@ try {
 
 /**
  * Validate and normalize Philippine mobile numbers.
- * Accepted input: +63 9XX XXX XXXX (spaces/hyphens are optional).
+ * Accepted input: 09XXXXXXXXX or +63 9XX XXX XXXX (spaces/hyphens are optional).
  * Returns the canonical +639XXXXXXXXX value, or null for an empty value.
  */
 function validatePhilippineMobileNumber(string $number, bool $allowEmpty = true): ?string {
@@ -65,11 +65,14 @@ function validatePhilippineMobileNumber(string $number, bool $allowEmpty = true)
     }
 
     $normalized = preg_replace('/[\\s-]+/', '', $number);
-    if (!preg_match('/^\\+639\\d{9}$/', $normalized)) {
-        throw new InvalidArgumentException('Contact number must be a Philippine mobile number in +63 9XX XXX XXXX format.');
+    if (preg_match('/^09\\d{9}$/', $normalized)) {
+        return '+63' . substr($normalized, 1);
+    }
+    if (preg_match('/^\\+639\\d{9}$/', $normalized)) {
+        return $normalized;
     }
 
-    return $normalized;
+    throw new InvalidArgumentException('Contact number must be a Philippine mobile number in 09XXXXXXXXX or +63 9XX XXX XXXX format.');
 }
 
 function clean($data) {
