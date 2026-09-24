@@ -207,7 +207,7 @@ include 'assests/api/access_permissions_modal.php';
                         </div>
                         <div class="form-group">
                             <label>Guardian Contact</label>
-                            <input type="tel" name="guardian_contact" id="editGuardianContact" class="form-control">
+                            <input type="tel" name="guardian_contact" id="editGuardianContact" class="form-control" placeholder="+63 912 345 6789" pattern="\+63\s?9\d{2}\s?\d{3}\s?\d{4}" maxlength="16" inputmode="tel" title="Use +63 9XX XXX XXXX format">
                         </div>
                     </div>
                 </div>

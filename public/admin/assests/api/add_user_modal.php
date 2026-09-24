@@ -118,7 +118,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                         </div>
                         <div class="aum-group">
                             <label>Guardian Contact</label>
-                            <div class="aum-input-wrap"><i class="fas fa-phone aum-input-icon"></i><input type="tel" name="guardian_contact" class="aum-control" placeholder="e.g. +63 912 345 6789"></div>
+                            <div class="aum-input-wrap"><i class="fas fa-phone aum-input-icon"></i><input type="tel" name="guardian_contact" class="aum-control" placeholder="+63 912 345 6789" pattern="\+63\s?9\d{2}\s?\d{3}\s?\d{4}" maxlength="16" inputmode="tel" title="Use +63 9XX XXX XXXX format"></div>
                         </div>
                     </div>
                     <div class="aum-hint">
@@ -160,7 +160,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                         </div>
                         <div class="aum-group" id="aumContactFieldGroup" style="display:none;">
                             <label>Contact Number</label>
-                            <div class="aum-input-wrap"><i class="fas fa-phone aum-input-icon"></i><input type="tel" name="contact" class="aum-control" placeholder="e.g. +63 912 345 6789"></div>
+                            <div class="aum-input-wrap"><i class="fas fa-phone aum-input-icon"></i><input type="tel" name="contact" class="aum-control" placeholder="+63 912 345 6789" pattern="\+63\s?9\d{2}\s?\d{3}\s?\d{4}" maxlength="16" inputmode="tel" title="Use +63 9XX XXX XXXX format"></div>
                         </div>
                     </div>
                     <div class="aum-row" id="aumDepartmentRow" style="display:none;">

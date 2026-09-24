@@ -51,6 +51,27 @@ try {
     die("PDO Connection Failed: " . $e->getMessage());
 }
 
+
+/**
+ * Validate and normalize Philippine mobile numbers.
+ * Accepted input: +63 9XX XXX XXXX (spaces/hyphens are optional).
+ * Returns the canonical +639XXXXXXXXX value, or null for an empty value.
+ */
+function validatePhilippineMobileNumber(string $number, bool $allowEmpty = true): ?string {
+    $number = trim($number);
+    if ($number === '') {
+        if ($allowEmpty) return null;
+        throw new InvalidArgumentException('A Philippine mobile number is required.');
+    }
+
+    $normalized = preg_replace('/[\\s-]+/', '', $number);
+    if (!preg_match('/^\\+639\\d{9}$/', $normalized)) {
+        throw new InvalidArgumentException('Contact number must be a Philippine mobile number in +63 9XX XXX XXXX format.');
+    }
+
+    return $normalized;
+}
+
 function clean($data) {
     return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
 }
