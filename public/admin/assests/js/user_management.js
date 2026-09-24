@@ -66,6 +66,43 @@
     document.querySelectorAll('#staffFields [data-staff-required]').forEach(el => el.required = false);
 });
 
+    // ---- Philippine mobile number validation ----
+    const PH_MOBILE_PATTERN = /^\\+63\\s?9\\d{2}\\s?\\d{3}\\s?\\d{4}$/;
+
+    function normalizePhilippineMobileInput(value) {
+        return value.trim().replace(/[\\s-]+/g, '');
+    }
+
+    function validatePhilippineMobileInput(input) {
+        if (!input || input.value.trim() === '') return true;
+        const normalized = normalizePhilippineMobileInput(input.value);
+        if (!/^\\+639\\d{9}$/.test(normalized)) {
+            input.setCustomValidity('Use a Philippine mobile number in +63 9XX XXX XXXX format.');
+            return false;
+        }
+        input.setCustomValidity('');
+        return true;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('input[name="guardian_contact"], input[name="contact"]').forEach(input => {
+            input.addEventListener('input', () => validatePhilippineMobileInput(input));
+            input.addEventListener('blur', () => validatePhilippineMobileInput(input));
+        });
+
+        const editForm = document.getElementById('editUserForm');
+        if (editForm) {
+            editForm.addEventListener('submit', event => {
+                const contact = document.getElementById('editGuardianContact');
+                if (contact && !validatePhilippineMobileInput(contact)) {
+                    event.preventDefault();
+                    contact.reportValidity();
+                    contact.focus();
+                }
+            });
+        }
+    });
+
     // ---- Edit User ----
     function editUser(userId) {
         const card = document.querySelector(`[data-user-id="${userId}"]`);
