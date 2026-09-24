@@ -129,3 +129,61 @@ if (answerReviewModal) {
         });
     });
 }
+
+// Enrollment Requests: approve / deny / reopen via fetch, then reload so the
+// lists, nav badge and flash message all refresh from the server.
+const requestsPanel = document.getElementById('requestsPanel');
+
+if (requestsPanel) {
+    const requestErrors = document.getElementById('requestErrors');
+
+    const handleRequestClick = (e) => {
+        const btn = e.target.closest('[data-request-action]');
+        if (!btn) return;
+
+        const action = btn.dataset.requestAction;
+        const student = btn.dataset.student || 'this student';
+
+        if (action === 'deny' && !window.confirm('Deny ' + student + '\'s request to join this class?')) {
+            return;
+        }
+
+        const row = btn.closest('tr');
+        const rowButtons = row ? row.querySelectorAll('[data-request-action]') : [btn];
+        rowButtons.forEach((b) => { b.disabled = true; });
+        requestErrors.hidden = true;
+
+        const body = new FormData();
+        body.append('csrf', requestsPanel.dataset.csrf);
+        body.append('request_id', btn.dataset.requestId);
+        body.append('action', action);
+
+        fetch(requestsPanel.dataset.endpoint, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: body
+        })
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.success) {
+                window.location.reload();
+                return;
+            }
+            const msgs = data.errors || ['Something went wrong. Please try again.'];
+            requestErrors.textContent = msgs.join(' ');
+            requestErrors.hidden = false;
+            rowButtons.forEach((b) => { b.disabled = false; });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        })
+        .catch(() => {
+            requestErrors.textContent = 'Something went wrong. Please try again.';
+            requestErrors.hidden = false;
+            rowButtons.forEach((b) => { b.disabled = false; });
+        });
+    };
+
+    // Pending list and the "Recently decided" list (Reopen) share one handler.
+    requestsPanel.addEventListener('click', handleRequestClick);
+    const decidedPanel = document.getElementById('decidedPanel');
+    if (decidedPanel) decidedPanel.addEventListener('click', handleRequestClick);
+}

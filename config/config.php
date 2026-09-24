@@ -72,6 +72,28 @@ function generateStudentUsername(PDO $pdo): string {
     throw new Exception("Could not generate a unique username. Please try again.");
 }
 
+/**
+ * Generate a unique class code in the format CLS-[6 random uppercase
+ * letters/digits] for a new classofferings row.
+ * Uses random_int() (CSPRNG). Retries on the (rare) chance of a collision
+ * with an existing class_code.
+ */
+function generateClassCode(PDO $pdo): string {
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I to avoid confusion
+    $check = $pdo->prepare("SELECT 1 FROM classofferings WHERE class_code = ? LIMIT 1");
+    for ($i = 0; $i < 20; $i++) {
+        $code = 'CLS-';
+        for ($j = 0; $j < 6; $j++) {
+            $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+        $check->execute([$code]);
+        if (!$check->fetch()) {
+            return $code;
+        }
+    }
+    throw new Exception("Could not generate a unique class code. Please try again.");
+}
+
 function isLoggedIn() {
     global $pdo;
     if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
@@ -242,7 +264,7 @@ function syncCourseTermsToCurrent($pdo) {
         }
     }
 
-    $insertOffering = $pdo->prepare("INSERT INTO classofferings (subject_id, teacher_id, section_id, quarter, school_year_id, schedule_days, start_time, end_time, capacity, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $insertOffering = $pdo->prepare("INSERT INTO classofferings (class_code, subject_id, teacher_id, section_id, quarter, school_year_id, schedule_days, start_time, end_time, capacity, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $copyEnrollments = $pdo->prepare("INSERT INTO enrollments (student_id, offering_id, status) SELECT student_id, ?, 'active' FROM enrollments WHERE offering_id = ? AND status = 'active'");
 
     foreach ($latest as $source) {
@@ -253,6 +275,7 @@ function syncCourseTermsToCurrent($pdo) {
             try {
                 $pdo->beginTransaction();
                 $insertOffering->execute([
+                    generateClassCode($pdo),
                     $source['subject_id'], $source['teacher_id'], $source['section_id'], $nextTerm,
                     $schoolYearId, $source['schedule_days'], $source['start_time'], $source['end_time'],
                     $source['capacity'], $source['status']

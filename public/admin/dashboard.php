@@ -22,28 +22,18 @@ require_once 'assests/api/dashboard_functions.php';
 $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
 $aum_endpoint = '/SUA-IntelliLearn/public/admin/assests/api/add_user_handler.php';
 include 'assests/api/add_user_modal.php';
-include 'assests/api/get_enrollments_count.php';
 
 requireAdmin();
 
 $totalStudents   = get_total_students($pdo);
 $totalTeachers   = get_total_teachers($pdo);
 $totalCourses    = get_total_Class($pdo);
-$pendingEnrollments = get_pending_enrollments($pdo);
 $totalUsersCount = get_total_users_count($pdo);
 $recentUsers     = get_recent_users($pdo, 4);
-
-$pendingEnrollmentData   = get_pending_enrollment_groups($pdo, 5);
-$pendingEnrollmentGroups = $pendingEnrollmentData['groups'];
-$totalPendingGroups      = $pendingEnrollmentData['total_groups'];
 
 $courseEnrollmentProgress = get_course_enrollment_progress($pdo, 6);
 $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
 
-// NOTE: There is no Courses or Enrollments table in the current schema yet,
-// so "Active Courses" and "Pending Enrollments" stay static for now.
-// Once those tables exist, add get_active_courses_count() etc. to
-// dashboard_functions.php the same way as the functions above.
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -54,7 +44,7 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Main Dashboard Styles (excludes sidebar/header styles) -->
     <link rel="stylesheet" href="assests/css/dashboard.css">
-    <!-- Enrollment module styles reused for the Pending Enrollments widget (course-requested/link-btn/modal classes) -->
+    <!-- Shared module styles (modal / button classes) -->
     <link rel="stylesheet" href="assests/css/courses.css">
     <link rel="stylesheet" href="assests/css/add_course.css">
     <link rel="stylesheet" href="assests/css/enrollment.css">
@@ -85,7 +75,7 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
             </div>
 
             <!-- ================= STATS MODULE ================= -->
-            <div class="stats-grid fade-in">
+            <div class="stats-grid stats-grid--three fade-in">
                 <div class="stat-card">
                     <div class="stat-info">
                         <h3><?php echo number_format($totalStudents); ?></h3>
@@ -123,19 +113,6 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
                     </div>
                     <div class="stat-icon courses">
                         <i class="fas fa-book-open"></i>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-info">
-                        <h3><?php echo number_format($pendingEnrollments); ?></h3>
-                        <p>Pending Enrollments</p>
-                        <div class="stat-trend down">
-                            <i class="fas fa-info-circle"></i>
-                            <span>live count</span>
-                        </div>
-                    </div>
-                    <div class="stat-icon enroll">
-                        <i class="fas fa-clipboard-list"></i>
                     </div>
                 </div>
             </div>
@@ -221,8 +198,8 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
                 </div>
             </div>
 
-            <!-- ================= ROW 2: USER MANAGEMENT + ENROLLMENT ================= -->
-            <div class="dashboard-grid-2 fade-in" style="margin-bottom: 20px;">
+            <!-- ================= ROW 2: USER MANAGEMENT ================= -->
+            <div class="dashboard-grid-2 dashboard-grid-2--single fade-in" style="margin-bottom: 20px;">
 
                 <!-- User Management Module -->
                 <div class="card">
@@ -288,177 +265,12 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
                     </div>
                 </div>
 
-                <!-- Enrollment Module -->
-                <div class="card">
-                    <div class="card-header">
-                        <h2><i class="fas fa-a-plus"></i> Pending Enrollments</h2>
-                        <div class="card-actions">
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <div class="enrollment-stats">
-                            <div class="enroll-stat pending">
-                                <h4><?php echo number_format($pendingCount); ?></h4>
-                                <p>Pending</p>
-                            </div>
-                            <div class="enroll-stat approved">
-                                <h4><?php echo number_format($totalEnrolled); ?></h4>
-                                <p>Total Enrolled</p>
-                            </div>
-                            <div class="enroll-stat approved">
-                                <h4><?php echo number_format($enrolledNewThisWeek); ?></h4>
-                                <p>This Week</p>
-                            </div>
-                            <div class="enroll-stat denied">
-                                <h4><?php echo number_format($deniedCount); ?></h4>
-                                <p>Denied</p>
-                            </div>
-                        </div>
-
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Student Name</th>
-                                    <th>Course Requested</th>
-                                    <th>Grade Level/Strand</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="pendingEnrollTableBody">
-                                <?php if (empty($pendingEnrollmentGroups)): ?>
-                                <tr>
-                                    <td colspan="4" style="text-align:center; color: var(--text-muted); padding: 24px;">No pending enrollment requests.</td>
-                                </tr>
-                                <?php else: ?>
-                                <?php foreach ($pendingEnrollmentGroups as $g):
-                                    $initials  = get_initials($g['student_name']);
-                                    $avatarColor = get_avatar_color($g['student_name']);
-                                    $idsCsv    = implode(',', $g['request_ids']);
-                                    $subjects  = $g['subjects'];
-                                    $subjectsJson = htmlspecialchars(json_encode($subjects), ENT_QUOTES);
-                                    $gradeStrand = 'Grade ' . (int) $g['grade_level'] . ($g['strand'] ? ' &middot; ' . htmlspecialchars($g['strand']) : '');
-                                ?>
-                                <tr data-request-id="<?php echo htmlspecialchars($idsCsv); ?>">
-                                    <td>
-                                        <div class="user-cell">
-                                            <div class="avatar" style="background: <?php echo $avatarColor; ?>;"><?php echo $initials; ?></div>
-                                            <div class="name"><?php echo htmlspecialchars($g['student_name']); ?></div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <?php if (count($subjects) > 1): ?>
-                                        <button type="button" class="link-btn" data-subjects="<?php echo $subjectsJson; ?>" data-student="<?php echo htmlspecialchars($g['student_name']); ?>" onclick="showPendingClassesModal(this)">
-                                            <i class="fas fa-eye"></i> View Classes (<?php echo count($subjects); ?>)
-                                        </button>
-                                        <?php else: ?>
-                                            <?php echo htmlspecialchars($subjects[0]); ?>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td><?php echo $gradeStrand; ?></td>
-                                    <td>
-                                        <button class="approve-btn" onclick="approvePendingGroup('<?php echo htmlspecialchars($idsCsv); ?>', this)">Approve</button>
-                                        <button class="deny-btn" onclick="denyPendingGroup('<?php echo htmlspecialchars($idsCsv); ?>', this)">Deny</button>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                        <div class="table-footer">
-                            <span>Showing <?php echo count($pendingEnrollmentGroups); ?> of <?php echo number_format($totalPendingGroups); ?> pending requests</span>
-                            <a href="enrollment.php">View All →</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- View Classes Modal (Pending Enrollments widget) -->
-            <div class="modal-overlay" id="pendingClassesOverlay" onclick="if (event.target === this) closePendingClassesModal()">
-                <div class="modal-box" style="max-width: 420px;">
-                    <div class="modal-header">
-                        <h2 id="pendingClassesTitle">Classes Requested</h2>
-                        <button type="button" class="modal-close" onclick="closePendingClassesModal()" aria-label="Close">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <ul id="pendingClassesList" style="margin: 0; padding-left: 20px; line-height: 1.9;"></ul>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn-secondary" onclick="closePendingClassesModal()">Close</button>
-                    </div>
-                </div>
             </div>
 
             <script>
+                // Shared with assests/js/dashboard.js (CSRF token + current user id).
                 const PENDING_ENROLL_CSRF = <?php echo json_encode($csrfToken); ?>;
                 const CURRENT_USER_ID = <?php echo json_encode((int) $_SESSION['user_id']); ?>;
-
-                function showPendingClassesModal(btn) {
-                    const subjects = JSON.parse(btn.dataset.subjects || '[]');
-                    document.getElementById('pendingClassesTitle').textContent = btn.dataset.student + "'s Requested Classes";
-                    const list = document.getElementById('pendingClassesList');
-                    list.innerHTML = '';
-                    subjects.forEach(s => {
-                        const li = document.createElement('li');
-                        li.textContent = s;
-                        list.appendChild(li);
-                    });
-                    document.getElementById('pendingClassesOverlay').classList.add('open');
-                }
-
-                function closePendingClassesModal() {
-                    document.getElementById('pendingClassesOverlay').classList.remove('open');
-                }
-
-                function approvePendingGroup(idsCsv, btnEl) {
-                    const ids = idsCsv.split(',');
-                    if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...'; }
-                    pendingApproveSequential(ids, 0, { approved: 0, failed: 0 });
-                }
-
-                function pendingApproveSequential(ids, idx, summary) {
-                    if (idx >= ids.length) {
-                        if (summary.failed) alert(`${summary.approved} approved. ${summary.failed} failed.`);
-                        location.reload();
-                        return;
-                    }
-                    const fd = new FormData();
-                    fd.append('csrf', PENDING_ENROLL_CSRF);
-                    fd.append('request_id', ids[idx]);
-
-                    fetch('approve_enrollment.php', { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) summary.approved++; else summary.failed++;
-                            pendingApproveSequential(ids, idx + 1, summary);
-                        })
-                        .catch(() => { summary.failed++; pendingApproveSequential(ids, idx + 1, summary); });
-                }
-
-                function denyPendingGroup(idsCsv, btnEl) {
-                    if (!confirm('Deny this enrollment request? This denies every subject requested.')) return;
-                    const ids = idsCsv.split(',');
-                    if (btnEl) { btnEl.disabled = true; btnEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Denying...'; }
-                    pendingDenySequential(ids, 0, { denied: 0, failed: 0 });
-                }
-
-                function pendingDenySequential(ids, idx, summary) {
-                    if (idx >= ids.length) {
-                        if (summary.failed) alert(`${summary.denied} denied. ${summary.failed} failed.`);
-                        location.reload();
-                        return;
-                    }
-                    const fd = new FormData();
-                    fd.append('csrf', PENDING_ENROLL_CSRF);
-                    fd.append('request_id', ids[idx]);
-
-                    fetch('deny_enrollment.php', { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) summary.denied++; else summary.failed++;
-                            pendingDenySequential(ids, idx + 1, summary);
-                        })
-                        .catch(() => { summary.failed++; pendingDenySequential(ids, idx + 1, summary); });
-                }
             </script>
 
             <!-- ================= ROW 3: COURSES + PROGRESS ================= -->

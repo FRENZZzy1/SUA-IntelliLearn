@@ -44,6 +44,9 @@ if (!empty($submissionRows)) {
                 <?= htmlspecialchars($classInfo['section_name']) ?> · Grade <?= (int) $classInfo['grade_level'] ?><?= !empty($classInfo['strand']) ? ' · ' . htmlspecialchars($classInfo['strand']) : '' ?>
             </span>
         </h1>
+        <?php if ($activeOffering): ?>
+            <span class="class-code-badge"><?= htmlspecialchars($activeOffering['class_code']) ?></span>
+        <?php endif; ?>
         <?php if ($schoolYearLabel): ?>
             <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
         <?php endif; ?>
@@ -76,6 +79,13 @@ if (!empty($submissionRows)) {
         <a class="class-nav-item <?= $activeView === 'quizzes' ? 'active' : '' ?>"
            href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm) ?>">
             <i class="fas fa-file-circle-question"></i> Quizzes
+        </a>
+        <a class="class-nav-item <?= $activeView === 'requests' ? 'active' : '' ?>"
+           href="<?= classOverviewUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, 'requests') ?>">
+            <i class="fas fa-user-plus"></i> Enrollment Requests
+            <?php if ($pendingRequestCount > 0): ?>
+                <span class="nav-badge"><?= (int) $pendingRequestCount ?></span>
+            <?php endif; ?>
         </a>
     </nav>
 
@@ -323,6 +333,139 @@ if (!empty($submissionRows)) {
                 </div>
             <?php endif; ?>
         </section>
+
+    <?php elseif ($activeView === 'requests'): ?>
+
+        <section class="panel panel--card" id="requestsPanel"
+                 data-csrf="<?= htmlspecialchars($csrfToken) ?>"
+                 data-endpoint="assets/api/enrollment_request_decide.php">
+            <div class="panel-header">
+                <h2><i class="fas fa-user-plus"></i> Enrollment Requests</h2>
+                <span class="enrolled-badge"><?= (int) $pendingRequestCount ?> pending</span>
+            </div>
+
+            <div class="request-codes">
+                <span class="request-codes__label">Class codes:</span>
+                <?php foreach ($terms as $t): ?>
+                    <?php if ($t['offering']): ?>
+                        <span class="request-codes__item">
+                            <?= htmlspecialchars($t['label']) ?>
+                            <span class="class-code-badge"><?= htmlspecialchars($t['offering']['class_code']) ?></span>
+                        </span>
+                    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="request-errors" id="requestErrors" hidden></div>
+
+            <?php if (empty($pendingRequests)): ?>
+                <div class="panel-empty panel-empty--enhanced">
+                    <div class="panel-empty__icon">
+                        <i class="fas fa-inbox"></i>
+                    </div>
+                    <h3>No pending requests</h3>
+                    <p>When a student joins with one of the class codes above, their request will show up here for you to approve or deny.</p>
+                </div>
+            <?php else: ?>
+                <div class="table-scroll">
+                    <table class="data-table data-table--modern">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Term</th>
+                                <th>Requested</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($pendingRequests as $r):
+                                $studentName = trim($r['lastname'] . ', ' . $r['firstname'] . ' ' . ($r['middlename'] ?? ''));
+                                $reqOffering = $offeringById[(int) $r['offering_id']] ?? null;
+                                $isFull = $reqOffering && (int) $reqOffering['enrolled_count'] >= (int) $reqOffering['capacity'];
+                            ?>
+                                <tr data-request-row="<?= (int) $r['request_id'] ?>">
+                                    <td>
+                                        <div class="student-name"><?= htmlspecialchars($studentName) ?></div>
+                                        <span class="lrn-badge"><?= htmlspecialchars($r['student_lrn'] ?? '') ?></span>
+                                    </td>
+                                    <td><?= htmlspecialchars($termLabels[$r['quarter']] ?? $r['quarter']) ?></td>
+                                    <td><?= date('M j, Y g:i A', strtotime($r['submitted_at'])) ?></td>
+                                    <td>
+                                        <div class="request-actions">
+                                            <?php if ($isFull): ?>
+                                                <span class="chip chip-closed" title="This class is at capacity">Class full</span>
+                                            <?php else: ?>
+                                                <button type="button" class="btn-approve"
+                                                        data-request-action="approve"
+                                                        data-request-id="<?= (int) $r['request_id'] ?>"
+                                                        data-student="<?= htmlspecialchars($studentName) ?>">
+                                                    <i class="fas fa-check"></i> Approve
+                                                </button>
+                                            <?php endif; ?>
+                                            <button type="button" class="btn-deny"
+                                                    data-request-action="deny"
+                                                    data-request-id="<?= (int) $r['request_id'] ?>"
+                                                    data-student="<?= htmlspecialchars($studentName) ?>">
+                                                <i class="fas fa-xmark"></i> Deny
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </section>
+
+        <?php if (!empty($decidedRequests)): ?>
+            <section class="panel panel--card" id="decidedPanel">
+                <div class="panel-header">
+                    <h2><i class="fas fa-clock-rotate-left"></i> Recently decided</h2>
+                </div>
+                <div class="table-scroll">
+                    <table class="data-table data-table--modern">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Term</th>
+                                <th>Decision</th>
+                                <th>Decided</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($decidedRequests as $r): ?>
+                                <tr>
+                                    <td class="student-name"><?= htmlspecialchars(trim($r['lastname'] . ', ' . $r['firstname'] . ' ' . ($r['middlename'] ?? ''))) ?></td>
+                                    <td><?= htmlspecialchars($termLabels[$r['quarter']] ?? $r['quarter']) ?></td>
+                                    <td>
+                                        <?php if ($r['status'] === 'approved'): ?>
+                                            <span class="chip chip-graded">Approved</span>
+                                        <?php else: ?>
+                                            <span class="chip chip-closed">Denied</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td><?= $r['decided_at'] ? date('M j, Y g:i A', strtotime($r['decided_at'])) : '—' ?></td>
+                                    <td>
+                                        <?php if ($r['status'] === 'denied'): ?>
+                                            <button type="button" class="btn-reopen"
+                                                    data-request-action="reopen"
+                                                    data-request-id="<?= (int) $r['request_id'] ?>"
+                                                    data-student="<?= htmlspecialchars(trim($r['firstname'] . ' ' . $r['lastname'])) ?>">
+                                                <i class="fas fa-rotate-left"></i> Reopen
+                                            </button>
+                                        <?php else: ?>
+                                            <span class="request-none">—</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        <?php endif; ?>
 
     <?php elseif ($activeView === 'assignments'): ?>
 

@@ -43,7 +43,7 @@ $schoolYearLabel = $schoolYear['label'] ?? null;
 // this subject in this section and we bounce them out.
 $stmt = $pdo->prepare("
     SELECT
-        co.offering_id, co.quarter, co.schedule_days, co.start_time, co.end_time,
+        co.offering_id, co.class_code, co.quarter, co.schedule_days, co.start_time, co.end_time,
         co.capacity, co.teacher_id,
         sub.subject_id, sub.subject_name,
         sec.section_id, sec.section_name, sec.grade_level, sec.strand,
@@ -57,7 +57,7 @@ $stmt = $pdo->prepare("
       AND co.section_id = ?
       AND co.status = 'active'
       AND (co.school_year_id = ? OR ? IS NULL)
-    GROUP BY co.offering_id, co.quarter, co.schedule_days, co.start_time, co.end_time,
+    GROUP BY co.offering_id, co.class_code, co.quarter, co.schedule_days, co.start_time, co.end_time,
              co.capacity, co.teacher_id, sub.subject_id, sub.subject_name,
              sec.section_id, sec.section_name, sec.grade_level, sec.strand
 ");
@@ -101,8 +101,8 @@ if (isset($terms[$requestedTerm]) && $terms[$requestedTerm]['offering']) {
 $activeOffering   = $activeTerm ? $terms[$activeTerm]['offering'] : null;
 $activeOfferingId = $activeOffering['offering_id'] ?? null;
 
-// ---- Active nav view (Overview / Students / Attendance / Assignments / Quizzes) --------
-$allowedViews = ['overview', 'students', 'attendance', 'assignments', 'quizzes'];
+// ---- Active nav view (Overview / Students / Attendance / Assignments / Quizzes / Enrollment Requests) --------
+$allowedViews = ['overview', 'students', 'attendance', 'assignments', 'quizzes', 'requests'];
 $activeView   = $_GET['view'] ?? 'overview';
 if (!in_array($activeView, $allowedViews, true)) {
     $activeView = 'overview';
@@ -409,6 +409,48 @@ if ($selectedQuiz) {
             }
             unset($q);
         }
+    }
+}
+
+// ---- Enrollment requests (Enrollment Requests tab) ---------------------------
+// Students who join with a class code create an `enrollment_requests` row tied
+// to that term's offering. A subject+section has one class code per term, so
+// requests are collected across ALL of this class's term offerings (each row
+// is tagged with its term). The pending count feeds the badge on the nav tab
+// and is needed on every view, so it is always computed.
+$classOfferingIds    = array_map('intval', array_column($offeringRows, 'offering_id'));
+$offeringById        = [];
+foreach ($offeringRows as $row) {
+    $offeringById[(int) $row['offering_id']] = $row;
+}
+$pendingRequestCount = 0;
+$pendingRequests     = [];
+$decidedRequests     = [];
+if ($classOfferingIds) {
+    $offeringPlaceholders = implode(',', array_fill(0, count($classOfferingIds), '?'));
+
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM enrollment_requests WHERE status = 'pending' AND offering_id IN ($offeringPlaceholders)");
+    $stmt->execute($classOfferingIds);
+    $pendingRequestCount = (int) $stmt->fetchColumn();
+
+    if ($activeView === 'requests') {
+        $requestSelect = "
+            SELECT er.request_id, er.offering_id, er.status, er.submitted_at, er.decided_at,
+                   s.student_lrn, s.firstname, s.lastname, s.middlename, s.email,
+                   co.quarter, co.class_code
+            FROM enrollment_requests er
+            JOIN students s ON s.student_id = er.student_id
+            JOIN classofferings co ON co.offering_id = er.offering_id
+            WHERE er.offering_id IN ($offeringPlaceholders)
+        ";
+
+        $stmt = $pdo->prepare($requestSelect . " AND er.status = 'pending' ORDER BY er.submitted_at ASC");
+        $stmt->execute($classOfferingIds);
+        $pendingRequests = $stmt->fetchAll();
+
+        $stmt = $pdo->prepare($requestSelect . " AND er.status <> 'pending' ORDER BY er.decided_at DESC, er.request_id DESC LIMIT 10");
+        $stmt->execute($classOfferingIds);
+        $decidedRequests = $stmt->fetchAll();
     }
 }
 

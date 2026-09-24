@@ -64,6 +64,7 @@ if (!$section) {
 $stmt = $pdo->prepare("
     SELECT
         co.offering_id,
+        co.class_code,
         sub.subject_id,
         sub.subject_name,
         co.quarter,
@@ -80,7 +81,7 @@ $stmt = $pdo->prepare("
       AND co.section_id = ?
       AND co.status = 'active'
       AND (co.school_year_id = ? OR ? IS NULL)
-    GROUP BY co.offering_id, sub.subject_id, sub.subject_name, co.quarter, co.schedule_days,
+    GROUP BY co.offering_id, co.class_code, sub.subject_id, sub.subject_name, co.quarter, co.schedule_days,
              co.start_time, co.end_time, co.capacity
     ORDER BY sub.subject_name
 ");

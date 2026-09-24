@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 22, 2026 at 12:53 AM
+-- Generation Time: Sep 24, 2026 at 03:01 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -101,13 +101,6 @@ CREATE TABLE `assignments` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `assignments`
---
-
-INSERT INTO `assignments` (`assignment_id`, `offering_id`, `title`, `description`, `instructions_file_path`, `due_date`, `points`, `type`, `max_attempts`, `status`, `created_by`, `created_at`, `updated_at`) VALUES
-(6, 16, 'PT 1', NULL, NULL, '2026-09-23 00:23:00', 100.00, 'Activity', 1, 'published', 1, '2026-09-21 16:23:12', '2026-09-21 16:23:12');
-
 -- --------------------------------------------------------
 
 --
@@ -153,6 +146,7 @@ CREATE TABLE `at_risk_insights` (
 
 CREATE TABLE `classofferings` (
   `offering_id` int(11) NOT NULL,
+  `class_code` varchar(20) NOT NULL,
   `subject_id` int(11) NOT NULL,
   `teacher_id` int(11) NOT NULL,
   `section_id` int(11) NOT NULL,
@@ -170,8 +164,8 @@ CREATE TABLE `classofferings` (
 -- Dumping data for table `classofferings`
 --
 
-INSERT INTO `classofferings` (`offering_id`, `subject_id`, `teacher_id`, `section_id`, `quarter`, `school_year_id`, `schedule_days`, `start_time`, `end_time`, `capacity`, `status`, `created_at`) VALUES
-(16, 4, 1, 4, 'TRM 1', 1, NULL, NULL, NULL, 50, 'active', '2026-09-21 16:21:49');
+INSERT INTO `classofferings` (`offering_id`, `class_code`, `subject_id`, `teacher_id`, `section_id`, `quarter`, `school_year_id`, `schedule_days`, `start_time`, `end_time`, `capacity`, `status`, `created_at`) VALUES
+(16, 'CLS-92C0FF', 4, 1, 4, 'TRM 1', 1, NULL, NULL, NULL, 50, 'active', '2026-09-21 16:21:49');
 
 -- --------------------------------------------------------
 
@@ -192,7 +186,8 @@ CREATE TABLE `enrollments` (
 --
 
 INSERT INTO `enrollments` (`enrollment_id`, `student_id`, `offering_id`, `status`, `enrolled_at`) VALUES
-(18, 2, 16, 'active', '2026-09-21 16:27:10');
+(21, 2, 16, 'active', '2026-09-24 07:40:31'),
+(22, 3, 16, 'active', '2026-09-24 08:15:49');
 
 -- --------------------------------------------------------
 
@@ -219,9 +214,8 @@ CREATE TABLE `enrollment_requests` (
 --
 
 INSERT INTO `enrollment_requests` (`request_id`, `student_id`, `grade_level`, `subject_id`, `strand`, `offering_id`, `status`, `notes`, `submitted_at`, `decided_at`, `decided_by`) VALUES
-(12, 2, 7, 4, NULL, 16, 'approved', NULL, '2026-09-21 16:22:01', '2026-09-21 16:22:02', 1),
-(13, 2, 7, 4, NULL, 16, 'approved', NULL, '2026-09-21 16:24:17', '2026-09-21 16:24:23', 1),
-(14, 2, 7, 4, NULL, 16, 'approved', NULL, '2026-09-21 16:26:53', '2026-09-21 16:27:10', 1);
+(15, 2, 7, 4, NULL, 16, 'approved', NULL, '2026-09-24 07:39:18', '2026-09-24 07:40:31', 5),
+(16, 3, 7, 4, NULL, 16, 'approved', NULL, '2026-09-24 08:15:07', '2026-09-24 08:15:49', 5);
 
 -- --------------------------------------------------------
 
@@ -239,13 +233,6 @@ CREATE TABLE `grades` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `grades`
---
-
-INSERT INTO `grades` (`grade_id`, `enrollment_id`, `quarter`, `grade`, `remarks`, `graded_by`, `created_at`, `updated_at`) VALUES
-(5, 18, 'Final', 100.00, NULL, 1, '2026-09-21 16:25:33', '2026-09-21 16:25:33');
 
 -- --------------------------------------------------------
 
@@ -460,7 +447,8 @@ CREATE TABLE `students` (
 --
 
 INSERT INTO `students` (`student_id`, `user_id`, `student_lrn`, `firstname`, `lastname`, `middlename`, `email`, `birthdate`, `address`, `guardian_name`, `guardian_contact`, `created_at`, `updated_at`, `Gender`) VALUES
-(2, 4, 20003644121, 'Daniel', 'Aniasco', 'Talidong', 'dan@gmail.com', '2003-10-02', 'Lupang Arenda, Block 24, Mahinahon Street, Taytay, Rizal', 'Ma. Cecilia T. Aniasco', '09666837362', '2026-09-04 06:37:26', '2026-09-04 06:37:26', 'Male');
+(2, 4, 20003644121, 'Daniel', 'Aniasco', 'Talidong', 'dan@gmail.com', '2003-10-02', 'Lupang Arenda, Block 24, Mahinahon Street, Taytay, Rizal', 'Ma. Cecilia T. Aniasco', '09666837362', '2026-09-04 06:37:26', '2026-09-04 06:37:26', 'Male'),
+(3, 6, 20003644122, 'Rose Fortune', 'Alayan', 'Alcantara', 'r@gmail.com', '2026-09-24', 'Lupang Arenda, Block 24, Mahinahon Street, Taytay, Rizal', 'dasda', '09774193806', '2026-09-24 08:12:57', '2026-09-24 08:12:57', 'Female');
 
 -- --------------------------------------------------------
 
@@ -505,13 +493,6 @@ CREATE TABLE `submissions` (
   `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `submissions`
---
-
-INSERT INTO `submissions` (`submission_id`, `assignment_id`, `student_id`, `attempt_number`, `submission_text`, `file_path`, `external_url`, `file_size`, `status`, `score`, `feedback`, `graded_by`, `graded_at`, `submitted_at`, `updated_at`) VALUES
-(10, 6, 2, 1, 'dad', NULL, NULL, NULL, 'graded', 100.00, NULL, 1, '2026-09-21 16:25:29', '2026-09-21 16:25:01', '2026-09-21 16:25:29');
 
 -- --------------------------------------------------------
 
@@ -601,9 +582,10 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `password`, `role`, `status`, `created_at`, `updated_at`, `current_session_token`) VALUES
-(1, 'palspals', '$2y$10$tsRUZWkHnu41kJluGp5SB.L96Kpy6npl2RloZe1e4OX3MS8fBQ126', 'admin', 'active', '2026-09-04 06:29:48', '2026-09-21 16:27:21', NULL),
-(4, 'STU-4121-100203', '$2y$10$r5lum9MX1WDvqW9mNcfHxeYhoTXBhM5yoh02mLLPeyJdkCGXa6gOW', 'student', 'active', '2026-09-04 06:37:26', '2026-09-21 16:27:40', '9649f6c8604d6788421b9d4af578165542b55daaea7a23455f56a1b5c70773bb'),
-(5, 'frenzypaller@gmail.com', '$2y$10$tX45F02ldh3vb0xRScQKo.9buMeADkInJPVluH2td4t2LndSOR796', 'teacher', 'active', '2026-09-04 06:38:07', '2026-09-21 16:27:32', NULL);
+(1, 'palspals', '$2y$10$tsRUZWkHnu41kJluGp5SB.L96Kpy6npl2RloZe1e4OX3MS8fBQ126', 'admin', 'active', '2026-09-04 06:29:48', '2026-09-24 08:18:52', NULL),
+(4, 'STU-4121-100203', '$2y$10$r5lum9MX1WDvqW9mNcfHxeYhoTXBhM5yoh02mLLPeyJdkCGXa6gOW', 'student', 'active', '2026-09-04 06:37:26', '2026-09-24 08:10:48', NULL),
+(5, 'frenzypaller@gmail.com', '$2y$10$tX45F02ldh3vb0xRScQKo.9buMeADkInJPVluH2td4t2LndSOR796', 'teacher', 'active', '2026-09-04 06:38:07', '2026-09-24 08:19:16', '7fb0fc0f264806657c6d0d0ed87ab07d8d219a1040c15dda2c66049265855251'),
+(6, 'STU-2705368', '$2y$10$Y/MguFXHC5o23SFLhj8CZ.n9/KQO4T8CTQGsABp7..zrjI6COe4ki', 'student', 'active', '2026-09-24 08:12:57', '2026-09-24 08:19:12', NULL);
 
 --
 -- Indexes for dumped tables
@@ -663,6 +645,7 @@ ALTER TABLE `at_risk_insights`
 ALTER TABLE `classofferings`
   ADD PRIMARY KEY (`offering_id`),
   ADD UNIQUE KEY `uq_classofferings_subject_section_quarter_schoolyear` (`subject_id`,`section_id`,`quarter`,`school_year_id`),
+  ADD UNIQUE KEY `class_code_unique` (`class_code`),
   ADD KEY `fk_classofferings_teacher_id_teachers` (`teacher_id`),
   ADD KEY `fk_classofferings_section_id_sections` (`section_id`),
   ADD KEY `fk_classofferings_school_year_id_schoolyears` (`school_year_id`);
@@ -866,13 +849,13 @@ ALTER TABLE `classofferings`
 -- AUTO_INCREMENT for table `enrollments`
 --
 ALTER TABLE `enrollments`
-  MODIFY `enrollment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `enrollment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `enrollment_requests`
 --
 ALTER TABLE `enrollment_requests`
-  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `grades`
@@ -938,7 +921,7 @@ ALTER TABLE `sections`
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `subjects`
@@ -968,7 +951,7 @@ ALTER TABLE `teachers`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- Constraints for dumped tables

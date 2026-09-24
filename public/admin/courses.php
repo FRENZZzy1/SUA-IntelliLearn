@@ -195,6 +195,7 @@ $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 $sql = "
     SELECT
         co.offering_id,
+        co.class_code,
         co.subject_id,
         co.capacity,
         co.status,
@@ -636,13 +637,14 @@ $subjectsList = $pdo->query("
                     <th>Teacher Assigned</th>
                     <th>Enrollment</th>
                     <th>Status</th>
+                    <th>Class Code</th>
                     <th class="col-actions">Actions</th>
                 </tr>
             </thead>
             <tbody id="courseTableBody">
                 <?php if (empty($courses)): ?>
                 <tr class="empty-row">
-                    <td colspan="10">
+                    <td colspan="11">
                         No courses match these filters.
                     </td>
                 </tr>
@@ -705,6 +707,7 @@ $subjectsList = $pdo->query("
                             <?= $course['status'] === 'active' ? 'Active' : 'Inactive' ?>
                         </span>
                     </td>
+                    <td><span class="class-code-badge"><?= htmlspecialchars($course['class_code']) ?></span></td>
                     <td class="col-actions">
                         <div class="row-actions">
                             <a href="javascript:void(0)"

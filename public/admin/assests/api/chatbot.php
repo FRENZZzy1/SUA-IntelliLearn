@@ -113,7 +113,7 @@ Supported IntelliLearn concepts include:
 - School Years: academic-year configuration.
 - Class Offerings/Courses: subject + section + teacher + quarter + school year + capacity + schedule.
 - Enrollments: actual student-to-class records.
-- Enrollment Requests: requests awaiting administrative decisions.
+- Enrollment Requests: students who joined with a class code; the class's teacher approves or denies them (admins do not decide enrollment).
 - Announcements and learning materials where applicable.
 
 For workflows, use logical dependency order. For example, creating a class offering normally requires the subject, section, school year and teacher to exist first; enrollment normally depends on a class offering existing.

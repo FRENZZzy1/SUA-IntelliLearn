@@ -1,6 +1,8 @@
 <?php
 include 'assets/api/courses_functions.php';
 
+$csrfToken = generateCSRFToken();
+
 // Compute summary stats
 $totalCourses     = count($myCourses);
 $totalMaterials   = array_sum(array_column($myCourses, 'materials_count'));
@@ -24,12 +26,23 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
 
     <?php include '../../includes/student_header.php'; ?>
 
-    <div class="dash-page-title">
-        <h1 class="dash-title">My Courses</h1>
-        <?php if ($schoolYearLabel): ?>
-            <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
-        <?php endif; ?>
+    <div class="dash-page-title dash-page-title--with-action">
+        <div>
+            <h1 class="dash-title">My Courses</h1>
+            <?php if ($schoolYearLabel): ?>
+                <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
+            <?php endif; ?>
+        </div>
+        <button type="button" class="btn-enroll" onclick="openJoinClassModal()">
+            <i class="fas fa-plus"></i> Enroll with Class Code
+        </button>
     </div>
+
+    <?php if ($flash = getFlashMessage()): ?>
+        <div class="class-flash class-flash-<?= htmlspecialchars($flash['type']) ?>">
+            <?= htmlspecialchars($flash['message']) ?>
+        </div>
+    <?php endif; ?>
 
     <?php if (empty($myCourses)): ?>
         <section class="panel">
@@ -39,7 +52,6 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
                 </div>
                 <h3>You're not enrolled in any classes yet</h3>
                 <p>Once your enrollment is approved, your classes will show up here.</p>
-                <span class="panel-empty__hint">Check the Enrollment page or contact your administrator.</span>
             </div>
         </section>
     <?php else: ?>
@@ -139,6 +151,35 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
 
 </main>
 
+<!-- Join Class Modal -->
+<div class="modal-overlay" id="joinClassOverlay" onclick="if (event.target === this) closeJoinClassModal()">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="joinClassTitle">
+        <div class="modal-header">
+            <h2 id="joinClassTitle">Enroll with Class Code</h2>
+            <button type="button" class="modal-close" onclick="closeJoinClassModal()" aria-label="Close">&times;</button>
+        </div>
+
+        <div class="modal-errors" id="joinClassErrors" hidden></div>
+
+        <form id="joinClassForm">
+            <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
+
+            <div class="modal-body">
+                <div class="form-row">
+                    <label for="jc_class_code"><i class="fas fa-hashtag" aria-hidden="true"></i> Class Code</label>
+                    <input type="text" id="jc_class_code" name="class_code" placeholder="e.g. CLS-7K4M2P" maxlength="20" required autocomplete="off" style="text-transform: uppercase;">
+                    <span class="field-note">Ask your teacher or admin for this class's code.</span>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeJoinClassModal()">Cancel</button>
+                <button type="submit" class="btn-primary" id="joinClassSubmitBtn"><i class="fas fa-check"></i> Enroll</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 (function () {
     const searchInput = document.getElementById('courseSearch');
@@ -155,6 +196,53 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
 
     searchInput?.addEventListener('input', filterCards);
 })();
+
+function openJoinClassModal() {
+    document.getElementById('joinClassForm').reset();
+    document.getElementById('joinClassErrors').hidden = true;
+    document.getElementById('joinClassOverlay').classList.add('open');
+    document.getElementById('jc_class_code').focus();
+}
+
+function closeJoinClassModal() {
+    document.getElementById('joinClassOverlay').classList.remove('open');
+}
+
+document.getElementById('joinClassForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const submitBtn = document.getElementById('joinClassSubmitBtn');
+    const errorBox = document.getElementById('joinClassErrors');
+    const idleLabel = '<i class="fas fa-check"></i> Enroll';
+
+    errorBox.hidden = true;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enrolling...';
+
+    fetch('assets/api/join_class.php', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json' },
+        body: new FormData(form)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            errorBox.innerHTML = (data.errors || ['Something went wrong. Please try again.']).map(err => '<div>' + err + '</div>').join('');
+            errorBox.hidden = false;
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = idleLabel;
+        }
+    })
+    .catch(() => {
+        errorBox.innerHTML = '<div>Something went wrong. Please try again.</div>';
+        errorBox.hidden = false;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = idleLabel;
+    });
+});
 </script>
 
 </body>
