@@ -140,7 +140,8 @@
         }
 
         if (role === 'student') {
-            document.getElementById('editLrn').value = card.dataset.lrn || '';\n            document.getElementById('editYearLevel').value = card.dataset.yearLevel || '7';
+            document.getElementById('editLrn').value = card.dataset.lrn || '';
+            document.getElementById('editYearLevel').value = card.dataset.yearLevel || '7';
             document.getElementById('editGender').value = card.dataset.gender || 'Male';
             document.getElementById('editBirthdate').value = card.dataset.birthdate || '';
             document.getElementById('editAddress').value = card.dataset.address || '';
@@ -178,6 +179,10 @@
                 <div class="detail-row">
                     <span class="detail-label"><i class="fas fa-id-card"></i> LRN</span>
                     <span class="detail-value">${card.dataset.lrn || 'Not set'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-layer-group"></i> Year Level</span>
+                    <span class="detail-value">${card.dataset.yearLevel ? 'Grade ' + card.dataset.yearLevel : 'Not set'}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label"><i class="fas fa-layer-group"></i> Year Level</span>
