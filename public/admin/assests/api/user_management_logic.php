@@ -38,7 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $address          = trim($_POST['address'] ?? '');
             $guardian_name    = trim($_POST['guardian_name'] ?? '');
             $guardian_contact = trim($_POST['guardian_contact'] ?? '');
-        $year_level       = trim($_POST['year_level'] ?? '');
 
             $errors = [];
             try {
@@ -49,7 +48,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($firstname)) $errors[] = "First name is required.";
             if (empty($lastname)) $errors[] = "Last name is required.";
             if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
-            if (!in_array($year_level, ['7','8','9','10','11','12'], true)) $errors[] = "Please select a valid year level (Grade 7 to Grade 12).";
             if (!in_array($year_level, ['7','8','9','10','11','12'], true)) $errors[] = "Please select a valid year level (Grade 7 to Grade 12).";
             if (!in_array($gender, ['Male', 'Female'])) $errors[] = "Please select a valid gender.";
             if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email address is invalid.";
@@ -274,6 +272,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $address          = trim($_POST['address'] ?? '');
         $guardian_name    = trim($_POST['guardian_name'] ?? '');
         $guardian_contact = trim($_POST['guardian_contact'] ?? '');
+        $year_level       = trim($_POST['year_level'] ?? '');
 
         if ($user_id <= 0) {
             setFlashMessage('error', "Invalid user ID.");
@@ -298,6 +297,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($lastname)) $errors[] = "Last name is required.";
             if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
             if (!in_array($gender, ['Male', 'Female'])) $errors[] = "Please select a valid gender.";
+            if (!in_array($year_level, ['7','8','9','10','11','12'], true)) $errors[] = "Please select a valid year level (Grade 7 to Grade 12).";
             $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
             if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
 
