@@ -437,6 +437,7 @@ CREATE TABLE `students` (
   `address` varchar(255) DEFAULT NULL,
   `guardian_name` varchar(255) DEFAULT NULL,
   `guardian_contact` varchar(255) DEFAULT NULL,
+  `year_level` tinyint(3) UNSIGNED DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `Gender` enum('Male','Female') DEFAULT NULL
