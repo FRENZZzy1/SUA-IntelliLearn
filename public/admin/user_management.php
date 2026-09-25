@@ -304,6 +304,9 @@ include 'assests/api/access_permissions_modal.php';
             <option value="Female" <?= $gender_filter === 'Female' ? 'selected' : '' ?>>Female</option>
         </select>
         <?php endif; ?>
+        <a href="assests/api/export_student_accounts.php<?= $grade_level_filter !== 'all' ? '?year_level=' . urlencode($grade_level_filter) : '' ?>" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;" title="Export student names, usernames, and year levels">
+            <i class="fas fa-file-excel"></i> Export Student Accounts
+        </a>
         <select name="sort" class="select-filter" onchange="this.form.submit()">
             <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
             <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
