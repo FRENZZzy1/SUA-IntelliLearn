@@ -31,12 +31,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $lastname         = trim($_POST['lastname'] ?? '');
             $middlename       = trim($_POST['middlename'] ?? '');
             $lrn              = trim($_POST['lrn'] ?? '');
+            $year_level       = trim($_POST['year_level'] ?? '');
             $email            = trim($_POST['email'] ?? '');
             $gender           = trim($_POST['gender'] ?? '');
             $birthdate        = trim($_POST['birthdate'] ?? '');
             $address          = trim($_POST['address'] ?? '');
             $guardian_name    = trim($_POST['guardian_name'] ?? '');
             $guardian_contact = trim($_POST['guardian_contact'] ?? '');
+        $year_level       = trim($_POST['year_level'] ?? '');
 
             $errors = [];
             try {
@@ -47,6 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($firstname)) $errors[] = "First name is required.";
             if (empty($lastname)) $errors[] = "Last name is required.";
             if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
+            if (!in_array($year_level, ['7','8','9','10','11','12'], true)) $errors[] = "Please select a valid year level (Grade 7 to Grade 12).";
+            if (!in_array($year_level, ['7','8','9','10','11','12'], true)) $errors[] = "Please select a valid year level (Grade 7 to Grade 12).";
             if (!in_array($gender, ['Male', 'Female'])) $errors[] = "Please select a valid gender.";
             if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email address is invalid.";
             $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
@@ -83,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Insert into Students
                     $stmt = $pdo->prepare("
                         INSERT INTO Students
-                            (user_id, student_lrn, firstname, lastname, middlename, email, gender, birthdate, address, guardian_name, guardian_contact, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                            (user_id, student_lrn, firstname, lastname, middlename, email, gender, birthdate, address, guardian_name, guardian_contact, year_level, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                     ");
                     $stmt->execute([
                         $user_id,
@@ -98,6 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $address,
                         $guardian_name,
                         $guardian_contact,
+                        $year_level,
                     ]);
 
                     $pdo->commit();
@@ -388,7 +393,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("
                     UPDATE Students
                     SET firstname = ?, lastname = ?, middlename = ?, email = ?, student_lrn = ?, gender = ?,
-                        birthdate = ?, address = ?, guardian_name = ?, guardian_contact = ?, updated_at = NOW()
+                        birthdate = ?, address = ?, guardian_name = ?, guardian_contact = ?, year_level = ?, updated_at = NOW()
                     WHERE user_id = ?
                 ");
                 $stmt->execute([
@@ -402,6 +407,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $address !== '' ? $address : null,
                     $guardian_name !== '' ? $guardian_name : null,
                     $guardian_contact !== '' ? $guardian_contact : null,
+                    $year_level,
                     $user_id,
                 ]);
             }
@@ -495,19 +501,10 @@ if ($department_filter !== 'all' && $department_filter !== '') {
     $params[] = $department_filter;
 }
 
-// Student year-level filter, derived from the enrollments table: we look up the
-// section of the student's most recent active enrollment and read its grade_level.
-// (s.student_id is NULL for non-students, so this naturally excludes teachers/admins.)
+// Student year-level filter is stored directly on the student record so it remains
+// available before self-enrollment and can be used for account distribution.
 if ($grade_level_filter !== 'all' && $grade_level_filter !== '') {
-    $where_clauses[] = "(
-        SELECT sec.grade_level
-        FROM enrollments e
-        JOIN classofferings co ON e.offering_id = co.offering_id
-        JOIN sections sec ON co.section_id = sec.section_id
-        WHERE e.student_id = s.student_id AND e.status = 'active'
-        ORDER BY e.enrolled_at DESC
-        LIMIT 1
-    ) = ?";
+    $where_clauses[] = "s.year_level = ?";
     $params[] = $grade_level_filter;
 }
 
@@ -565,15 +562,7 @@ $sql = "SELECT
     a.access_level as admin_access_level,
     a.position as admin_position,
    '{}' AS admin_permissions,
-    (
-        SELECT sec.grade_level
-        FROM enrollments e
-        JOIN classofferings co ON e.offering_id = co.offering_id
-        JOIN sections sec ON co.section_id = sec.section_id
-        WHERE e.student_id = s.student_id AND e.status = 'active'
-        ORDER BY e.enrolled_at DESC
-        LIMIT 1
-    ) as grade_level
+    s.year_level as grade_level
 FROM Users u
 LEFT JOIN Teachers t ON u.id = t.user_id AND u.role = 'teacher'
 LEFT JOIN Students s ON u.id = s.user_id AND u.role = 'student'
@@ -605,8 +594,9 @@ $departments = $pdo->query("
 ")->fetchAll(PDO::FETCH_COLUMN);
 
 $grade_levels = $pdo->query("
-    SELECT DISTINCT grade_level FROM sections
-    ORDER BY grade_level ASC
+    SELECT DISTINCT year_level FROM Students
+    WHERE year_level IS NOT NULL
+    ORDER BY year_level ASC
 ")->fetchAll(PDO::FETCH_COLUMN);
 
 // Helper function for initials
