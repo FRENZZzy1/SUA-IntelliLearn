@@ -40,6 +40,7 @@ if ($role === 'student') {
     $lastname         = trim($_POST['lastname'] ?? '');
     $middlename       = trim($_POST['middlename'] ?? '');
     $lrn              = trim($_POST['lrn'] ?? '');
+    $year_level       = trim($_POST['year_level'] ?? '');
     $email            = trim($_POST['student_email'] ?? '');
     $gender           = trim($_POST['gender'] ?? '');
     $birthdate        = trim($_POST['birthdate'] ?? '');
@@ -56,6 +57,7 @@ if ($role === 'student') {
     if (empty($firstname)) $errors[] = "First name is required.";
     if (empty($lastname)) $errors[] = "Last name is required.";
     if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
+    if (!in_array($year_level, ['7','8','9','10','11','12'], true)) $errors[] = "Please select a valid year level (Grade 7 to Grade 12).";
     if (!in_array($gender, ['Male', 'Female'])) $errors[] = "Please select a valid gender.";
     if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email address is invalid.";
     $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
@@ -92,15 +94,15 @@ if ($role === 'student') {
 
         $stmt = $pdo->prepare("
             INSERT INTO Students
-                (user_id, student_lrn, firstname, lastname, middlename, email, gender, birthdate, address, guardian_name, guardian_contact, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                (user_id, student_lrn, firstname, lastname, middlename, email, gender, birthdate, address, guardian_name, guardian_contact, year_level, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ");
         $stmt->execute([
             $user_id, $lrn, $firstname, $lastname,
             $middlename !== '' ? $middlename : null,
             $email !== '' ? $email : null,
             $gender,
-            $birthdate, $address, $guardian_name, $guardian_contact,
+            $birthdate, $address, $guardian_name, $guardian_contact, $year_level,
         ]);
 
         $pdo->commit();
