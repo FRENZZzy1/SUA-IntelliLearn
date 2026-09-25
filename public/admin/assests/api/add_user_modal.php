@@ -87,6 +87,20 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                     </div>
                     <div class="aum-row">
                         <div class="aum-group">
+                            <label>Year Level <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap"><i class="fas fa-layer-group aum-input-icon"></i>
+                                <select name="year_level" class="aum-control" data-student-required>
+                                    <option value="">-- Select Grade --</option>
+                                    <option value="7">Grade 7</option>
+                                    <option value="8">Grade 8</option>
+                                    <option value="9">Grade 9</option>
+                                    <option value="10">Grade 10</option>
+                                    <option value="11">Grade 11</option>
+                                    <option value="12">Grade 12</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="aum-group">
                             <label>Email</label>
                             <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="email" name="student_email" id="aumStudentEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph" data-student-required></div>
                         </div>
