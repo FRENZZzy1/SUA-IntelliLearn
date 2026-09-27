@@ -50,16 +50,16 @@ try {
             a.title,
             a.body,
             a.audience,
-            a.priority,
             a.offering_id,
             a.status,
             a.is_pinned,
             a.created_at,
+            a.published_at,
             a.updated_at
         FROM announcements a
         LEFT JOIN teachers u ON u.user_id = a.posted_by
         {$whereSql}
-        ORDER BY a.is_pinned DESC, a.created_at DESC
+        ORDER BY a.is_pinned DESC, COALESCE(a.published_at, a.created_at) DESC
         LIMIT {$limit}
     ";
 

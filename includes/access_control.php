@@ -2,7 +2,7 @@
 /**
  * SUA IntelliLearn - Admin access-level and module permission helpers.
  *
- * Full access: every admin module is readable/writable and enrollment approval is allowed.
+ * Full access: every admin module is readable/writable.
  * Limited: module-level Read / Read & Write permissions are stored per admin.
  * Read Only: selected modules are readable only; no writes are allowed.
  */
@@ -12,7 +12,6 @@ if (!defined('SUA_ADMIN_MODULES')) {
         'dashboard'    => 'Dashboard',
         'users'        => 'User Management',
         'courses'      => 'Classes & Subjects',
-        'enrollment'   => 'Enrollment',
         'announcements'=> 'Announcements',
         'analytics'    => 'System Analytics',
         'settings'     => 'Settings',
@@ -102,13 +101,6 @@ function adminCanWrite(string $module): bool {
     return isset($p[$module]) && $p[$module]['permission'] === 'write';
 }
 
-function adminCanApproveEnrollment(): bool {
-    if (($_SESSION['role'] ?? '') !== 'admin') return false;
-    if (adminAccessLevel() === 'full') return true;
-    $p = adminPermissions();
-    return !empty($p['enrollment']['can_approve_enrollment']);
-}
-
 /**
  * Save the selected module permissions from the User Management form.
  * Full access is represented by a complete write + approval set so changing
@@ -120,7 +112,7 @@ function saveAdminPermissions(PDO $pdo, int $userId, string $accessLevel, string
     $modules = [];
     if ($accessLevel === 'full') {
         foreach (array_keys(SUA_ADMIN_MODULES) as $module) {
-            $modules[$module] = ['permission' => 'write', 'can_approve_enrollment' => $module === 'enrollment'];
+            $modules[$module] = ['permission' => 'write', 'can_approve_enrollment' => false];
         }
     } else {
         $decoded = json_decode($json, true);
@@ -130,7 +122,7 @@ function saveAdminPermissions(PDO $pdo, int $userId, string $accessLevel, string
                 $permission = ($accessLevel === 'read_only') ? 'read' : (($cfg['permission'] ?? '') === 'write' ? 'write' : 'read');
                 $modules[$module] = [
                     'permission' => $permission,
-                    'can_approve_enrollment' => $module === 'enrollment' && !empty($cfg['can_approve_enrollment']),
+                    'can_approve_enrollment' => false, // enrollment is decided by teachers only
                 ];
             }
         }
@@ -158,15 +150,6 @@ function adminModuleForCurrentScript(): ?string {
         'update_section.php' => 'courses',
         'add_subject.php' => 'courses',
         'update_subject.php' => 'courses',
-        'get_offering_sections.php' => 'courses',
-        'get_section_offerings.php' => 'courses',
-
-        'enrollment.php' => 'enrollment',
-        'add_enrollment_request.php' => 'enrollment',
-        'get_enrollments_count.php' => 'enrollment',
-        'approve_enrollment.php' => 'enrollment',
-        'deny_enrollment.php' => 'enrollment',
-        'reopen_enrollment.php' => 'enrollment',
 
         'announcement.php' => 'announcements',
 
@@ -203,7 +186,7 @@ function requireAdminModule(string $module, string $permission = 'read'): void {
 
 /**
  * Enforce permissions automatically for admin pages after config.php loads.
- * GET = read; POST = write. Enrollment approval has its own special permission.
+ * GET = read; POST = write.
  */
 function enforceCurrentAdminModuleAccess(): void {
     global $pdo;
@@ -212,18 +195,6 @@ function enforceCurrentAdminModuleAccess(): void {
 
     $module = adminModuleForCurrentScript();
     if ($module === null) return;
-
-    $file = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
-    if ($file === 'approve_enrollment.php') {
-        requireAdminModule('enrollment', 'read');
-        if (!adminCanApproveEnrollment()) {
-            http_response_code(403);
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'errors' => ['Your account is not allowed to approve enrollment requests.']]);
-            exit();
-        }
-        return;
-    }
 
     $permission = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' ? 'write' : 'read';
     requireAdminModule($module, $permission);

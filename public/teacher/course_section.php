@@ -136,6 +136,8 @@ $avgEnrollment   = $totalCapacity > 0 ? round(($totalEnrolled / $totalCapacity) 
 
                 <h3 class="subject-name"><?= htmlspecialchars($subj['subject_name']) ?></h3>
 
+                <span class="class-code-badge"><?= htmlspecialchars($subj['class_code']) ?></span>
+
                 <p class="subject-schedule">
                     <i class="fas fa-clock"></i>
                     <?= htmlspecialchars($subj['schedule_days'] ?? 'TBA') ?>

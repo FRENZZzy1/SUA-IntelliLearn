@@ -48,6 +48,11 @@ if ($role === 'student') {
     $guardian_contact = trim($_POST['guardian_contact'] ?? '');
 
     $errors = [];
+    try {
+        $guardian_contact = validatePhilippineMobileNumber($guardian_contact);
+    } catch (InvalidArgumentException $e) {
+        $errors[] = $e->getMessage();
+    }
     if (empty($firstname)) $errors[] = "First name is required.";
     if (empty($lastname)) $errors[] = "Last name is required.";
     if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
@@ -154,6 +159,13 @@ if ($role === 'admin') {
 }
 if (!in_array($role, ['admin', 'teacher'])) $errors[] = "Invalid role selected.";
 if (!in_array($status, ['active', 'suspended'])) $errors[] = "Invalid status selected.";
+if ($contact !== '') {
+    try {
+        $contact = validatePhilippineMobileNumber($contact);
+    } catch (InvalidArgumentException $e) {
+        $errors[] = $e->getMessage();
+    }
+}
 if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_status, ['full-time', 'part-time'])) {
     $errors[] = "Invalid employment status selected.";
 }

@@ -17,7 +17,6 @@ $flash     = getFlashMessage();
 $defaults = [
     'school_name'             => 'St. Uriel Academy',
     'default_class_capacity'  => '50',
-    'auto_approve_enrollment' => '0',
     'enrollment_open'         => '1'
 
 ];
@@ -184,7 +183,7 @@ foreach ($schoolYears as $sy) {
                 <div class="settings-card">
                     <div class="settings-card-header">
                         <h2><i class="fas fa-clipboard-list"></i> Enrollment Rules</h2>
-                        <p>Defaults applied when creating classes and reviewing enrollment requests.</p>
+                        <p>Defaults applied when creating classes and letting students join with a class code.</p>
                     </div>
 
                     <form id="settingsForm">
@@ -202,19 +201,8 @@ foreach ($schoolYears as $sy) {
 
                         <div class="toggle-row">
                             <div class="toggle-row-text">
-                                <strong>Auto-approve enrollment requests</strong>
-                                <span>Skip manual admin review when the requested section has open seats.</span>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" name="auto_approve_enrollment" <?= $settings['auto_approve_enrollment'] === '1' ? 'checked' : '' ?>>
-                                <span class="switch-slider"></span>
-                            </label>
-                        </div>
-
-                        <div class="toggle-row">
-                            <div class="toggle-row-text">
                                 <strong>Enrollment open</strong>
-                                <span>Turn off to hide the "Enroll Student" action for the current term.</span>
+                                <span>Turn off to stop students from joining classes with a class code. Teachers approve or deny each request.</span>
                             </div>
                             <label class="switch">
                                 <input type="checkbox" name="enrollment_open" <?= $settings['enrollment_open'] === '1' ? 'checked' : '' ?>>
@@ -242,7 +230,6 @@ foreach ($schoolYears as $sy) {
                     <form id="generalForm">
                         <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
                         <input type="hidden" name="default_class_capacity" value="<?= clean($settings['default_class_capacity']) ?>">
-                        <input type="hidden" name="auto_approve_enrollment" value="<?= $settings['auto_approve_enrollment'] === '1' ? '1' : '0' ?>">
                         <input type="hidden" name="enrollment_open" value="<?= $settings['enrollment_open'] === '1' ? '1' : '0' ?>">
                         <div class="form-alert" id="generalFormError" hidden></div>
 

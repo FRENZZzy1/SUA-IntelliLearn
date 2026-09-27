@@ -13,11 +13,6 @@
         <div class="alp-row alp-head"><span>Module</span><span>Permission</span></div>
         <div id="alpModuleRows"></div>
       </div>
-      <label class="alp-special">
-        <input type="checkbox" id="alpApproveEnrollment">
-        <span><i class="fas fa-user-check"></i></span>
-        <div><strong>Approve Enrollment Requests</strong><small>Allow this account to approve pending student enrollment requests.</small></div>
-      </label>
     </div>
     <div class="alp-footer">
       <button type="button" class="alp-btn secondary" onclick="closeAccessPermissions()">Cancel</button>
@@ -39,7 +34,7 @@
 </style>
 <script>
 (function(){
-  const modules = [["dashboard","Dashboard","fa-th-large"],["users","User Management","fa-users"],["courses","Classes & Subjects","fa-book"],["enrollment","Enrollment","fa-user-plus"],["announcements","Announcements","fa-bullhorn"],["analytics","System Analytics","fa-chart-line"],["settings","Settings","fa-cog"]];
+  const modules = [["dashboard","Dashboard","fa-th-large"],["users","User Management","fa-users"],["courses","Classes & Subjects","fa-book"],["announcements","Announcements","fa-bullhorn"],["analytics","System Analytics","fa-chart-line"],["settings","Settings","fa-cog"]];
   let targetFormId = null;
   let pendingPermissions = {};
   let targetAccessLevel = 'limited';
@@ -55,8 +50,6 @@
         '<option value="read" '+(val==='read'?'selected':'')+'>Read</option>'+
         '<option value="write" '+(val==='write'?'selected':'')+'>Read &amp; Write</option></select></div>';
     }).join('');
-    document.getElementById('alpApproveEnrollment').checked=!!(pendingPermissions.enrollment&&pendingPermissions.enrollment.can_approve_enrollment);
-    document.getElementById('alpApproveEnrollment').disabled=targetAccessLevel==='read_only' || !['read','write'].includes(document.querySelector('[data-module="enrollment"]')?.value||'none');
   }
 
   window.openAccessPermissions=function(formId, level, json){
@@ -64,7 +57,7 @@
     try{ pendingPermissions=JSON.parse(json||'{}'); }catch(e){ pendingPermissions={}; }
     if(targetAccessLevel==='full'){
       pendingPermissions={};
-      modules.forEach(([key])=>pendingPermissions[key]={permission:'write',can_approve_enrollment:key==='enrollment'});
+      modules.forEach(([key])=>pendingPermissions[key]={permission:'write',can_approve_enrollment:false});
     }
     renderRows();
     document.getElementById('accessPermissionsOverlay').style.display='flex';
@@ -76,9 +69,6 @@
         if(s.value==='none') delete pendingPermissions[s.dataset.module];
         else pendingPermissions[s.dataset.module]={permission:targetAccessLevel==='read_only'?'read':s.value,can_approve_enrollment:false};
       });
-      const e=document.querySelector('#alpModuleRows select[data-module="enrollment"]');
-      pendingPermissions.enrollment=pendingPermissions.enrollment||{};
-      pendingPermissions.enrollment.can_approve_enrollment=document.getElementById('alpApproveEnrollment').checked && !!e && e.value!=='none' && targetAccessLevel!=='read_only';
       if(!Object.keys(pendingPermissions).length){ alert('Select at least one module.'); return; }
     }
     const form=document.getElementById(targetFormId);
@@ -91,7 +81,7 @@
     if(!form) return;
     const hidden=form.querySelector('[name="permissions_json"]');
     if(level==='full'){
-      const all={}; modules.forEach(([key])=>all[key]={permission:'write',can_approve_enrollment:key==='enrollment'});
+      const all={}; modules.forEach(([key])=>all[key]={permission:'write',can_approve_enrollment:false});
       hidden.value=JSON.stringify(all);
       return;
     }

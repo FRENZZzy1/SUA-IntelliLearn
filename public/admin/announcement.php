@@ -17,14 +17,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_action'])) {
     $title    = trim($_POST['title'] ?? '');
     $body     = trim($_POST['body'] ?? '');
     $audience = $_POST['audience'] ?? 'all';
-    $priority = $_POST['priority'] ?? 'normal';
     $isPinned = isset($_POST['is_pinned']) ? 1 : 0;
     $status   = ($_POST['form_action'] === 'publish') ? 'published' : 'draft';
 
     $allowedAudience = ['all', 'teachers', 'students'];
-    $allowedPriority = ['normal', 'important', 'urgent'];
     if (!in_array($audience, $allowedAudience, true)) $audience = 'all';
-    if (!in_array($priority, $allowedPriority, true)) $priority = 'normal';
+
+    // published_at marks when the announcement actually went live, so the
+    // list can be ordered by publish time rather than creation/edit time.
+    $publishedAt = ($status === 'published') ? date('Y-m-d H:i:s') : null;
 
     if ($title !== '' && $body !== '') {
         if ($announcementId > 0) {
@@ -35,37 +36,58 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['form_action'])) {
             $owner = $ownerCheck->fetchColumn();
 
             if ($owner !== false && (int) $owner === (int) $currentUserId) {
-                $stmt = $pdo->prepare(
-                    "UPDATE announcements
-                     SET title = :title, body = :body, audience = :audience,
-                         priority = :priority, status = :status, is_pinned = :is_pinned
-                     WHERE announcement_id = :id AND posted_by = :posted_by"
-                );
-                $stmt->execute([
-                    ':title'     => $title,
-                    ':body'      => $body,
-                    ':audience'  => $audience,
-                    ':priority'  => $priority,
-                    ':status'    => $status,
-                    ':is_pinned' => $isPinned,
-                    ':id'        => $announcementId,
-                    ':posted_by' => $currentUserId,
-                ]);
+                if ($status === 'published') {
+                    // Publishing (whether for the first time or re-publishing an
+                    // edit) bumps published_at so it sorts as the latest.
+                    $stmt = $pdo->prepare(
+                        "UPDATE announcements
+                         SET title = :title, body = :body, audience = :audience,
+                             status = :status, is_pinned = :is_pinned, published_at = :published_at
+                         WHERE announcement_id = :id AND posted_by = :posted_by"
+                    );
+                    $stmt->execute([
+                        ':title'        => $title,
+                        ':body'         => $body,
+                        ':audience'     => $audience,
+                        ':status'       => $status,
+                        ':is_pinned'    => $isPinned,
+                        ':published_at' => $publishedAt,
+                        ':id'           => $announcementId,
+                        ':posted_by'    => $currentUserId,
+                    ]);
+                } else {
+                    // Saving as a draft: leave any existing published_at untouched.
+                    $stmt = $pdo->prepare(
+                        "UPDATE announcements
+                         SET title = :title, body = :body, audience = :audience,
+                             status = :status, is_pinned = :is_pinned
+                         WHERE announcement_id = :id AND posted_by = :posted_by"
+                    );
+                    $stmt->execute([
+                        ':title'     => $title,
+                        ':body'      => $body,
+                        ':audience'  => $audience,
+                        ':status'    => $status,
+                        ':is_pinned' => $isPinned,
+                        ':id'        => $announcementId,
+                        ':posted_by' => $currentUserId,
+                    ]);
+                }
             }
             // If $owner didn't match the current user, silently ignore the edit attempt.
         } else {
             $stmt = $pdo->prepare(
-                "INSERT INTO announcements (posted_by, title, body, audience, priority, status, is_pinned)
-                 VALUES (:posted_by, :title, :body, :audience, :priority, :status, :is_pinned)"
+                "INSERT INTO announcements (posted_by, title, body, audience, status, is_pinned, published_at)
+                 VALUES (:posted_by, :title, :body, :audience, :status, :is_pinned, :published_at)"
             );
             $stmt->execute([
-                ':posted_by' => $currentUserId,
-                ':title'     => $title,
-                ':body'      => $body,
-                ':audience'  => $audience,
-                ':priority'  => $priority,
-                ':status'    => $status,
-                ':is_pinned' => $isPinned,
+                ':posted_by'    => $currentUserId,
+                ':title'        => $title,
+                ':body'         => $body,
+                ':audience'     => $audience,
+                ':status'       => $status,
+                ':is_pinned'    => $isPinned,
+                ':published_at' => $publishedAt,
             ]);
         }
     }
@@ -91,8 +113,8 @@ if (isset($_GET['action'], $_GET['id'])) {
         $stmt->execute([':id' => $id, ':posted_by' => $currentUserId]);
     } elseif ($_GET['action'] === 'publish') {
         // Only the original poster may publish their own draft.
-        $stmt = $pdo->prepare("UPDATE announcements SET status = 'published' WHERE announcement_id = :id AND posted_by = :posted_by");
-        $stmt->execute([':id' => $id, ':posted_by' => $currentUserId]);
+        $stmt = $pdo->prepare("UPDATE announcements SET status = 'published', published_at = :published_at WHERE announcement_id = :id AND posted_by = :posted_by");
+        $stmt->execute([':published_at' => date('Y-m-d H:i:s'), ':id' => $id, ':posted_by' => $currentUserId]);
     }
 
     header("Location: announcement.php");
@@ -105,7 +127,7 @@ if (isset($_GET['action'], $_GET['id'])) {
 $total     = (int) $pdo->query("SELECT COUNT(*) FROM announcements")->fetchColumn();
 $published = (int) $pdo->query("SELECT COUNT(*) FROM announcements WHERE status = 'published'")->fetchColumn();
 $drafts    = (int) $pdo->query("SELECT COUNT(*) FROM announcements WHERE status = 'draft'")->fetchColumn();
-$urgent    = (int) $pdo->query("SELECT COUNT(*) FROM announcements WHERE status = 'published' AND priority = 'urgent'")->fetchColumn();
+$pinned    = (int) $pdo->query("SELECT COUNT(*) FROM announcements WHERE status = 'published' AND is_pinned = 1")->fetchColumn();
 
 /* ---------------------------------------------------------
    List announcements (poster name: teacher name if available,
@@ -117,7 +139,7 @@ $sql = "
     FROM announcements a
     JOIN users u ON u.id = a.posted_by
     LEFT JOIN teachers t ON t.user_id = u.id
-    ORDER BY a.is_pinned DESC, a.created_at DESC
+    ORDER BY a.is_pinned DESC, COALESCE(a.published_at, a.created_at) DESC
 ";
 $announcements = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
 
@@ -194,10 +216,10 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon red"><i class="fas fa-exclamation-circle"></i></div>
+            <div class="stat-icon red"><i class="fas fa-thumbtack"></i></div>
             <div>
-                <div class="stat-value"><?= $urgent ?></div>
-                <div class="stat-label">Urgent Active</div>
+                <div class="stat-value"><?= $pinned ?></div>
+                <div class="stat-label">Pinned</div>
             </div>
         </div>
     </div>
@@ -231,16 +253,6 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                     </label>
                 </div>
             </div>
-
-            <div class="form-group">
-                <label>Priority</label>
-                <input type="hidden" name="priority" id="priorityInput" value="normal">
-                <div class="priority-options">
-                    <div class="priority-pill active" data-level="normal" onclick="setPriority(this)">Normal</div>
-                    <div class="priority-pill" data-level="important" onclick="setPriority(this)">Important</div>
-                    <div class="priority-pill" data-level="urgent" onclick="setPriority(this)">Urgent</div>
-                </div>
-            </div>
         </div>
 
         <div class="form-group">
@@ -271,15 +283,14 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
 
         <?php foreach ($announcements as $a): ?>
             <div class="announcement-card <?= $a['is_pinned'] ? 'pinned' : '' ?>">
-                <div class="priority-strip <?= htmlspecialchars($a['priority']) ?>"></div>
                 <div class="announcement-body">
                     <div class="announcement-top-row">
                         <div class="announcement-title-line">
                             <?php if ($a['is_pinned']): ?><i class="fas fa-thumbtack pin-icon"></i><?php endif; ?>
                             <h3><?= htmlspecialchars($a['title']) ?></h3>
-                            <span class="badge <?= $a['status'] === 'draft' ? 'draft' : htmlspecialchars($a['priority']) ?>">
-                                <?= $a['status'] === 'draft' ? 'Draft' : ucfirst($a['priority']) ?>
-                            </span>
+                            <?php if ($a['status'] === 'draft'): ?>
+                            <span class="badge draft">Draft</span>
+                            <?php endif; ?>
                         </div>
                     </div>
                     <p class="announcement-excerpt"><?= nl2br(htmlspecialchars($a['body'])) ?></p>
@@ -300,7 +311,6 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                             'title'    => $a['title'],
                             'body'     => $a['body'],
                             'audience' => $a['audience'],
-                            'priority' => $a['priority'],
                             'pinned'   => (bool) $a['is_pinned'],
                        ]), ENT_QUOTES, 'UTF-8') ?>); return false;">
                         <i class="fas fa-pen"></i>
@@ -338,7 +348,6 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                 'title'    => $a['title'],
                 'body'     => $a['body'],
                 'audience' => $a['audience'],
-                'priority' => $a['priority'],
                 'pinned'   => (bool) $a['is_pinned'],
             ];
         }
@@ -377,21 +386,12 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
         });
     }
 
-    function setPriority(elOrValue) {
-        const value = (typeof elOrValue === 'string') ? elOrValue : elOrValue.dataset.level;
-        document.querySelectorAll('.priority-pill').forEach(p => {
-            p.classList.toggle('active', p.dataset.level === value);
-        });
-        document.getElementById('priorityInput').value = value;
-    }
-
     function resetComposeForm() {
         document.getElementById('announcementIdInput').value = '';
         document.getElementById('titleInput').value = '';
         document.getElementById('bodyInput').value = '';
         document.getElementById('pinInput').checked = false;
         setAudience('all');
-        setPriority('normal');
         document.getElementById('composeTitle').innerHTML = '<i class="fas fa-pen-to-square"></i>&nbsp; Create Announcement';
         document.getElementById('publishBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Publish';
     }
@@ -407,7 +407,6 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
         document.getElementById('bodyInput').value = data.body;
         document.getElementById('pinInput').checked = !!data.pinned;
         setAudience(data.audience);
-        setPriority(data.priority);
         document.getElementById('composeTitle').innerHTML = '<i class="fas fa-pen-to-square"></i>&nbsp; Edit Announcement';
         document.getElementById('publishBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Publish Update';
         showPanel();

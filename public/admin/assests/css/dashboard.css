@@ -83,6 +83,10 @@ body {
     margin-bottom: 24px;
 }
 
+.stats-grid--three {
+    grid-template-columns: repeat(3, 1fr);
+}
+
 .stats-grid .stat-card {
     background: var(--bg-card);
     border-radius: var(--radius);
@@ -152,6 +156,10 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 20px;
+}
+
+.dashboard-grid-2--single {
+    grid-template-columns: 1fr;
 }
 
 /* ================= CARD MODULE ================= */

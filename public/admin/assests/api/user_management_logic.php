@@ -39,6 +39,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $guardian_contact = trim($_POST['guardian_contact'] ?? '');
 
             $errors = [];
+            try {
+                $guardian_contact = validatePhilippineMobileNumber($guardian_contact);
+            } catch (InvalidArgumentException $e) {
+                $errors[] = $e->getMessage();
+            }
             if (empty($firstname)) $errors[] = "First name is required.";
             if (empty($lastname)) $errors[] = "Last name is required.";
             if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
@@ -117,6 +122,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email = trim($_POST['email'] ?? '');
         $department = trim($_POST['department'] ?? '');
         $contact = trim($_POST['contact'] ?? '');
+        if ($contact !== '') {
+            try {
+                $contact = validatePhilippineMobileNumber($contact);
+            } catch (InvalidArgumentException $e) {
+                setFlashMessage('error', $e->getMessage());
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            }
+        }
         $specialization = trim($_POST['specialization'] ?? '');
         $employment_status = trim($_POST['employment_status'] ?? '');
         $position = trim($_POST['position'] ?? '');
@@ -260,6 +274,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setFlashMessage('error', "Invalid user ID.");
             header("Location: " . $_SERVER['PHP_SELF']);
             exit();
+        }
+
+        if ($guardian_contact !== '') {
+            try {
+                $guardian_contact = validatePhilippineMobileNumber($guardian_contact);
+            } catch (InvalidArgumentException $e) {
+                setFlashMessage('error', $e->getMessage());
+                header("Location: " . $_SERVER['PHP_SELF']);
+                exit();
+            }
         }
 
         // Validate student-specific fields before touching the database

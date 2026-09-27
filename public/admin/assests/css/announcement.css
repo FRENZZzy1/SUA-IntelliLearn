@@ -307,42 +307,6 @@ textarea.form-control {
     color: #fff;
 }
 
-.priority-options {
-    display: flex;
-    gap: 10px;
-}
-
-.priority-pill {
-    flex: 1;
-    text-align: center;
-    padding: 10px;
-    border: 2px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    color: var(--text-muted);
-    transition: all 0.15s;
-}
-
-.priority-pill[data-level="normal"].active {
-    background: rgba(42, 74, 140, 0.1);
-    border-color: var(--primary-light);
-    color: var(--primary);
-}
-
-.priority-pill[data-level="important"].active {
-    background: rgba(217, 140, 31, 0.12);
-    border-color: var(--warning);
-    color: var(--warning);
-}
-
-.priority-pill[data-level="urgent"].active {
-    background: rgba(224, 72, 62, 0.1);
-    border-color: var(--danger);
-    color: var(--danger);
-}
-
 .editor-toolbar {
     display: flex;
     align-items: center;
@@ -492,24 +456,6 @@ textarea.form-control {
 
 .announcement-card.pinned {
     border-left: 4px solid var(--accent);
-}
-
-.priority-strip {
-    width: 4px;
-    border-radius: 4px;
-    flex-shrink: 0;
-}
-
-.priority-strip.normal {
-    background: var(--primary-light);
-}
-
-.priority-strip.important {
-    background: var(--warning);
-}
-
-.priority-strip.urgent {
-    background: var(--danger);
 }
 
 .announcement-body {

@@ -78,11 +78,14 @@ if (!empty($errors)) {
 }
 
 try {
+    $classCode = generateClassCode($pdo);
+
     $stmt = $pdo->prepare("
-        INSERT INTO classofferings (subject_id, teacher_id, section_id, quarter, school_year_id, schedule_days, start_time, end_time, capacity, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO classofferings (class_code, subject_id, teacher_id, section_id, quarter, school_year_id, schedule_days, start_time, end_time, capacity, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ");
     $stmt->execute([
+        $classCode,
         (int) $subject_id,
         (int) $teacher_id,
         (int) $section_id,

@@ -417,8 +417,8 @@ function loadAnnouncements() {
             }
 
             list.innerHTML = data.announcements.map(a => {
-                const tagClass = a.priority === 'important' ? 'tag-urgent' : 'tag-academic';
-                const dateStr = new Date(a.created_at.replace(' ', 'T'))
+                const sortSource = a.published_at || a.created_at;
+                const dateStr = new Date(sortSource.replace(' ', 'T'))
                     .toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
                 const isOwner = typeof CURRENT_USER_ID !== 'undefined' && Number(a.posted_by) === Number(CURRENT_USER_ID);
                 const actionsHtml = isOwner
@@ -429,7 +429,6 @@ function loadAnnouncements() {
                 return `
                 <div class="announcement-item">
                     <div class="announcement-meta">
-                        <span class="announcement-tag ${tagClass}">${escapeHtml(a.priority)}</span>
                         <span class="announcement-date">${dateStr}</span>
                     </div>
                     <div class="announcement-title">${escapeHtml(a.title)}</div>

@@ -74,10 +74,6 @@ if (function_exists('get_initials')) {
 
         <div class="nav-section">
             <div class="nav-section-title">Management</div>
-            <?php if (adminCanRead('enrollment')): ?><a href="../../public/admin/enrollment.php" class="nav-item <?= $current === 'enrollment.php' ? 'active' : '' ?>">
-                <div class="nav-icon-wrap"><i class="fas fa-user-plus"></i></div>
-                <span class="nav-label">Enrollment</span>
-            </a><?php endif; ?>
             <?php if (adminCanRead('announcements')): ?><a href="../../public/admin/announcement.php"
                 class="nav-item <?= $current === 'announcement.php' ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-bullhorn"></i></div>

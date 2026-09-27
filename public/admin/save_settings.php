@@ -31,7 +31,6 @@ $errors = [];
 
 $schoolName        = trim($_POST['school_name'] ?? '');
 $defaultCapacity   = $_POST['default_class_capacity'] ?? '';
-$autoApprove       = isset($_POST['auto_approve_enrollment']) ? '1' : '0';
 $enrollmentOpen    = isset($_POST['enrollment_open']) ? '1' : '0';
 
 if ($schoolName === '' || mb_strlen($schoolName) > 150) {
@@ -51,7 +50,7 @@ if (!empty($errors)) {
 $values = [
     'school_name'             => $schoolName,
     'default_class_capacity'  => (string) (int) $defaultCapacity,
-    'auto_approve_enrollment' => $autoApprove,
+    'auto_approve_enrollment' => '0', // retired: teachers decide every enrollment request
     'enrollment_open'         => $enrollmentOpen,
 ];
 
