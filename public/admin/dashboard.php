@@ -47,7 +47,7 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
     <!-- Shared module styles (modal / button classes) -->
     <link rel="stylesheet" href="assests/css/courses.css">
     <link rel="stylesheet" href="assests/css/add_course.css">
-    <link rel="stylesheet" href="assests/css/enrollment.css">
+
     <!-- Header Module Styles (paired with includes/admin_header.php) -->
     
 </head>
