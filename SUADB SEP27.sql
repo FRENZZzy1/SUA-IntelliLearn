@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Sep 24, 2026 at 03:01 PM
+-- Generation Time: Sep 27, 2026 at 07:56 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -13,7 +13,8 @@ SET time_zone = "+00:00";
 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULgit status
+TS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
 
@@ -32,16 +33,9 @@ CREATE TABLE `admin` (
   `user_id` int(11) NOT NULL,
   `email` varchar(255) NOT NULL,
   `access_level` enum('full','limited','read_only') NOT NULL DEFAULT 'limited',
-  `position` enum('principal','registrar','staff') NOT NULL,
+  `position` enum('principal','registrar','it_administrator') NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `admin`
---
-
-INSERT INTO `admin` (`admin_id`, `user_id`, `email`, `access_level`, `position`, `created_at`) VALUES
-(1, 1, 'palspals@example.com', 'full', 'principal', '2026-09-21 15:13:02');
 
 -- --------------------------------------------------------
 
@@ -54,7 +48,6 @@ CREATE TABLE `admin_permissions` (
   `user_id` int(11) NOT NULL,
   `module_key` varchar(50) NOT NULL,
   `permission` enum('read','write') NOT NULL DEFAULT 'read',
-  `can_approve_enrollment` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -74,6 +67,7 @@ CREATE TABLE `announcements` (
   `priority` enum('normal','important','urgent') NOT NULL DEFAULT 'normal',
   `offering_id` int(11) DEFAULT NULL,
   `status` enum('draft','published') NOT NULL DEFAULT 'draft',
+  `published_at` timestamp NULL DEFAULT NULL,
   `is_pinned` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -160,13 +154,6 @@ CREATE TABLE `classofferings` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `classofferings`
---
-
-INSERT INTO `classofferings` (`offering_id`, `class_code`, `subject_id`, `teacher_id`, `section_id`, `quarter`, `school_year_id`, `schedule_days`, `start_time`, `end_time`, `capacity`, `status`, `created_at`) VALUES
-(16, 'CLS-92C0FF', 4, 1, 4, 'TRM 1', 1, NULL, NULL, NULL, 50, 'active', '2026-09-21 16:21:49');
-
 -- --------------------------------------------------------
 
 --
@@ -180,14 +167,6 @@ CREATE TABLE `enrollments` (
   `status` enum('active','dropped','completed') NOT NULL DEFAULT 'active',
   `enrolled_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `enrollments`
---
-
-INSERT INTO `enrollments` (`enrollment_id`, `student_id`, `offering_id`, `status`, `enrolled_at`) VALUES
-(21, 2, 16, 'active', '2026-09-24 07:40:31'),
-(22, 3, 16, 'active', '2026-09-24 08:15:49');
 
 -- --------------------------------------------------------
 
@@ -208,14 +187,6 @@ CREATE TABLE `enrollment_requests` (
   `decided_at` timestamp NULL DEFAULT NULL,
   `decided_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `enrollment_requests`
---
-
-INSERT INTO `enrollment_requests` (`request_id`, `student_id`, `grade_level`, `subject_id`, `strand`, `offering_id`, `status`, `notes`, `submitted_at`, `decided_at`, `decided_by`) VALUES
-(15, 2, 7, 4, NULL, 16, 'approved', NULL, '2026-09-24 07:39:18', '2026-09-24 07:40:31', 5),
-(16, 3, 7, 4, NULL, 16, 'approved', NULL, '2026-09-24 08:15:07', '2026-09-24 08:15:49', 5);
 
 -- --------------------------------------------------------
 
@@ -344,18 +315,6 @@ CREATE TABLE `quiz_generation_jobs` (
   `completed_at` timestamp NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `quiz_generation_jobs`
---
-
-INSERT INTO `quiz_generation_jobs` (`job_id`, `quiz_id`, `offering_id`, `requested_by`, `source_type`, `source_material_id`, `topic_prompt`, `status`, `error_message`, `created_at`, `completed_at`) VALUES
-(1, NULL, 13, 5, 'topic', NULL, 'Simple math 1 + 1 something like that', 'failed', 'gemini-3.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-3.1-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash: GEMINI_API_KEY is not configured in config.php.', '2026-09-17 11:04:39', '2026-09-17 11:04:39'),
-(2, NULL, 13, 5, 'topic', NULL, 'Simple math 1 + 1 something like that', 'failed', 'gemini-3.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-3.1-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash: GEMINI_API_KEY is not configured in config.php.', '2026-09-17 11:04:39', '2026-09-17 11:04:39'),
-(3, NULL, 13, 5, 'topic', NULL, 'Simple math 1 + 1 something like that', 'failed', 'gemini-3.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-3.1-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash: GEMINI_API_KEY is not configured in config.php.', '2026-09-17 11:04:39', '2026-09-17 11:04:39'),
-(4, NULL, 13, 5, 'topic', NULL, 'Simple math 1 + 1 something like that', 'failed', 'gemini-3.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-3.1-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash: GEMINI_API_KEY is not configured in config.php.', '2026-09-17 11:04:58', '2026-09-17 11:04:58'),
-(5, NULL, 13, 5, 'topic', NULL, 'Simple math 1 + 1 something like that', 'failed', 'gemini-3.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-3.1-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash: GEMINI_API_KEY is not configured in config.php.', '2026-09-17 11:04:58', '2026-09-17 11:04:58'),
-(6, NULL, 13, 5, 'topic', NULL, 'Simple math 1 + 1 something like that', 'failed', 'gemini-3.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-3.1-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash-lite: GEMINI_API_KEY is not configured in config.php. | gemini-2.5-flash: GEMINI_API_KEY is not configured in config.php.', '2026-09-17 11:04:58', '2026-09-17 11:04:58');
-
 -- --------------------------------------------------------
 
 --
@@ -389,13 +348,6 @@ CREATE TABLE `schoolyears` (
   `is_current` tinyint(1) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `schoolyears`
---
-
-INSERT INTO `schoolyears` (`school_year_id`, `label`, `start_date`, `end_date`, `is_current`) VALUES
-(1, 'SY 2026 -', '2026-01-01', '2027-01-01', 1);
-
 -- --------------------------------------------------------
 
 --
@@ -411,13 +363,6 @@ CREATE TABLE `sections` (
   `school_year_id` int(11) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `sections`
---
-
-INSERT INTO `sections` (`section_id`, `section_name`, `grade_level`, `strand`, `adviser_id`, `school_year_id`, `created_at`) VALUES
-(4, 'A110', 7, NULL, 1, 1, '2026-09-21 16:13:47');
 
 -- --------------------------------------------------------
 
@@ -442,14 +387,6 @@ CREATE TABLE `students` (
   `Gender` enum('Male','Female') DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `students`
---
-
-INSERT INTO `students` (`student_id`, `user_id`, `student_lrn`, `firstname`, `lastname`, `middlename`, `email`, `birthdate`, `address`, `guardian_name`, `guardian_contact`, `created_at`, `updated_at`, `Gender`) VALUES
-(2, 4, 20003644121, 'Daniel', 'Aniasco', 'Talidong', 'dan@gmail.com', '2003-10-02', 'Lupang Arenda, Block 24, Mahinahon Street, Taytay, Rizal', 'Ma. Cecilia T. Aniasco', '09666837362', '2026-09-04 06:37:26', '2026-09-04 06:37:26', 'Male'),
-(3, 6, 20003644122, 'Rose Fortune', 'Alayan', 'Alcantara', 'r@gmail.com', '2026-09-24', 'Lupang Arenda, Block 24, Mahinahon Street, Taytay, Rizal', 'dasda', '09774193806', '2026-09-24 08:12:57', '2026-09-24 08:12:57', 'Female');
-
 -- --------------------------------------------------------
 
 --
@@ -462,13 +399,6 @@ CREATE TABLE `subjects` (
   `description` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `subjects`
---
-
-INSERT INTO `subjects` (`subject_id`, `subject_name`, `description`, `created_at`) VALUES
-(4, 'English', NULL, '2026-09-21 16:13:36');
 
 -- --------------------------------------------------------
 
@@ -522,17 +452,6 @@ CREATE TABLE `system_settings` (
   `updated_by` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `system_settings`
---
-
-INSERT INTO `system_settings` (`setting_key`, `setting_value`, `updated_at`, `updated_by`) VALUES
-('auto_approve_enrollment', '0', '2026-09-17 10:51:06', NULL),
-('default_class_capacity', '50', '2026-09-17 10:51:06', NULL),
-('enrollment_open', '1', '2026-09-17 10:51:06', NULL),
-('school_name', 'St. Uriel Academy', '2026-09-17 10:51:06', NULL),
-('term_intervals', '{\"TRM 1\":{\"mode\":\"date\",\"start_month\":null,\"end_month\":null,\"start_date\":\"2026-09-22\",\"end_date\":\"2026-09-24\"},\"TRM 2\":{\"mode\":\"date\",\"start_month\":null,\"end_month\":null,\"start_date\":\"2026-09-25\",\"end_date\":\"2026-09-26\"},\"TRM 3\":{\"mode\":\"date\",\"start_month\":null,\"end_month\":null,\"start_date\":\"2026-09-27\",\"end_date\":\"2026-09-28\"}}', '2026-09-21 16:18:36', 1);
-
 -- --------------------------------------------------------
 
 --
@@ -553,12 +472,65 @@ CREATE TABLE `teachers` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `teachers`
+-- Table structure for table `teacher_evaluation_answers`
 --
 
-INSERT INTO `teachers` (`teacher_id`, `user_id`, `firstname`, `lastname`, `middlename`, `email`, `employment_status`, `department`, `specialization`, `created_at`, `updated_at`) VALUES
-(1, 5, 'Frenz', 'Paller', 'Empimo', 'frenzypaller@gmail.com', 'full-time', 'Highschool/Senior High', 'Algebra', '2026-09-04 06:38:07', '2026-09-04 06:38:07');
+CREATE TABLE `teacher_evaluation_answers` (
+  `answer_id` int(11) NOT NULL,
+  `response_id` int(11) NOT NULL,
+  `question_key` varchar(40) NOT NULL,
+  `rating` tinyint(3) UNSIGNED NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `teacher_evaluation_responses`
+--
+
+CREATE TABLE `teacher_evaluation_responses` (
+  `response_id` int(11) NOT NULL,
+  `round_id` int(11) NOT NULL,
+  `offering_id` int(11) NOT NULL,
+  `teacher_id` int(11) NOT NULL,
+  `strengths` text DEFAULT NULL,
+  `improvements` text DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `teacher_evaluation_rounds`
+--
+
+CREATE TABLE `teacher_evaluation_rounds` (
+  `round_id` int(11) NOT NULL,
+  `school_year_id` int(11) NOT NULL,
+  `term` enum('TRM 1','TRM 2','TRM 3') NOT NULL,
+  `title` varchar(150) NOT NULL,
+  `status` enum('open','closed') NOT NULL DEFAULT 'open',
+  `closes_on` date DEFAULT NULL,
+  `opened_by` int(11) DEFAULT NULL,
+  `opened_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `closed_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `teacher_evaluation_submissions`
+--
+
+CREATE TABLE `teacher_evaluation_submissions` (
+  `submission_id` int(11) NOT NULL,
+  `round_id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL,
+  `offering_id` int(11) NOT NULL,
+  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -576,16 +548,6 @@ CREATE TABLE `users` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `current_session_token` varchar(64) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `users`
---
-
-INSERT INTO `users` (`id`, `username`, `password`, `role`, `status`, `created_at`, `updated_at`, `current_session_token`) VALUES
-(1, 'palspals', '$2y$10$tsRUZWkHnu41kJluGp5SB.L96Kpy6npl2RloZe1e4OX3MS8fBQ126', 'admin', 'active', '2026-09-04 06:29:48', '2026-09-24 08:18:52', NULL),
-(4, 'STU-4121-100203', '$2y$10$r5lum9MX1WDvqW9mNcfHxeYhoTXBhM5yoh02mLLPeyJdkCGXa6gOW', 'student', 'active', '2026-09-04 06:37:26', '2026-09-24 08:10:48', NULL),
-(5, 'frenzypaller@gmail.com', '$2y$10$tX45F02ldh3vb0xRScQKo.9buMeADkInJPVluH2td4t2LndSOR796', 'teacher', 'active', '2026-09-04 06:38:07', '2026-09-24 08:19:16', '7fb0fc0f264806657c6d0d0ed87ab07d8d219a1040c15dda2c66049265855251'),
-(6, 'STU-2705368', '$2y$10$Y/MguFXHC5o23SFLhj8CZ.n9/KQO4T8CTQGsABp7..zrjI6COe4ki', 'student', 'active', '2026-09-24 08:12:57', '2026-09-24 08:19:12', NULL);
 
 --
 -- Indexes for dumped tables
@@ -807,7 +769,7 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `admin`
 --
 ALTER TABLE `admin`
-  MODIFY `admin_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `admin_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `admin_permissions`
@@ -825,13 +787,13 @@ ALTER TABLE `announcements`
 -- AUTO_INCREMENT for table `assignments`
 --
 ALTER TABLE `assignments`
-  MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `assignment_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `attendance`
 --
 ALTER TABLE `attendance`
-  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `attendance_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `at_risk_insights`
@@ -843,31 +805,31 @@ ALTER TABLE `at_risk_insights`
 -- AUTO_INCREMENT for table `classofferings`
 --
 ALTER TABLE `classofferings`
-  MODIFY `offering_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `offering_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `enrollments`
 --
 ALTER TABLE `enrollments`
-  MODIFY `enrollment_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `enrollment_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `enrollment_requests`
 --
 ALTER TABLE `enrollment_requests`
-  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `request_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `grades`
 --
 ALTER TABLE `grades`
-  MODIFY `grade_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `grade_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `learning_materials`
 --
 ALTER TABLE `learning_materials`
-  MODIFY `material_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
+  MODIFY `material_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `quizzes`
@@ -897,7 +859,7 @@ ALTER TABLE `quiz_choices`
 -- AUTO_INCREMENT for table `quiz_generation_jobs`
 --
 ALTER TABLE `quiz_generation_jobs`
-  MODIFY `job_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `job_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `quiz_questions`
@@ -909,31 +871,31 @@ ALTER TABLE `quiz_questions`
 -- AUTO_INCREMENT for table `schoolyears`
 --
 ALTER TABLE `schoolyears`
-  MODIFY `school_year_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `school_year_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `sections`
 --
 ALTER TABLE `sections`
-  MODIFY `section_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `section_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `student_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `subjects`
 --
 ALTER TABLE `subjects`
-  MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `subject_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `submissions`
 --
 ALTER TABLE `submissions`
-  MODIFY `submission_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `submission_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `submission_files`
@@ -945,13 +907,13 @@ ALTER TABLE `submission_files`
 -- AUTO_INCREMENT for table `teachers`
 --
 ALTER TABLE `teachers`
-  MODIFY `teacher_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `teacher_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- Constraints for dumped tables
