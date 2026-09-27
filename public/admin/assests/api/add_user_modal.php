@@ -196,10 +196,11 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                             <div class="aum-input-wrap"><i class="fas fa-lock aum-input-icon"></i><select name="access_level" class="aum-control" data-admin-required><option value="full">Full</option><option value="limited" selected>Limited</option><option value="read_only">Read Only</option></select></div>
                         </div>
                     </div>
-                    <div class="aum-row">
+                    <div class="aum-row" id="aumPasswordRow">
                         <div class="aum-group">
-                            <label>Password <span class="aum-req">*</span> <small>(min 8 characters, 1 uppercase, 1 special character)</small></label>
-                            <div class="aum-input-wrap"><i class="fas fa-key aum-input-icon"></i><input type="password" name="password" class="aum-control" placeholder="Enter secure password" minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" data-staff-required></div>
+                            <label id="aumPasswordLabel">Password <span class="aum-req">*</span> <small>(min 8 characters, 1 uppercase, 1 special character)</small></label>
+                            <div class="aum-input-wrap"><i class="fas fa-key aum-input-icon"></i><input type="password" name="password" id="aumStaffPassword" class="aum-control" placeholder="Enter secure password" minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" data-staff-required></div>
+                            <small id="aumTeacherPasswordHint" style="display:none;" class="aum-help-text"><i class="fas fa-envelope"></i> Teachers set their password through a secure link sent to their email.</small>
                         </div>
                     </div>
                 </div>
@@ -513,6 +514,18 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
     document.getElementById('aumTeacherOnlyFields').style.display = isTeacher ? '' : 'none';
     document.getElementById('aumAdminOnlyFields').style.display = isAdmin ? '' : 'none';
     document.getElementById('aumTeacherEmailHint').style.display = isTeacher ? '' : 'none';
+
+    var passwordRow = document.getElementById('aumPasswordRow');
+    var passwordInput = document.getElementById('aumStaffPassword');
+    var passwordLabel = document.getElementById('aumPasswordLabel');
+    var passwordHint = document.getElementById('aumTeacherPasswordHint');
+    if (passwordRow && passwordInput) {
+        passwordRow.style.display = isTeacher ? 'none' : '';
+        passwordInput.required = isAdmin;
+        passwordInput.disabled = isTeacher;
+        if (passwordLabel) passwordLabel.style.display = isTeacher ? 'none' : '';
+        if (passwordHint) passwordHint.style.display = isTeacher ? '' : 'none';
+    }
 
     document.querySelectorAll('#aumOverlay [data-teacher-required]').forEach(function (i) {
         i.required = isTeacher;

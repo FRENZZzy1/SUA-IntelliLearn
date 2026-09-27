@@ -1,0 +1,4 @@
+setup download composer phpmailer
+go to apache and put down:
+SetEnv SUA_SMTP_USERNAME "pallerxdfrenz@gmail.com"
+SetEnv SUA_SMTP_PASSWORD "wlwu tkvh cjso tjxg"
