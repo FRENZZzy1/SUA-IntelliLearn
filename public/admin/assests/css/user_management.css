@@ -1232,3 +1232,16 @@ textarea.form-control {
         justify-content: flex-end;
     }
 }
+
+/* Batch student import */
+.batch-import-modal { max-width: 680px; }
+.batch-help { color: var(--text-muted); line-height: 1.6; }
+.batch-actions { display:flex; gap:10px; margin:18px 0; }
+.batch-drop { border:2px dashed var(--border); border-radius:12px; padding:28px; text-align:center; background:var(--bg-page); }
+.batch-drop > i { font-size:2rem; color:var(--primary); display:block; margin-bottom:12px; }
+.batch-drop input[type=file] { display:block; margin:0 auto 10px; max-width:100%; }
+.batch-drop small { color:var(--text-muted); }
+.batch-result { margin-top:14px; padding:12px; border-radius:8px; display:none; line-height:1.5; }
+.batch-result.success,.batch-result.error { display:block; }
+.batch-result.success { background:#ecfdf5; color:#065f46; }
+.batch-result.error { background:#fef2f2; color:#991b1b; }
