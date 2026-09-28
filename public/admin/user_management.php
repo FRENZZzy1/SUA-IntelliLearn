@@ -47,9 +47,17 @@ include 'assests/api/access_permissions_modal.php';
             <p>Manage teacher and student accounts across St. Uriel Academy.</p>
         </div>
         <?php $canManageUsers = adminCanWrite('users'); ?>
-        <?php if ($canManageUsers): ?><button class="btn-primary" id="newUserBtn" onclick="openAddUserModal()">
-            <i class="fas fa-user-plus"></i> Add User
-        </button><?php endif; ?>
+        <?php if ($canManageUsers): ?><div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+            <button class="btn-secondary" type="button" onclick="openBatchStudentImportModal()">
+                <i class="fas fa-file-excel"></i> Batch Add via Excel
+            </button>
+            <button class="btn-secondary" type="button" onclick="exportStudentAccounts()">
+                <i class="fas fa-file-export"></i> Export Student Accounts
+            </button>
+            <button class="btn-primary" id="newUserBtn" onclick="openAddUserModal()">
+                <i class="fas fa-user-plus"></i> Add User
+            </button>
+        </div><?php endif; ?>
     </div>
 
     <!-- Quick Stats -->
@@ -400,7 +408,7 @@ include 'assests/api/access_permissions_modal.php';
                     data-lrn="<?= clean($user['student_lrn'] ?? '') ?>" data-middlename="<?= clean($user['middlename'] ?? '') ?>"
                     data-gender="<?= clean($user['gender'] ?? '') ?>"
                     data-birthdate="<?= clean($user['birthdate'] ?? '') ?>" data-address="<?= clean($user['address'] ?? '') ?>"
-                    data-guardian="<?= clean($user['guardian_name'] ?? '') ?>" data-guardian-contact="<?= clean($user['guardian_contact'] ?? '') ?>">
+                    data-guardian="<?= clean($user['guardian_name'] ?? '') ?>" data-guardian-contact="<?= clean($user['guardian_contact'] ?? '') ?>" data-year-level="<?= clean($user['year_level'] ?? '') ?>">
                     <td data-label="User">
                         <div class="t-name-cell">
                             <div class="user-avatar-sm" style="background: <?= $role_color ?>;"><?= um_initials($display_name) ?></div>
@@ -468,6 +476,7 @@ include 'assests/api/access_permissions_modal.php';
 </div>
 
 <script src="assests/js/user_management.js"></script>
+<script src="assests/js/student_user_tools.js"></script>
    
 </body>
 </html>`
