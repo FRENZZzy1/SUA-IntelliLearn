@@ -564,3 +564,6 @@ if (function_exists('get_initials')) {
     }
 })();
 </script>
+
+<!-- Floating teacher-scoped AI assistant -->
+<script src="/SUA-INTELLILEARN/public/teacher/assets/js/teacher_chatbot.js"></script>
