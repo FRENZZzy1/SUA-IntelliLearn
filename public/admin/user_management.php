@@ -191,6 +191,18 @@ include 'assests/api/access_permissions_modal.php';
                             <input type="text" name="lrn" id="editLrn" class="form-control" pattern="\d{12}" maxlength="12">
                         </div>
                         <div class="form-group">
+                            <label>Year Level</label>
+                            <select name="year_level" id="editYearLevel" class="form-control" required>
+                                <option value="">-- Select Year Level --</option>
+                                <option value="7">Grade 7</option>
+                                <option value="8">Grade 8</option>
+                                <option value="9">Grade 9</option>
+                                <option value="10">Grade 10</option>
+                                <option value="11">Grade 11</option>
+                                <option value="12">Grade 12</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label>Birthdate</label>
                             <input type="date" name="birthdate" id="editBirthdate" class="form-control">
                         </div>
