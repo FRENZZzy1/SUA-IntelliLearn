@@ -130,7 +130,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                         </div>
                         <div class="aum-group">
                             <label>Guardian Contact</label>
-                            <div class="aum-input-wrap"><i class="fas fa-phone aum-input-icon"></i><input type="tel" name="guardian_contact" class="aum-control" placeholder="+63 912 345 6789" pattern="(?:09\d{9}|\+63\s?9\d{2}\s?\d{3}\s?\d{4})" maxlength="16" inputmode="tel" title="Use 09XXXXXXXXX or +63 9XX XXX XXXX format"></div>
+                            <div class="aum-input-wrap"><i class="fas fa-phone aum-input-icon"></i><input type="tel" name="guardian_contact" class="aum-control" placeholder="+63 912 345 6789" data-ph-mobile="true" maxlength="16" inputmode="tel" title="Use 09XXXXXXXXX or +63 9XX XXX XXXX format"></div>
                         </div>
                     </div>
                     <div class="aum-hint">
@@ -564,13 +564,40 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
         alertBox.innerHTML = '<i class="fas fa-' + (type === 'success' ? 'check-circle' : 'exclamation-circle') + '"></i> <span>' + message + '</span>';
     }
 
+    // Philippine mobile validation for the Add User modal.
+    // Keep this validation local to the modal so it works even if the shared
+    // user-management JavaScript is cached or loaded in a different order.
+    function aumValidatePhilippineMobile(input) {
+        if (!input) return true;
+        var value = input.value.trim();
+        if (value === '') {
+            input.setCustomValidity('');
+            return true;
+        }
+        var normalized = value.replace(/[\\s-]+/g, '');
+        var valid = /^(?:09[0-9]{9}|\\+639[0-9]{9})$/.test(normalized);
+        input.setCustomValidity(valid ? '' : 'Use 09XXXXXXXXX or +63 9XX XXX XXXX format.');
+        return valid;
+    }
+
+    document.querySelectorAll('#aumOverlay input[data-ph-mobile]').forEach(function (input) {
+        input.addEventListener('input', function () { aumValidatePhilippineMobile(input); });
+        input.addEventListener('blur', function () { aumValidatePhilippineMobile(input); });
+    });
+
     document.getElementById('aumForm').addEventListener('submit', function (e) {
         e.preventDefault();
         var form = e.target;
 
-           if (!form.reportValidity()) {
-        return;
-    }
+        var mobileValid = true;
+        document.querySelectorAll('#aumOverlay input[data-ph-mobile]').forEach(function (input) {
+            if (!aumValidatePhilippineMobile(input)) mobileValid = false;
+        });
+        if (!mobileValid || !form.reportValidity()) {
+            var invalidMobile = document.querySelector('#aumOverlay input[data-ph-mobile]:invalid');
+            if (invalidMobile) invalidMobile.focus();
+            return;
+        }
 
         var btn = document.getElementById('aumSubmitBtn');
         var endpoint = document.getElementById('aumOverlay').getAttribute('data-endpoint');
