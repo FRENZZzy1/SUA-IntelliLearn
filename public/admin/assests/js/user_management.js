@@ -67,16 +67,16 @@
 });
 
     // ---- Philippine mobile number validation ----
-    const PH_MOBILE_PATTERN = /^(?:09\\d{9}|\\+63\\s?9\\d{2}\\s?\\d{3}\\s?\\d{4})$/;
+    const PH_MOBILE_PATTERN = /^(?:09\d{9}|\+639\d{9})$/;
 
     function normalizePhilippineMobileInput(value) {
-        return value.trim().replace(/[\\s-]+/g, '');
+        return value.trim().replace(/[\s-]+/g, '');
     }
 
     function validatePhilippineMobileInput(input) {
         if (!input || input.value.trim() === '') return true;
         const normalized = normalizePhilippineMobileInput(input.value);
-        if (!/^(?:09\\d{9}|\\+639\\d{9})$/.test(normalized)) {
+        if (!PH_MOBILE_PATTERN.test(normalized)) {
             input.setCustomValidity('Use 09XXXXXXXXX or +63 9XX XXX XXXX format.');
             return false;
         }
