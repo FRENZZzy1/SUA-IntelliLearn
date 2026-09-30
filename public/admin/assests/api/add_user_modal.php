@@ -172,7 +172,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                         </div>
                         <div class="aum-group" id="aumContactFieldGroup" style="display:none;">
                             <label>Contact Number</label>
-                            <div class="aum-input-wrap"><i class="fas fa-phone aum-input-icon"></i><input type="tel" name="contact" class="aum-control" placeholder="+63 912 345 6789" pattern="(?:09\d{9}|\+63\s?9\d{2}\s?\d{3}\s?\d{4})" maxlength="16" inputmode="tel" title="Use 09XXXXXXXXX or +63 9XX XXX XXXX format"></div>
+                            <div class="aum-input-wrap"><i class="fas fa-phone aum-input-icon"></i><input type="tel" name="contact" class="aum-control" placeholder="+63 912 345 6789" data-ph-mobile="true" maxlength="16" inputmode="tel" title="Use 09XXXXXXXXX or +63 9XX XXX XXXX format"></div>
                         </div>
                     </div>
                     <div class="aum-row" id="aumDepartmentRow" style="display:none;">
