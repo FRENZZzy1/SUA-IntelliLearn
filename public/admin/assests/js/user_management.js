@@ -282,6 +282,17 @@
                     document.getElementById('editStaffMetaRow').style.display = isTeacher ? '' : 'none';
                     document.getElementById('editTeacherOnlyFields').style.display = isTeacher ? '' : 'none';
                     document.getElementById('editAdminOnlyFields').style.display = isAdmin ? '' : 'none';
-                    document.getElementById('editStudentFields').style.display = isStudent ? '' : 'none';
+                    const studentFields = document.getElementById('editStudentFields');
+                    const yearLevel = document.getElementById('editYearLevel');
+
+                    studentFields.style.display = isStudent ? '' : 'none';
+
+                    // Student-only fields must not participate in browser form
+                    // validation when editing a teacher or admin.
+                    if (yearLevel) {
+                        yearLevel.required = isStudent;
+                        if (!isStudent) yearLevel.setCustomValidity('');
+                    }
+
                     document.getElementById('editTeacherEmailHint').style.display = isTeacher ? '' : 'none';
                 }
