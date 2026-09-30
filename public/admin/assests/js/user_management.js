@@ -141,6 +141,7 @@
 
         if (role === 'student') {
             document.getElementById('editLrn').value = card.dataset.lrn || '';
+            document.getElementById('editYearLevel').value = card.dataset.yearLevel || '';
             document.getElementById('editGender').value = card.dataset.gender || 'Male';
             document.getElementById('editBirthdate').value = card.dataset.birthdate || '';
             document.getElementById('editAddress').value = card.dataset.address || '';
