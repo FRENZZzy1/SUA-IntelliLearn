@@ -192,7 +192,7 @@ include 'assests/api/access_permissions_modal.php';
                         </div>
                         <div class="form-group">
                             <label>Year Level</label>
-                            <select name="year_level" id="editYearLevel" class="form-control" required>
+                            <select name="year_level" id="editYearLevel" class="form-control">
                                 <option value="">-- Select Year Level --</option>
                                 <option value="7">Grade 7</option>
                                 <option value="8">Grade 8</option>
