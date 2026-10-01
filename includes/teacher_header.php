@@ -721,6 +721,7 @@ if (function_exists('get_initials')) {
     }
 })();
 </script>
+<<<<<<< HEAD
 <script>
 (function () {
     var ENDPOINT = '/SUA-INTELLILEARN/public/teacher/assets/api/notifications.php';
@@ -927,3 +928,8 @@ if (function_exists('get_initials')) {
     load();
 })();
 </script>
+=======
+
+<!-- Floating teacher-scoped AI assistant -->
+<script src="/SUA-INTELLILEARN/public/teacher/assets/js/teacher_chatbot.js"></script>
+>>>>>>> 9f253353866cec254c7ad415d7e7f8b3d67c7d8d
