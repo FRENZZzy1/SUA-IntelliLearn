@@ -221,13 +221,14 @@ try {
 
     if ($role === 'teacher') {
         $stmt = $pdo->prepare("
-            INSERT INTO Teachers (user_id, firstname, lastname, middlename, email, employment_status, department, specialization, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+            INSERT INTO Teachers (user_id, firstname, lastname, middlename, email, contact, employment_status, department, specialization, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ");
         $stmt->execute([
             $user_id, $firstname, $lastname,
             $middlename !== '' ? $middlename : null,
             $email,
+            $contact !== '' ? $contact : null,
             $employment_status !== '' ? $employment_status : null,
             $department !== '' ? $department : null,
             $specialization !== '' ? $specialization : null,
