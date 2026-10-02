@@ -2,6 +2,7 @@
     if (document.getElementById('teacherChatAssistant')) return;
 
     var ENDPOINT = '/SUA-INTELLILEARN/public/teacher/assets/api/teacher_chatbot.php';
+    var FAB_ICON = '/SUA-INTELLILEARN/public/admin/assests/images/icon_chat.png';
     var MAX_HISTORY = 8;
     var SUGGESTIONS = [
         'How many students do I have?',
@@ -56,25 +57,33 @@
     var style = document.createElement('style');
     style.textContent = [
         '#teacherChatAssistant *{box-sizing:border-box}',
-        '.tca-fab{position:fixed;right:22px;bottom:22px;z-index:9998;width:58px;height:58px;border:0;border-radius:50%;background:linear-gradient(135deg,#1b4332,#2d6a4f);color:#fff;cursor:pointer;display:grid;place-items:center;box-shadow:0 12px 30px rgba(0,0,0,.25);font-size:22px;transition:.18s}',
-        '.tca-fab:hover{transform:scale(1.06)}.tca-fab.open{transform:scale(0);pointer-events:none}',
+        '.tca-fab{position:fixed;right:22px;bottom:22px;z-index:9998;width:60px;height:60px;border:0;border-radius:50%;background:transparent;padding:0;cursor:pointer;display:grid;place-items:center;box-shadow:0 10px 28px rgba(0,0,0,.25);animation:tcaFloat 3s ease-in-out infinite;transition:transform .2s cubic-bezier(.34,1.56,.64,1),box-shadow .2s ease,opacity .2s ease}',
+        '@keyframes tcaFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}',
+        '.tca-fab:hover{animation-play-state:paused;transform:scale(1.07);box-shadow:0 14px 34px rgba(0,0,0,.35)}',
+        '.tca-fab:active{transform:scale(.96)}',
+        '.tca-fab.open{transform:scale(0);opacity:0;pointer-events:none}',
+        '.tca-fab img{width:100%;height:100%;object-fit:cover;border-radius:50%;pointer-events:none}',
         '.tca-panel{position:fixed;right:22px;bottom:22px;z-index:9999;width:min(400px,calc(100vw - 28px));height:min(600px,78vh);min-height:420px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 24px 65px rgba(15,23,42,.28);display:flex;flex-direction:column;opacity:0;pointer-events:none;transform:translateY(16px) scale(.97);transition:.2s;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}',
-        '.tca-panel.open{opacity:1;pointer-events:auto}.tca-head{padding:14px 15px;color:#fff;background:linear-gradient(135deg,#1b4332,#2d6a4f);display:flex;align-items:center;gap:10px;flex-shrink:0}',
-        '.tca-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;flex-shrink:0}.tca-title{font-size:14px;font-weight:700}.tca-subtitle{font-size:11px;opacity:.82;margin-top:2px}.tca-actions{margin-left:auto;display:flex;gap:5px}.tca-icon{width:30px;height:30px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;cursor:pointer}',
+        '.tca-panel.open{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}',
+        '.tca-head{padding:14px 15px;color:#fff;background:linear-gradient(135deg,#1b4332,#2d6a4f);display:flex;align-items:center;gap:10px;flex-shrink:0}',
+        '.tca-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;flex-shrink:0;position:relative}.tca-avatar:after{content:"";position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;background:#22c55e;border:2px solid #1b4332}',
+        '.tca-title{font-size:14px;font-weight:700}.tca-subtitle{font-size:11px;opacity:.82;margin-top:2px}.tca-actions{margin-left:auto;display:flex;gap:5px}.tca-icon{width:30px;height:30px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;cursor:pointer}',
         '.tca-messages{flex:1;overflow-y:auto;padding:14px 12px;background:#f6f8f7;scroll-behavior:smooth}.tca-row{display:flex;gap:7px;margin:7px 0}.tca-row.user{flex-direction:row-reverse}.tca-row-avatar{width:27px;height:27px;border-radius:50%;flex:0 0 27px;display:grid;place-items:center;font-size:11px;background:#1b4332;color:#fff;margin-top:2px}.tca-row.user .tca-row-avatar{background:#d1d5db;color:#374151}',
-        '.tca-group{max-width:80%}.tca-row.user .tca-group{text-align:right}.tca-msg{display:inline-block;text-align:left;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.5;word-break:break-word}.tca-bot{background:#fff;border:1px solid #e5e7eb;border-bottom-left-radius:4px;color:#1f2937}.tca-user{background:#1b4332;color:#fff;border-bottom-right-radius:4px}.tca-error{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3}.tca-msg p{margin:0 0 7px}.tca-msg p:last-child{margin-bottom:0}.tca-msg ul{margin:4px 0 5px;padding-left:20px}.tca-msg li{margin-bottom:3px}.tca-time{font-size:10px;color:#94a3b8;margin:3px 3px 0}',
-        '.tca-suggestions{padding:3px 3px 10px 34px;display:flex;flex-wrap:wrap;gap:6px}.tca-chip{border:1px solid #dbe5df;background:#fff;color:#1b4332;border-radius:15px;padding:6px 10px;font-size:11.5px;cursor:pointer}',
+        '.tca-group{max-width:80%}.tca-row.user .tca-group{text-align:right}.tca-msg{display:inline-block;text-align:left;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.5;word-break:break-word}.tca-bot{background:#fff;border:1px solid #e5e7eb;border-bottom-left-radius:4px;color:#1f2937}.tca-user{background:#1b4332;color:#fff;border-bottom-right-radius:4px}.tca-error{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3}',
+        '.tca-msg p{margin:0 0 7px}.tca-msg p:last-child{margin-bottom:0}.tca-msg ul{margin:4px 0 5px;padding-left:20px}.tca-msg li{margin-bottom:3px}.tca-time{font-size:10px;color:#94a3b8;margin:3px 3px 0}',
+        '.tca-suggestions{padding:3px 3px 10px 34px;display:flex;flex-wrap:wrap;gap:6px}.tca-chip{border:1px solid #dbe5df;background:#fff;color:#1b4332;border-radius:15px;padding:6px 10px;font-size:11.5px;cursor:pointer;max-width:100%}',
         '.tca-input{display:flex;gap:7px;align-items:flex-end;padding:10px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0}.tca-input textarea{flex:1;resize:none;min-width:0;max-height:105px;min-height:38px;border:1px solid #dbe1dd;border-radius:18px;padding:9px 12px;font:13.5px/1.4 inherit;outline:none}.tca-input textarea:focus{border-color:#2d6a4f}.tca-send{width:38px;height:38px;border:0;border-radius:50%;background:#1b4332;color:#fff;cursor:pointer;flex:0 0 38px}.tca-send:disabled{opacity:.45;cursor:not-allowed}',
         '.tca-typing{display:flex;gap:3px;padding:6px 3px}.tca-typing span{width:6px;height:6px;border-radius:50%;background:#94a3b8;animation:tcaBounce 1.1s infinite}.tca-typing span:nth-child(2){animation-delay:.15s}.tca-typing span:nth-child(3){animation-delay:.3s}@keyframes tcaBounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}',
         '.tca-disclaimer{font-size:9.5px;color:#94a3b8;padding:0 12px 7px;text-align:center;background:#fff}',
-        '@media(max-width:600px){.tca-fab{right:14px;bottom:14px;width:54px;height:54px;font-size:20px}.tca-panel{right:0;bottom:0;width:100vw;max-width:none;height:100dvh;max-height:none;min-height:0;border-radius:0}.tca-messages{padding:12px 9px}.tca-group{max-width:88%}.tca-msg{font-size:13px}.tca-input{padding:9px;padding-bottom:max(9px,env(safe-area-inset-bottom))}.tca-input textarea{font-size:16px}}'
+        '@media(max-width:700px){.tca-fab{right:14px;bottom:14px;width:56px;height:56px}.tca-panel{right:0;bottom:0;width:100%;height:100dvh;max-height:100dvh;min-height:0;border-radius:0}.tca-head{padding:12px 13px}.tca-title{font-size:13.5px}.tca-subtitle{font-size:10.5px}.tca-messages{padding:10px 8px}.tca-group{max-width:86%}.tca-msg{font-size:13px;padding:8px 10px}.tca-suggestions{padding-left:32px;padding-right:2px}.tca-chip{font-size:11px;padding:6px 9px}.tca-input{padding:8px;padding-bottom:max(8px,env(safe-area-inset-bottom))}.tca-input textarea{font-size:16px;max-height:96px}.tca-send{width:40px;height:40px;flex-basis:40px}}',
+        '@media(max-width:380px){.tca-actions{gap:3px}.tca-icon{width:28px;height:28px}.tca-row-avatar{width:25px;height:25px;flex-basis:25px}.tca-group{max-width:88%}}'
     ].join('');
     document.head.appendChild(style);
 
     var root = document.createElement('div');
     root.id = 'teacherChatAssistant';
     root.innerHTML =
-        '<button class="tca-fab" id="tcaFab" aria-label="Open teacher assistant" title="Teacher Assistant"><i class="fas fa-robot"></i></button>' +
+        '<button class="tca-fab" id="tcaFab" aria-label="Open teacher assistant" title="Teacher Assistant"><img src="' + FAB_ICON + '" alt="Teacher Assistant"></button>' +
         '<section class="tca-panel" id="tcaPanel" role="dialog" aria-label="Teacher Assistant">' +
         '<header class="tca-head"><div class="tca-avatar"><i class="fas fa-robot"></i></div>' +
         '<div><div class="tca-title">IntelliLearn Teacher Assistant</div><div class="tca-subtitle">Your classes, students & learning data</div></div>' +
