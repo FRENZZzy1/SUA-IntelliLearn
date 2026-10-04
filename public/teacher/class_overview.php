@@ -566,6 +566,10 @@ if (!empty($submissionRows)) {
                                    href="<?= assignmentsUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $a['assignment_id']) ?>">
                                     View Submissions
                                 </a>
+                                <button type="button" class="qa-btn js-edit-assignment" title="Edit deadline / attempts"
+                                        data-assignment="<?= assignmentEditData($a, $assignmentStats) ?>">
+                                    <i class="fas fa-pen"></i>
+                                </button>
                                 <form action="assets/api/assignment_delete.php" method="POST" class="material-delete-form"
                                       onsubmit="return confirm('Remove this assignment and all of its submissions? This cannot be undone.');">
                                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
@@ -600,6 +604,10 @@ if (!empty($submissionRows)) {
                         · <span class="<?= $due['overdue'] ? 'due-overdue' : '' ?>">Due <?= htmlspecialchars($due['label']) ?></span>
                         · <?= (int) $selectedAssignment['max_attempts'] ?> attempt<?= (int) $selectedAssignment['max_attempts'] === 1 ? '' : 's' ?> allowed
                     </span>
+                    <button type="button" class="btn-secondary js-edit-assignment" data-from-detail="1"
+                            data-assignment="<?= assignmentEditData($selectedAssignment, $assignmentStats) ?>">
+                        <i class="fas fa-pen"></i> Edit
+                    </button>
                 </div>
 
                 <?php if (!empty($selectedAssignment['description'])): ?>
@@ -1111,6 +1119,80 @@ if (!empty($submissionRows)) {
 </main>
 
 
+
+<!-- Edit assignment modal (filled from the clicked row's data-assignment) -->
+<div class="modal-overlay" id="assignmentEditModal" hidden>
+    <div class="modal-box">
+        <form action="assets/api/assignment_update.php" method="POST" class="material-upload-form" id="assignmentEditForm">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+            <input type="hidden" name="assignment_id" id="aeId">
+            <input type="hidden" name="offering_id" value="<?= (int) ($activeOfferingId ?? 0) ?>">
+            <input type="hidden" name="subject_id" value="<?= (int) ($classInfo['subject_id'] ?? 0) ?>">
+            <input type="hidden" name="section_id" value="<?= (int) ($classInfo['section_id'] ?? 0) ?>">
+            <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm ?? '') ?>">
+            <input type="hidden" name="from_detail" id="aeFromDetail" value="">
+
+            <div class="modal-header">
+                <div>
+                    <h3><i class="fas fa-pen"></i> Edit assignment</h3>
+                    <p class="modal-subtitle">Changes apply to students right away.</p>
+                </div>
+                <button type="button" class="modal-close" id="aeClose" aria-label="Close"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-row">
+                    <label for="aeTitle">Title</label>
+                    <input type="text" id="aeTitle" name="title" maxlength="255" required>
+                </div>
+                <div class="form-row">
+                    <label for="aeDescription">Instructions (optional)</label>
+                    <textarea id="aeDescription" name="description" rows="3"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <label for="aeDue">Deadline</label>
+                    <input type="datetime-local" id="aeDue" name="due_date">
+                    <div class="ae-chips">
+                        <button type="button" class="ae-chip" data-add-days="1">+1 day</button>
+                        <button type="button" class="ae-chip" data-add-days="3">+3 days</button>
+                        <button type="button" class="ae-chip" data-add-days="7">+1 week</button>
+                        <button type="button" class="ae-chip ae-chip--muted" id="aeClearDue">No deadline</button>
+                    </div>
+                    <span class="field-hint" id="aeDueHint"></span>
+                </div>
+
+                <div class="form-row">
+                    <label for="aeAttempts">Attempts allowed</label>
+                    <div class="ae-stepper">
+                        <input type="number" id="aeAttempts" name="max_attempts" min="1" step="1" required>
+                        <button type="button" class="ae-chip" id="aeAddAttempt"><i class="fas fa-plus"></i> Add 1 attempt</button>
+                    </div>
+                    <span class="field-hint" id="aeAttemptsHint"></span>
+                </div>
+
+                <div class="form-row form-row-inline ae-two">
+                    <div>
+                        <label for="aePoints">Points</label>
+                        <input type="number" id="aePoints" name="points" min="1" step="0.01" required>
+                    </div>
+                    <div>
+                        <label for="aeType">Grading category</label>
+                        <select id="aeType" name="type">
+                            <option value="Activity">Activity (Performance Task)</option>
+                            <option value="Exam">Exam</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions ae-actions">
+                <button type="button" class="btn-secondary" id="aeCancel">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script src="assets/js/class_overview.js"></script>
 

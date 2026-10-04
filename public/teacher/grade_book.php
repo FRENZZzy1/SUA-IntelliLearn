@@ -11,7 +11,7 @@ $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$teacher)
     die('Teacher record not found.');
 $teacherId = (int) $teacher['teacher_id'];
-$stmt = $pdo->prepare("SELECT co.offering_id,co.quarter,sub.subject_name,sec.section_name,sec.grade_level,sec.strand,sy.label school_year,COUNT(DISTINCT CASE WHEN e.status='active' THEN e.student_id END) student_count FROM classofferings co JOIN subjects sub ON sub.subject_id=co.subject_id JOIN sections sec ON sec.section_id=co.section_id JOIN schoolyears sy ON sy.school_year_id=co.school_year_id LEFT JOIN enrollments e ON e.offering_id=co.offering_id WHERE co.teacher_id=? AND co.status='active' GROUP BY co.offering_id,co.quarter,sub.subject_name,sec.section_name,sec.grade_level,sec.strand,sy.label ORDER BY sy.start_date DESC,sub.subject_name,sec.section_name,co.quarter");
+$stmt = $pdo->prepare("SELECT co.offering_id,co.quarter,co.subject_id,co.section_id,co.school_year_id,sy.is_current school_year_is_current,sub.subject_name,sec.section_name,sec.grade_level,sec.strand,sy.label school_year,COUNT(DISTINCT CASE WHEN e.status='active' THEN e.student_id END) student_count FROM classofferings co JOIN subjects sub ON sub.subject_id=co.subject_id JOIN sections sec ON sec.section_id=co.section_id JOIN schoolyears sy ON sy.school_year_id=co.school_year_id LEFT JOIN enrollments e ON e.offering_id=co.offering_id WHERE co.teacher_id=? AND co.status='active' GROUP BY co.offering_id,co.quarter,co.subject_id,co.section_id,co.school_year_id,sy.is_current,sub.subject_name,sec.section_name,sec.grade_level,sec.strand,sy.label ORDER BY sy.start_date DESC,sub.subject_name,sec.section_name,co.quarter");
 $stmt->execute([$teacherId]);
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $offeringId = (int) (filter_input(INPUT_GET, 'offering_id', FILTER_VALIDATE_INT) ?: 0);
@@ -19,10 +19,38 @@ $selectedClass = null;
 foreach ($classes as $c)
     if ((int) $c['offering_id'] === $offeringId)
         $selectedClass = $c;
-if (!$selectedClass && $classes) {
-    $selectedClass = $classes[0];
+// ---- Group offerings into CLASSES (subject + section). Each class has one
+// offering per term; the term picker switches between them. ----------------
+$currentTerm = resolveCurrentTerm(getTermIntervals($pdo)); // e.g. 'TRM 2' or null
+$groups = [];
+foreach ($classes as $c) {
+    $gk = $c['subject_id'] . '-' . $c['section_id'];
+    if (!isset($groups[$gk]))
+        $groups[$gk] = ['info' => $c, 'terms' => []];
+    $c['term_no'] = (int) substr($c['quarter'], -1);
+    $groups[$gk]['terms'][] = $c;
+}
+foreach ($groups as &$g) {
+    // Oldest -> newest (school year, then term) so the picker reads Term 1, 2, 3.
+    usort($g['terms'], fn($a, $b) => [$a['school_year_id'], $a['term_no']] <=> [$b['school_year_id'], $b['term_no']]);
+    // Default term: the one running now in the current school year; else the newest.
+    $g['primary'] = end($g['terms']);
+    foreach ($g['terms'] as $t) {
+        if ($t['school_year_is_current'] && $currentTerm !== null && $t['quarter'] === $currentTerm) {
+            $g['primary'] = $t;
+            break;
+        }
+    }
+    $g['multi_year'] = count(array_unique(array_column($g['terms'], 'school_year_id'))) > 1;
+}
+unset($g);
+if (!$selectedClass && $groups) {
+    $selectedClass = reset($groups)['primary'];
     $offeringId = (int) $selectedClass['offering_id'];
 }
+$selectedGroup = null;
+if ($selectedClass)
+    $selectedGroup = $groups[$selectedClass['subject_id'] . '-' . $selectedClass['section_id']] ?? null;
 $students = [];
 $assignments = [];
 $quizzes = [];
@@ -162,35 +190,50 @@ $flash = getFlashMessage();
                 <section class="classes-section">
                     <div class="section-title-row">
                         <div>
-                            <h2>Your Classes</h2><span><?= count($classes) ?> active
-                                class<?= count($classes) == 1 ? '' : 'es' ?></span>
+                            <h2>Your Classes</h2><span><?= count($groups) ?> active
+                                class<?= count($groups) == 1 ? '' : 'es' ?></span>
                         </div>
                     </div>
-                    <div class="class-grid"><?php foreach ($classes as $c): ?><a
-                                class="class-card <?= $c['offering_id'] == $offeringId ? 'selected' : '' ?>"
-                                href="?offering_id=<?= $c['offering_id'] ?>">
+                    <div class="class-grid"><?php foreach ($groups as $gk => $g):
+                        $isSel = $selectedGroup && $selectedClass['subject_id'] == $g['info']['subject_id'] && $selectedClass['section_id'] == $g['info']['section_id'];
+                        $target = $isSel ? $selectedClass : $g['primary'];
+                    ?><a class="class-card <?= $isSel ? 'selected' : '' ?>"
+                                href="?offering_id=<?= $target['offering_id'] ?>" <?= $isSel ? 'aria-current="true"' : '' ?>>
                                 <div class="class-icon"><i class="fas fa-book-open"></i></div>
                                 <div class="class-info">
-                                    <strong><?= htmlspecialchars($c['subject_name']) ?></strong><span><?= htmlspecialchars($c['section_name']) ?>
-                                        · <?= htmlspecialchars($c['quarter']) ?></span><small>Grade
-                                        <?= htmlspecialchars($c['grade_level']) ?>        <?= $c['strand'] ? ' · ' . htmlspecialchars($c['strand']) : '' ?></small>
+                                    <strong><?= htmlspecialchars($g['info']['subject_name']) ?></strong><span><?= htmlspecialchars($g['info']['section_name']) ?></span><small>Grade
+                                        <?= htmlspecialchars($g['info']['grade_level']) ?>        <?= $g['info']['strand'] ? ' · ' . htmlspecialchars($g['info']['strand']) : '' ?>
+                                        · <?= count($g['terms']) ?> term<?= count($g['terms']) == 1 ? '' : 's' ?></small>
                                 </div>
-                                <div class="class-count"><strong><?= $c['student_count'] ?></strong><span>students</span></div>
+                                <div class="class-count"><strong><?= $target['student_count'] ?></strong><span>students</span></div>
                             </a><?php endforeach; ?></div>
                 </section>
                 <section class="selected-class-head">
                     <div><span class="eyebrow">SELECTED CLASS</span>
                         <h2><?= htmlspecialchars($selectedClass['subject_name']) ?> <span>·
                                 <?= htmlspecialchars($selectedClass['section_name']) ?></span></h2>
-                        <p><?= htmlspecialchars($selectedClass['quarter']) ?> · School Year
+                        <p>Term <?= (int) substr($selectedClass['quarter'], -1) ?> · School Year
                             <?= htmlspecialchars($selectedClass['school_year']) ?></p>
                     </div>
-                    <div class="mobile-class-select"><label>Switch class</label><select
-                            onchange="if(this.value)location='?offering_id='+this.value"><?php foreach ($classes as $c): ?>
-                                <option value="<?= $c['offering_id'] ?>" <?= $c['offering_id'] == $offeringId ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($c['subject_name'] . ' · ' . $c['section_name'] . ' · ' . $c['quarter']) ?>
-                                </option><?php endforeach; ?>
-                        </select></div>
+                    <div class="selected-class-controls">
+                        <div class="term-switch" role="tablist" aria-label="Term">
+                            <?php foreach ($selectedGroup['terms'] as $t): $on = (int) $t['offering_id'] === $offeringId; ?>
+                                <a class="term-seg <?= $on ? 'active' : '' ?>" role="tab" aria-selected="<?= $on ? 'true' : 'false' ?>"
+                                    href="?offering_id=<?= $t['offering_id'] ?>">
+                                    Term <?= $t['term_no'] ?>
+                                    <?php if ($selectedGroup['multi_year']): ?><small><?= htmlspecialchars($t['school_year']) ?></small><?php endif; ?>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="mobile-class-select"><label>Switch class</label><select
+                                onchange="if(this.value)location='?offering_id='+this.value"><?php foreach ($groups as $g):
+                                    $isSel = $selectedClass['subject_id'] == $g['info']['subject_id'] && $selectedClass['section_id'] == $g['info']['section_id'];
+                                    $target = $isSel ? $selectedClass : $g['primary']; ?>
+                                    <option value="<?= $target['offering_id'] ?>" <?= $isSel ? 'selected' : '' ?>>
+                                        <?= htmlspecialchars($g['info']['subject_name'] . ' · ' . $g['info']['section_name']) ?>
+                                    </option><?php endforeach; ?>
+                            </select></div>
+                    </div>
                 </section>
                 <section class="analytics-grid">
                     <article class="metric-card primary"><span>Class

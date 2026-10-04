@@ -187,3 +187,85 @@ if (requestsPanel) {
     const decidedPanel = document.getElementById('decidedPanel');
     if (decidedPanel) decidedPanel.addEventListener('click', handleRequestClick);
 }
+
+// ===================== Edit assignment modal =====================
+// Opens from the pencil / Edit buttons (.js-edit-assignment). Each button carries the
+// assignment's current values in data-assignment, so no extra request is needed.
+(function () {
+    const modal = document.getElementById('assignmentEditModal');
+    if (!modal) return;
+
+    const $ = (id) => document.getElementById(id);
+    const f = {
+        id: $('aeId'), fromDetail: $('aeFromDetail'), title: $('aeTitle'), desc: $('aeDescription'),
+        due: $('aeDue'), dueHint: $('aeDueHint'), attempts: $('aeAttempts'), attemptsHint: $('aeAttemptsHint'),
+        points: $('aePoints'), type: $('aeType'),
+    };
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const toLocalInput = (d) =>
+        d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+
+    function updateDueHint() {
+        if (!f.due.value) {
+            f.dueHint.textContent = 'No deadline — students can submit any time.';
+            return;
+        }
+        const d = new Date(f.due.value);
+        f.dueHint.textContent = d.getTime() < Date.now()
+            ? 'This date is in the past — students will be locked out.'
+            : 'Students can submit until this time.';
+    }
+
+    function openModal(btn) {
+        let data;
+        try { data = JSON.parse(btn.dataset.assignment); } catch (e) { return; }
+
+        f.id.value = data.id;
+        f.fromDetail.value = btn.dataset.fromDetail ? '1' : '';
+        f.title.value = data.title;
+        f.desc.value = data.description || '';
+        f.due.value = data.due || '';
+        f.attempts.value = data.maxAttempts;
+        f.attempts.min = Math.max(1, data.attemptsUsed || 0);
+        f.points.value = data.points;
+        f.points.min = Math.max(1, data.highestScore || 0);
+        f.type.value = data.type;
+
+        f.attemptsHint.textContent = data.attemptsUsed > 0
+            ? 'A student has already used ' + data.attemptsUsed + ' — you can raise this but not go below it.'
+            : 'No submissions yet.';
+        updateDueHint();
+
+        modal.hidden = false;
+        f.title.focus();
+    }
+
+    function closeModal() { modal.hidden = true; }
+
+    document.querySelectorAll('.js-edit-assignment').forEach((btn) => {
+        btn.addEventListener('click', () => openModal(btn));
+    });
+    $('aeClose').addEventListener('click', closeModal);
+    $('aeCancel').addEventListener('click', closeModal);
+    modal.addEventListener('mousedown', (e) => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
+
+    // Deadline quick-extend: add days to the current deadline, or to now if it is empty/already past.
+    modal.querySelectorAll('[data-add-days]').forEach((chip) => {
+        chip.addEventListener('click', () => {
+            const days = parseInt(chip.dataset.addDays, 10);
+            let base = f.due.value ? new Date(f.due.value) : new Date();
+            if (isNaN(base.getTime()) || base.getTime() < Date.now()) base = new Date();
+            base.setDate(base.getDate() + days);
+            f.due.value = toLocalInput(base);
+            updateDueHint();
+        });
+    });
+    $('aeClearDue').addEventListener('click', () => { f.due.value = ''; updateDueHint(); });
+    f.due.addEventListener('input', updateDueHint);
+
+    $('aeAddAttempt').addEventListener('click', () => {
+        f.attempts.value = (parseInt(f.attempts.value, 10) || 0) + 1;
+    });
+})();

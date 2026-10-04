@@ -24,35 +24,81 @@ $offeringIds = array_column($stmt->fetchAll(), 'offering_id');
 
 $roster = get_at_risk_roster($pdo, $offeringIds);
 
-$counts = ['High' => 0, 'Medium' => 0, 'Low' => 0, 'Insufficient Data' => 0];
-foreach ($roster as $r) {
-    $counts[$r['risk_label']]++;
-}
+// ---- Group roster by CLASS (subject + section), not by offering. ------
+// The same class has one offering per term (Term 1 / 2 / 3). Showing each
+// as its own card made the page messy, so each class gets ONE card that
+// shows the current term, with the other terms tucked behind an expander.
+$currentTerm = resolveCurrentTerm(getTermIntervals($pdo)); // e.g. 'TRM 2' or null
 
-// ---- Group roster by class (offering) so the UI can show one section
-// per class instead of one long undifferentiated table. -----------------
-$classes = []; // offering_id => ['label' => ..., 'section' => ..., 'grade' => ..., 'students' => [...]]
+$classes = []; // "subjectId-sectionId" => class info + term instances
 foreach ($roster as $r) {
-    $oid = $r['offering_id'];
-    if (!isset($classes[$oid])) {
-        $classes[$oid] = [
-            'offering_id' => $oid,
+    $ckey = $r['subject_id'] . '-' . $r['section_id'];
+    if (!isset($classes[$ckey])) {
+        $classes[$ckey] = [
+            'key'         => 'class-' . $ckey,
             'subject'     => $r['subject'],
             'section'     => $r['section'],
             'grade_level' => $r['grade_level'],
-            'students'    => [],
-            'counts'      => ['High' => 0, 'Medium' => 0, 'Low' => 0, 'Insufficient Data' => 0],
+            'terms'       => [], // offering_id => term instance
         ];
     }
-    $classes[$oid]['students'][] = $r;
-    $classes[$oid]['counts'][$r['risk_label']]++;
+    $oid = $r['offering_id'];
+    if (!isset($classes[$ckey]['terms'][$oid])) {
+        $classes[$ckey]['terms'][$oid] = [
+            'offering_id'    => $oid,
+            'quarter'        => $r['quarter'],
+            'term_no'        => (int) substr($r['quarter'], -1),
+            'school_year_id' => $r['school_year_id'],
+            'sy_label'       => $r['school_year_label'],
+            'sy_current'     => $r['school_year_is_current'],
+            'students'       => [],
+            'counts'         => ['High' => 0, 'Medium' => 0, 'Low' => 0, 'Insufficient Data' => 0],
+        ];
+    }
+    $classes[$ckey]['terms'][$oid]['students'][] = $r;
+    $classes[$ckey]['terms'][$oid]['counts'][$r['risk_label']]++;
 }
+
+// Per class: pick the term to show up front ("primary"); the rest go in
+// the expander, newest first.
+foreach ($classes as &$c) {
+    $terms = array_values($c['terms']);
+    usort($terms, function ($a, $b) {
+        return [$b['sy_current'], $b['school_year_id'], $b['term_no']]
+           <=> [$a['sy_current'], $a['school_year_id'], $a['term_no']];
+    });
+    // Prefer the term that is actually running right now, if this class has it.
+    foreach ($terms as $i => $t) {
+        if ($t['sy_current'] && $currentTerm !== null && $t['quarter'] === $currentTerm) {
+            array_splice($terms, $i, 1);
+            array_unshift($terms, $t);
+            break;
+        }
+    }
+    $c['primary'] = array_shift($terms);
+    $c['others']  = $terms;
+    unset($c['terms']);
+}
+unset($c);
+
+// Top summary counts and filter counts only reflect the term being shown,
+// so a student enrolled across 3 terms isn't counted 3 times.
+$counts = ['High' => 0, 'Medium' => 0, 'Low' => 0, 'Insufficient Data' => 0];
+$shownTotal = 0;
+foreach ($classes as $c) {
+    foreach ($c['primary']['counts'] as $label => $n) {
+        $counts[$label] += $n;
+        $shownTotal += $n;
+    }
+}
+
 // Classes with the most/highest risk students first.
 uasort($classes, function ($a, $b) {
-    if ($a['counts']['High'] !== $b['counts']['High']) {
-        return $b['counts']['High'] <=> $a['counts']['High'];
+    $ca = $a['primary']['counts']; $cb = $b['primary']['counts'];
+    if ($ca['High'] !== $cb['High']) {
+        return $cb['High'] <=> $ca['High'];
     }
-    return $b['counts']['Medium'] <=> $a['counts']['Medium'];
+    return $cb['Medium'] <=> $ca['Medium'];
 });
 
 $aiEnabled = gemini_is_configured();
@@ -91,6 +137,72 @@ function render_risk_pill($riskLabel, $riskKey, $riskScore)
         . '<span class="risk-text" data-i18n-risk="' . $i18nKey . '">' . htmlspecialchars($riskLabel) . '</span>'
         . '<span class="risk-score-suffix">' . $scoreSuffix . '</span>'
         . '</span>';
+}
+/** Renders one term's roster table (shared by the primary term and the 'other terms' panels). */
+function render_roster_table(array $students, bool $aiEnabled, string $termLabelSuffix)
+{
+    ob_start();
+?>
+                            <table class="ar-table">
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="th_student">Student</th>
+                                        <th data-i18n="th_attendance">Attendance</th>
+                                        <th data-i18n="th_assignments">Assignments</th>
+                                        <th data-i18n="th_quizzes">Quizzes</th>
+                                        <th data-i18n="th_risk">Risk</th>
+                                        <th data-i18n="th_ai">AI Insights</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($students as $r):
+                                        $riskKey = strtolower(str_replace(' ', '-', $r['risk_label']));
+                                        $filterKey = $r['risk_label'] === 'Insufficient Data' ? 'na' : strtolower($r['risk_label']);
+                                    ?>
+                                    <tr data-filter="<?= $filterKey ?>" data-name="<?= htmlspecialchars(strtolower($r['name']), ENT_QUOTES) ?>">
+                                        <td data-label-i18n="th_student">
+                                            <div style="font-weight:600;"><?= htmlspecialchars($r['name']) ?></div>
+                                        </td>
+                                        <td data-label-i18n="th_attendance"><?= render_metric_cell($r['attendance_pct'], $r['attendance_enough'], $r['attendance_total'], $r['min_data_points']) ?></td>
+                                        <td data-label-i18n="th_assignments">
+                                            <?= render_metric_cell($r['assignment_pct'], $r['assignment_enough'], $r['assignment_total_due'], $r['min_data_points']) ?>
+                                            <?php if ($r['assignment_enough'] && $r['assignment_missing'] > 0): ?>
+                                                <div class="ar-missing-note"><?= $r['assignment_missing'] ?>/<?= $r['assignment_total_due'] ?> <span data-i18n="missing">missing</span></div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td data-label-i18n="th_quizzes">
+                                            <?= render_metric_cell($r['quiz_pct'], $r['quiz_enough'], $r['quiz_total_due'], $r['min_data_points']) ?>
+                                            <?php if ($r['quiz_enough'] && $r['quiz_missing'] > 0): ?>
+                                                <div class="ar-missing-note"><?= $r['quiz_missing'] ?>/<?= $r['quiz_total_due'] ?> <span data-i18n="missing">missing</span></div>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td data-label-i18n="th_risk">
+                                            <?= render_risk_pill($r['risk_label'], $riskKey, $r['risk_score']) ?>
+                                        </td>
+                                        <td data-label-i18n="th_ai">
+                                            <button class="ai-btn"
+                                                    data-student="<?= $r['student_id'] ?>" data-offering="<?= $r['offering_id'] ?>"
+                                                    data-name="<?= htmlspecialchars($r['name'], ENT_QUOTES) ?>" data-subject="<?= htmlspecialchars($r['subject'] . ' · ' . $termLabelSuffix, ENT_QUOTES) ?>"
+                                                    data-risk-label="<?= htmlspecialchars($r['risk_label'], ENT_QUOTES) ?>" data-risk-key="<?= $riskKey === 'insufficient-data' ? 'na' : $riskKey ?>"
+                                                    data-risk-score="<?= $r['risk_score'] !== null ? $r['risk_score'] : '' ?>"
+                                                    data-att-pct="<?= $r['attendance_pct'] !== null ? $r['attendance_pct'] : '' ?>" data-att-enough="<?= $r['attendance_enough'] ? '1' : '0' ?>"
+                                                    data-att-present="<?= $r['attendance_present'] ?>" data-att-late="<?= $r['attendance_late'] ?>"
+                                                    data-att-absent="<?= $r['attendance_absent'] ?>" data-att-excused="<?= $r['attendance_excused'] ?>" data-att-total="<?= $r['attendance_total'] ?>"
+                                                    data-asg-pct="<?= $r['assignment_pct'] !== null ? $r['assignment_pct'] : '' ?>" data-asg-enough="<?= $r['assignment_enough'] ? '1' : '0' ?>"
+                                                    data-asg-missing="<?= $r['assignment_missing'] ?>" data-asg-total="<?= $r['assignment_total_due'] ?>"
+                                                    data-quiz-pct="<?= $r['quiz_pct'] !== null ? $r['quiz_pct'] : '' ?>" data-quiz-enough="<?= $r['quiz_enough'] ? '1' : '0' ?>"
+                                                    data-quiz-missing="<?= $r['quiz_missing'] ?>" data-quiz-total="<?= $r['quiz_total_due'] ?>"
+                                                    data-min="<?= $r['min_data_points'] ?>"
+                                                    <?= (!$aiEnabled || $r['risk_label'] === 'Insufficient Data') ? 'disabled' : '' ?>>
+                                                <i class="fas fa-wand-magic-sparkles"></i> <span data-i18n="analyze_btn">Analyze</span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+<?php
+    return ob_get_clean();
 }
 ?>
 <!DOCTYPE html>
@@ -155,7 +267,7 @@ function render_risk_pill($riskLabel, $riskKey, $riskScore)
                     <input type="text" id="arSearchInput" data-i18n-attr="placeholder:search_placeholder" placeholder="Search student name…">
                 </div>
                 <div class="ar-filters">
-                    <button class="ar-filter-btn active" data-filter="all"><span data-i18n="filter_all">All</span> (<?= count($roster) ?>)</button>
+                    <button class="ar-filter-btn active" data-filter="all"><span data-i18n="filter_all">All</span> (<?= $shownTotal ?>)</button>
                     <button class="ar-filter-btn" data-filter="high"><span data-i18n="filter_high">High</span> (<?= $counts['High'] ?>)</button>
                     <button class="ar-filter-btn" data-filter="medium"><span data-i18n="filter_medium">Medium</span> (<?= $counts['Medium'] ?>)</button>
                     <button class="ar-filter-btn" data-filter="low"><span data-i18n="filter_low">Low</span> (<?= $counts['Low'] ?>)</button>
@@ -168,10 +280,10 @@ function render_risk_pill($riskLabel, $riskKey, $riskScore)
                     <i class="fas fa-layer-group"></i> <span data-i18n="all_classes">All Classes</span> <span class="ar-tab-count"><?= count($classes) ?></span>
                 </button>
                 <?php foreach ($classes as $c): ?>
-                    <button class="ar-class-tab" data-class="class-<?= $c['offering_id'] ?>">
+                    <button class="ar-class-tab" data-class="<?= $c['key'] ?>">
                         <?= htmlspecialchars($c['subject']) ?> · <?= htmlspecialchars($c['section']) ?>
-                        <?php if ($c['counts']['High'] > 0): ?>
-                            <span class="ar-tab-badge high"><?= $c['counts']['High'] ?></span>
+                        <?php if ($c['primary']['counts']['High'] > 0): ?>
+                            <span class="ar-tab-badge high"><?= $c['primary']['counts']['High'] ?></span>
                         <?php endif; ?>
                     </button>
                 <?php endforeach; ?>
@@ -179,88 +291,68 @@ function render_risk_pill($riskLabel, $riskKey, $riskScore)
 
             <div class="ar-classes" id="arClasses">
                 <?php foreach ($classes as $c):
-                    $classKey = 'class-' . $c['offering_id'];
-                    $classTotal = count($c['students']);
+                    $p = $c['primary'];
+                    $classTotal = count($p['students']);
+                    $pTermLabel = 'Term ' . $p['term_no'];
                 ?>
-                <section class="ar-class-card" data-class="<?= $classKey ?>">
+                <section class="ar-class-card" data-class="<?= $c['key'] ?>">
                     <button class="ar-class-head" type="button" aria-expanded="true">
                         <div class="ar-class-title">
                             <i class="fas fa-chevron-down ar-class-chevron"></i>
                             <div>
-                                <h3><?= htmlspecialchars($c['subject']) ?> <span class="ar-class-sub">· <?= htmlspecialchars($c['section']) ?> · <span data-i18n="grade">Grade</span> <?= $c['grade_level'] ?></span></h3>
+                                <h3><?= htmlspecialchars($c['subject']) ?> <span class="ar-class-sub">· <?= htmlspecialchars($c['section']) ?> · <span data-i18n="grade">Grade</span> <?= $c['grade_level'] ?></span>
+                                    <span class="ar-term-pill"><span data-i18n="term">Term</span> <?= $p['term_no'] ?><?= (!$p['sy_current'] && $p['sy_label']) ? ' · SY ' . htmlspecialchars($p['sy_label']) : '' ?></span>
+                                </h3>
                                 <p><span class="ar-student-count" data-count="<?= $classTotal ?>"><?= $classTotal ?> <span data-i18n="<?= $classTotal === 1 ? 'student_singular' : 'student_plural' ?>"><?= $classTotal === 1 ? 'student' : 'students' ?></span></span></p>
                             </div>
                         </div>
                         <div class="ar-class-chips">
-                            <?php if ($c['counts']['High'] > 0): ?><span class="ar-chip high"><?= $c['counts']['High'] ?> <span data-i18n="chip_high">High</span></span><?php endif; ?>
-                            <?php if ($c['counts']['Medium'] > 0): ?><span class="ar-chip medium"><?= $c['counts']['Medium'] ?> <span data-i18n="chip_medium">Medium</span></span><?php endif; ?>
-                            <?php if ($c['counts']['Low'] > 0): ?><span class="ar-chip low"><?= $c['counts']['Low'] ?> <span data-i18n="chip_low">Low</span></span><?php endif; ?>
-                            <?php if ($c['counts']['Insufficient Data'] > 0): ?><span class="ar-chip na"><?= $c['counts']['Insufficient Data'] ?> <span data-i18n="chip_na">N/A</span></span><?php endif; ?>
+                            <?php if ($p['counts']['High'] > 0): ?><span class="ar-chip high"><?= $p['counts']['High'] ?> <span data-i18n="chip_high">High</span></span><?php endif; ?>
+                            <?php if ($p['counts']['Medium'] > 0): ?><span class="ar-chip medium"><?= $p['counts']['Medium'] ?> <span data-i18n="chip_medium">Medium</span></span><?php endif; ?>
+                            <?php if ($p['counts']['Low'] > 0): ?><span class="ar-chip low"><?= $p['counts']['Low'] ?> <span data-i18n="chip_low">Low</span></span><?php endif; ?>
+                            <?php if ($p['counts']['Insufficient Data'] > 0): ?><span class="ar-chip na"><?= $p['counts']['Insufficient Data'] ?> <span data-i18n="chip_na">N/A</span></span><?php endif; ?>
                         </div>
                     </button>
 
                     <div class="ar-class-body">
-                        <div class="ar-table-wrap">
-                            <table class="ar-table">
-                                <thead>
-                                    <tr>
-                                        <th data-i18n="th_student">Student</th>
-                                        <th data-i18n="th_attendance">Attendance</th>
-                                        <th data-i18n="th_assignments">Assignments</th>
-                                        <th data-i18n="th_quizzes">Quizzes</th>
-                                        <th data-i18n="th_risk">Risk</th>
-                                        <th data-i18n="th_ai">AI Insights</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($c['students'] as $r):
-                                        $riskKey = strtolower(str_replace(' ', '-', $r['risk_label']));
-                                        $filterKey = $r['risk_label'] === 'Insufficient Data' ? 'na' : strtolower($r['risk_label']);
-                                    ?>
-                                    <tr data-filter="<?= $filterKey ?>" data-name="<?= htmlspecialchars(strtolower($r['name']), ENT_QUOTES) ?>">
-                                        <td data-label-i18n="th_student">
-                                            <div style="font-weight:600;"><?= htmlspecialchars($r['name']) ?></div>
-                                        </td>
-                                        <td data-label-i18n="th_attendance"><?= render_metric_cell($r['attendance_pct'], $r['attendance_enough'], $r['attendance_total'], $r['min_data_points']) ?></td>
-                                        <td data-label-i18n="th_assignments">
-                                            <?= render_metric_cell($r['assignment_pct'], $r['assignment_enough'], $r['assignment_total_due'], $r['min_data_points']) ?>
-                                            <?php if ($r['assignment_enough'] && $r['assignment_missing'] > 0): ?>
-                                                <div class="ar-missing-note"><?= $r['assignment_missing'] ?>/<?= $r['assignment_total_due'] ?> <span data-i18n="missing">missing</span></div>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td data-label-i18n="th_quizzes">
-                                            <?= render_metric_cell($r['quiz_pct'], $r['quiz_enough'], $r['quiz_total_due'], $r['min_data_points']) ?>
-                                            <?php if ($r['quiz_enough'] && $r['quiz_missing'] > 0): ?>
-                                                <div class="ar-missing-note"><?= $r['quiz_missing'] ?>/<?= $r['quiz_total_due'] ?> <span data-i18n="missing">missing</span></div>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td data-label-i18n="th_risk">
-                                            <?= render_risk_pill($r['risk_label'], $riskKey, $r['risk_score']) ?>
-                                        </td>
-                                        <td data-label-i18n="th_ai">
-                                            <button class="ai-btn"
-                                                    data-student="<?= $r['student_id'] ?>" data-offering="<?= $r['offering_id'] ?>"
-                                                    data-name="<?= htmlspecialchars($r['name'], ENT_QUOTES) ?>" data-subject="<?= htmlspecialchars($r['subject'], ENT_QUOTES) ?>"
-                                                    data-risk-label="<?= htmlspecialchars($r['risk_label'], ENT_QUOTES) ?>" data-risk-key="<?= $riskKey === 'insufficient-data' ? 'na' : $riskKey ?>"
-                                                    data-risk-score="<?= $r['risk_score'] !== null ? $r['risk_score'] : '' ?>"
-                                                    data-att-pct="<?= $r['attendance_pct'] !== null ? $r['attendance_pct'] : '' ?>" data-att-enough="<?= $r['attendance_enough'] ? '1' : '0' ?>"
-                                                    data-att-present="<?= $r['attendance_present'] ?>" data-att-late="<?= $r['attendance_late'] ?>"
-                                                    data-att-absent="<?= $r['attendance_absent'] ?>" data-att-excused="<?= $r['attendance_excused'] ?>" data-att-total="<?= $r['attendance_total'] ?>"
-                                                    data-asg-pct="<?= $r['assignment_pct'] !== null ? $r['assignment_pct'] : '' ?>" data-asg-enough="<?= $r['assignment_enough'] ? '1' : '0' ?>"
-                                                    data-asg-missing="<?= $r['assignment_missing'] ?>" data-asg-total="<?= $r['assignment_total_due'] ?>"
-                                                    data-quiz-pct="<?= $r['quiz_pct'] !== null ? $r['quiz_pct'] : '' ?>" data-quiz-enough="<?= $r['quiz_enough'] ? '1' : '0' ?>"
-                                                    data-quiz-missing="<?= $r['quiz_missing'] ?>" data-quiz-total="<?= $r['quiz_total_due'] ?>"
-                                                    data-min="<?= $r['min_data_points'] ?>"
-                                                    <?= (!$aiEnabled || $r['risk_label'] === 'Insufficient Data') ? 'disabled' : '' ?>>
-                                                <i class="fas fa-wand-magic-sparkles"></i> <span data-i18n="analyze_btn">Analyze</span>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
+                        <div class="ar-term-panel">
+                            <div class="ar-table-wrap">
+                                <?= render_roster_table($p['students'], $aiEnabled, $pTermLabel) ?>
+                            </div>
+                            <p class="ar-class-empty" data-i18n="no_match_class" style="display:none;">No students match the current filter/search in this class.</p>
                         </div>
-                        <p class="ar-class-empty" data-i18n="no_match_class" style="display:none;">No students match the current filter/search in this class.</p>
+
+                        <?php if (!empty($c['others'])): ?>
+                            <button class="ar-terms-toggle" type="button" aria-expanded="false">
+                                <i class="fas fa-clock-rotate-left"></i>
+                                <span data-i18n="other_terms">Other terms</span>
+                                <span class="ar-tab-count"><?= count($c['others']) ?></span>
+                                <i class="fas fa-chevron-down ar-terms-chevron"></i>
+                            </button>
+                            <div class="ar-other-terms">
+                                <?php foreach ($c['others'] as $o):
+                                    $oTotal = count($o['students']);
+                                    $oTermLabel = 'Term ' . $o['term_no'];
+                                ?>
+                                <div class="ar-term-panel ar-term-panel-other">
+                                    <div class="ar-term-panel-head">
+                                        <span class="ar-term-pill"><span data-i18n="term">Term</span> <?= $o['term_no'] ?><?= (!$o['sy_current'] && $o['sy_label']) ? ' · SY ' . htmlspecialchars($o['sy_label']) : '' ?></span>
+                                        <span class="ar-term-panel-count"><?= $oTotal ?> <span data-i18n="<?= $oTotal === 1 ? 'student_singular' : 'student_plural' ?>"><?= $oTotal === 1 ? 'student' : 'students' ?></span></span>
+                                        <span class="ar-class-chips">
+                                            <?php if ($o['counts']['High'] > 0): ?><span class="ar-chip high"><?= $o['counts']['High'] ?> <span data-i18n="chip_high">High</span></span><?php endif; ?>
+                                            <?php if ($o['counts']['Medium'] > 0): ?><span class="ar-chip medium"><?= $o['counts']['Medium'] ?> <span data-i18n="chip_medium">Medium</span></span><?php endif; ?>
+                                            <?php if ($o['counts']['Low'] > 0): ?><span class="ar-chip low"><?= $o['counts']['Low'] ?> <span data-i18n="chip_low">Low</span></span><?php endif; ?>
+                                            <?php if ($o['counts']['Insufficient Data'] > 0): ?><span class="ar-chip na"><?= $o['counts']['Insufficient Data'] ?> <span data-i18n="chip_na">N/A</span></span><?php endif; ?>
+                                        </span>
+                                    </div>
+                                    <div class="ar-table-wrap">
+                                        <?= render_roster_table($o['students'], $aiEnabled, $oTermLabel) ?>
+                                    </div>
+                                    <p class="ar-class-empty" data-i18n="no_match_class" style="display:none;">No students match the current filter/search in this class.</p>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </section>
                 <?php endforeach; ?>
@@ -310,6 +402,7 @@ function render_risk_pill($riskLabel, $riskKey, $riskScore)
             filter_all: 'All', filter_high: 'High', filter_medium: 'Medium', filter_low: 'Low', filter_na: 'Insufficient Data',
             all_classes: 'All Classes',
             grade: 'Grade',
+            term: 'Term', other_terms: 'Other terms',
             student_singular: 'student', student_plural: 'students',
             chip_high: 'High', chip_medium: 'Medium', chip_low: 'Low', chip_na: 'N/A',
             th_student: 'Student', th_attendance: 'Attendance', th_assignments: 'Assignments', th_quizzes: 'Quizzes', th_risk: 'Risk', th_ai: 'AI Insights',
@@ -347,6 +440,7 @@ function render_risk_pill($riskLabel, $riskKey, $riskScore)
             filter_all: 'Lahat', filter_high: 'Mataas', filter_medium: 'Katamtaman', filter_low: 'Mababa', filter_na: 'Kulang ang Datos',
             all_classes: 'Lahat ng Klase',
             grade: 'Baitang',
+            term: 'Termino', other_terms: 'Iba pang termino',
             student_singular: 'estudyante', student_plural: 'estudyante',
             chip_high: 'Mataas', chip_medium: 'Katamtaman', chip_low: 'Mababa', chip_na: 'Kulang',
             th_student: 'Estudyante', th_attendance: 'Attendance', th_assignments: 'Mga Gawain', th_quizzes: 'Mga Pagsusulit', th_risk: 'Panganib', th_ai: 'AI Insights',
@@ -460,25 +554,28 @@ function render_risk_pill($riskLabel, $riskKey, $riskScore)
 
         classCards.forEach(card => {
             const isTargetClass = activeClass === 'all' || card.dataset.class === activeClass;
-            const rows = card.querySelectorAll('tbody tr');
-            const emptyMsg = card.querySelector('.ar-class-empty');
-            let visibleInClass = 0;
+            const filtering = activeRisk !== 'all' || !!query;
 
-            rows.forEach(row => {
-                const matchesRisk = activeRisk === 'all' || row.dataset.filter === activeRisk;
-                const matchesSearch = !query || row.dataset.name.includes(query);
-                const show = isTargetClass && matchesRisk && matchesSearch;
-                row.style.display = show ? '' : 'none';
-                if (show) visibleInClass++;
+            // Each term (the visible one + any in the "Other terms" expander)
+            // is its own panel with its own table / empty message.
+            card.querySelectorAll('.ar-term-panel').forEach(panel => {
+                let visibleInPanel = 0;
+                panel.querySelectorAll('tbody tr').forEach(row => {
+                    const matchesRisk = activeRisk === 'all' || row.dataset.filter === activeRisk;
+                    const matchesSearch = !query || row.dataset.name.includes(query);
+                    const show = isTargetClass && matchesRisk && matchesSearch;
+                    row.style.display = show ? '' : 'none';
+                    if (show) visibleInPanel++;
+                });
+                const emptyMsg = panel.querySelector('.ar-class-empty');
+                const tableWrap = panel.querySelector('.ar-table-wrap');
+                const noneVisible = visibleInPanel === 0 && filtering;
+                if (emptyMsg) emptyMsg.style.display = noneVisible ? '' : 'none';
+                if (tableWrap) tableWrap.style.display = noneVisible ? 'none' : '';
             });
 
             card.style.display = isTargetClass ? '' : 'none';
-            if (isTargetClass) {
-                anyClassVisible = true;
-                if (emptyMsg) emptyMsg.style.display = (visibleInClass === 0 && (activeRisk !== 'all' || query)) ? '' : 'none';
-                const table = card.querySelector('.ar-table-wrap');
-                if (table) table.style.display = (visibleInClass === 0 && (activeRisk !== 'all' || query)) ? 'none' : '';
-            }
+            if (isTargetClass) anyClassVisible = true;
         });
 
         if (noResultsMsg) {
@@ -531,6 +628,15 @@ function render_risk_pill($riskLabel, $riskKey, $riskScore)
             const expanded = head.getAttribute('aria-expanded') === 'true';
             head.setAttribute('aria-expanded', String(!expanded));
             card.classList.toggle('collapsed', expanded);
+        });
+    });
+
+    // ---- "Other terms" expander inside each class card ----
+    document.querySelectorAll('.ar-terms-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const open = btn.getAttribute('aria-expanded') === 'true';
+            btn.setAttribute('aria-expanded', String(!open));
+            btn.nextElementSibling.classList.toggle('open', !open);
         });
     });
 

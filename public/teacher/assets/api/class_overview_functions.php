@@ -199,6 +199,47 @@ if ($activeOfferingId && $activeView === 'assignments') {
     $assignments = $stmt->fetchAll();
 }
 
+// ---- Per-assignment usage, so the Edit modal can stop the teacher from setting
+// attempts/points below what students have already used or been graded.
+$assignmentStats = [];
+if ($activeOfferingId && $activeView === 'assignments') {
+    $stmt = $pdo->prepare("
+        SELECT t.assignment_id, MAX(t.cnt) AS max_attempts_used, MAX(t.top_score) AS max_score
+        FROM (
+            SELECT sub.assignment_id, sub.student_id, COUNT(*) AS cnt, MAX(sub.score) AS top_score
+            FROM submissions sub
+            JOIN assignments a ON a.assignment_id = sub.assignment_id
+            WHERE a.offering_id = ?
+            GROUP BY sub.assignment_id, sub.student_id
+        ) t
+        GROUP BY t.assignment_id
+    ");
+    $stmt->execute([$activeOfferingId]);
+    foreach ($stmt->fetchAll() as $r) {
+        $assignmentStats[(int) $r['assignment_id']] = [
+            'max_attempts_used' => (int) $r['max_attempts_used'],
+            'max_score'         => (float) $r['max_score'],
+        ];
+    }
+}
+
+/** Helper: JSON for the data-assignment attribute that fills the Edit modal. */
+function assignmentEditData(array $a, array $stats): string
+{
+    $s = $stats[(int) $a['assignment_id']] ?? ['max_attempts_used' => 0, 'max_score' => 0];
+    return htmlspecialchars(json_encode([
+        'id'            => (int) $a['assignment_id'],
+        'title'         => $a['title'],
+        'description'   => $a['description'] ?? '',
+        'due'           => !empty($a['due_date']) ? date('Y-m-d\TH:i', strtotime($a['due_date'])) : '',
+        'points'        => (float) $a['points'],
+        'type'          => $a['type'] ?? 'Activity',
+        'maxAttempts'   => (int) $a['max_attempts'],
+        'attemptsUsed'  => (int) $s['max_attempts_used'],
+        'highestScore'  => (float) $s['max_score'],
+    ]), ENT_QUOTES, 'UTF-8');
+}
+
 // ---- Selected assignment + its submissions/grading grid --------------------
 $selectedAssignment = null;
 $submissionRows = [];
