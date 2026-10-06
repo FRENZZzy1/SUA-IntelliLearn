@@ -77,9 +77,39 @@ foreach ($atRiskRoster as $row) {
     }
 }
 
-// ---- Placeholder metrics (no backing table yet) ------------------------
-// TODO: replace with a real query once an `assignments` table exists.
-$assignmentsToGrade = null;
+// ---- Assignments waiting to be graded ----------------------------------
+// Counts each student's LATEST attempt per assignment (the one the grading
+// form lands on) that was turned in but has no score yet. Drafts and
+// students who are no longer actively enrolled are excluded.
+$assignmentsToGrade = 0;
+if ($offeringIds) {
+    $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM submissions sub
+        JOIN (
+            SELECT s2.assignment_id, s2.student_id, MAX(s2.attempt_number) AS latest_attempt
+            FROM submissions s2
+            JOIN assignments a2 ON a2.assignment_id = s2.assignment_id
+            WHERE a2.offering_id IN ($placeholders)
+            GROUP BY s2.assignment_id, s2.student_id
+        ) latest
+          ON latest.assignment_id = sub.assignment_id
+         AND latest.student_id    = sub.student_id
+         AND latest.latest_attempt = sub.attempt_number
+        JOIN assignments a ON a.assignment_id = sub.assignment_id
+        JOIN enrollments e ON e.offering_id = a.offering_id
+                          AND e.student_id  = sub.student_id
+                          AND e.status = 'active'
+        WHERE a.offering_id IN ($placeholders)
+          AND a.status <> 'draft'
+          AND sub.status IN ('submitted', 'late')
+          AND sub.score IS NULL
+    ");
+    $stmt->execute(array_merge($offeringIds, $offeringIds));
+    $assignmentsToGrade = (int) $stmt->fetchColumn();
+}
+
 // ---- Attendance rate across this teacher's active classes -------------
 $attendanceRate = null;
 if ($offeringIds) {

@@ -98,6 +98,10 @@ function export_xlsx_modern(array $opts): void
         'inactive' => ['bg' => 'FEE2E2', 'fg' => 'B91C1C'],
         'dropped' => ['bg' => 'FEE2E2', 'fg' => 'B91C1C'],
         'pending' => ['bg' => 'FEF3C7', 'fg' => 'B45309'],
+        // Gradebook export (teacher): official-grade status.
+        'up to date' => ['bg' => 'DCFCE7', 'fg' => '15803D'],
+        'needs re-finalizing' => ['bg' => 'FEF3C7', 'fg' => 'B45309'],
+        'not finalized' => ['bg' => 'F1F5F9', 'fg' => '64748B'],
     ];
 
     $dataStart = $headerRow + 1;

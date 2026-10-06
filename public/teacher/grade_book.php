@@ -225,6 +225,7 @@ $flash = getFlashMessage();
                                 </a>
                             <?php endforeach; ?>
                         </div>
+                        <a class="btn-export<?= $rows ? '' : ' disabled' ?>" href="assets/api/export_gradebook.php?offering_id=<?= (int) $offeringId ?>" <?= $rows ? '' : 'aria-disabled="true" tabindex="-1"' ?>><i class="fas fa-file-excel"></i> Export Gradebook</a>
                         <div class="mobile-class-select"><label>Switch class</label><select
                                 onchange="if(this.value)location='?offering_id='+this.value"><?php foreach ($groups as $g):
                                     $isSel = $selectedClass['subject_id'] == $g['info']['subject_id'] && $selectedClass['section_id'] == $g['info']['section_id'];

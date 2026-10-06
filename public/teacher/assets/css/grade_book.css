@@ -638,3 +638,37 @@ body {
     .term-seg { flex: 1; }
     .selected-class-controls .mobile-class-select { margin-top: 12px; }
 }
+
+/* ---------- Export Gradebook button ---------- */
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: var(--primary);
+    color: #fff;
+    padding: 11px 18px;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 13px;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background .15s, transform .15s, box-shadow .15s;
+}
+
+.btn-export:hover {
+    background: var(--primary-light);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 14px rgba(27, 67, 50, .18);
+}
+
+.btn-export.disabled {
+    background: #c7d1cb;
+    pointer-events: none;
+    transform: none;
+    box-shadow: none;
+}
+
+@media (max-width: 720px) {
+    .selected-class-controls .btn-export { display: flex; width: 100%; margin-top: 12px; }
+}
