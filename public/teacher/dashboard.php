@@ -59,7 +59,7 @@ include 'assets/api/dashboard_functions.php';
             </div>
             <div class="metric-value"><?= $assignmentsToGrade ?? '—' ?></div>
             <div class="metric-foot muted">
-                <?= $assignmentsToGrade === null ? 'Coming soon' : 'Pending review' ?>
+                <?= $assignmentsToGrade === null ? 'Unavailable' : ($assignmentsToGrade === 0 ? 'All caught up' : 'Pending review') ?>
             </div>
         </article>
 

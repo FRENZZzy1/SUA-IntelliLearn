@@ -66,21 +66,27 @@ if (function_exists('get_initials')) {
         cursor: pointer;
         text-decoration: none;
         color: inherit;
+        background: none;
+        border: none;
+        width: 100%;
+        text-align: left;
+        font-family: inherit;
+        font-size: inherit;
     }
-    .search-result-item:hover { background: #f5f5f7; }
+    .search-result-item:hover, .search-result-item:focus { background: #f5f5f7; outline: none; }
     .search-result-icon {
-        width: 28px;
-        height: 28px;
+        width: 30px;
+        height: 30px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 0.7rem;
-        font-weight: 600;
+        font-size: 0.68rem;
+        font-weight: 700;
         color: #fff;
         flex-shrink: 0;
     }
-    .search-result-main { display: flex; flex-direction: column; min-width: 0; }
+    .search-result-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
     .search-result-title {
         font-size: 0.85rem;
         font-weight: 500;
@@ -95,6 +101,62 @@ if (function_exists('get_initials')) {
         font-size: 0.8rem;
         color: #9ca3af;
     }
+
+    /* People search: result avatars + quick-view modal */
+    .search-result-icon { background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%); }
+    .search-result-icon.teacher { background: linear-gradient(135deg, #b45309 0%, #d97706 100%); }
+    .search-tag {
+        display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+        background: #e8f3ec; color: #1b4332; font-size: 0.65rem; font-weight: 700; vertical-align: middle;
+    }
+    .svm-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(16, 40, 30, 0.45); z-index: 1100;
+        align-items: center; justify-content: center; padding: 20px;
+    }
+    .svm-overlay.open { display: flex; }
+    .svm-card {
+        background: #fff; border-radius: 16px; width: 460px; max-width: 100%;
+        max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+    }
+    .svm-head {
+        background: linear-gradient(135deg, #1b4332 0%, #2d6a4f 100%); color: #fff;
+        padding: 22px 22px 18px; border-radius: 16px 16px 0 0;
+        display: flex; gap: 14px; align-items: center; position: relative;
+    }
+    .svm-head.teacher { background: linear-gradient(135deg, #8a4b08 0%, #b45309 100%); }
+    .svm-close {
+        position: absolute; top: 14px; right: 14px; background: rgba(255,255,255,0.18);
+        border: none; color: #fff; width: 28px; height: 28px; border-radius: 50%;
+        cursor: pointer; font-size: 0.8rem; display: grid; place-items: center;
+    }
+    .svm-avatar {
+        width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.2);
+        display: grid; place-items: center; font-weight: 700; font-size: 1.1rem; flex-shrink: 0;
+    }
+    .svm-head-text { min-width: 0; }
+    .svm-name { font-size: 1.1rem; font-weight: 700; margin: 0 0 4px; }
+    .svm-meta { font-size: 0.8rem; opacity: 0.85; }
+    .svm-body { padding: 18px 22px 22px; }
+    .svm-section { margin-bottom: 18px; }
+    .svm-section:last-child { margin-bottom: 0; }
+    .svm-section-title {
+        font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.04em; color: #9ca3af; margin: 0 0 10px;
+    }
+    .svm-subject-row {
+        display: flex; justify-content: space-between; align-items: center; gap: 10px;
+        padding: 10px 12px; border-radius: 10px; background: #f4f7f5; margin-bottom: 8px; font-size: 0.85rem;
+    }
+    .svm-subject-row:last-child { margin-bottom: 0; }
+    .svm-subject-name { font-weight: 600; color: #1b4332; }
+    .svm-subject-schedule { color: #6b7d74; font-size: 0.75rem; text-align: right; }
+    .svm-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.83rem; }
+    .svm-info-grid div span { display: block; }
+    .svm-info-label { color: #9ca3af; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .svm-empty-note { font-size: 0.8rem; color: #9ca3af; font-style: italic; margin: 0; }
+    .svm-loading, .svm-error { padding: 40px 20px; text-align: center; color: #9ca3af; font-size: 0.85rem; }
+    @media (max-width: 480px) { .svm-info-grid { grid-template-columns: 1fr; } }
 
     /* Profile dropdown */
     .shp-profile { position: relative; }
@@ -357,7 +419,7 @@ if (function_exists('get_initials')) {
 <header class="top-header">
     <div class="header-search">
         <i class="fas fa-search"></i>
-        <input type="text" id="globalSearchInput" placeholder="Search courses, announcements..." autocomplete="off">
+        <input type="text" id="globalSearchInput" placeholder="Search teachers and students…" autocomplete="off">
         <div id="searchResultsDropdown" class="search-results-dropdown"></div>
     </div>
     <div class="header-actions">
@@ -416,6 +478,9 @@ if (function_exists('get_initials')) {
         </div>
     </div>
 </header>
+<div class="svm-overlay" id="svmOverlay">
+    <div class="svm-card" id="svmCard" role="dialog" aria-modal="true" aria-labelledby="svmName"></div>
+</div>
 <script>
 (function () {
     function shpEl() { return document.getElementById('shpProfile'); }
@@ -656,5 +721,175 @@ if (function_exists('get_initials')) {
 
     render();
     load();
+})();
+</script>
+
+<script>
+(function () {
+    var API_BASE = '/SUA-INTELLILEARN/public/student/assets/api/';
+    var input    = document.getElementById('globalSearchInput');
+    var dropdown = document.getElementById('searchResultsDropdown');
+    var overlay  = document.getElementById('svmOverlay');
+    var card     = document.getElementById('svmCard');
+    if (!input || !dropdown || !overlay || !card) return;
+
+    var debounceTimer = null;
+    var activeController = null;
+
+    function escapeHtml(str) {
+        var div = document.createElement('div');
+        div.textContent = str == null ? '' : str;
+        return div.innerHTML;
+    }
+    function initials(name) {
+        return name.split(/\s+/).slice(0, 2).map(function (p) { return p.charAt(0).toUpperCase(); }).join('') || '?';
+    }
+    function openDropdown()  { dropdown.classList.add('open'); }
+    function closeDropdown() { dropdown.classList.remove('open'); }
+    function closeModal()    { overlay.classList.remove('open'); }
+
+    function renderMessage(cls, html) {
+        dropdown.innerHTML = '<div class="' + cls + '">' + html + '</div>';
+        openDropdown();
+    }
+
+    function resultRow(type, r) {
+        var sub, tag = '';
+        if (type === 'teacher') {
+            sub = r.department ? escapeHtml(r.department) : 'Teacher';
+            if (r.is_mine) tag = '<span class="search-tag">Your teacher</span>';
+        } else {
+            sub = 'Grade ' + r.grade + (r.section ? ' – ' + escapeHtml(r.section) : '');
+            if (r.classmate) tag = '<span class="search-tag">Classmate</span>';
+        }
+        return '<button type="button" class="search-result-item" data-type="' + type + '" data-id="' + r.id + '">' +
+                 '<div class="search-result-icon ' + type + '">' + escapeHtml(initials(r.name)) + '</div>' +
+                 '<div class="search-result-main">' +
+                   '<span class="search-result-title">' + escapeHtml(r.name) + tag + '</span>' +
+                   '<span class="search-result-sub">' + sub + '</span>' +
+                 '</div>' +
+               '</button>';
+    }
+
+    function renderResults(data) {
+        var html = '';
+        if (data.teachers.length) {
+            html += '<div class="search-group-label">Teachers</div>';
+            data.teachers.forEach(function (r) { html += resultRow('teacher', r); });
+        }
+        if (data.students.length) {
+            html += '<div class="search-group-label">Students</div>';
+            data.students.forEach(function (r) { html += resultRow('student', r); });
+        }
+        dropdown.innerHTML = html;
+        openDropdown();
+        dropdown.querySelectorAll('.search-result-item').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                closeDropdown();
+                input.value = '';
+                openPerson(btn.getAttribute('data-type'), btn.getAttribute('data-id'));
+            });
+        });
+    }
+
+    input.addEventListener('input', function () {
+        var term = input.value.trim();
+        clearTimeout(debounceTimer);
+        if (term.length < 2) { closeDropdown(); return; }
+
+        debounceTimer = setTimeout(function () {
+            renderMessage('search-loading-state', '<i class="fas fa-spinner fa-spin"></i> Searching…');
+            if (activeController) activeController.abort();
+            activeController = new AbortController();
+
+            fetch(API_BASE + 'people_search.php?q=' + encodeURIComponent(term), { signal: activeController.signal, credentials: 'same-origin' })
+                .then(function (res) { return res.json(); })
+                .then(function (data) {
+                    if (!data.success || (!data.teachers.length && !data.students.length)) {
+                        renderMessage('search-empty-state', 'No teachers or students matching "' + escapeHtml(term) + '".');
+                        return;
+                    }
+                    renderResults(data);
+                })
+                .catch(function (err) {
+                    if (err.name !== 'AbortError') renderMessage('search-empty-state', 'Something went wrong. Try again.');
+                });
+        }, 300);
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!e.target.closest('.header-search')) closeDropdown();
+    });
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { closeDropdown(); closeModal(); }
+    });
+    overlay.addEventListener('click', function (e) { if (e.target === overlay) closeModal(); });
+
+    // ---------- Quick-view modal ----------
+    function rows(list, emptyText) {
+        if (!list.length) return '<p class="svm-empty-note">' + escapeHtml(emptyText) + '</p>';
+        return list.map(function (c) {
+            return '<div class="svm-subject-row">' +
+                     '<span class="svm-subject-name">' + escapeHtml(c.subject) + '</span>' +
+                     '<span class="svm-subject-schedule">' + escapeHtml(c.detail) + '</span>' +
+                   '</div>';
+        }).join('');
+    }
+
+    function openPerson(type, id) {
+        card.innerHTML = '<div class="svm-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div>';
+        overlay.classList.add('open');
+
+        fetch(API_BASE + 'people_lookup.php?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id), { credentials: 'same-origin' })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (!data.success) {
+                    card.innerHTML = '<div class="svm-error">' + escapeHtml((data.errors && data.errors[0]) || 'Could not load this profile.') + '</div>';
+                    return;
+                }
+                renderCard(data);
+            })
+            .catch(function () {
+                card.innerHTML = '<div class="svm-error">Something went wrong loading this profile.</div>';
+            });
+    }
+
+    function renderCard(data) {
+        var p = data.person, isTeacher = data.type === 'teacher';
+        var meta, body;
+
+        if (isTeacher) {
+            meta = 'Teacher' + (p.department ? ' · ' + escapeHtml(p.department) : '');
+            body =
+                '<div class="svm-section"><p class="svm-section-title">Teaches You</p>' + rows(data.with_me, 'You aren\u2019t enrolled in any of their classes.') + '</div>' +
+                '<div class="svm-section"><p class="svm-section-title">Teacher Info</p>' +
+                    '<div class="svm-info-grid">' +
+                        '<div><span class="svm-info-label">Department</span><span>' + escapeHtml(p.department || '—') + '</span></div>' +
+                        '<div><span class="svm-info-label">Specialization</span><span>' + escapeHtml(p.specialization || '—') + '</span></div>' +
+                    '</div></div>' +
+                '<div class="svm-section"><p class="svm-section-title">Also Handles</p>' + rows(data.handles, 'No active classes.') + '</div>';
+        } else {
+            meta = 'Grade ' + p.grade + (p.section ? ' – ' + escapeHtml(p.section) : '');
+            body =
+                '<div class="svm-section"><p class="svm-section-title">Classes Together</p>' + rows(data.together, 'No shared classes with you.') + '</div>' +
+                '<div class="svm-section"><p class="svm-section-title">Student Info</p>' +
+                    '<div class="svm-info-grid">' +
+                        '<div><span class="svm-info-label">Grade level</span><span>' + escapeHtml(String(p.grade)) + '</span></div>' +
+                        '<div><span class="svm-info-label">Section</span><span>' + escapeHtml(p.section || '—') + '</span></div>' +
+                    '</div></div>';
+        }
+
+        card.innerHTML =
+            '<div class="svm-head' + (isTeacher ? ' teacher' : '') + '">' +
+                '<button type="button" class="svm-close" aria-label="Close"><i class="fas fa-times"></i></button>' +
+                '<div class="svm-avatar">' + escapeHtml(initials(p.name)) + '</div>' +
+                '<div class="svm-head-text">' +
+                    '<h3 class="svm-name" id="svmName">' + escapeHtml(p.name) + '</h3>' +
+                    '<div class="svm-meta">' + meta + '</div>' +
+                '</div>' +
+            '</div>' +
+            '<div class="svm-body">' + body + '</div>';
+        card.querySelector('.svm-close').addEventListener('click', closeModal);
+    }
 })();
 </script>

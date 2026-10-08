@@ -69,12 +69,15 @@ function get_at_risk_roster(PDO $pdo, array $offeringIds): array
         SELECT
             e.student_id, e.offering_id,
             s.firstname, s.lastname,
+            co.subject_id, co.section_id, co.quarter, co.school_year_id,
+            sy.label AS school_year_label, sy.is_current AS school_year_is_current,
             sub.subject_name, sec.section_name, sec.grade_level
         FROM enrollments e
         JOIN students s        ON s.student_id = e.student_id
         JOIN classofferings co ON co.offering_id = e.offering_id
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN sections sec      ON sec.section_id = co.section_id
+        LEFT JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
         WHERE e.status = 'active'
           AND e.offering_id IN ($placeholders)
         ORDER BY sec.grade_level, sub.subject_name, s.lastname
@@ -121,6 +124,12 @@ function get_at_risk_roster(PDO $pdo, array $offeringIds): array
             'offering_id'  => (int) $row['offering_id'],
             'name'         => trim($row['firstname'] . ' ' . $row['lastname']),
             'subject'      => $row['subject_name'],
+            'subject_id'   => (int) $row['subject_id'],
+            'section_id'   => (int) $row['section_id'],
+            'quarter'      => $row['quarter'],
+            'school_year_id'         => (int) $row['school_year_id'],
+            'school_year_label'      => $row['school_year_label'] ?? '',
+            'school_year_is_current' => !empty($row['school_year_is_current']),
             'section'      => $row['section_name'],
             'grade_level'  => (int) $row['grade_level'],
 

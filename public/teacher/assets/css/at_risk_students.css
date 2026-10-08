@@ -223,3 +223,20 @@
             .ar-stat { flex-basis: 100%; }
             .ar-class-chips { max-width: 100%; }
         }
+
+        /* ---------- Term pill + "Other terms" expander ---------- */
+        .ar-term-pill { display: inline-block; background: #e8f3ec; color: var(--primary); border-radius: 999px; padding: 1px 9px; font-size: 0.7rem; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+        .ar-terms-toggle {
+            width: 100%; display: flex; align-items: center; gap: 8px; padding: 10px 18px;
+            border: none; border-top: 1px solid var(--border); background: #f9fafb; color: var(--primary);
+            font-size: 0.8rem; font-weight: 600; cursor: pointer; text-align: left;
+        }
+        .ar-terms-toggle:hover { background: #f3f4f6; }
+        .ar-terms-toggle .ar-terms-chevron { margin-left: auto; transition: transform 0.2s ease; font-size: 0.75rem; color: #9ca3af; }
+        .ar-terms-toggle[aria-expanded="true"] .ar-terms-chevron { transform: rotate(180deg); }
+        .ar-other-terms { display: none; }
+        .ar-other-terms.open { display: block; }
+        .ar-term-panel-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 18px; background: #f3f4f6; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .ar-term-panel-head .ar-term-pill { margin-left: 0; }
+        .ar-term-panel-count { font-size: 0.76rem; color: var(--text-muted); }
+        .ar-term-panel-head .ar-class-chips { margin-left: auto; }

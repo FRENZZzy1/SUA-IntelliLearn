@@ -1778,3 +1778,46 @@
 .request-none {
     color: var(--text-muted, #9ca3af);
 }
+
+/* ===================== Edit assignment modal ===================== */
+.modal-overlay[hidden] { display: none; }
+
+#assignmentEditModal .modal-box { max-width: 560px; }
+#assignmentEditModal .modal-body .form-row { margin-bottom: 14px; }
+
+.ae-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 8px 0 4px;
+}
+.ae-chip {
+    border: 1px solid #d1e7dd;
+    background: #f0f7f3;
+    color: #1b4332;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s ease;
+}
+.ae-chip:hover { background: #dcefe4; }
+.ae-chip--muted { background: #f3f4f6; border-color: #e5e7eb; color: #6b7280; }
+.ae-chip--muted:hover { background: #e5e7eb; }
+
+.ae-stepper { display: flex; align-items: center; gap: 10px; }
+.ae-stepper input[type="number"] { max-width: 110px; }
+
+#assignmentEditModal .form-row-inline.ae-two { grid-template-columns: 1fr 1fr; }
+
+.ae-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 24px;
+    border-top: 1px solid #eef0f3;
+}
+
+.panel-header .btn-secondary.js-edit-assignment { margin-left: 10px; white-space: nowrap; }
