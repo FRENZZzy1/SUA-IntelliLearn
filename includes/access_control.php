@@ -28,7 +28,6 @@ function ensureAdminPermissionsTable(PDO $pdo): void {
             user_id INT NOT NULL,
             module_key VARCHAR(50) NOT NULL,
             permission ENUM('read','write') NOT NULL DEFAULT 'read',
-            can_approve_enrollment TINYINT(1) NOT NULL DEFAULT 0,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (permission_id),
@@ -71,7 +70,7 @@ function adminPermissions(int $userId = 0): array {
     if (isset($cache[$userId])) return $cache[$userId];
 
     try {
-        $stmt = $pdo->prepare("SELECT module_key, permission, can_approve_enrollment FROM admin_permissions WHERE user_id = ?");
+        $stmt = $pdo->prepare("SELECT module_key, permission FROM admin_permissions WHERE user_id = ?");
         $stmt->execute([$userId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         $out = [];
@@ -128,9 +127,9 @@ function saveAdminPermissions(PDO $pdo, int $userId, string $accessLevel, string
         }
     }
 
-    $stmt = $pdo->prepare("INSERT INTO admin_permissions (user_id, module_key, permission, can_approve_enrollment) VALUES (?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO admin_permissions (user_id, module_key, permission) VALUES (?, ?, ?)");
     foreach ($modules as $module => $cfg) {
-        $stmt->execute([$userId, $module, $cfg['permission'], $cfg['can_approve_enrollment'] ? 1 : 0]);
+        $stmt->execute([$userId, $module, $cfg['permission']]);
     }
 }
 

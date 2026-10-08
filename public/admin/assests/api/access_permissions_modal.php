@@ -57,7 +57,7 @@
     try{ pendingPermissions=JSON.parse(json||'{}'); }catch(e){ pendingPermissions={}; }
     if(targetAccessLevel==='full'){
       pendingPermissions={};
-      modules.forEach(([key])=>pendingPermissions[key]={permission:'write',can_approve_enrollment:false});
+      modules.forEach(([key])=>pendingPermissions[key]={permission:'write'});
     }
     renderRows();
     document.getElementById('accessPermissionsOverlay').style.display='flex';
@@ -67,7 +67,7 @@
     if(targetAccessLevel!=='full'){
       document.querySelectorAll('#alpModuleRows select').forEach(s=>{
         if(s.value==='none') delete pendingPermissions[s.dataset.module];
-        else pendingPermissions[s.dataset.module]={permission:targetAccessLevel==='read_only'?'read':s.value,can_approve_enrollment:false};
+        else pendingPermissions[s.dataset.module]={permission:targetAccessLevel==='read_only'?'read':s.value};
       });
       if(!Object.keys(pendingPermissions).length){ alert('Select at least one module.'); return; }
     }
