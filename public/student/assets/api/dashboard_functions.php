@@ -31,7 +31,7 @@ $stmt = $pdo->prepare("
     JOIN sections sec      ON sec.section_id = co.section_id
     JOIN teachers t        ON t.teacher_id = co.teacher_id
     WHERE e.student_id = ?
-      AND e.status = 'active'
+      AND e.status = 'enrolled'
       AND (co.school_year_id = ? OR ? IS NULL)
     ORDER BY sub.subject_name
 ");

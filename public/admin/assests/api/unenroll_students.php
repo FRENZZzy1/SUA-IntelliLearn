@@ -11,7 +11,7 @@
  *
  * Unenrolling marks the enrollments as 'dropped' instead of deleting the rows,
  * so the student's grades (which cascade off enrollments) are preserved and
- * every teacher/student query that filters on status = 'active' stops
+ * every teacher/student query that filters on status = 'enrolled' stops
  * showing them in the class right away.
  * If the student is enrolled again later, the dropped rows are re-activated
  * (see approve_enrollment.php / add_enrollment_request.php).
@@ -74,7 +74,7 @@ try {
         UPDATE enrollments
         SET status = 'dropped'
         WHERE offering_id = ?
-          AND status = 'active'
+          AND status = 'enrolled'
           AND student_id IN ($placeholders)
     ");
     $stmt->execute(array_merge([(int) $offering_id], $studentIds));
@@ -87,7 +87,7 @@ try {
         JOIN classofferings co     ON co.offering_id = e.offering_id
         JOIN classofferings target ON target.offering_id = ?
         SET e.status = 'dropped'
-        WHERE e.status = 'active'
+        WHERE e.status = 'enrolled'
           AND e.student_id IN ($placeholders)
           AND co.subject_id     = target.subject_id
           AND co.section_id     = target.section_id

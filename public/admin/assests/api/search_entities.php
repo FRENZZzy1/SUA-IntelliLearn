@@ -60,7 +60,7 @@ if ($type === 'teacher') {
 } elseif ($type === 'student') {
     $stmt = $pdo->prepare("
         SELECT student_id, firstname, middlename, lastname, student_lrn,
-               (SELECT COUNT(*) FROM enrollments e WHERE e.student_id = students.student_id) AS class_count
+               (SELECT COUNT(*) FROM enrollments e WHERE e.student_id = students.student_id AND e.status NOT IN ('pending','denied')) AS class_count
         FROM students
         WHERE CONCAT(firstname, ' ', lastname) LIKE ? OR firstname LIKE ? OR lastname LIKE ? OR student_lrn LIKE ?
         ORDER BY lastname, firstname

@@ -223,7 +223,7 @@ function teval_student_classes(PDO $pdo, int $studentId, array $round): array
         JOIN subjects s   ON s.subject_id = co.subject_id
         JOIN sections sec ON sec.section_id = co.section_id
         JOIN teachers t   ON t.teacher_id = co.teacher_id
-        WHERE e.student_id = ? AND e.status = 'active'
+        WHERE e.student_id = ? AND e.status = 'enrolled'
           AND co.status = 'active'
           AND co.school_year_id = ? AND co.quarter = ?
         ORDER BY s.subject_name, t.lastname
@@ -419,7 +419,7 @@ function teval_round_results(PDO $pdo, array $round): array
         JOIN sections sec ON sec.section_id = co.section_id
         LEFT JOIN teacher_evaluation_submissions ts
                ON ts.round_id = ? AND ts.student_id = e.student_id AND ts.offering_id = e.offering_id
-        WHERE e.status = 'active' AND co.status = 'active'
+        WHERE e.status = 'enrolled' AND co.status = 'active'
           AND co.school_year_id = ? AND co.quarter = ?
         GROUP BY sec.section_id, sec.grade_level, sec.section_name
         ORDER BY sec.grade_level, sec.section_name

@@ -418,7 +418,7 @@ function renderVsStudents(list) {
 
     if (vsCourseInfo) {
         const filtered = list.length !== vsAllStudents.length;
-        const activeCount = vsAllStudents.filter(function (s) { return s.status === 'active'; }).length;
+        const activeCount = vsAllStudents.filter(function (s) { return s.status === 'enrolled'; }).length;
         subtitle.textContent = 'Grade ' + vsCourseInfo.grade_level + (vsCourseInfo.strand ? ' · ' + vsCourseInfo.strand : '')
             + ' · ' + (filtered ? list.length + ' of ' + vsAllStudents.length + ' shown' : activeCount + '/' + vsCourseInfo.capacity + ' enrolled');
     }
@@ -440,7 +440,7 @@ function renderVsStudents(list) {
         const statusLabel = s.status.charAt(0).toUpperCase() + s.status.slice(1);
         const enrolledDate = s.enrolled_at ? new Date(s.enrolled_at.replace(' ', 'T')).toLocaleDateString() : '—';
         const genderLabel = s.Gender ? (s.Gender.charAt(0).toUpperCase() + s.Gender.slice(1)) : '—';
-        const isActive = s.status === 'active';
+        const isActive = s.status === 'enrolled';
         const checked = vsSelected.has(String(s.student_id)) ? ' checked' : '';
         return '<tr>'
             + '<td class="vs-check-cell">' + (isActive
@@ -450,7 +450,7 @@ function renderVsStudents(list) {
             + '<td>' + escapeHtml(fullName) + '</td>'
             + '<td>' + (s.email ? escapeHtml(s.email) : '— None —') + '</td>'
             + '<td>' + escapeHtml(genderLabel) + '</td>'
-            + '<td><span class="status-dot-badge ' + (s.status === 'active' ? 'active' : 'inactive') + '"><span class="dot"></span>' + escapeHtml(statusLabel) + '</span></td>'
+            + '<td><span class="status-dot-badge ' + (s.status === 'enrolled' ? 'active' : 'inactive') + '"><span class="dot"></span>' + escapeHtml(statusLabel) + '</span></td>'
             + '<td>' + escapeHtml(enrolledDate) + '</td>'
             + '</tr>';
     }).join('');
@@ -542,7 +542,7 @@ function unenrollSelectedStudents() {
         });
         // Keep active students on top, matching the server's ordering.
         vsAllStudents.sort(function (a, b) {
-            return (b.status === 'active') - (a.status === 'active');
+            return (b.status === 'enrolled') - (a.status === 'enrolled');
         });
         vsSelected = new Set();
         vsChanged = true;

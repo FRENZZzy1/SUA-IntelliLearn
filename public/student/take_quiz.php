@@ -34,7 +34,7 @@ if (!$quiz) {
 // 2b. The student must have an ACTIVE enrollment in the class this quiz belongs
 //     to. Unenrolled ('dropped') students, and students who were never in the
 //     class, can't open or submit it even if they have the direct URL.
-$stmt = $pdo->prepare("SELECT 1 FROM enrollments WHERE student_id = ? AND offering_id = ? AND status = 'active' LIMIT 1");
+$stmt = $pdo->prepare("SELECT 1 FROM enrollments WHERE student_id = ? AND offering_id = ? AND status = 'enrolled' LIMIT 1");
 $stmt->execute([$studentId, $quiz['offering_id']]);
 if (!$stmt->fetchColumn()) {
     die("You are not enrolled in this class.");

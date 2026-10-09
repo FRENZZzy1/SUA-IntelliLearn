@@ -61,7 +61,7 @@ $stmt = $pdo->prepare("
     JOIN teachers t        ON t.teacher_id = co.teacher_id
     WHERE e.student_id = ?
       AND co.subject_id = ?
-      AND e.status = 'active'
+      AND e.status = 'enrolled'
       AND co.status = 'active'
       AND (co.school_year_id = ? OR ? IS NULL)
 ");

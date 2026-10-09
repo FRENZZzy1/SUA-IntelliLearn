@@ -75,7 +75,7 @@ $stmt = $pdo->prepare("
     SELECT s.student_id
     FROM enrollments e
     JOIN students s ON s.student_id = e.student_id
-    WHERE e.offering_id = ? AND e.status = 'active'
+    WHERE e.offering_id = ? AND e.status = 'enrolled'
 ");
 $stmt->execute([$offeringId]);
 $validStudentIds = array_map('intval', array_column($stmt->fetchAll(), 'student_id'));

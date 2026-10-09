@@ -11,7 +11,7 @@ $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$teacher)
     die('Teacher record not found.');
 $teacherId = (int) $teacher['teacher_id'];
-$stmt = $pdo->prepare("SELECT co.offering_id,co.quarter,co.subject_id,co.section_id,co.school_year_id,sy.is_current school_year_is_current,sub.subject_name,sec.section_name,sec.grade_level,sec.strand,sy.label school_year,COUNT(DISTINCT CASE WHEN e.status='active' THEN e.student_id END) student_count FROM classofferings co JOIN subjects sub ON sub.subject_id=co.subject_id JOIN sections sec ON sec.section_id=co.section_id JOIN schoolyears sy ON sy.school_year_id=co.school_year_id LEFT JOIN enrollments e ON e.offering_id=co.offering_id WHERE co.teacher_id=? AND co.status='active' GROUP BY co.offering_id,co.quarter,co.subject_id,co.section_id,co.school_year_id,sy.is_current,sub.subject_name,sec.section_name,sec.grade_level,sec.strand,sy.label ORDER BY sy.start_date DESC,sub.subject_name,sec.section_name,co.quarter");
+$stmt = $pdo->prepare("SELECT co.offering_id,co.quarter,co.subject_id,co.section_id,co.school_year_id,sy.is_current school_year_is_current,sub.subject_name,sec.section_name,sec.grade_level,sec.strand,sy.label school_year,COUNT(DISTINCT CASE WHEN e.status='enrolled' THEN e.student_id END) student_count FROM classofferings co JOIN subjects sub ON sub.subject_id=co.subject_id JOIN sections sec ON sec.section_id=co.section_id JOIN schoolyears sy ON sy.school_year_id=co.school_year_id LEFT JOIN enrollments e ON e.offering_id=co.offering_id WHERE co.teacher_id=? AND co.status='active' GROUP BY co.offering_id,co.quarter,co.subject_id,co.section_id,co.school_year_id,sy.is_current,sub.subject_name,sec.section_name,sec.grade_level,sec.strand,sy.label ORDER BY sy.start_date DESC,sub.subject_name,sec.section_name,co.quarter");
 $stmt->execute([$teacherId]);
 $classes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $offeringId = (int) (filter_input(INPUT_GET, 'offering_id', FILTER_VALIDATE_INT) ?: 0);
@@ -58,7 +58,7 @@ $aScores = [];
 $qScores = [];
 $finalized = [];
 if ($offeringId) {
-    $stmt = $pdo->prepare("SELECT e.enrollment_id,s.student_id,s.student_lrn,s.firstname,s.lastname,s.middlename FROM enrollments e JOIN students s ON s.student_id=e.student_id WHERE e.offering_id=? AND e.status='active' ORDER BY s.lastname,s.firstname");
+    $stmt = $pdo->prepare("SELECT e.enrollment_id,s.student_id,s.student_lrn,s.firstname,s.lastname,s.middlename FROM enrollments e JOIN students s ON s.student_id=e.student_id WHERE e.offering_id=? AND e.status='enrolled' ORDER BY s.lastname,s.firstname");
     $stmt->execute([$offeringId]);
     $students = $stmt->fetchAll(PDO::FETCH_ASSOC);
     $stmt = $pdo->prepare("SELECT a.assignment_id,a.title,a.points,a.type,sub.student_id,sub.score FROM assignments a LEFT JOIN submissions sub ON sub.assignment_id=a.assignment_id AND sub.attempt_number=(SELECT MAX(x.attempt_number) FROM submissions x WHERE x.assignment_id=a.assignment_id AND x.student_id=sub.student_id) WHERE a.offering_id=? ORDER BY a.created_at,a.assignment_id");

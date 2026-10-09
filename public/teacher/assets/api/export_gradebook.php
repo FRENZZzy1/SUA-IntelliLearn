@@ -51,7 +51,7 @@ $stmt = $pdo->prepare("
     SELECT e.enrollment_id, s.student_id, s.student_lrn, s.firstname, s.lastname, s.middlename
     FROM enrollments e
     JOIN students s ON s.student_id = e.student_id
-    WHERE e.offering_id = ? AND e.status = 'active'
+    WHERE e.offering_id = ? AND e.status = 'enrolled'
     ORDER BY s.lastname, s.firstname
 ");
 $stmt->execute([$offeringId]);

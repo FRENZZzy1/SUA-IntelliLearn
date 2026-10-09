@@ -440,7 +440,7 @@ if (!empty($submissionRows)) {
                                     <td class="student-name"><?= htmlspecialchars(trim($r['lastname'] . ', ' . $r['firstname'] . ' ' . ($r['middlename'] ?? ''))) ?></td>
                                     <td><?= htmlspecialchars($termLabels[$r['quarter']] ?? $r['quarter']) ?></td>
                                     <td>
-                                        <?php if ($r['status'] === 'approved'): ?>
+                                        <?php if ($r['status'] === 'enrolled'): ?>
                                             <span class="chip chip-graded">Approved</span>
                                         <?php else: ?>
                                             <span class="chip chip-closed">Denied</span>

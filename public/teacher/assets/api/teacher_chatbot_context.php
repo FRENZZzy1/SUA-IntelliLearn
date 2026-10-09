@@ -14,7 +14,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
                sec.strand, co.quarter, sy.label AS school_year,
                co.schedule_days, co.start_time, co.end_time,
                (SELECT COUNT(*) FROM enrollments e
-                WHERE e.offering_id = co.offering_id AND e.status = 'active') AS student_count
+                WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS student_count
         FROM classofferings co
         JOIN subjects sub ON sub.subject_id = co.subject_id
         JOIN sections sec ON sec.section_id = co.section_id
@@ -58,7 +58,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
             SELECT DISTINCT s.firstname, s.lastname, sub.subject_name,
                    sec.grade_level, sec.section_name, co.quarter
             FROM students s
-            JOIN enrollments e ON e.student_id = s.student_id AND e.status = 'active'
+            JOIN enrollments e ON e.student_id = s.student_id AND e.status = 'enrolled'
             JOIN classofferings co ON co.offering_id = e.offering_id
             JOIN subjects sub ON sub.subject_id = co.subject_id
             JOIN sections sec ON sec.section_id = co.section_id
@@ -123,7 +123,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
                    SUM(att.status = 'Absent') AS absent_count,
                    SUM(att.status = 'Excused') AS excused_count
             FROM students s
-            JOIN enrollments e ON e.student_id = s.student_id AND e.status = 'active'
+            JOIN enrollments e ON e.student_id = s.student_id AND e.status = 'enrolled'
             JOIN classofferings co ON co.offering_id = e.offering_id AND co.teacher_id = ?
             JOIN subjects sub ON sub.subject_id = co.subject_id
             JOIN sections sec ON sec.section_id = co.section_id
@@ -146,7 +146,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
             SELECT s.firstname, s.lastname, sub.subject_name, sec.section_name,
                    a.title, a.points, MAX(sm.score) AS best_score
             FROM students s
-            JOIN enrollments e ON e.student_id = s.student_id AND e.status = 'active'
+            JOIN enrollments e ON e.student_id = s.student_id AND e.status = 'enrolled'
             JOIN classofferings co ON co.offering_id = e.offering_id AND co.teacher_id = ?
             JOIN subjects sub ON sub.subject_id = co.subject_id
             JOIN sections sec ON sec.section_id = co.section_id
@@ -169,7 +169,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
             SELECT s.firstname, s.lastname, sub.subject_name, sec.section_name,
                    q.title, MAX(CASE WHEN qa.max_score > 0 THEN (qa.score / qa.max_score) * 100 ELSE NULL END) AS best_pct
             FROM students s
-            JOIN enrollments e ON e.student_id = s.student_id AND e.status = 'active'
+            JOIN enrollments e ON e.student_id = s.student_id AND e.status = 'enrolled'
             JOIN classofferings co ON co.offering_id = e.offering_id AND co.teacher_id = ?
             JOIN subjects sub ON sub.subject_id = co.subject_id
             JOIN sections sec ON sec.section_id = co.section_id

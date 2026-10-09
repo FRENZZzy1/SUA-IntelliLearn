@@ -74,7 +74,7 @@ try {
         $stmt = $pdo->prepare("
             SELECT COUNT(*) FROM enrollments e
             JOIN classofferings co ON co.offering_id = e.offering_id
-            WHERE e.status = 'active' AND co.status = 'active'
+            WHERE e.status = 'enrolled' AND co.status = 'active'
               AND co.school_year_id = ? AND co.quarter = ?
         ");
         $stmt->execute([(int) $sy['school_year_id'], $term]);

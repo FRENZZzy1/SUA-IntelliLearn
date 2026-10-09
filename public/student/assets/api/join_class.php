@@ -5,10 +5,12 @@
  * Backend endpoint for the "Enroll with a Class Code" modal in
  * student/courses.php. Lets a logged-in student join a class
  * themselves by typing the class_code their teacher/admin gave them,
- * instead of an admin creating the enrollment_requests row for them.
+ * instead of an admin creating the enrollment for them.
  *
- * Joining always creates a PENDING request. Only the class's teacher can
- * approve or deny it (Enrollment Requests tab in teacher/class_overview.php);
+ * Joining always creates an `enrollments` row with status 'pending' (a
+ * previously dropped row for the same class is reset to 'pending'). Only the
+ * class's teacher can approve it (-> 'enrolled') or deny it (-> 'denied') from the
+ * Enrollment Requests tab in teacher/class_overview.php;
  * admins only create the classes. Rules applied here: the enrollment_open
  * setting, capacity check, and the pending/active/denied duplicate checks.
  *
@@ -77,7 +79,7 @@ try {
     $offeringStmt = $pdo->prepare("
         SELECT co.offering_id, co.subject_id, co.capacity, co.quarter,
             sec.grade_level, sec.strand, sec.school_year_id,
-            (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
+            (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count
         FROM classofferings co
         JOIN sections sec ON sec.section_id = co.section_id
         WHERE co.class_code = ? AND co.status = 'active'
@@ -109,10 +111,10 @@ try {
     // in the same term/school year.
     $dupStmt = $pdo->prepare("
         SELECT COUNT(*)
-        FROM enrollment_requests er
+        FROM enrollments er
         JOIN classofferings co ON co.offering_id = er.offering_id
         JOIN sections sec ON sec.section_id = co.section_id
-        WHERE er.student_id = ? AND er.subject_id = ? AND er.grade_level = ? AND er.status = 'pending'
+        WHERE er.student_id = ? AND co.subject_id = ? AND sec.grade_level = ? AND er.status = 'pending'
           AND co.quarter = ? AND sec.school_year_id = ?
     ");
     $dupStmt->execute([$studentId, $subjectId, $gradeLevel, $offeringTerm, $offeringSchoolYearId]);
@@ -132,7 +134,7 @@ try {
         JOIN classofferings co ON co.offering_id = en.offering_id
         JOIN sections sec ON sec.section_id = co.section_id
         WHERE en.student_id = ?
-          AND en.status = 'active'
+          AND en.status = 'enrolled'
           AND co.subject_id = ?
           AND sec.grade_level = ?
           AND co.quarter = ?
@@ -158,18 +160,18 @@ try {
     // explicitly reopens it.
     $deniedSql = "
         SELECT COUNT(*)
-        FROM enrollment_requests er
+        FROM enrollments er
         JOIN classofferings co ON co.offering_id = er.offering_id
         JOIN sections sec ON sec.section_id = co.section_id
-        WHERE er.student_id = ? AND er.subject_id = ? AND er.grade_level = ? AND er.status = 'denied'
+        WHERE er.student_id = ? AND co.subject_id = ? AND sec.grade_level = ? AND er.status = 'denied'
           AND co.quarter = ? AND sec.school_year_id = ?
     ";
     $deniedParams = [$studentId, $subjectId, $gradeLevel, $offeringTerm, $offeringSchoolYearId];
     if ($strand !== null && $strand !== '') {
-        $deniedSql .= " AND er.strand = ?";
+        $deniedSql .= " AND sec.strand = ?";
         $deniedParams[] = $strand;
     } else {
-        $deniedSql .= " AND er.strand IS NULL";
+        $deniedSql .= " AND sec.strand IS NULL";
     }
 
     $deniedStmt = $pdo->prepare($deniedSql);
@@ -181,18 +183,29 @@ try {
         exit();
     }
 
-    // Every request starts as pending. The class's teacher decides it.
+    // Every request starts as a 'pending' enrollment. The class's teacher decides it.
+    // (student_id, offering_id) is unique, so a previously dropped row for this
+    // exact class is reset to pending instead of inserting a duplicate.
     $stmt = $pdo->prepare("
-        INSERT INTO enrollment_requests (student_id, grade_level, subject_id, strand, offering_id, status)
-        VALUES (?, ?, ?, ?, ?, 'pending')
+        INSERT INTO enrollments (student_id, offering_id, status)
+        VALUES (?, ?, 'pending')
+        ON DUPLICATE KEY UPDATE
+            enrolled_at = IF(status = 'dropped', NOW(), enrolled_at),
+            decided_at  = IF(status = 'dropped', NULL, decided_at),
+            decided_by  = IF(status = 'dropped', NULL, decided_by),
+            status      = IF(status = 'dropped', 'pending', status)
     ");
-    $stmt->execute([
-        $studentId,
-        $gradeLevel,
-        $subjectId,
-        $strand !== null && $strand !== '' ? $strand : null,
-        $offeringId,
-    ]);
+    $stmt->execute([$studentId, $offeringId]);
+
+    // If a record for this exact class already existed in some other state
+    // (e.g. completed), nothing was changed, so don't report a new request.
+    $chk = $pdo->prepare("SELECT status FROM enrollments WHERE student_id = ? AND offering_id = ? LIMIT 1");
+    $chk->execute([$studentId, $offeringId]);
+    if ($chk->fetchColumn() !== 'pending') {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'errors' => ['You already have a record for that class.']]);
+        exit();
+    }
 
     setFlashMessage('success', 'Request sent! Your teacher will review it and approve or deny it.');
     echo json_encode(['success' => true, 'status' => 'pending']);

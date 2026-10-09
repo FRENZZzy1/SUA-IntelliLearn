@@ -49,7 +49,7 @@ $stmt = $pdo->prepare("
            (SELECT COUNT(*)
               FROM enrollments e
               JOIN classofferings co ON co.offering_id = e.offering_id
-             WHERE e.student_id = :me AND e.status = 'active'
+             WHERE e.student_id = :me AND e.status = 'enrolled'
                AND co.teacher_id = t.teacher_id) AS teaches_me
     FROM teachers t
     JOIN users u ON u.id = t.user_id AND u.role = 'teacher' AND u.status = 'active'
@@ -76,18 +76,18 @@ $stmt = $pdo->prepare("
            (SELECT sec.section_name FROM enrollments e2
               JOIN classofferings co2 ON co2.offering_id = e2.offering_id
               JOIN sections sec ON sec.section_id = co2.section_id
-             WHERE e2.student_id = s.student_id AND e2.status = 'active'
+             WHERE e2.student_id = s.student_id AND e2.status = 'enrolled'
              ORDER BY e2.enrollment_id DESC LIMIT 1) AS section_name,
            (SELECT sec.grade_level FROM enrollments e2
               JOIN classofferings co2 ON co2.offering_id = e2.offering_id
               JOIN sections sec ON sec.section_id = co2.section_id
-             WHERE e2.student_id = s.student_id AND e2.status = 'active'
+             WHERE e2.student_id = s.student_id AND e2.status = 'enrolled'
              ORDER BY e2.enrollment_id DESC LIMIT 1) AS grade_level,
            (SELECT COUNT(DISTINCT mine.offering_id)
               FROM enrollments mine
               JOIN enrollments theirs ON theirs.offering_id = mine.offering_id
-             WHERE mine.student_id = :me2 AND mine.status = 'active'
-               AND theirs.student_id = s.student_id AND theirs.status = 'active') AS shared_classes
+             WHERE mine.student_id = :me2 AND mine.status = 'enrolled'
+               AND theirs.student_id = s.student_id AND theirs.status = 'enrolled') AS shared_classes
     FROM students s
     JOIN users u ON u.id = s.user_id AND u.role = 'student' AND u.status = 'active'
     WHERE s.student_id <> :me

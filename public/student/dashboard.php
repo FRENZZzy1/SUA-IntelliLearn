@@ -28,7 +28,7 @@ $stmt = $pdo->prepare("
     JOIN classofferings co ON co.offering_id = e.offering_id
     JOIN sections sec ON sec.section_id = co.section_id
     JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
-    WHERE e.student_id = ? AND e.status = 'active' AND sy.is_current = 1
+    WHERE e.student_id = ? AND e.status = 'enrolled' AND sy.is_current = 1
     LIMIT 1
 ");
 $stmt->execute([$studentId]);

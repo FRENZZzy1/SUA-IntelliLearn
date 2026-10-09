@@ -66,7 +66,7 @@ $stmt = $pdo->prepare("
     JOIN sections sec      ON sec.section_id = co.section_id
     WHERE s.student_id = :student_id
       AND co.teacher_id = :teacher_id
-      AND e.status = 'active'
+      AND e.status = 'enrolled'
     LIMIT 1
 ");
 $stmt->execute([
@@ -95,7 +95,7 @@ $stmt = $pdo->prepare("
     JOIN subjects sub      ON sub.subject_id = co.subject_id
     WHERE e.student_id = :student_id
       AND co.teacher_id = :teacher_id
-      AND e.status = 'active'
+      AND e.status = 'enrolled'
     ORDER BY sub.subject_name
 ");
 $stmt->execute([
