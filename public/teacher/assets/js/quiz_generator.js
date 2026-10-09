@@ -76,6 +76,49 @@
         };
     }
 
+    // Load only PDF modules belonging to the currently selected class.
+    const offeringSelect = document.getElementById('qgOffering');
+    const pdfModulesBox = document.getElementById('qgPdfModules');
+
+    async function loadPdfModules() {
+        const offeringId = offeringSelect.value;
+        pdfModulesBox.replaceChildren();
+        if (!offeringId) {
+            pdfModulesBox.textContent = 'Select a class to load its PDF modules.';
+            return;
+        }
+        pdfModulesBox.textContent = 'Loading PDF modules…';
+        try {
+            const response = await fetch('assets/api/quiz_api/list_pdf_modules.php?offering_id=' + encodeURIComponent(offeringId), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error((data.errors || ['Could not load PDF modules.'])[0]);
+            pdfModulesBox.replaceChildren();
+            if (!data.modules.length) {
+                pdfModulesBox.textContent = 'No PDF modules found. Upload a PDF under this class’s Learning Materials first.';
+                return;
+            }
+            data.modules.forEach((module) => {
+                const label = document.createElement('label');
+                label.className = 'qg-pdf-module';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.name = 'material_ids[]';
+                checkbox.value = module.material_id;
+                const text = document.createElement('span');
+                text.textContent = module.title + (module.file_size_label ? ' (' + module.file_size_label + ')' : '');
+                label.append(checkbox, text);
+                pdfModulesBox.appendChild(label);
+            });
+        } catch (error) {
+            pdfModulesBox.textContent = error.message || 'Could not load PDF modules.';
+        }
+    }
+
+    offeringSelect.addEventListener('change', loadPdfModules);
+    if (offeringSelect.value) loadPdfModules();
+
     // ---------------- Generate ----------------
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -89,6 +132,7 @@
             question_type: formData.get('question_type'),
             difficulty: formData.get('difficulty'),
             topic: formData.get('topic'),
+            material_ids: Array.from(document.querySelectorAll('input[name="material_ids[]"]:checked')).map((input) => input.value),
             title: formData.get('title'),
         };
 
