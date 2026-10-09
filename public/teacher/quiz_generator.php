@@ -25,8 +25,8 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
 
         <div class="qg-header">
             <h2 class="qg-title"><i class="fas fa-file-circle-question"></i> AI Quiz Generator</h2>
-            <p class="qg-subtitle">Describe a topic and let AI draft the quiz — review and edit everything before it
-                goes live.</p>
+            <p class="qg-subtitle">Turn your class PDF modules (or a topic) into a quiz draft — review and edit
+                everything before it goes live.</p>
         </div>
 
         <?php if (empty($teacherOfferings)): ?>
@@ -99,9 +99,30 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
                                 </div>
 
                                 <div class="qg-field span-2">
-                                    <label for="qgTopic">Topic <span class="hint">— describe what the quiz should
-                                            cover</span></label>
-                                    <textarea id="qgTopic" name="topic" required
+                                    <label>Quiz Source</label>
+                                    <div class="qg-source-pills">
+                                        <label class="qg-source-pill active">
+                                            <input type="radio" name="source_type" value="pdf" checked>
+                                            <i class="fas fa-file-pdf"></i> From class PDF modules
+                                        </label>
+                                        <label class="qg-source-pill">
+                                            <input type="radio" name="source_type" value="topic">
+                                            <i class="fas fa-keyboard"></i> From a topic I describe
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <!-- PDF modules of the selected class (filled by quiz_generator.js) -->
+                                <div class="qg-field span-2" id="qgPdfField">
+                                    <label>PDF Modules <span class="hint">— pick up to 3 text-based PDFs; questions
+                                            are based only on their text</span></label>
+                                    <div class="qg-pdf-list" id="qgPdfList"></div>
+                                </div>
+
+                                <div class="qg-field span-2">
+                                    <label for="qgTopic" id="qgTopicLabel">Topic <span class="hint">— describe what the
+                                            quiz should cover</span></label>
+                                    <textarea id="qgTopic" name="topic"
                                         placeholder="e.g. Cell structure and function: organelles, their roles, plant vs. animal cell differences"></textarea>
                                 </div>
 
@@ -123,7 +144,7 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
 
                         <div class="qg-loading" id="qgLoading">
                             <div class="qg-spinner"></div>
-                            <span>Talking to the AI model — this can take up to 30 seconds…</span>
+                            <span>Reading your module and talking to the AI model — this can take up to 30 seconds…</span>
                         </div>
 
                         <div class="qg-alert" id="qgGenerateAlert"></div>
@@ -225,6 +246,7 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
 
     </main>
 
+    <script type="application/json" id="qgPdfData"><?= json_encode($pdfMaterialsByOffering ?: new stdClass(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
     <script src="assets/js/quiz_generator.js"></script>
 </body>
 

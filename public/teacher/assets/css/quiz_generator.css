@@ -221,6 +221,7 @@
 .qg-alert.active { display: block; }
 .qg-alert--error   { background: #fbe6e6; color: var(--danger); }
 .qg-alert--success { background: #e6f5ec; color: var(--ok); }
+.qg-alert--info    { background: #e8f1fb; color: #1d4f91; }
 
 .qg-alert ul { margin: 4px 0 0; padding-left: 18px; }
 
@@ -443,4 +444,66 @@
     .qg-actions .qg-btn { width: 100%; justify-content: center; }
     .qg-save-bar { flex-direction: column-reverse; }
     .qg-save-bar .qg-btn { width: 100%; justify-content: center; }
+}
+
+/* ---------- Quiz source toggle + PDF module picker ---------- */
+.qg-source-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.qg-source-pill {
+    border: 1px solid var(--border);
+    background: #fff;
+    border-radius: 999px;
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all 0.15s ease;
+}
+
+.qg-source-pill input { display: none; }
+
+.qg-source-pill.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    font-weight: 600;
+}
+
+.qg-pdf-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px;
+    background: #fff;
+}
+
+.qg-pdf-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.88rem;
+}
+
+.qg-field .qg-pdf-item { font-size: 0.88rem; font-weight: 400; }
+.qg-pdf-item:hover { background: rgba(0, 0, 0, 0.04); }
+.qg-pdf-item input { width: auto; margin: 0; }
+.qg-pdf-item .fa-file-pdf { color: #c0392b; }
+.qg-pdf-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qg-pdf-size { color: var(--text-muted); font-size: 0.78rem; }
+
+.qg-pdf-empty {
+    padding: 10px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
 }

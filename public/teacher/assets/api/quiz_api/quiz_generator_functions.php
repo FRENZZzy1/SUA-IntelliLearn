@@ -54,6 +54,32 @@ $stmt->execute([$teacherId]);
 $teacherOfferings = $stmt->fetchAll();
 
 // ------------------------------------------------------------------
+// PDF modules (learning_materials) of each of this teacher's active
+// classes. The generator page lets the teacher pick from these instead
+// of typing a topic. Grouped by offering_id so the browser can filter
+// the list when the class dropdown changes.
+// ------------------------------------------------------------------
+$stmt = $pdo->prepare("
+    SELECT lm.material_id, lm.offering_id, lm.title, lm.file_size
+    FROM learning_materials lm
+    JOIN classofferings co ON co.offering_id = lm.offering_id
+    WHERE co.teacher_id = ? AND co.status = 'active'
+      AND lm.file_path IS NOT NULL
+      AND LOWER(lm.file_path) LIKE '%.pdf'
+    ORDER BY lm.created_at DESC
+");
+$stmt->execute([$teacherId]);
+
+$pdfMaterialsByOffering = [];
+foreach ($stmt->fetchAll() as $m) {
+    $pdfMaterialsByOffering[(int) $m['offering_id']][] = [
+        'id'    => (int) $m['material_id'],
+        'title' => $m['title'],
+        'size'  => (int) $m['file_size'],
+    ];
+}
+
+// ------------------------------------------------------------------
 // Recent quizzes this teacher has generated/created, for the sidebar list
 // on the quiz generator page.
 // ------------------------------------------------------------------

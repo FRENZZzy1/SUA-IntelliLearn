@@ -37,6 +37,83 @@
         });
     });
 
+    // ---------------- Source: PDF modules vs. topic ----------------
+    const offeringSelect = document.getElementById('qgOffering');
+    const pdfField = document.getElementById('qgPdfField');
+    const pdfList = document.getElementById('qgPdfList');
+    const topicInput = document.getElementById('qgTopic');
+    const topicLabel = document.getElementById('qgTopicLabel');
+    const MAX_PDFS = 3;
+
+    let pdfData = {};
+    try {
+        pdfData = JSON.parse(document.getElementById('qgPdfData').textContent) || {};
+    } catch (e) { /* no PDFs — the picker will show its empty state */ }
+
+    function currentSource() {
+        return form.querySelector('input[name="source_type"]:checked').value;
+    }
+
+    function formatSize(bytes) {
+        if (!bytes) return '';
+        return bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+    }
+
+    function renderPdfList() {
+        const offeringId = offeringSelect.value;
+        pdfList.innerHTML = '';
+
+        if (!offeringId) {
+            pdfList.innerHTML = '<div class="qg-pdf-empty">Select a class above to see its PDF modules.</div>';
+            return;
+        }
+        const items = pdfData[offeringId] || [];
+        if (!items.length) {
+            pdfList.innerHTML = '<div class="qg-pdf-empty">This class has no PDF modules yet. Upload one under '
+                + 'Class Overview → Materials, or switch to “From a topic I describe”.</div>';
+            return;
+        }
+        items.forEach((m) => {
+            const row = document.createElement('label');
+            row.className = 'qg-pdf-item';
+            row.innerHTML = '<input type="checkbox" name="material_ids" value="' + Number(m.id) + '">'
+                + '<i class="fas fa-file-pdf"></i>'
+                + '<span class="qg-pdf-name">' + escapeHtml(m.title) + '</span>'
+                + '<span class="qg-pdf-size">' + formatSize(m.size) + '</span>';
+            pdfList.appendChild(row);
+        });
+    }
+
+    function applySourceMode() {
+        const isPdf = currentSource() === 'pdf';
+        document.querySelectorAll('.qg-source-pill').forEach((p) => {
+            p.classList.toggle('active', p.querySelector('input').checked);
+        });
+        pdfField.style.display = isPdf ? '' : 'none';
+        topicInput.required = !isPdf;
+        topicLabel.innerHTML = isPdf
+            ? 'Focus <span class="hint">— optional: tell the AI which parts of the module(s) to emphasize</span>'
+            : 'Topic <span class="hint">— describe what the quiz should cover</span>';
+    }
+
+    document.querySelectorAll('.qg-source-pill input').forEach((r) => r.addEventListener('change', applySourceMode));
+    offeringSelect.addEventListener('change', renderPdfList);
+
+    pdfList.addEventListener('change', (e) => {
+        if (e.target.matches('input[type="checkbox"]')) {
+            const checked = pdfList.querySelectorAll('input:checked');
+            if (checked.length > MAX_PDFS) {
+                e.target.checked = false;
+                showAlert(genAlert, 'error', ['You can pick up to ' + MAX_PDFS + ' PDF modules per quiz.']);
+            } else {
+                hideAlert(genAlert);
+            }
+        }
+    });
+
+    applySourceMode();
+    renderPdfList();
+
     // ---------------- Helpers ----------------
     function showAlert(el, type, messages) {
         el.className = 'qg-alert active qg-alert--' + type;
@@ -82,12 +159,22 @@
         hideAlert(genAlert);
 
         const formData = new FormData(form);
+        const sourceType = currentSource();
+        const materialIds = Array.from(pdfList.querySelectorAll('input:checked')).map((c) => Number(c.value));
+
+        if (sourceType === 'pdf' && materialIds.length === 0) {
+            showAlert(genAlert, 'error', ['Please select at least one PDF module, or switch to “From a topic I describe”.']);
+            return;
+        }
+
         const payload = {
             csrf_token: csrfToken,
             offering_id: formData.get('offering_id'),
             num_items: formData.get('num_items'),
             question_type: formData.get('question_type'),
             difficulty: formData.get('difficulty'),
+            source_type: sourceType,
+            material_ids: sourceType === 'pdf' ? materialIds : [],
             topic: formData.get('topic'),
             title: formData.get('title'),
         };
@@ -130,6 +217,7 @@
             renderQuestions();
             reviewSection.classList.add('active');
             hideAlert(saveAlert);
+            if (data.notice) showAlert(genAlert, 'info', [data.notice]);
             reviewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch (err) {
             showAlert(genAlert, 'error', [err.message || 'Network error. Please try again.']);
