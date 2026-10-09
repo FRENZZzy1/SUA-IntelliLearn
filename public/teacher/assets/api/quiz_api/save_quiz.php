@@ -141,6 +141,20 @@ if (!$stmt->fetch()) {
 }
 
 // ------------------------------------------------------------------
+// Where did this quiz come from? Take it from the generation job (server-
+// side truth), not from the browser. No job = built by hand.
+// ------------------------------------------------------------------
+$generationSource = 'manual';
+if ($jobId) {
+    $srcStmt = $pdo->prepare("SELECT source_type FROM quiz_generation_jobs WHERE job_id = ? AND requested_by = ?");
+    $srcStmt->execute([$jobId, $_SESSION['user_id']]);
+    $jobSource = $srcStmt->fetchColumn();
+    if (in_array($jobSource, ['pdf', 'topic'], true)) {
+        $generationSource = $jobSource;
+    }
+}
+
+// ------------------------------------------------------------------
 // Persist — quizzes -> quiz_questions -> quiz_choices, all-or-nothing
 // ------------------------------------------------------------------
 try {
@@ -150,7 +164,7 @@ try {
     INSERT INTO quizzes
         (offering_id, created_by, title, description, generation_source,
          time_limit_minutes, max_attempts, shuffle_questions, status, available_from, available_until)
-    VALUES (?, ?, ?, ?, 'topic', ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ");
 
     $stmt->execute([
@@ -158,6 +172,7 @@ try {
         $teacherId,
         $title,
         $description,
+        $generationSource,
         $timeLimit,
         $maxAttempts,
         $shuffle,
