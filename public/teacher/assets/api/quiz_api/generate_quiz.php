@@ -50,6 +50,7 @@ $numItems    = (int) ($body['num_items'] ?? 0);
 $questionType = $body['question_type'] ?? 'mixed';
 $difficulty   = $body['difficulty'] ?? 'average';
 $topic        = trim($body['topic'] ?? '');
+$materialIds  = array_values(array_unique(array_filter(array_map('intval', (array) ($body['material_ids'] ?? [])), static fn($id) => $id > 0)));
 $titleInput   = trim($body['title'] ?? '');
 
 $errors = [];
@@ -66,10 +67,14 @@ if (!in_array($questionType, ['mcq', 'true_false', 'identification', 'mixed'], t
 if (!in_array($difficulty, ['easy', 'average', 'difficult'], true)) {
     $errors[] = 'Invalid difficulty.';
 }
-if ($topic === '') {
-    $errors[] = 'Please describe the topic to cover.';
-} elseif (mb_strlen($topic) > 2000) {
-    $errors[] = 'Topic description is too long (max 2000 characters).';
+if ($topic !== '' && mb_strlen($topic) > 2000) {
+    $errors[] = 'Topic instructions are too long (max 2000 characters).';
+}
+if ($topic === '' && empty($materialIds)) {
+    $errors[] = 'Select at least one PDF module or enter topic instructions.';
+}
+if (count($materialIds) > 10) {
+    $errors[] = 'Select no more than 10 PDF modules at a time.';
 }
 
 if (!empty($errors)) {
@@ -171,10 +176,65 @@ JSON;
 $systemPrompt = "You are a curriculum-aligned quiz writer for a K-12 learning management system. "
     . "You output ONLY valid JSON matching the exact schema you're given — no markdown fences, no commentary, no trailing text.";
 
+// Resolve selected PDF modules against this exact teacher-owned class before reading files.
+$materialRows = [];
+$pdfParts = [];
+if ($materialIds) {
+    $placeholders = implode(',', array_fill(0, count($materialIds), '?'));
+    $materialStmt = $pdo->prepare("
+        SELECT material_id, title, file_path, file_size
+        FROM learning_materials
+        WHERE offering_id = ? AND type = 'pdf' AND material_id IN ($placeholders)
+    ");
+    $materialStmt->execute(array_merge([$offeringId], $materialIds));
+    $materialRows = $materialStmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (count($materialRows) !== count($materialIds)) {
+        http_response_code(422);
+        echo json_encode(['success' => false, 'errors' => ['One or more selected PDFs do not belong to this class or are no longer available. Refresh the module list.']]);
+        exit();
+    }
+
+    $teacherPublicDir = dirname(__DIR__, 3);
+    $totalPdfBytes = 0;
+    foreach ($materialRows as $material) {
+        $relativePath = (string) ($material['file_path'] ?? '');
+        if ($relativePath === '' || str_contains($relativePath, '..') || !str_starts_with($relativePath, 'assets/uploads/materials/')) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'errors' => ['A selected PDF has an invalid storage path. Please re-upload it.']]);
+            exit();
+        }
+        $absolutePath = $teacherPublicDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $relativePath);
+        if (!is_file($absolutePath) || strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION)) !== 'pdf') {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'errors' => ['A selected PDF file could not be found. Please re-upload it.']]);
+            exit();
+        }
+        $size = filesize($absolutePath);
+        $totalPdfBytes += $size;
+        if ($totalPdfBytes > 18 * 1024 * 1024) {
+            http_response_code(422);
+            echo json_encode(['success' => false, 'errors' => ['Selected PDFs exceed the 18 MB combined processing limit. Select fewer or smaller modules.']]);
+            exit();
+        }
+        $pdfParts[] = ['inlineData' => ['mimeType' => 'application/pdf', 'data' => base64_encode(file_get_contents($absolutePath))]];
+    }
+}
+
+$sourceType = $pdfParts ? 'pdf' : 'topic';
+$sourceMaterialId = $materialRows ? (int) $materialRows[0]['material_id'] : null;
+$sourceLabel = $materialRows ? implode(', ', array_map(static fn($m) => $m['title'], $materialRows)) : 'teacher topic instructions';
+$topicForLog = ($pdfParts ? 'PDF module(s): ' . $sourceLabel . "\\n" : '') . $topic;
+$pdo->prepare("UPDATE quiz_generation_jobs SET source_type = ?, source_material_id = ?, topic_prompt = ? WHERE job_id = ?")
+    ->execute([$sourceType, $sourceMaterialId, $topicForLog, $jobId]);
+
+$userTopic = $topic !== '' ? $topic : 'Use the selected PDF modules to determine the quiz coverage.';
 $userPrompt = <<<PROMPT
 Create a {$numItems}-item quiz for: {$gradeContext}.
 
-Topic to cover: "{$topic}"
+Primary source: {$sourceLabel}
+Topic / additional teacher instructions: "{$userTopic}"
+Treat attached PDF module content as the factual source. Do not invent details that are not supported by the modules.
 
 Question type rule: {$typeInstruction}
 Difficulty: {$difficultyInstruction}
@@ -202,7 +262,7 @@ $preferredModels = [
     'gemini-2.5-flash',
 ];
 
-function callGemini(string $model, string $systemPrompt, string $userPrompt): array {
+function callGemini(string $model, string $systemPrompt, string $userPrompt, array $pdfParts = []): array {
     if (!defined('GEMINI_API_KEY') || GEMINI_API_KEY === '') {
         return ['ok' => false, 'error' => 'GEMINI_API_KEY is not configured in config.php.'];
     }
@@ -223,7 +283,7 @@ function callGemini(string $model, string $systemPrompt, string $userPrompt): ar
                 'parts' => [['text' => $systemPrompt]],
             ],
             'contents' => [
-                ['role' => 'user', 'parts' => [['text' => $userPrompt]]],
+                ['role' => 'user', 'parts' => array_merge([['text' => $userPrompt]], $pdfParts)],
             ],
             'generationConfig' => [
                 'temperature'      => 0.7,
@@ -276,7 +336,7 @@ $modelUsed = null;
 $attemptErrors = [];
 
 foreach ($preferredModels as $model) {
-    $attempt = callGemini($model, $systemPrompt, $userPrompt);
+    $attempt = callGemini($model, $systemPrompt, $userPrompt, $pdfParts);
     if ($attempt['ok']) {
         $result    = $attempt['quiz'];
         $modelUsed = $model;

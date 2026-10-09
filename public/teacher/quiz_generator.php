@@ -98,6 +98,14 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
                                     </div>
                                 </div>
 
+                                <div class="qg-field span-2" id="qgPdfModulesField">
+                                    <label>PDF Modules <span class="hint">— materials uploaded to this class</span></label>
+                                    <div id="qgPdfModules" class="qg-pdf-modules" aria-live="polite">
+                                        <p class="hint">Select a class to load its PDF modules.</p>
+                                    </div>
+                                    <span class="hint">Select one or more PDFs. The AI will use them as the source for quiz questions.</span>
+                                </div>
+
                                 <div class="qg-field span-2">
                                     <label for="qgTopic">Topic <span class="hint">— describe what the quiz should
                                             cover</span></label>
