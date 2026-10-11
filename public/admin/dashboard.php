@@ -19,6 +19,7 @@ require_once '../../config/config.php';
 
 // ================= DATA LAYER =================
 require_once 'assests/api/dashboard_functions.php';
+require_once 'assests/api/usage_stats.php';
 $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
 $aum_endpoint = '/SUA-IntelliLearn/public/admin/assests/api/add_user_handler.php';
 include 'assests/api/add_user_modal.php';
@@ -33,6 +34,7 @@ $recentUsers     = get_recent_users($pdo, 4);
 
 $courseEnrollmentProgress = get_course_enrollment_progress($pdo, 6);
 $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
+$usageStats = get_system_usage_stats($pdo);
 
 ?>
 <!DOCTYPE html>
@@ -150,15 +152,11 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
                                     <i class="fas fa-plus-circle qa-icon-blue"></i>
                                     <span>Create Class</span>
                                 </button>
-                                <button class="quick-action-btn" onclick="showToast('Email Students modal opened')">
-                                    <i class="fas fa-envelope qa-icon-orange"></i>
-                                    <span>Email Students</span>
-                                </button>
                                 <button class="quick-action-btn" onclick="window.location.href='announcement.php'">
                                     <i class="fas fa-bullhorn qa-icon-purple"></i>
                                     <span>Post Announcement</span>
                                 </button>
-                                <button class="quick-action-btn" onclick="showToast('Generate Report modal opened')">
+                                <button class="quick-action-btn" onclick="openGenerateReportModal()">
                                     <i class="fas fa-file-export qa-icon-red"></i>
                                     <span>Generate Report</span>
                                 </button>
@@ -177,20 +175,20 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
                         <div class="card-body">
                             <div class="analytics-grid">
                                 <div class="analytics-card">
-                                    <h4>38</h4>
+                                    <h4><?php echo number_format($usageStats['active_today']); ?></h4>
                                     <p>Active Today</p>
                                 </div>
                                 <div class="analytics-card">
-                                    <h4>127</h4>
-                                    <p>Logins This Week</p>
+                                    <h4><?php echo number_format($usageStats['active_week']); ?></h4>
+                                    <p>Active This Week</p>
                                 </div>
                                 <div class="analytics-card">
-                                    <h4>14</h4>
-                                    <p>Quizzes Taken</p>
+                                    <h4><?php echo number_format($usageStats['quizzes_week']); ?></h4>
+                                    <p>Quizzes Taken (7 days)</p>
                                 </div>
                                 <div class="analytics-card">
-                                    <h4>3</h4>
-                                    <p>AI Generations</p>
+                                    <h4><?php echo number_format($usageStats['ai_week']); ?></h4>
+                                    <p>AI Generations (7 days)</p>
                                 </div>
                             </div>
                         </div>
@@ -749,7 +747,7 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
         <i class="fas fa-info-circle"></i>
         <span id="toast-msg">Notification</span>
     </div>
-
+    <?php include 'assests/api/generate_report_modal.php'; ?>
     <script src="assests/js/dashboard.js">
     </script>
     <!-- Floating chat assistant (self-contained: injects its own styles/markup) -->
