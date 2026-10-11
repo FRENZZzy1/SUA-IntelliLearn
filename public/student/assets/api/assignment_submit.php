@@ -29,7 +29,7 @@ if (!$assignmentId) {
     header('Location: ../../courses.php');
     exit();
 }
-$stmt = $pdo->prepare("SELECT a.assignment_id,a.due_date,a.offering_id,a.max_attempts FROM assignments a JOIN enrollments e ON e.offering_id=a.offering_id WHERE a.assignment_id=? AND a.status='published' AND e.student_id=? AND e.status='active' LIMIT 1");
+$stmt = $pdo->prepare("SELECT a.assignment_id,a.due_date,a.offering_id,a.max_attempts FROM assignments a JOIN enrollments e ON e.offering_id=a.offering_id WHERE a.assignment_id=? AND a.status='published' AND e.student_id=? AND e.status='enrolled' LIMIT 1");
 $stmt->execute([$assignmentId, $studentId]);
 $assignment = $stmt->fetch();
 if (!$assignment) {

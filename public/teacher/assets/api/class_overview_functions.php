@@ -51,7 +51,7 @@ $stmt = $pdo->prepare("
     FROM classofferings co
     JOIN subjects sub ON sub.subject_id = co.subject_id
     JOIN sections sec ON sec.section_id = co.section_id
-    LEFT JOIN enrollments e ON e.offering_id = co.offering_id AND e.status = 'active'
+    LEFT JOIN enrollments e ON e.offering_id = co.offering_id AND e.status = 'enrolled'
     WHERE co.teacher_id = ?
       AND co.subject_id = ?
       AND co.section_id = ?
@@ -133,7 +133,7 @@ if ($activeOfferingId && ($activeView === 'students' || $activeView === 'attenda
         SELECT s.student_id, s.student_lrn, s.firstname, s.lastname, s.middlename, s.email
         FROM enrollments e
         JOIN students s ON s.student_id = e.student_id
-        WHERE e.offering_id = ? AND e.status = 'active'
+        WHERE e.offering_id = ? AND e.status = 'enrolled'
         ORDER BY s.lastname, s.firstname
     ");
     $stmt->execute([$activeOfferingId]);
@@ -276,7 +276,7 @@ if ($activeOfferingId && $activeView === 'assignments') {
                             FROM submissions sub2
                             WHERE sub2.assignment_id = sub.assignment_id AND sub2.student_id = sub.student_id
                       )
-                WHERE e.offering_id = ? AND e.status = 'active'
+                WHERE e.offering_id = ? AND e.status = 'enrolled'
                 ORDER BY s.lastname, s.firstname
             ");
             $stmt->execute([$selectedAssignment['assignment_id'], $selectedAssignment['assignment_id'], $activeOfferingId]);
@@ -379,7 +379,7 @@ if ($activeOfferingId && $activeView === 'quizzes') {
                             FROM quiz_attempts qa2
                             WHERE qa2.quiz_id = qa.quiz_id AND qa2.student_id = qa.student_id
                       )
-                WHERE e.offering_id = ? AND e.status = 'active'
+                WHERE e.offering_id = ? AND e.status = 'enrolled'
                 ORDER BY s.lastname, s.firstname
             ");
             $stmt->execute([$selectedQuiz['quiz_id'], $activeOfferingId]);
@@ -454,8 +454,8 @@ if ($selectedQuiz) {
 }
 
 // ---- Enrollment requests (Enrollment Requests tab) ---------------------------
-// Students who join with a class code create an `enrollment_requests` row tied
-// to that term's offering. A subject+section has one class code per term, so
+// Students who join with a class code create an `enrollments` row with status
+// 'pending' tied to that term's offering. A subject+section has one class code per term, so
 // requests are collected across ALL of this class's term offerings (each row
 // is tagged with its term). The pending count feeds the badge on the nav tab
 // and is needed on every view, so it is always computed.
@@ -470,26 +470,27 @@ $decidedRequests     = [];
 if ($classOfferingIds) {
     $offeringPlaceholders = implode(',', array_fill(0, count($classOfferingIds), '?'));
 
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM enrollment_requests WHERE status = 'pending' AND offering_id IN ($offeringPlaceholders)");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM enrollments WHERE status = 'pending' AND offering_id IN ($offeringPlaceholders)");
     $stmt->execute($classOfferingIds);
     $pendingRequestCount = (int) $stmt->fetchColumn();
 
     if ($activeView === 'requests') {
         $requestSelect = "
-            SELECT er.request_id, er.offering_id, er.status, er.submitted_at, er.decided_at,
+            SELECT e.enrollment_id AS request_id, e.offering_id, e.status,
+                   e.enrolled_at AS submitted_at, e.decided_at,
                    s.student_lrn, s.firstname, s.lastname, s.middlename, s.email,
                    co.quarter, co.class_code
-            FROM enrollment_requests er
-            JOIN students s ON s.student_id = er.student_id
-            JOIN classofferings co ON co.offering_id = er.offering_id
-            WHERE er.offering_id IN ($offeringPlaceholders)
+            FROM enrollments e
+            JOIN students s ON s.student_id = e.student_id
+            JOIN classofferings co ON co.offering_id = e.offering_id
+            WHERE e.offering_id IN ($offeringPlaceholders)
         ";
 
-        $stmt = $pdo->prepare($requestSelect . " AND er.status = 'pending' ORDER BY er.submitted_at ASC");
+        $stmt = $pdo->prepare($requestSelect . " AND e.status = 'pending' ORDER BY e.enrolled_at ASC");
         $stmt->execute($classOfferingIds);
         $pendingRequests = $stmt->fetchAll();
 
-        $stmt = $pdo->prepare($requestSelect . " AND er.status <> 'pending' ORDER BY er.decided_at DESC, er.request_id DESC LIMIT 10");
+        $stmt = $pdo->prepare($requestSelect . " AND e.status IN ('enrolled','denied') AND e.decided_at IS NOT NULL ORDER BY e.decided_at DESC, e.enrollment_id DESC LIMIT 10");
         $stmt->execute($classOfferingIds);
         $decidedRequests = $stmt->fetchAll();
     }

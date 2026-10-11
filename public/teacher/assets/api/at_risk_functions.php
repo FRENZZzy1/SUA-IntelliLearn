@@ -78,7 +78,7 @@ function get_at_risk_roster(PDO $pdo, array $offeringIds): array
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN sections sec      ON sec.section_id = co.section_id
         LEFT JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
-        WHERE e.status = 'active'
+        WHERE e.status = 'enrolled'
           AND e.offering_id IN ($placeholders)
         ORDER BY sec.grade_level, sub.subject_name, s.lastname
     ");
@@ -469,7 +469,7 @@ function get_enrolled_student_offering_pairs(PDO $pdo, array $offeringIds): arra
     $stmt = $pdo->prepare("
         SELECT student_id, offering_id
         FROM enrollments
-        WHERE status = 'active' AND offering_id IN ($placeholders)
+        WHERE status = 'enrolled' AND offering_id IN ($placeholders)
     ");
     $stmt->execute($offeringIds);
 

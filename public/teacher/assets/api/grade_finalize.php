@@ -47,7 +47,7 @@ if (!$stmt->fetch()) {
 }
 
 // ---- Active students enrolled in this offering ------------------------
-$stmt = $pdo->prepare("SELECT enrollment_id, student_id FROM enrollments WHERE offering_id = ? AND status = 'active'");
+$stmt = $pdo->prepare("SELECT enrollment_id, student_id FROM enrollments WHERE offering_id = ? AND status = 'enrolled'");
 $stmt->execute([$offeringId]);
 $enrollments = $stmt->fetchAll();
 if (!$enrollments) {

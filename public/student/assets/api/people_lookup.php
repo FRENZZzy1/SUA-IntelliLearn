@@ -73,7 +73,7 @@ if ($type === 'teacher') {
         JOIN classofferings co ON co.offering_id = e.offering_id
         JOIN subjects sub ON sub.subject_id = co.subject_id
         JOIN sections sec ON sec.section_id = co.section_id
-        WHERE e.student_id = :me AND e.status = 'active' AND co.teacher_id = :t
+        WHERE e.student_id = :me AND e.status = 'enrolled' AND co.teacher_id = :t
         ORDER BY sub.subject_name
     ");
     $stmt->execute([':me' => $myStudentId, ':t' => $id]);
@@ -117,12 +117,12 @@ $stmt = $pdo->prepare("
            (SELECT sec.section_name FROM enrollments e2
               JOIN classofferings co2 ON co2.offering_id = e2.offering_id
               JOIN sections sec ON sec.section_id = co2.section_id
-             WHERE e2.student_id = s.student_id AND e2.status = 'active'
+             WHERE e2.student_id = s.student_id AND e2.status = 'enrolled'
              ORDER BY e2.enrollment_id DESC LIMIT 1) AS section_name,
            (SELECT sec.grade_level FROM enrollments e2
               JOIN classofferings co2 ON co2.offering_id = e2.offering_id
               JOIN sections sec ON sec.section_id = co2.section_id
-             WHERE e2.student_id = s.student_id AND e2.status = 'active'
+             WHERE e2.student_id = s.student_id AND e2.status = 'enrolled'
              ORDER BY e2.enrollment_id DESC LIMIT 1) AS grade_level
     FROM students s
     JOIN users u ON u.id = s.user_id AND u.role = 'student' AND u.status = 'active'
@@ -145,8 +145,8 @@ $stmt = $pdo->prepare("
     JOIN classofferings co ON co.offering_id = mine.offering_id
     JOIN subjects sub ON sub.subject_id = co.subject_id
     LEFT JOIN teachers t ON t.teacher_id = co.teacher_id
-    WHERE mine.student_id = :me AND mine.status = 'active'
-      AND theirs.student_id = :other AND theirs.status = 'active'
+    WHERE mine.student_id = :me AND mine.status = 'enrolled'
+      AND theirs.student_id = :other AND theirs.status = 'enrolled'
     ORDER BY sub.subject_name
 ");
 $stmt->execute([':me' => $myStudentId, ':other' => $id]);

@@ -37,7 +37,7 @@ $stmt = $pdo->prepare("
         co.end_time,
         co.capacity,
         co.status,
-        (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
+        (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count
     FROM classofferings co
     JOIN subjects s     ON s.subject_id = co.subject_id
     JOIN sections sec   ON sec.section_id = co.section_id

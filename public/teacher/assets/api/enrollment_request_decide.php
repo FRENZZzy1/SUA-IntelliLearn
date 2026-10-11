@@ -5,11 +5,16 @@
  * Backend endpoint for the Approve / Deny / Reopen buttons on the
  * "Enrollment Requests" tab of teacher/class_overview.php.
  *
+ * There is no separate requests table any more: a student's request is an
+ * `enrollments` row whose status starts as 'pending'. Approving it sets the
+ * status to 'enrolled', denying sets 'denied', and reopening puts a denied
+ * row back to 'pending'. (The POST field is still called `request_id`, but
+ * its value is the enrollments.enrollment_id.)
+ *
  * Teachers are the only ones who decide enrollment (admins only create
  * classes). A teacher can only act on requests that belong to one of THEIR OWN
- * class offerings. Approve rules
- * (enrollment_open setting, capacity, duplicate-active check, re-activating
- * the student's dropped sibling-term enrollments).
+ * class offerings. Approve rules: enrollment_open setting, capacity check,
+ * and re-activating the student's dropped sibling-term enrollments.
  *
  * Always returns JSON.
  * -----------------------------------------------------------------
@@ -57,12 +62,12 @@ $requestId = (int) $requestId;
 
 // ---- Load the request, scoped to this teacher's own offerings -------------
 $stmt = $pdo->prepare("
-    SELECT er.request_id, er.student_id, er.offering_id, er.status,
+    SELECT e.enrollment_id, e.student_id, e.offering_id, e.status,
            s.firstname, s.lastname
-    FROM enrollment_requests er
-    JOIN classofferings co ON co.offering_id = er.offering_id
-    JOIN students s ON s.student_id = er.student_id
-    WHERE er.request_id = ? AND co.teacher_id = ?
+    FROM enrollments e
+    JOIN classofferings co ON co.offering_id = e.offering_id
+    JOIN students s ON s.student_id = e.student_id
+    WHERE e.enrollment_id = ? AND co.teacher_id = ?
     LIMIT 1
 ");
 $stmt->execute([$requestId, $teacherId]);
@@ -86,13 +91,12 @@ $userId      = (int) $_SESSION['user_id'];
 
 try {
     // -------------------------------------------------------------- Reopen
-    // Puts a denied request back in Pending so the teacher can decide again
-    // (previously only an admin could do this).
+    // Puts a denied request back in Pending so the teacher can decide again.
     if ($action === 'reopen') {
         $upd = $pdo->prepare("
-            UPDATE enrollment_requests
+            UPDATE enrollments
             SET status = 'pending', decided_at = NULL, decided_by = NULL
-            WHERE request_id = ? AND status = 'denied'
+            WHERE enrollment_id = ? AND status = 'denied'
         ");
         $upd->execute([$requestId]);
 
@@ -108,9 +112,9 @@ try {
     // ---------------------------------------------------------------- Deny
     if ($action === 'deny') {
         $upd = $pdo->prepare("
-            UPDATE enrollment_requests
+            UPDATE enrollments
             SET status = 'denied', decided_at = NOW(), decided_by = ?
-            WHERE request_id = ? AND status = 'pending'
+            WHERE enrollment_id = ? AND status = 'pending'
         ");
         $upd->execute([$userId, $requestId]);
 
@@ -143,7 +147,7 @@ try {
     // can't push the class past its limit.
     $lockStmt = $pdo->prepare("
         SELECT co.offering_id, co.capacity,
-            (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
+            (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count
         FROM classofferings co
         WHERE co.offering_id = ? AND co.teacher_id = ? AND co.status = 'active'
         FOR UPDATE
@@ -156,21 +160,16 @@ try {
         decideFail(422, 'This class no longer exists or is inactive.');
     }
 
-    // Already actively enrolled? Just close out the request.
-    $dupStmt = $pdo->prepare("SELECT COUNT(*) FROM enrollments WHERE student_id = ? AND offering_id = ? AND status = 'active'");
-    $dupStmt->execute([$studentId, $offeringId]);
-    $alreadyEnrolled = (int) $dupStmt->fetchColumn() > 0;
-
-    if (!$alreadyEnrolled && (int) $offering['enrolled_count'] >= (int) $offering['capacity']) {
+    if ((int) $offering['enrolled_count'] >= (int) $offering['capacity']) {
         $pdo->rollBack();
         decideFail(422, 'This class is at full capacity.');
     }
 
-    // Claim the request first; if someone else decided it meanwhile, stop here.
+    // Flip Pending -> Enrolled; if someone else decided it meanwhile, stop here.
     $upd = $pdo->prepare("
-        UPDATE enrollment_requests
-        SET status = 'approved', decided_at = NOW(), decided_by = ?
-        WHERE request_id = ? AND status = 'pending'
+        UPDATE enrollments
+        SET status = 'enrolled', enrolled_at = NOW(), decided_at = NOW(), decided_by = ?
+        WHERE enrollment_id = ? AND status = 'pending'
     ");
     $upd->execute([$userId, $requestId]);
     if ($upd->rowCount() === 0) {
@@ -178,27 +177,19 @@ try {
         decideFail(422, 'This request has already been decided.');
     }
 
-    if (!$alreadyEnrolled) {
-        $pdo->prepare("
-            INSERT INTO enrollments (student_id, offering_id, status)
-            VALUES (?, ?, 'active')
-            ON DUPLICATE KEY UPDATE status = 'active', enrolled_at = NOW()
-        ")->execute([$studentId, $offeringId]);
-
-        // Re-enrolling brings back the student's other dropped term offerings
-        // of this same class (subject + section + school year).
-        $pdo->prepare("
-            UPDATE enrollments e
-            JOIN classofferings co     ON co.offering_id = e.offering_id
-            JOIN classofferings target ON target.offering_id = ?
-            SET e.status = 'active'
-            WHERE e.student_id = ?
-              AND e.status = 'dropped'
-              AND co.subject_id     = target.subject_id
-              AND co.section_id     = target.section_id
-              AND co.school_year_id = target.school_year_id
-        ")->execute([$offeringId, $studentId]);
-    }
+    // Re-enrolling brings back the student's other dropped term offerings
+    // of this same class (subject + section + school year).
+    $pdo->prepare("
+        UPDATE enrollments e
+        JOIN classofferings co     ON co.offering_id = e.offering_id
+        JOIN classofferings target ON target.offering_id = ?
+        SET e.status = 'enrolled'
+        WHERE e.student_id = ?
+          AND e.status = 'dropped'
+          AND co.subject_id     = target.subject_id
+          AND co.section_id     = target.section_id
+          AND co.school_year_id = target.school_year_id
+    ")->execute([$offeringId, $studentId]);
 
     $pdo->commit();
 

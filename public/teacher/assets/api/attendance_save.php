@@ -63,7 +63,7 @@ if (!$stmt->fetch()) {
 }
 
 // ---- Only accept students actually enrolled in this offering --------------
-$stmt = $pdo->prepare("SELECT student_id FROM enrollments WHERE offering_id = ? AND status = 'active'");
+$stmt = $pdo->prepare("SELECT student_id FROM enrollments WHERE offering_id = ? AND status = 'enrolled'");
 $stmt->execute([$offeringId]);
 $validStudentIds = array_column($stmt->fetchAll(), 'student_id');
 $validStudentIds = array_map('intval', $validStudentIds);

@@ -11,7 +11,7 @@ $stmt = $pdo->prepare("SELECT t.teacher_id FROM teachers t WHERE t.user_id=? LIM
 $stmt->execute([$teacherUser]);
 $teacher = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$teacher || !$studentId || !$offeringId) die('Invalid request.');
-$stmt = $pdo->prepare("SELECT co.offering_id,co.quarter,sub.subject_name,sec.section_name,sy.label school_year,s.student_id,s.student_lrn,s.firstname,s.lastname,s.middlename FROM classofferings co JOIN subjects sub ON sub.subject_id=co.subject_id JOIN sections sec ON sec.section_id=co.section_id JOIN schoolyears sy ON sy.school_year_id=co.school_year_id JOIN enrollments e ON e.offering_id=co.offering_id AND e.student_id=? AND e.status='active' JOIN students s ON s.student_id=e.student_id WHERE co.offering_id=? AND co.teacher_id=? AND co.status='active' LIMIT 1");
+$stmt = $pdo->prepare("SELECT co.offering_id,co.quarter,sub.subject_name,sec.section_name,sy.label school_year,s.student_id,s.student_lrn,s.firstname,s.lastname,s.middlename FROM classofferings co JOIN subjects sub ON sub.subject_id=co.subject_id JOIN sections sec ON sec.section_id=co.section_id JOIN schoolyears sy ON sy.school_year_id=co.school_year_id JOIN enrollments e ON e.offering_id=co.offering_id AND e.student_id=? AND e.status='enrolled' JOIN students s ON s.student_id=e.student_id WHERE co.offering_id=? AND co.teacher_id=? AND co.status='active' LIMIT 1");
 $stmt->execute([$studentId, $offeringId, $teacher['teacher_id']]);
 $student = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$student) die('Student or class not found.');

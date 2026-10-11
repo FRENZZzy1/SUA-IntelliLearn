@@ -63,7 +63,8 @@ $studentsStmt = $pdo->prepare("
     FROM enrollments e
     JOIN students st ON st.student_id = e.student_id
     WHERE e.offering_id = ?
-    ORDER BY e.status = 'active' DESC, st.lastname ASC, st.firstname ASC
+      AND e.status NOT IN ('pending','denied')
+    ORDER BY e.status = 'enrolled' DESC, st.lastname ASC, st.firstname ASC
 ");
 $studentsStmt->execute([(int) $offering_id]);
 $students = $studentsStmt->fetchAll();

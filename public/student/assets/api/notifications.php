@@ -12,7 +12,7 @@
  *   quiz         quizzes.created_at            new published quiz
  *   material     learning_materials.created_at new learning material
  *   announcement announcements.published_at    audience = all/students
- *   enrollment   enrollment_requests.decided_at approved / denied
+ *   enrollment   enrollments.decided_at     enrolled / denied
  *   term_grade   grades.updated_at             a term grade was posted
  *
  * "Read" state is NOT stored in the database. The header keeps it in the
@@ -128,7 +128,7 @@ $stmt = $pdo->prepare("
     FROM enrollments e
     JOIN classofferings co ON co.offering_id = e.offering_id
     JOIN schoolyears sy    ON sy.school_year_id = co.school_year_id
-    WHERE e.student_id = ? AND e.status = 'active' AND sy.is_current = 1
+    WHERE e.student_id = ? AND e.status = 'enrolled' AND sy.is_current = 1
 ");
 $stmt->execute([$studentId]);
 $offeringIds = array_map('intval', array_column($stmt->fetchAll(), 'offering_id'));
@@ -346,22 +346,23 @@ foreach ($stmt->fetchAll() as $r) {
 
 // ---- 7. Enrollment request decisions -------------------------------------
 $stmt = $pdo->prepare("
-    SELECT er.request_id, er.status, er.decided_at, sub.subject_name
-    FROM enrollment_requests er
-    JOIN subjects sub ON sub.subject_id = er.subject_id
-    WHERE er.student_id = ?
-      AND er.status IN ('approved', 'denied')
-      AND er.decided_at IS NOT NULL
-      AND er.decided_at >= ?
-    ORDER BY er.decided_at DESC
+    SELECT e.enrollment_id, e.status, e.decided_at, sub.subject_name
+    FROM enrollments e
+    JOIN classofferings co ON co.offering_id = e.offering_id
+    JOIN subjects sub ON sub.subject_id = co.subject_id
+    WHERE e.student_id = ?
+      AND e.status IN ('enrolled', 'denied')
+      AND e.decided_at IS NOT NULL
+      AND e.decided_at >= ?
+    ORDER BY e.decided_at DESC
     LIMIT 10
 ");
 $stmt->execute([$studentId, $sinceSql]);
 foreach ($stmt->fetchAll() as $r) {
     $ts       = strtotime($r['decided_at']);
-    $approved = $r['status'] === 'approved';
+    $approved = $r['status'] === 'enrolled';
     $add(
-        "e-{$r['request_id']}-{$ts}", $approved ? 'enroll_ok' : 'enroll_no',
+        "e-{$r['enrollment_id']}-{$ts}", $approved ? 'enroll_ok' : 'enroll_no',
         'Enrollment',
         $approved ? "Request approved: {$r['subject_name']}" : "Request denied: {$r['subject_name']}",
         null,

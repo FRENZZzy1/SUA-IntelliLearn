@@ -50,7 +50,7 @@ if ($offeringIds) {
     $stmt = $pdo->prepare("
         SELECT COUNT(DISTINCT student_id) AS total
         FROM enrollments
-        WHERE status = 'active'
+        WHERE status = 'enrolled'
           AND offering_id IN ($placeholders)
     ");
     $stmt->execute($offeringIds);
@@ -100,7 +100,7 @@ if ($offeringIds) {
         JOIN assignments a ON a.assignment_id = sub.assignment_id
         JOIN enrollments e ON e.offering_id = a.offering_id
                           AND e.student_id  = sub.student_id
-                          AND e.status = 'active'
+                          AND e.status = 'enrolled'
         WHERE a.offering_id IN ($placeholders)
           AND a.status <> 'draft'
           AND sub.status IN ('submitted', 'late')
@@ -159,7 +159,7 @@ if ($offeringIds) {
         JOIN classofferings co ON co.offering_id = e.offering_id
         JOIN subjects sub ON sub.subject_id = co.subject_id
         WHERE e.offering_id IN ($placeholders)
-          AND e.status = 'active'
+          AND e.status = 'enrolled'
         ORDER BY e.enrolled_at DESC
         LIMIT 5
     ");

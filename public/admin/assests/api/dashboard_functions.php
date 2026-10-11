@@ -24,7 +24,7 @@ function get_total_Class(PDO $pdo): int {
 }
 
 function get_pending_enrollments(PDO $pdo): int {
-    $row = $pdo->query("SELECT COUNT(DISTINCT student_id) AS cnt FROM enrollment_requests WHERE status = 'pending'")->fetch();
+    $row = $pdo->query("SELECT COUNT(DISTINCT student_id) AS cnt FROM enrollments WHERE status = 'pending'")->fetch();
     return $row ? (int) $row['cnt'] : 0;
 }
 
@@ -109,15 +109,15 @@ function get_total_courses_count(PDO $pdo): int {
  * Total number of active (currently enrolled) enrollments.
  */
 function get_total_enrollees_count(PDO $pdo): int {
-    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM enrollments WHERE status = 'active'")->fetch();
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM enrollments WHERE status = 'enrolled'")->fetch();
     return $row ? (int) $row['cnt'] : 0;
 }
 
 /**
- * Count of enrollment_requests still awaiting a decision.
+ * Count of enrollments still Pending (awaiting a teacher's decision).
  */
 function get_pending_enrollments_count(PDO $pdo): int {
-    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM enrollment_requests WHERE status = 'pending'")->fetch();
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM enrollments WHERE status = 'pending'")->fetch();
     return $row ? (int) $row['cnt'] : 0;
 }
 
@@ -132,24 +132,24 @@ function get_pending_enrollments_count(PDO $pdo): int {
  */
 function get_pending_enrollment_groups(PDO $pdo, int $limit = 5): array {
     $sql = "SELECT
-                er.request_id,
-                er.student_id,
-                er.grade_level,
-                er.subject_id,
-                er.strand,
-                er.offering_id,
-                er.submitted_at,
+                e.enrollment_id AS request_id,
+                e.student_id,
+                sec2.grade_level,
+                co2.subject_id,
+                sec2.strand,
+                e.offering_id,
+                e.enrolled_at AS submitted_at,
                 st.firstname,
                 st.lastname,
                 subj.subject_name,
                 sec2.section_id AS matched_section_id
-            FROM enrollment_requests er
-            JOIN students st    ON st.student_id = er.student_id
-            JOIN subjects subj  ON subj.subject_id = er.subject_id
-            LEFT JOIN classofferings co2 ON co2.offering_id = er.offering_id
-            LEFT JOIN sections sec2      ON sec2.section_id  = co2.section_id
-            WHERE er.status = 'pending'
-            ORDER BY er.submitted_at DESC";
+            FROM enrollments e
+            JOIN students st    ON st.student_id = e.student_id
+            JOIN classofferings co2 ON co2.offering_id = e.offering_id
+            JOIN sections sec2      ON sec2.section_id  = co2.section_id
+            JOIN subjects subj      ON subj.subject_id  = co2.subject_id
+            WHERE e.status = 'pending'
+            ORDER BY e.enrolled_at DESC";
 
     $rows = $pdo->query($sql)->fetchAll();
 
@@ -204,7 +204,7 @@ function get_course_enrollment_progress(PDO $pdo, int $limit = 6): array {
                 SUM(enrolled_count) AS enrolled
             FROM (
                 SELECT co.offering_id, subj.subject_id, subj.subject_name, sec.grade_level, co.capacity,
-                    (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
+                    (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count
                 FROM classofferings co
                 JOIN subjects subj ON subj.subject_id = co.subject_id
                 JOIN sections sec  ON sec.section_id  = co.section_id
@@ -591,7 +591,7 @@ function get_offering_enrollment_counts(PDO $pdo, array $offeringIds): array {
 
     $sql = "SELECT offering_id, COUNT(*) AS enrolled_count
              FROM enrollments
-             WHERE status = 'active' AND offering_id IN ($placeholders)
+             WHERE status = 'enrolled' AND offering_id IN ($placeholders)
              GROUP BY offering_id";
 
     $stmt = $pdo->prepare($sql);
@@ -662,8 +662,8 @@ function get_student_schedule(PDO $pdo, string $term, int $limit = 10): array {
 }
 
 /**
- * Enrollment requests, filtered by any combination of grade level,
- * strand, and status (all optional). This is what makes "how many
+ * Enrollment requests (enrollments rows with status pending / enrolled / denied),
+ * filtered by any combination of grade level, strand, and status (all optional). This is what makes "how many
  * pending requests for grade 11 STEM" answerable.
  */
 function search_enrollment_requests(PDO $pdo, array $grades = [], array $strands = [], array $statuses = [], int $limit = 10): array {
@@ -671,33 +671,39 @@ function search_enrollment_requests(PDO $pdo, array $grades = [], array $strands
     $params = [];
 
     if (!empty($grades)) {
-        $where[] = 'er.grade_level IN (' . implode(',', array_fill(0, count($grades), '?')) . ')';
+        $where[] = 'sec.grade_level IN (' . implode(',', array_fill(0, count($grades), '?')) . ')';
         foreach ($grades as $g) { $params[] = $g; }
     }
     if (!empty($strands)) {
-        $where[] = 'er.strand IN (' . implode(',', array_fill(0, count($strands), '?')) . ')';
+        $where[] = 'sec.strand IN (' . implode(',', array_fill(0, count($strands), '?')) . ')';
         foreach ($strands as $s) { $params[] = $s; }
     }
-    // Only requests use pending/approved/denied; ignore other statuses that don't apply here.
-    $validRequestStatuses = array_values(array_intersect($statuses, ['pending', 'approved', 'denied']));
+    // Requests are enrollments rows: pending / enrolled (= approved) / denied.
+    // 'approved' is accepted as a synonym for 'enrolled'; other statuses don't apply here.
+    $mapped = array_map(fn($s) => $s === 'approved' ? 'enrolled' : $s, $statuses);
+    $validRequestStatuses = array_values(array_unique(array_intersect($mapped, ['pending', 'enrolled', 'denied'])));
+    if (empty($grades) && empty($strands) && empty($validRequestStatuses)) return [];
     if (!empty($validRequestStatuses)) {
-        $where[] = 'er.status IN (' . implode(',', array_fill(0, count($validRequestStatuses), '?')) . ')';
+        $where[] = 'e.status IN (' . implode(',', array_fill(0, count($validRequestStatuses), '?')) . ')';
         foreach ($validRequestStatuses as $s) { $params[] = $s; }
+    } else {
+        // Grade/strand only: show the requests still waiting for a decision.
+        $where[] = "e.status = 'pending'";
     }
-
-    if (empty($where)) return [];
 
     // $limit is bound separately below via bindValue(..., PDO::PARAM_INT)
     // rather than mixed into $params, since the earlier IN(...) params
     // don't have a fixed type string to track in PDO (unlike mysqli).
-    $sql = "SELECT er.request_id, er.grade_level, er.strand, er.status, er.submitted_at,
+    $sql = "SELECT e.enrollment_id AS request_id, sec.grade_level, sec.strand, e.status, e.enrolled_at AS submitted_at,
                 CONCAT(s.firstname, ' ', s.lastname) AS student_name,
                 sub.subject_name
-             FROM enrollment_requests er
-             JOIN students s ON s.student_id = er.student_id
-             JOIN subjects sub ON sub.subject_id = er.subject_id
+             FROM enrollments e
+             JOIN students s ON s.student_id = e.student_id
+             JOIN classofferings co ON co.offering_id = e.offering_id
+             JOIN sections sec ON sec.section_id = co.section_id
+             JOIN subjects sub ON sub.subject_id = co.subject_id
              WHERE " . implode(' AND ', $where) . "
-             ORDER BY er.submitted_at DESC
+             ORDER BY e.enrolled_at DESC
              LIMIT ?";
 
     $stmt = $pdo->prepare($sql);

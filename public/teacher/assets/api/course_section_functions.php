@@ -76,7 +76,7 @@ $stmt = $pdo->prepare("
     FROM classofferings co
     JOIN subjects sub ON sub.subject_id = co.subject_id
     LEFT JOIN enrollments e
-           ON e.offering_id = co.offering_id AND e.status = 'active'
+           ON e.offering_id = co.offering_id AND e.status = 'enrolled'
     WHERE co.teacher_id = ?
       AND co.section_id = ?
       AND co.status = 'active'

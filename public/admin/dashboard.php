@@ -684,7 +684,7 @@ $recentCourseOfferings    = get_recent_course_offerings($pdo, 4);
                             + '<td>' + escapeHtml(fullName) + '</td>'
                             + '<td>' + (s.email ? escapeHtml(s.email) : '— None —') + '</td>'
                             + '<td>' + escapeHtml(genderLabel) + '</td>'
-                            + '<td><span class="status-dot-badge ' + (s.status === 'active' ? 'active' : 'inactive') + '"><span class="dot"></span>' + escapeHtml(statusLabel) + '</span></td>'
+                            + '<td><span class="status-dot-badge ' + (s.status === 'enrolled' ? 'active' : 'inactive') + '"><span class="dot"></span>' + escapeHtml(statusLabel) + '</span></td>'
                             + '<td>' + escapeHtml(enrolledDate) + '</td>'
                             + '</tr>';
                     }).join('');

@@ -152,13 +152,21 @@ function chatbot_search_student_roster(PDO $pdo, string $question, int $limit = 
 
         // "enrolled" without an explicit status means currently active.
         // An explicit status such as dropped/completed overrides this.
-        $enrollmentStatuses = array_values(array_intersect($statuses, ['active', 'dropped', 'completed']));
+        // 'active' is accepted as a synonym for 'enrolled' (enrollments.status
+        // values are pending / enrolled / denied / dropped / completed).
+        $enrollmentStatuses = array_values(array_unique(array_map(
+            fn($s) => $s === 'active' ? 'enrolled' : $s,
+            array_intersect($statuses, ['active', 'dropped', 'completed', 'pending', 'denied'])
+        )));
         if (empty($enrollmentStatuses) && preg_match('/\\b(enrolled|currently enrolled|active enrollments?)\\b/i', $question)) {
-            $enrollmentStatuses = ['active'];
+            $enrollmentStatuses = ['enrolled'];
         }
         if (!empty($enrollmentStatuses)) {
             $where[] = 'e.status IN (' . implode(',', array_fill(0, count($enrollmentStatuses), '?')) . ')';
             foreach ($enrollmentStatuses as $status) $params[] = $status;
+        } else {
+            // Pending/denied rows are requests, not real enrollments.
+            $where[] = "e.status NOT IN ('pending','denied')";
         }
     }
 

@@ -56,14 +56,14 @@ $stmt = $pdo->prepare("
             JOIN classofferings co2 ON co2.offering_id = e2.offering_id
             WHERE e2.student_id = s.student_id
               AND co2.teacher_id = :teacher_id2
-              AND e2.status = 'active'
+              AND e2.status = 'enrolled'
         ) AS classes_with_you
     FROM students s
     JOIN enrollments e       ON e.student_id = s.student_id
     JOIN classofferings co   ON co.offering_id = e.offering_id
     JOIN sections sec        ON sec.section_id = co.section_id
     WHERE co.teacher_id = :teacher_id
-      AND e.status = 'active'
+      AND e.status = 'enrolled'
       AND (
             CONCAT(s.firstname, ' ', s.lastname) LIKE :q1
          OR s.firstname LIKE :q2

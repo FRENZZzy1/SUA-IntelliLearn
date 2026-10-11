@@ -65,6 +65,7 @@ $enrollmentStmt = $pdo->prepare("
     LEFT JOIN teachers t    ON t.teacher_id   = co.teacher_id
     LEFT JOIN schoolyears syco ON syco.school_year_id = co.school_year_id
     WHERE e.student_id = ?
+      AND e.status NOT IN ('pending','denied')
     ORDER BY e.enrolled_at DESC
 ");
 $enrollmentStmt->execute([$studentId]);

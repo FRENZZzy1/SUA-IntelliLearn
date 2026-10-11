@@ -214,7 +214,7 @@ $sql = "
         t.lastname  AS teacher_lastname,
         syco.label AS offering_school_year_label,
         (SELECT COUNT(*) FROM enrollments e
-            WHERE e.offering_id = co.offering_id AND e.status = 'active') AS enrolled_count
+            WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count
     FROM classofferings co
     JOIN subjects s   ON s.subject_id = co.subject_id
     JOIN sections sec ON sec.section_id = co.section_id
@@ -264,7 +264,7 @@ $activeCourses = (int) $pdo->query("SELECT COUNT(*) FROM classofferings WHERE st
 $teachersAssigned = (int) $pdo->query("SELECT COUNT(DISTINCT teacher_id) FROM classofferings")->fetchColumn();
 $totalTeachers    = (int) $pdo->query("SELECT COUNT(*) FROM teachers")->fetchColumn();
 
-$totalEnrollees = (int) $pdo->query("SELECT COUNT(DISTINCT student_id) FROM enrollments WHERE status = 'active'")->fetchColumn();
+$totalEnrollees = (int) $pdo->query("SELECT COUNT(DISTINCT student_id) FROM enrollments WHERE status = 'enrolled'")->fetchColumn();
 
 // ================= DATA FOR "NEW COURSE" / "UPDATE COURSE" MODALS =================
 
@@ -287,7 +287,7 @@ $sectionsList = $pdo->query("
             WHERE co.section_id = sec.section_id) AS course_count,
         (SELECT COUNT(*) FROM enrollments e
             JOIN classofferings co2 ON co2.offering_id = e.offering_id
-            WHERE co2.section_id = sec.section_id AND e.status = 'active') AS student_count
+            WHERE co2.section_id = sec.section_id AND e.status = 'enrolled') AS student_count
     FROM sections sec
     LEFT JOIN teachers t     ON t.teacher_id = sec.adviser_id
     LEFT JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id

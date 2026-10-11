@@ -289,7 +289,7 @@ function syncCourseTermsToCurrent($pdo) {
     }
 
     $insertOffering = $pdo->prepare("INSERT INTO classofferings (class_code, subject_id, teacher_id, section_id, quarter, school_year_id, schedule_days, start_time, end_time, capacity, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $copyEnrollments = $pdo->prepare("INSERT INTO enrollments (student_id, offering_id, status) SELECT student_id, ?, 'active' FROM enrollments WHERE offering_id = ? AND status = 'active'");
+    $copyEnrollments = $pdo->prepare("INSERT INTO enrollments (student_id, offering_id, status) SELECT student_id, ?, 'enrolled' FROM enrollments WHERE offering_id = ? AND status = 'enrolled'");
 
     foreach ($latest as $source) {
         $idx = $source['idx'];
