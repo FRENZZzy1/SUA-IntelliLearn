@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($password !== $confirm) {
         $error = 'Passwords do not match.';
     } else {
-        $stmt = $pdo->prepare("SELECT id, username, role, status, password FROM Users WHERE id = ? LIMIT 1");
+        $stmt = $pdo->prepare("SELECT id, username, role, status, password FROM users WHERE id = ? LIMIT 1");
         $stmt->execute([$uid]);
         $user = $stmt->fetch();
 
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'This setup link is invalid or has already been used.';
         } else {
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $update = $pdo->prepare("UPDATE Users SET password = ?, updated_at = NOW(), current_session_token = NULL WHERE id = ? AND role = 'teacher'");
+            $update = $pdo->prepare("UPDATE users SET password = ?, updated_at = NOW(), current_session_token = NULL WHERE id = ? AND role = 'teacher'");
             $update->execute([$hash, $uid]);
             $success = true;
         }
