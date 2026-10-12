@@ -21,7 +21,7 @@ require_once '../../config/config.php';
 require_once 'assests/api/dashboard_functions.php';
 require_once 'assests/api/usage_stats.php';
 $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
-$aum_endpoint = '/SUA-IntelliLearn/public/admin/assests/api/add_user_handler.php';
+$aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
 include 'assests/api/add_user_modal.php';
 
 requireAdmin();
