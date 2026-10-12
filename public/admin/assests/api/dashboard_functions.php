@@ -1,7 +1,7 @@
 <?php
 /**
  * Dashboard data layer (PDO version)
- * All database queries for the Admin Dashboard live here.
+ * All database queries for the admin Dashboard live here.
  * dashboard.php just calls these functions and renders HTML —
  * it should not contain any raw SQL.
  *
@@ -14,7 +14,7 @@
  * Total number of students.
  */
 function get_total_students(PDO $pdo): int {
-    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM Students")->fetch();
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM students")->fetch();
     return $row ? (int) $row['cnt'] : 0;
 }
 
@@ -40,13 +40,13 @@ function get_total_teachers(PDO $pdo): int {
  * Total number of user accounts (all roles).
  */
 function get_total_users_count(PDO $pdo): int {
-    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM Users")->fetch();
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM users")->fetch();
     return $row ? (int) $row['cnt'] : 0;
 }
 
 /**
  * Most recently created users, with display name/email resolved
- * from whichever role table (Students / teachers / Admin) they belong to.
+ * from whichever role table (students / teachers / admin) they belong to.
  *
  * @return array<int, array{id:int, username:string, Role:string, status:string, created_at:string, full_name:string, email:?string}>
  */
@@ -54,10 +54,10 @@ function get_recent_users(PDO $pdo, int $limit = 4): array {
     $sql = "SELECT u.id, u.username, u.Role, u.status, u.created_at,
                 COALESCE(CONCAT(s.firstname, ' ', s.lastname), CONCAT(t.firstname, ' ', t.lastname), u.username) AS full_name,
                 COALESCE(s.email, t.email, a.email) AS email
-             FROM Users u
-             LEFT JOIN Students s ON s.user_id = u.id
+             FROM users u
+             LEFT JOIN students s ON s.user_id = u.id
              LEFT JOIN teachers t ON t.user_id = u.id
-             LEFT JOIN Admin a ON a.user_id = u.id
+             LEFT JOIN admin a ON a.user_id = u.id
              ORDER BY u.created_at DESC
              LIMIT ?";
 
@@ -122,7 +122,7 @@ function get_pending_enrollments_count(PDO $pdo): int {
 }
 
 /**
- * Pending enrollment requests for the dashboard "Pending Enrollments" widget,
+ * Pending enrollment requests for the dashboard "Pending enrollments" widget,
  * grouped by student + matched section (same collapsing rule used on the
  * full Enrollment page) so a student who checked several subjects in one
  * submission shows as a single row with a "View Classes" trigger instead
@@ -242,7 +242,7 @@ function get_course_enrollment_progress(PDO $pdo, int $limit = 6): array {
 /**
  * Most recently created active class offerings, resolved to their
  * subject/section/teacher, for the dashboard's "Courses & Subjects" widget.
- * offering_id is included so the row's "View Students" action can call the
+ * offering_id is included so the row's "View students" action can call the
  * same read-only roster endpoint the full Courses & Subjects page uses.
  *
  * @return array<int, array{offering_id:int, subject_name:string, grade_level:int, strands:?string, teacher_name:?string, status:string}>
@@ -558,7 +558,7 @@ function search_sections(PDO $pdo, string $term, int $limit = 6): array {
 }
 
 /**
- * Sections filtered by grade level (used when the question names a grade
+ * sections filtered by grade level (used when the question names a grade
  * but no specific section, e.g. "sections in grade 11").
  */
 function search_sections_by_grade(PDO $pdo, array $grades, int $limit = 8): array {
@@ -903,7 +903,7 @@ function get_chatbot_context(PDO $pdo, string $question): string {
 /**
  * ================= GLOBAL SEARCH =================
  *
- * Searches across Users (resolved to Students/teachers/Admin), courses
+ * Searches across users (resolved to students/teachers/admin), courses
  * (classofferings resolved to subject/teacher/section), and subjects.
  *
  * @return array{users: array, courses: array, subjects: array}
@@ -922,7 +922,7 @@ function global_search(PDO $pdo, string $term, int $limitPerGroup = 6): array {
 }
 
 /**
- * Search Users, joined to whichever role table (Students / teachers / Admin)
+ * Search users, joined to whichever role table (students / teachers / admin)
  * they belong to, matching on username, first/last name, or email.
  */
 function search_users(PDO $pdo, string $term, int $limit = 6): array {
@@ -931,10 +931,10 @@ function search_users(PDO $pdo, string $term, int $limit = 6): array {
     $sql = "SELECT u.id, u.username, u.Role AS role, u.status,
                 COALESCE(CONCAT(s.firstname, ' ', s.lastname), CONCAT(t.firstname, ' ', t.lastname), a.position, u.username) AS full_name,
                 COALESCE(s.email, t.email, a.email) AS email
-             FROM Users u
-             LEFT JOIN Students s ON s.user_id = u.id
+             FROM users u
+             LEFT JOIN students s ON s.user_id = u.id
              LEFT JOIN teachers t ON t.user_id = u.id
-             LEFT JOIN Admin a ON a.user_id = u.id
+             LEFT JOIN admin a ON a.user_id = u.id
              WHERE u.username LIKE ?
                 OR s.firstname LIKE ? OR s.lastname LIKE ?
                 OR t.firstname LIKE ? OR t.lastname LIKE ?
