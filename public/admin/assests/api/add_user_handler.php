@@ -73,7 +73,7 @@ if ($role === 'student') {
     try {
         $pdo->beginTransaction();
 
-        $check = $pdo->prepare("SELECT student_id FROM Students WHERE student_lrn = ?");
+        $check = $pdo->prepare("SELECT student_id FROM students WHERE student_lrn = ?");
         $check->execute([$lrn]);
         if ($check->fetch()) {
             throw new Exception("A student with this LRN already exists.");
@@ -88,14 +88,14 @@ if ($role === 'student') {
         $password_hash = password_hash($password_plain, PASSWORD_DEFAULT);
 
         $stmt = $pdo->prepare("
-            INSERT INTO Users (username, password, role, status, created_at, updated_at)
+            INSERT INTO users (username, password, role, status, created_at, updated_at)
             VALUES (?, ?, 'student', ?, NOW(), NOW())
         ");
         $stmt->execute([$username, $password_hash, $status]);
         $user_id = $pdo->lastInsertId();
 
         $stmt = $pdo->prepare("
-            INSERT INTO Students
+            INSERT INTO students
                 (user_id, student_lrn, firstname, lastname, middlename, email, gender, birthdate, address, guardian_name, guardian_contact, year_level, strand, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ");
@@ -184,7 +184,7 @@ if ($role === 'admin') {
 }
 
 if (empty($errors)) {
-    $table = $role === 'teacher' ? 'Teachers' : 'Admin';
+    $table = $role === 'teacher' ? 'teachers' : 'admin';
     $check = $pdo->prepare("SELECT 1 FROM $table WHERE email = ?");
     $check->execute([$email]);
     if ($check->fetch()) {
@@ -193,7 +193,7 @@ if (empty($errors)) {
 }
 
 if (empty($errors)) {
-    $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
+    $check = $pdo->prepare("SELECT id FROM users WHERE username = ?");
     $check->execute([$email]);
     if ($check->fetch()) {
         $errors[] = "This email is already in use as a login username.";
@@ -208,7 +208,7 @@ try {
     $pdo->beginTransaction();
 
     $username = $email;
-    // Teachers receive a one-time setup link instead of an admin-created password.
+    // teachers receive a one-time setup link instead of an admin-created password.
     // The setup token is stateless (HMAC-signed) so no new database table/column is required.
     $teacherSetupToken = null;
     $password_hash = $role === 'teacher'
@@ -216,7 +216,7 @@ try {
         : password_hash($password, PASSWORD_DEFAULT);
 
     $stmt = $pdo->prepare("
-        INSERT INTO Users (username, password, role, status, created_at, updated_at)
+        INSERT INTO users (username, password, role, status, created_at, updated_at)
         VALUES (?, ?, ?, ?, NOW(), NOW())
     ");
     $stmt->execute([$username, $password_hash, $role, $status]);
@@ -224,7 +224,7 @@ try {
 
     if ($role === 'teacher') {
         $stmt = $pdo->prepare("
-            INSERT INTO Teachers (user_id, firstname, lastname, middlename, email, contact, employment_status, department, specialization, created_at, updated_at)
+            INSERT INTO teachers (user_id, firstname, lastname, middlename, email, contact, employment_status, department, specialization, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
         ");
         $stmt->execute([
@@ -238,7 +238,7 @@ try {
         ]);
     } elseif ($role === 'admin') {
         $stmt = $pdo->prepare("
-            INSERT INTO Admin (user_id, email, access_level, position, created_at)
+            INSERT INTO admin (user_id, email, access_level, position, created_at)
             VALUES (?, ?, ?, ?, NOW())
         ");
         $stmt->execute([$user_id, $email, $access_level, $position]);
