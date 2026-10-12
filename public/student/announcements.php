@@ -66,14 +66,20 @@ function announcement_badge(string $priority): array
 // ---- Announcements visible to this student, filtered + searched -------
 $sql = "
     SELECT a.*, u.username AS poster_username,
-           t.firstname AS t_first, t.lastname AS t_last
+           t.firstname AS t_first, t.lastname AS t_last,
+           csub.subject_name AS class_subject
     FROM announcements a
     JOIN users u ON u.id = a.posted_by
     LEFT JOIN teachers t ON t.user_id = u.id
+    LEFT JOIN classofferings cco ON cco.offering_id = a.offering_id
+    LEFT JOIN subjects csub ON csub.subject_id = cco.subject_id
     WHERE a.status = 'published'
       AND (a.audience = 'all' OR a.audience = 'students')
+      AND (a.offering_id IS NULL OR a.offering_id IN (
+            SELECT e.offering_id FROM enrollments e
+            WHERE e.student_id = :sid AND e.status = 'enrolled'))
 ";
-$params = [];
+$params = [':sid' => (int) $student['student_id']];
 
 if ($filter !== 'all') {
     $sql .= " AND a.priority = :priority";
@@ -94,13 +100,17 @@ $stmt->execute($params);
 $announcements = $stmt->fetchAll();
 
 // Counts per priority for the filter tabs (audience-scoped, not search-scoped).
-$countStmt = $pdo->query("
+$countStmt = $pdo->prepare("
     SELECT a.priority, COUNT(*) AS total
     FROM announcements a
     WHERE a.status = 'published'
       AND (a.audience = 'all' OR a.audience = 'students')
+      AND (a.offering_id IS NULL OR a.offering_id IN (
+            SELECT e.offering_id FROM enrollments e
+            WHERE e.student_id = :sid AND e.status = 'enrolled'))
     GROUP BY a.priority
 ");
+$countStmt->execute([':sid' => (int) $student['student_id']]);
 $priorityCounts = ['urgent' => 0, 'important' => 0, 'normal' => 0];
 foreach ($countStmt->fetchAll() as $row) {
     $priorityCounts[$row['priority']] = (int) $row['total'];
@@ -177,7 +187,9 @@ $totalCount = array_sum($priorityCounts);
                             $postedBy = $a['t_first']
                                 ? trim($a['t_first'] . ' ' . $a['t_last'])
                                 : 'Administration';
-                            $audienceLabel = $a['audience'] === 'all' ? 'All School' : 'Students';
+                            $audienceLabel = !empty($a['class_subject'])
+                                ? $a['class_subject']
+                                : ($a['audience'] === 'all' ? 'All School' : 'Students');
                         ?>
                         <div class="announcement-item">
                             <div class="announcement-item-head">

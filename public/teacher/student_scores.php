@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../config/config.php';
+require_once __DIR__ . '/assets/api/gradebook_status_functions.php';
 if (!isLoggedIn() || ($_SESSION['role'] ?? '') !== 'teacher') {
     header('Location: ../login.php');
     exit();
@@ -15,36 +16,18 @@ $stmt = $pdo->prepare("SELECT co.offering_id,co.quarter,sub.subject_name,sec.sec
 $stmt->execute([$studentId, $offeringId, $teacher['teacher_id']]);
 $student = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$student) die('Student or class not found.');
-$stmt = $pdo->prepare("SELECT a.assignment_id,a.title,a.points,a.type,sub.score,sub.status,sub.attempt_number FROM assignments a LEFT JOIN submissions sub ON sub.assignment_id=a.assignment_id AND sub.student_id=? AND sub.attempt_number=(SELECT MAX(x.attempt_number) FROM submissions x WHERE x.assignment_id=a.assignment_id AND x.student_id=?) WHERE a.offering_id=? ORDER BY a.created_at,a.assignment_id");
-$stmt->execute([$studentId, $studentId, $offeringId]);
-$assignments = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$stmt = $pdo->prepare("SELECT q.quiz_id,q.title,qa.score,qa.max_score,qa.status,qa.attempt_number FROM quizzes q LEFT JOIN quiz_attempts qa ON qa.quiz_id=q.quiz_id AND qa.student_id=? AND qa.attempt_number=(SELECT MAX(x.attempt_number) FROM quiz_attempts x WHERE x.quiz_id=q.quiz_id AND x.student_id=?) WHERE q.offering_id=? ORDER BY q.created_at,q.quiz_id");
-$stmt->execute([$studentId, $studentId, $offeringId]);
-$quizzes = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$aPerc = [];
-$qPerc = [];
-foreach ($assignments as &$a) {
-    $a['percentage'] = ($a['score'] !== null && (float)$a['points'] > 0) ? ((float)$a['score'] / (float)$a['points']) * 100 : null;
-    if ($a['percentage'] !== null) $aPerc[] = $a['percentage'];
-}
-unset($a);
-foreach ($quizzes as &$q) {
-    $q['percentage'] = ($q['score'] !== null && (float)$q['max_score'] > 0) ? ((float)$q['score'] / (float)$q['max_score']) * 100 : null;
-    if ($q['percentage'] !== null) $qPerc[] = $q['percentage'];
-}
-unset($q);
-function meanScore($v)
+$loaded = gb_load_items($pdo, $offeringId);
+$items = $loaded['items'];
+$studentDone = $loaded['done'][$studentId] ?? [];
+$studentScores = $loaded['scores'][$studentId] ?? [];
+
+function ss_fmt($n): string
 {
-    return $v ? round(array_sum($v) / count($v), 1) : null;
+    return rtrim(rtrim(number_format((float)$n, 2, '.', ''), '0'), '.');
 }
-function scoreClass($v)
-{
-    if ($v === null) return 'none';
-    return $v >= 90 ? 'excellent' : ($v >= 80 ? 'good' : ($v >= 75 ? 'fair' : 'low'));
-}
-$quizAvg = meanScore($qPerc);
-$assignmentAvg = meanScore($aPerc);
-$overall = meanScore(array_filter([$quizAvg, $assignmentAvg], fn($x) => $x !== null));
+$catStatus = [];
+foreach (GB_CATEGORIES as $key => $label)
+    $catStatus[$key] = gb_category_status($items[$key], $studentDone);
 $name = htmlspecialchars($student['firstname'] . ' ' . $student['lastname']);
 ?>
 <!doctype html>
@@ -156,7 +139,31 @@ $name = htmlspecialchars($student['firstname'] . ' ' . $student['lastname']);
 
         .score-list {
             width: 100%;
-            border-collapse: collapse
+            border-collapse: collapse;
+            table-layout: fixed
+        }
+
+        /* Same column widths in every category table so they line up */
+        .score-list col.col-name {
+            width: 40%
+        }
+
+        .score-list col.col-type {
+            width: 20%
+        }
+
+        .score-list col.col-score {
+            width: 20%
+        }
+
+        .score-list col.col-status {
+            width: 20%
+        }
+
+        .score-list td:first-child {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap
         }
 
         .score-list th,
@@ -174,6 +181,8 @@ $name = htmlspecialchars($student['firstname'] . ' ' . $student['lastname']);
             background: #f8fafc
         }
 
+        .score-list td:nth-child(3),
+        .score-list th:nth-child(3),
         .score-list td:last-child,
         .score-list th:last-child {
             text-align: right
@@ -232,7 +241,7 @@ $name = htmlspecialchars($student['firstname'] . ' ' . $student['lastname']);
             }
 
             .score-list {
-                min-width: 570px
+                min-width: 560px
             }
 
             .student-hero {
@@ -262,58 +271,50 @@ $name = htmlspecialchars($student['firstname'] . ' ' . $student['lastname']);
                 </div>
             </section>
             <section class="score-cards">
-                <article class="score-card"><span>Overall Average</span><strong class="score-value <?= scoreClass($overall) ?>"><?= $overall !== null ? $overall . '%' : '—' ?></strong><small>Quiz + assignment average</small></article>
-                <article class="score-card"><span>Quiz Average</span><strong class="score-value <?= scoreClass($quizAvg) ?>"><?= $quizAvg !== null ? $quizAvg . '%' : '—' ?></strong><small><?= count($quizzes) ?> quizzes</small></article>
-                <article class="score-card"><span>Assignment Average</span><strong class="score-value <?= scoreClass($assignmentAvg) ?>"><?= $assignmentAvg !== null ? $assignmentAvg . '%' : '—' ?></strong><small><?= count($assignments) ?> assignments</small></article>
+                <?php foreach (GB_CATEGORIES as $key => $label): ?>
+                    <article class="score-card"><span><?= htmlspecialchars($label) ?></span><strong><span class="status-pill status-<?= $catStatus[$key] ?>"><?= gb_status_label($catStatus[$key]) ?></span></strong><small><?= count($items[$key]) ?> item<?= count($items[$key]) == 1 ? '' : 's' ?></small></article>
+                <?php endforeach; ?>
             </section>
-            <section class="detail-panel">
-                <h3><i class="fas fa-file-circle-question"></i> Quiz Scores</h3>
-                <div class="mobile-table">
-                    <table class="score-list">
-                        <thead>
-                            <tr>
-                                <th>Quiz</th>
-                                <th>Score</th>
-                                <th>Percentage</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody><?php foreach ($quizzes as $q): ?><tr>
-                                    <td><strong><?= htmlspecialchars($q['title']) ?></strong></td>
-                                    <td><?= $q['score'] !== null ? htmlspecialchars($q['score']) . ' / ' . htmlspecialchars($q['max_score']) : '—' ?></td>
-                                    <td class="score-value <?= scoreClass($q['percentage']) ?>"><?= $q['percentage'] !== null ? number_format($q['percentage'], 1) . '%' : 'N/A' ?></td>
-                                    <td class="status"><?= $q['score'] !== null ? 'Graded' : 'Not taken' ?></td>
-                                </tr><?php endforeach; ?><?php if (!$quizzes): ?><tr>
-                                    <td colspan="4" class="empty-row">No quizzes found for this class.</td>
-                                </tr><?php endif; ?></tbody>
-                    </table>
-                </div>
-            </section>
-            <section class="detail-panel">
-                <h3><i class="fas fa-clipboard-check"></i> Assignment Scores</h3>
-                <div class="mobile-table">
-                    <table class="score-list">
-                        <thead>
-                            <tr>
-                                <th>Assignment</th>
-                                <th>Score</th>
-                                <th>Percentage</th>
-                                <th>Category</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody><?php foreach ($assignments as $a): ?><tr>
-                                    <td><strong><?= htmlspecialchars($a['title']) ?></strong></td>
-                                    <td><?= $a['score'] !== null ? htmlspecialchars($a['score']) . ' / ' . htmlspecialchars($a['points']) : '—' ?></td>
-                                    <td class="score-value <?= scoreClass($a['percentage']) ?>"><?= $a['percentage'] !== null ? number_format($a['percentage'], 1) . '%' : 'N/A' ?></td>
-                                    <td><?= htmlspecialchars($a['type'] ?? 'Activity') ?></td>
-                                    <td class="status"><?= $a['score'] !== null ? 'Graded' : 'Not submitted' ?></td>
-                                </tr><?php endforeach; ?><?php if (!$assignments): ?><tr>
-                                    <td colspan="5" class="empty-row">No assignments found for this class.</td>
-                                </tr><?php endif; ?></tbody>
-                    </table>
-                </div>
-            </section>
+            <?php $icons = ['ww' => 'fa-file-circle-question', 'pt' => 'fa-clipboard-check', 'exam' => 'fa-file-pen'];
+            foreach (GB_CATEGORIES as $key => $label): ?>
+                <section class="detail-panel">
+                    <h3><i class="fas <?= $icons[$key] ?>"></i> <?= htmlspecialchars($label) ?></h3>
+                    <div class="mobile-table">
+                        <table class="score-list">
+                            <colgroup>
+                                <col class="col-name"><col class="col-type"><col class="col-score"><col class="col-status">
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Score</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody><?php foreach ($items[$key] as $it):
+                                $ok = !empty($studentDone[$it['uid']]);
+                                $sc = $studentScores[$it['uid']] ?? null;
+                                if (!$ok) {
+                                    $scoreHtml = '<span class="score-value none">—</span>';
+                                } elseif ($sc === null || $sc['score'] === null) {
+                                    $scoreHtml = '<span class="score-value none">Pending</span>';
+                                } else {
+                                    $pct = $sc['max'] > 0 ? ($sc['score'] / $sc['max']) * 100 : null;
+                                    $cls = $pct === null ? 'none' : ($pct >= 90 ? 'excellent' : ($pct >= 75 ? 'good' : ($pct >= 60 ? 'fair' : 'low')));
+                                    $scoreHtml = '<span class="score-value ' . $cls . '">' . ss_fmt($sc['score']) . ($sc['max'] > 0 ? ' / ' . ss_fmt($sc['max']) : '') . '</span>';
+                                } ?><tr>
+                                        <td><strong><?= htmlspecialchars($it['title']) ?></strong></td>
+                                        <td><?= htmlspecialchars($it['kind']) ?></td>
+                                        <td><?= $scoreHtml ?></td>
+                                        <td><span class="status-pill <?= $ok ? 'status-submitted' : 'status-not-submitted' ?>"><?= $ok ? 'Submitted' : 'Not Submitted' ?></span></td>
+                                    </tr><?php endforeach; ?><?php if (!$items[$key]): ?><tr>
+                                        <td colspan="4" class="empty-row">Nothing posted in this category yet.</td>
+                                    </tr><?php endif; ?></tbody>
+                        </table>
+                    </div>
+                </section>
+            <?php endforeach; ?>
         </div>
     </main>
 </body>

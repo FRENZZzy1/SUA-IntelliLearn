@@ -131,7 +131,7 @@ if ($maxAttempts < $highestAttemptsUsed) {
 
 // ---- Grading category -----------------------------------------------
 $type = $_POST['type'] ?? 'Activity';
-if (!in_array($type, ['Activity', 'Exam'], true)) {
+if (!in_array($type, ['Activity', 'Exam', 'Written Work'], true)) {
     $type = 'Activity';
 }
 

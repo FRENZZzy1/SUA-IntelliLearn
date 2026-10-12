@@ -1,0 +1,667 @@
+/* =================================================================
+   TEACHER ANNOUNCEMENTS
+   Recycled from admin/assests/css/announcement.css. Every rule is scoped
+   under .ann-page so it can't clash with dashboard.css / header.css, and
+   the admin variable names are mapped onto the teacher palette below.
+================================================================= */
+
+.ann-page {
+    --bg-card:       var(--card, #ffffff);
+    --bg-page:       var(--bg, #f4f7f5);
+    --text-main:     var(--text, #1c2b24);
+    --radius-sm:     8px;
+    --success:       var(--ok, #2d9d63);
+    --warning:       var(--warn, #e07a1f);
+    --info:          #3b82f6;
+    --shadow-lg:     0 4px 12px rgba(16, 40, 30, 0.10);
+}
+
+/* ---------- Page header ---------- */
+.ann-page .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+}
+
+.ann-page .page-header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem;
+    margin: 0 0 6px;
+    color: var(--primary-dark);
+}
+
+.ann-page .page-header p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+}
+
+.ann-page .btn-primary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--primary-dark);
+    color: #fff;
+    border: none;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(15, 31, 61, 0.25);
+    transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
+}
+
+.ann-page .btn-primary:hover {
+    background: var(--primary-light);
+    transform: translateY(-1px);
+}
+
+.ann-page .btn-secondary {
+    background: #fff;
+    color: var(--text-main);
+    border: 2px solid var(--border);
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.ann-page .btn-secondary:hover {
+    background: var(--bg-page);
+}
+
+.ann-page .btn-gold {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 12px 22px;
+    border-radius: var(--radius-sm);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(201, 162, 39, 0.35);
+    transition: filter 0.2s;
+}
+
+.ann-page .btn-gold:hover {
+    filter: brightness(1.05);
+}
+
+/* ---------- Stat strip ---------- */
+.ann-page .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+}
+
+.ann-page .stat-card {
+    background: var(--bg-card);
+    border: none;
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 2px 8px rgba(15, 31, 61, 0.06);
+}
+
+.ann-page .stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.ann-page .stat-icon.blue {
+    background: var(--primary);
+}
+
+.ann-page .stat-icon.gold {
+    background: var(--accent);
+}
+
+.ann-page .stat-icon.green {
+    background: var(--success);
+}
+
+.ann-page .stat-icon.red {
+    background: var(--danger);
+}
+
+.ann-page .stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--primary-dark);
+    line-height: 1.1;
+}
+
+.ann-page .stat-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* ---------- Compose panel ---------- */
+.ann-page .compose-panel {
+    background: var(--bg-card);
+    border: 1px solid rgba(184, 192, 204, 0.5);
+    border-radius: var(--radius);
+    padding: 26px;
+    margin-bottom: 28px;
+    box-shadow: var(--shadow-lg);
+}
+
+.ann-page .compose-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.ann-page .compose-panel-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    margin: 0;
+    color: var(--primary-dark);
+}
+
+.ann-page .close-icon {
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1rem;
+    background: var(--bg-page);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.ann-page .close-icon:hover {
+    background: var(--border);
+}
+
+.ann-page .form-group {
+    margin-bottom: 18px;
+}
+
+.ann-page .form-group label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+}
+
+.ann-page .form-control {
+    width: 100%;
+    padding: 12px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    background: #fff;
+}
+
+.ann-page .form-control:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(42, 74, 140, 0.12);
+}
+
+.ann-page textarea.form-control {
+    resize: vertical;
+    min-height: 150px;
+    line-height: 1.6;
+}
+
+.ann-page .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+}
+
+.ann-page .audience-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.ann-page .audience-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border: 2px solid var(--border);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s;
+    background: #fff;
+}
+
+.ann-page .audience-chip input {
+    accent-color: var(--primary-dark);
+}
+
+.ann-page .audience-chip.checked {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+    color: #fff;
+}
+
+.ann-page .editor-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px;
+    border: 2px solid var(--border);
+    border-bottom: none;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: var(--bg-page);
+}
+
+.ann-page .editor-toolbar button {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.ann-page .editor-toolbar button:hover {
+    background: var(--border);
+    color: var(--text-main);
+}
+
+.ann-page .editor-toolbar .divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border);
+    margin: 0 4px;
+}
+
+.ann-page .compose-panel textarea.form-control {
+    border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.ann-page .attach-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.ann-page .attach-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: var(--primary);
+    background: rgba(22, 48, 92, 0.06);
+    border: 1px dashed var(--primary-light);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+}
+
+.ann-page .compose-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+}
+
+.ann-page .compose-actions .left-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.ann-page .compose-actions .right-actions {
+    display: flex;
+    gap: 10px;
+}
+
+/* ---------- Toolbar / filter row ---------- */
+.ann-page .toolbar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+}
+
+.ann-page .search-box {
+    flex: 1;
+    min-width: 220px;
+    position: relative;
+}
+
+.ann-page .search-box i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.ann-page .search-box input {
+    width: 100%;
+    padding: 11px 14px 11px 38px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    font-size: 0.9rem;
+}
+
+.ann-page .select-filter {
+    padding: 11px 14px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    font-size: 0.85rem;
+    color: var(--text-main);
+    cursor: pointer;
+}
+
+/* ---------- Announcement cards ---------- */
+.ann-page .announcements-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.ann-page .announcement-card {
+    background: var(--bg-card);
+    border: none;
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    display: flex;
+    gap: 18px;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(15, 31, 61, 0.06);
+    transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.ann-page .announcement-card:hover {
+    box-shadow: 0 6px 18px rgba(15, 31, 61, 0.1);
+    transform: translateY(-1px);
+}
+
+.ann-page .announcement-card.pinned {
+    border-left: 4px solid var(--accent);
+}
+
+.ann-page .announcement-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.ann-page .announcement-top-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.ann-page .announcement-title-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ann-page .announcement-title-line h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text-main);
+}
+
+.ann-page .pin-icon {
+    color: var(--accent);
+    font-size: 0.85rem;
+}
+
+.ann-page .badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 3px 9px;
+    border-radius: 999px;
+}
+
+.ann-page .badge.urgent {
+    background: rgba(224, 72, 62, 0.12);
+    color: var(--danger);
+}
+
+.ann-page .badge.important {
+    background: rgba(217, 140, 31, 0.14);
+    color: var(--warning);
+}
+
+.ann-page .badge.normal {
+    background: rgba(42, 74, 140, 0.1);
+    color: var(--primary);
+}
+
+.ann-page .badge.draft {
+    background: rgba(107, 115, 133, 0.12);
+    color: var(--text-muted);
+}
+
+.ann-page .announcement-excerpt {
+    margin: 8px 0 12px;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+}
+
+.ann-page .announcement-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+.ann-page .announcement-meta span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ann-page .audience-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.ann-page .tag {
+    font-size: 0.7rem;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--bg-page);
+    border: 2px solid var(--border);
+    color: var(--text-main);
+}
+
+.ann-page .card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.ann-page .icon-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: #fff;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.82rem;
+    transition: all 0.15s;
+}
+
+.ann-page .icon-btn:hover {
+    background: var(--bg-page);
+    color: var(--text-main);
+}
+
+.ann-page .icon-btn.delete:hover {
+    background: rgba(224, 72, 62, 0.1);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* ---------- Pagination ---------- */
+.ann-page .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin-top: 26px;
+}
+
+.ann-page .page-btn {
+    min-width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: #fff;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.ann-page .page-btn.active {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+    color: #fff;
+    font-weight: 700;
+}
+
+.ann-page .page-btn:hover:not(.active) {
+    background: var(--bg-page);
+}
+
+@media (max-width: 900px) {
+.ann-page .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+.ann-page .form-row {
+        grid-template-columns: 1fr;
+    }
+
+.ann-page .announcement-card {
+        flex-direction: column;
+    }
+
+.ann-page .card-actions {
+        flex-direction: row;
+        align-self: flex-end;
+    }
+
+}
+
+/* ---------- Teacher-only additions ---------- */
+.ann-page .ann-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.ann-page .ann-tab {
+    background: none;
+    border: none;
+    padding: 10px 16px;
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
+}
+
+.ann-page .ann-tab.active {
+    color: var(--primary-dark);
+    border-bottom-color: var(--accent);
+}
+
+.ann-page .ann-tab .count {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--bg-page);
+    font-size: 0.75rem;
+}
+
+.ann-page .audience-fixed {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--bg-page);
+    color: var(--text-muted);
+    font-size: 0.88rem;
+}
+
+.ann-page .inline-form {
+    display: inline;
+    margin: 0;
+}
+
+.ann-page button.icon-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+}
+
+.ann-page .empty-note {
+    color: var(--text-muted);
+    margin: 4px 0 0;
+}

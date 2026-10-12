@@ -672,3 +672,18 @@ body {
 @media (max-width: 720px) {
     .selected-class-controls .btn-export { display: flex; width: 100%; margin-top: 12px; }
 }
+/* ---- Complete / Incomplete status labels (no percentages) ---- */
+.status-pill {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    background: #f1f5f9;
+    color: #94a3b8;
+}
+.status-pill.status-complete,
+.status-pill.status-submitted { background: #ecfdf5; color: #047857; }
+.status-pill.status-incomplete,
+.status-pill.status-not-submitted { background: #fef2f2; color: #dc2626; }
+.status-pill.status-none { background: #f1f5f9; color: #94a3b8; }

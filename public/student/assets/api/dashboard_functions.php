@@ -186,10 +186,13 @@ $stmt = $pdo->prepare("
     LEFT JOIN teachers t ON t.user_id = u.id
     WHERE a.status = 'published'
       AND (a.audience = 'all' OR a.audience = 'students')
+      AND (a.offering_id IS NULL OR a.offering_id IN (
+            SELECT e.offering_id FROM enrollments e
+            WHERE e.student_id = :sid AND e.status = 'enrolled'))
     ORDER BY a.is_pinned DESC, a.created_at DESC
     LIMIT 4
 ");
-$stmt->execute();
+$stmt->execute([':sid' => (int) $studentId]);
 $visibleAnnouncements = $stmt->fetchAll();
 
 // ---- Greeting / date header ---------------------------------------------

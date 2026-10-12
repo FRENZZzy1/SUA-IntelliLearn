@@ -516,6 +516,7 @@ if (!empty($submissionRows)) {
                         <div>
                             <label for="assignmentType">Grading category</label>
                             <select id="assignmentType" name="type">
+                                <option value="Written Work">Written Works</option>
                                 <option value="Activity">Activity (Performance Task)</option>
                                 <option value="Exam">Exam</option>
                             </select>
@@ -1179,7 +1180,8 @@ if (!empty($submissionRows)) {
                     <div>
                         <label for="aeType">Grading category</label>
                         <select id="aeType" name="type">
-                            <option value="Activity">Activity (Performance Task)</option>
+                            <option value="Written Work">Written Works</option>
+                                <option value="Activity">Activity (Performance Task)</option>
                             <option value="Exam">Exam</option>
                         </select>
                     </div>

@@ -86,7 +86,7 @@ if ($maxAttempts === false || $maxAttempts === null || $maxAttempts < 1) {
 
 // ---- Grading category (used by the Finalize Grades calculation) -----
 $type = $_POST['type'] ?? 'Activity';
-if (!in_array($type, ['Activity', 'Exam'], true)) {
+if (!in_array($type, ['Activity', 'Exam', 'Written Work'], true)) {
     $type = 'Activity';
 }
 
