@@ -33,10 +33,10 @@ try {
     $created = 0; $skipped = 0; $errors = [];
 
     $pdo->beginTransaction();
-    $checkLrn = $pdo->prepare("SELECT student_id FROM Students WHERE student_lrn = ? LIMIT 1");
-    $checkUsername = $pdo->prepare("SELECT id FROM Users WHERE username = ? LIMIT 1");
-    $insertUser = $pdo->prepare("INSERT INTO Users (username,password,role,status,created_at,updated_at) VALUES (?,?, 'student', ?, NOW(), NOW())");
-    $insertStudent = $pdo->prepare("INSERT INTO Students (user_id,student_lrn,firstname,lastname,middlename,email,gender,birthdate,address,guardian_name,guardian_contact,year_level,strand,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())");
+    $checkLrn = $pdo->prepare("SELECT student_id FROM students WHERE student_lrn = ? LIMIT 1");
+    $checkUsername = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+    $insertUser = $pdo->prepare("INSERT INTO users (username,password,role,status,created_at,updated_at) VALUES (?,?, 'student', ?, NOW(), NOW())");
+    $insertStudent = $pdo->prepare("INSERT INTO students (user_id,student_lrn,firstname,lastname,middlename,email,gender,birthdate,address,guardian_name,guardian_contact,year_level,strand,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())");
 
     foreach (array_slice($rows, 1) as $index => $row) {
         $excelRow = $index + 2;
