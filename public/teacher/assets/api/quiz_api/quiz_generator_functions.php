@@ -10,7 +10,7 @@
  * else in your project — this assumes the same depth used elsewhere
  * under public/teacher/assets/api/.
  */
-require_once $_SERVER['DOCUMENT_ROOT'] . '/SUA-IntelliLearn/config/config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/config/config.php';
 
 requireTeacher();
 
