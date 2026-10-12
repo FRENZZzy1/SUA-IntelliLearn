@@ -157,7 +157,7 @@ function requireTeacher() {
             echo json_encode(['success' => false, 'errors' => ['Your session has expired. Please refresh the page and log in again.']]);
             exit();
         }
-        header("Location: /SUA-INTELLILEARN/public/login.php");
+        header("Location: /public/login.php");
         exit();
     }
 }
@@ -172,7 +172,7 @@ function requireAdmin() {
             echo json_encode(['success' => false, 'errors' => ['Your session has expired. Please refresh the page and log in again.']]);
             exit();
         }
-        header("Location: /SUA-INTELLILEARN/public/login.php");
+        header("Location: /public/login.php");
         exit();
     }
 }
