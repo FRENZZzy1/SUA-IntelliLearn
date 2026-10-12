@@ -30,7 +30,7 @@ if (function_exists('get_initials')) {
     $initials = $initials ?: '?';
 }
 ?>
-<link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/header.css">
+<link rel="stylesheet" href="/includes/css/header.css">
 <style>
     /* Search dropdown — scoped here since header.css is shared/unknown at edit time */
     .header-search { position: relative; }
@@ -468,10 +468,10 @@ if (function_exists('get_initials')) {
                         <div class="shp-profile-header-role"><?php echo htmlspecialchars($userRole); ?></div>
                     </div>
                 </div>
-                <a href="/SUA-INTELLILEARN/public/student/settings.php" class="shp-profile-item">
+                <a href="/public/student/settings.php" class="shp-profile-item">
                     <i class="fas fa-user-cog"></i> Profile Settings
                 </a>
-                <a href="/SUA-INTELLILEARN/public/logout.php" class="shp-profile-item shp-logout">
+                <a href="/public/logout.php" class="shp-profile-item shp-logout">
                     <i class="fas fa-arrow-right-from-bracket"></i> Logout
                 </a>
             </div>
@@ -513,7 +513,7 @@ if (function_exists('get_initials')) {
 </script>
 <script>
 (function () {
-    var ENDPOINT = '/SUA-INTELLILEARN/public/student/assets/api/notifications.php';
+    var ENDPOINT = '/public/student/assets/api/notifications.php';
     // "Read" state lives in this browser only (no database table).
     var STORE_KEY = 'sua_notif_read_<?php echo (int) ($_SESSION['user_id'] ?? 0); ?>';
     // Deleted (dismissed) notifications are also remembered per browser.
@@ -726,7 +726,7 @@ if (function_exists('get_initials')) {
 
 <script>
 (function () {
-    var API_BASE = '/SUA-INTELLILEARN/public/student/assets/api/';
+    var API_BASE = '/public/student/assets/api/';
     var input    = document.getElementById('globalSearchInput');
     var dropdown = document.getElementById('searchResultsDropdown');
     var overlay  = document.getElementById('svmOverlay');
