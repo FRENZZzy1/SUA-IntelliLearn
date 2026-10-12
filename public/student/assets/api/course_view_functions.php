@@ -363,7 +363,7 @@ function resolveFileUrl(?string $filePath, ?string $externalUrl = null): ?string
         return $externalUrl;
     }
     if (!empty($filePath)) {
-        return '/SUA-INTELLILEARN/public/teacher/' . ltrim($filePath, '/');
+        return '/public/teacher/' . ltrim($filePath, '/');
     }
     return null;
 }
