@@ -177,7 +177,7 @@ function requireAdminModule(string $module, string $permission = 'read'): void {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'errors' => ['You do not have permission to perform this action.']]);
         } else {
-            echo '<!doctype html><html><head><meta charset="utf-8"><title>Access Denied</title></head><body style="font-family:Arial,sans-serif;padding:40px"><h2>Access denied</h2><p>Your account does not have permission to access this module.</p><p><a href="/SUA-INTELLILEARN/public/admin/dashboard.php">Return to Dashboard</a></p></body></html>';
+            echo '<!doctype html><html><head><meta charset="utf-8"><title>Access Denied</title></head><body style="font-family:Arial,sans-serif;padding:40px"><h2>Access denied</h2><p>Your account does not have permission to access this module.</p><p><a href="/public/admin/dashboard.php">Return to Dashboard</a></p></body></html>';
         }
         exit();
     }
