@@ -34,7 +34,7 @@
 
 header('Content-Type: application/json');
 
-require_once $_SERVER['DOCUMENT_ROOT'] . '/SUA-IntelliLearn/config/config.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/config/config.php';
 requireTeacher();
 
 $raw = file_get_contents('php://input');
