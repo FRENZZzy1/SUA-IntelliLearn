@@ -62,7 +62,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $pdo->beginTransaction();
 
                     // LRN must be unique
-                    $check = $pdo->prepare("SELECT student_id FROM Students WHERE student_lrn = ?");
+                    $check = $pdo->prepare("SELECT student_id FROM students WHERE student_lrn = ?");
                     $check->execute([$lrn]);
                     if ($check->fetch()) {
                         throw new Exception("A student with this LRN already exists.");
@@ -76,17 +76,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $password_plain = ucfirst(strtolower($lastname)) . $bday_code . '!';
                     $password_hash = password_hash($password_plain, PASSWORD_DEFAULT);
 
-                    // Insert into Users
+                    // Insert into users
                     $stmt = $pdo->prepare("
-                        INSERT INTO Users (username, password, role, status, created_at, updated_at)
+                        INSERT INTO users (username, password, role, status, created_at, updated_at)
                         VALUES (?, ?, 'student', ?, NOW(), NOW())
                     ");
                     $stmt->execute([$username, $password_hash, $status]);
                     $user_id = $pdo->lastInsertId();
 
-                    // Insert into Students
+                    // Insert into students
                     $stmt = $pdo->prepare("
-                        INSERT INTO Students
+                        INSERT INTO students
                             (user_id, student_lrn, firstname, lastname, middlename, email, gender, birthdate, address, guardian_name, guardian_contact, year_level, strand, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                     ");
@@ -144,10 +144,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $password = $_POST['password'] ?? '';
         $send_email = isset($_POST['send_email']) ? 1 : 0;
 
-        // Admin: the `admin` table has no name columns at all (just email, access_level,
+        // admin: the `admin` table has no name columns at all (just email, access_level,
         // position), so no name is collected — the email is used as the display
         // identifier in the flash message below. Teacher: fullname is derived from the
-        // separate firstname/middlename/lastname fields, which ARE persisted (Teachers table).
+        // separate firstname/middlename/lastname fields, which ARE persisted (teachers table).
         $fullname = $role === 'admin'
             ? $email
             : preg_replace('/\s+/', ' ', trim("$firstname $middlename $lastname"));
@@ -176,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Friendly duplicate-email check (teachers.email and admin.email are UNIQUE)
         if (empty($errors)) {
-            $table = $role === 'teacher' ? 'Teachers' : 'Admin';
+            $table = $role === 'teacher' ? 'teachers' : 'admin';
             $check = $pdo->prepare("SELECT 1 FROM $table WHERE email = ?");
             $check->execute([$email]);
             if ($check->fetch()) {
@@ -184,10 +184,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // Teachers and Admins both log in with their email as their username — make
+        // teachers and Admins both log in with their email as their username — make
         // sure it's not already taken as someone else's username (e.g. a student).
         if (empty($errors) && in_array($role, ['teacher', 'admin'])) {
-            $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
+            $check = $pdo->prepare("SELECT id FROM users WHERE username = ?");
             $check->execute([$email]);
             if ($check->fetch()) {
                 $errors[] = "This email is already in use as a login username.";
@@ -198,15 +198,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $pdo->beginTransaction();
 
-                // Teachers and Admins both log in with their email as their username
+                // teachers and Admins both log in with their email as their username
                 // (already confirmed unique above).
                 $username = $email;
 
                 $password_hash = password_hash($password, PASSWORD_DEFAULT);
 
-                // Insert into Users table
+                // Insert into users table
                 $stmt = $pdo->prepare("
-                    INSERT INTO Users (username, password, role, status, created_at, updated_at)
+                    INSERT INTO users (username, password, role, status, created_at, updated_at)
                     VALUES (?, ?, ?, ?, NOW(), NOW())
                 ");
                 $stmt->execute([$username, $password_hash, $role, $status]);
@@ -215,7 +215,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Insert role-specific data
                 if ($role === 'teacher') {
                     $stmt = $pdo->prepare("
-                        INSERT INTO Teachers (user_id, firstname, lastname, middlename, email, employment_status, department, specialization, created_at, updated_at)
+                        INSERT INTO teachers (user_id, firstname, lastname, middlename, email, employment_status, department, specialization, created_at, updated_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                     ");
                     $stmt->execute([
@@ -231,7 +231,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
                 elseif ($role === 'admin') {
                     $stmt = $pdo->prepare("
-                        INSERT INTO Admin (user_id, email, access_level, position, created_at)
+                        INSERT INTO admin (user_id, email, access_level, position, created_at)
                         VALUES (?, ?, ?, ?, NOW())
                     ");
                     $stmt->execute([$user_id, $email, $access_level, $position]);
@@ -313,7 +313,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             // LRN must stay unique (excluding this student's own record)
-            $check = $pdo->prepare("SELECT student_id FROM Students WHERE student_lrn = ? AND user_id != ?");
+            $check = $pdo->prepare("SELECT student_id FROM students WHERE student_lrn = ? AND user_id != ?");
             $check->execute([$lrn, $user_id]);
             if ($check->fetch()) {
                 setFlashMessage('error', "Another student already has this LRN.");
@@ -343,7 +343,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // in sync with it (teachers and admins log in with their email as their username).
         $new_username = null;
         if (in_array($role, ['teacher', 'admin']) && !empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $check = $pdo->prepare("SELECT id FROM Users WHERE username = ? AND id != ?");
+            $check = $pdo->prepare("SELECT id FROM users WHERE username = ? AND id != ?");
             $check->execute([$email, $user_id]);
             if ($check->fetch()) {
                 setFlashMessage('error', "This email is already in use as a login username by another account.");
@@ -356,7 +356,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo->beginTransaction();
 
-            // Update Users table
+            // Update users table
             if ($new_password !== '') {
                 $passwordErrors = validate_password_policy($new_password);
                 if (!empty($passwordErrors)) {
@@ -365,12 +365,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (empty($errors) && $new_password !== '') {
                 $password_hash = password_hash($new_password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("UPDATE Users SET password = ?, status = ?, " . ($new_username !== null ? "username = ?, " : "") . "updated_at = NOW() WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE users SET password = ?, status = ?, " . ($new_username !== null ? "username = ?, " : "") . "updated_at = NOW() WHERE id = ?");
                 $stmt->execute($new_username !== null
                     ? [$password_hash, $status, $new_username, $user_id]
                     : [$password_hash, $status, $user_id]);
             } else {
-                $stmt = $pdo->prepare("UPDATE Users SET status = ?, " . ($new_username !== null ? "username = ?, " : "") . "updated_at = NOW() WHERE id = ?");
+                $stmt = $pdo->prepare("UPDATE users SET status = ?, " . ($new_username !== null ? "username = ?, " : "") . "updated_at = NOW() WHERE id = ?");
                 $stmt->execute($new_username !== null
                     ? [$status, $new_username, $user_id]
                     : [$status, $user_id]);
@@ -379,7 +379,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Update role-specific table
             if ($role === 'teacher') {
                 $stmt = $pdo->prepare("
-                    UPDATE Teachers 
+                    UPDATE teachers 
                     SET firstname = ?, lastname = ?, middlename = ?, email = ?, department = ?, specialization = ?, employment_status = ?, updated_at = NOW()
                     WHERE user_id = ?
                 ");
@@ -396,7 +396,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } 
             elseif ($role === 'student') {
                 $stmt = $pdo->prepare("
-                    UPDATE Students
+                    UPDATE students
                     SET firstname = ?, lastname = ?, middlename = ?, email = ?, student_lrn = ?, gender = ?,
                         birthdate = ?, address = ?, guardian_name = ?, guardian_contact = ?, year_level = ?, strand = ?, updated_at = NOW()
                     WHERE user_id = ?
@@ -418,7 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 ]);
             }
             elseif ($role === 'admin') {
-                $stmt = $pdo->prepare("UPDATE Admin SET email = ?, access_level = ?, position = ? WHERE user_id = ?");
+                $stmt = $pdo->prepare("UPDATE admin SET email = ?, access_level = ?, position = ? WHERE user_id = ?");
                 $stmt->execute([$email, $access_level, $position, $user_id]);
                 saveAdminPermissions($pdo, (int)$user_id, $access_level, $_POST['permissions_json'] ?? '');
             }
@@ -452,7 +452,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         try {
             // Soft delete by setting status to suspended
-            $stmt = $pdo->prepare("UPDATE Users SET status = 'suspended', updated_at = NOW() WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE users SET status = 'suspended', updated_at = NOW() WHERE id = ?");
             $stmt->execute([$user_id]);
             setFlashMessage('success', "User deactivated successfully.");
         } catch (PDOException $e) {
@@ -523,10 +523,10 @@ if ($gender_filter !== 'all' && in_array($gender_filter, ['Male', 'Female'])) {
 $where_sql = implode(" AND ", $where_clauses);
 
 // Count total for pagination
-$count_sql = "SELECT COUNT(*) FROM Users u 
-    LEFT JOIN Teachers t ON u.id = t.user_id AND u.role = 'teacher'
-    LEFT JOIN Students s ON u.id = s.user_id AND u.role = 'student'
-    LEFT JOIN Admin a ON u.id = a.user_id AND u.role = 'admin'
+$count_sql = "SELECT COUNT(*) FROM users u 
+    LEFT JOIN teachers t ON u.id = t.user_id AND u.role = 'teacher'
+    LEFT JOIN students s ON u.id = s.user_id AND u.role = 'student'
+    LEFT JOIN admin a ON u.id = a.user_id AND u.role = 'admin'
     WHERE $where_sql";
 $count_stmt = $pdo->prepare($count_sql);
 $count_stmt->execute($params);
@@ -569,10 +569,10 @@ $sql = "SELECT
    '{}' AS admin_permissions,
     s.year_level as year_level,
     s.strand as strand
-FROM Users u
-LEFT JOIN Teachers t ON u.id = t.user_id AND u.role = 'teacher'
-LEFT JOIN Students s ON u.id = s.user_id AND u.role = 'student'
-LEFT JOIN Admin a ON u.id = a.user_id AND u.role = 'admin'
+FROM users u
+LEFT JOIN teachers t ON u.id = t.user_id AND u.role = 'teacher'
+LEFT JOIN students s ON u.id = s.user_id AND u.role = 'student'
+LEFT JOIN admin a ON u.id = a.user_id AND u.role = 'admin'
 WHERE $where_sql
 ORDER BY $order_sql
 LIMIT ? OFFSET ?";
@@ -586,15 +586,15 @@ $users = $stmt->fetchAll();
 
 // Fetch stats
 $stats = [];
-$stats['total'] = $pdo->query("SELECT COUNT(*) FROM Users WHERE role IN ('admin', 'teacher', 'student')")->fetchColumn();
-$stats['students'] = $pdo->query("SELECT COUNT(*) FROM Users WHERE role = 'student'")->fetchColumn();
-$stats['teachers'] = $pdo->query("SELECT COUNT(*) FROM Users WHERE role = 'teacher'")->fetchColumn();
-$stats['admins'] = $pdo->query("SELECT COUNT(*) FROM Users WHERE role = 'admin'")->fetchColumn();
-$stats['pending'] = $pdo->query("SELECT COUNT(*) FROM Users WHERE status = 'inactive'")->fetchColumn();
+$stats['total'] = $pdo->query("SELECT COUNT(*) FROM users WHERE role IN ('admin', 'teacher', 'student')")->fetchColumn();
+$stats['students'] = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'")->fetchColumn();
+$stats['teachers'] = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'teacher'")->fetchColumn();
+$stats['admins'] = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'admin'")->fetchColumn();
+$stats['pending'] = $pdo->query("SELECT COUNT(*) FROM users WHERE status = 'inactive'")->fetchColumn();
 
 // Options for the department (teachers) and year-level (students) filter dropdowns
 $departments = $pdo->query("
-    SELECT DISTINCT department FROM Teachers
+    SELECT DISTINCT department FROM teachers
     WHERE department IS NOT NULL AND department != ''
     ORDER BY department ASC
 ")->fetchAll(PDO::FETCH_COLUMN);
@@ -648,7 +648,7 @@ function getStatusLabel(string $status): string {
 // Helper for role label
 function getRoleLabel(string $role): string {
     return match($role) {
-        'admin' => 'Admin',
+        'admin' => 'admin',
         'teacher' => 'Teacher',
         'student' => 'Student',
         default => ucfirst($role),
