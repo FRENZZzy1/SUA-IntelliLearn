@@ -1,8 +1,8 @@
 (function () {
     if (document.getElementById('teacherChatAssistant')) return;
 
-    var ENDPOINT = '/SUA-INTELLILEARN/public/teacher/assets/api/teacher_chatbot.php';
-    var FAB_ICON = '/SUA-INTELLILEARN/public/admin/assests/images/icon_chat.png';
+    var ENDPOINT = '/public/teacher/assets/api/teacher_chatbot.php';
+    var FAB_ICON = '/public/admin/assests/images/icon_chat.png';
     var MAX_HISTORY = 8;
     var SUGGESTIONS = [
         'How many students do I have?',
