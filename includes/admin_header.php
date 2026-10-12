@@ -28,7 +28,7 @@ if (function_exists('get_initials')) {
     $initials = $initials ?: '?';
 }
 ?>
-<link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/header.css">
+<link rel="stylesheet" href="/includes/css/header.css">
 <style>
     /* Global search dropdown — scoped here since header.css is shared/unknown at edit time */
     .header-search { position: relative; }
@@ -182,10 +182,10 @@ if (function_exists('get_initials')) {
                         <div class="ahp-profile-header-role"><?php echo htmlspecialchars($userRole); ?></div>
                     </div>
                 </div>
-                <a href="/SUA-INTELLILEARN/public/admin/profile.php" class="ahp-profile-item">
+                <a href="/public/admin/profile.php" class="ahp-profile-item">
                     <i class="fas fa-user-cog"></i> Profile Settings
                 </a>
-                <a href="/SUA-INTELLILEARN/public/logout.php" class="ahp-profile-item ahp-logout">
+                <a href="/public/logout.php" class="ahp-profile-item ahp-logout">
                     <i class="fas fa-arrow-right-from-bracket"></i> Logout
                 </a>
             </div>
