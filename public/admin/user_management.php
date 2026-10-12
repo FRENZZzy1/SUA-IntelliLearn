@@ -22,7 +22,7 @@ require_once 'assests/api/user_management_logic.php';
 
 <?php include '../../includes/admin_sidebar.php';
     $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
-$aum_endpoint = '/SUA-IntelliLearn/public/admin/assests/api/add_user_handler.php';
+$aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
 include 'assests/api/add_user_modal.php';
 include 'assests/api/access_permissions_modal.php';
 
