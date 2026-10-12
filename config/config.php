@@ -85,7 +85,7 @@ function clean($data) {
  * Retries on the (rare) chance of a collision with an existing username.
  */
 function generateStudentUsername(PDO $pdo): string {
-    $check = $pdo->prepare("SELECT 1 FROM Users WHERE username = ? LIMIT 1");
+    $check = $pdo->prepare("SELECT 1 FROM users WHERE username = ? LIMIT 1");
     for ($i = 0; $i < 20; $i++) {
         $username = 'STU-' . str_pad((string) random_int(0, 9999999), 7, '0', STR_PAD_LEFT);
         $check->execute([$username]);
