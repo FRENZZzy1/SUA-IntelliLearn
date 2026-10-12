@@ -41,7 +41,7 @@ try {
 const NOTIF_WINDOW_DAYS = 30;
 const NOTIF_MAX = 40;
 
-$base = '/SUA-INTELLILEARN/public/teacher/';
+$base = '/public/teacher/';
 
 $userId = (int) $_SESSION['user_id'];
 $stmt = $pdo->prepare("SELECT teacher_id FROM teachers WHERE user_id = ? LIMIT 1");
