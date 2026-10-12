@@ -32,7 +32,7 @@ if (function_exists('get_initials')) {
 $atRiskCount = $atRiskCount ?? null;
 ?>
 <!-- Sidebar Stylesheet -->
-<link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/teacher_sidebar.css">
+<link rel="stylesheet" href="/includes/css/teacher_sidebar.css">
 
 <!-- Mobile hamburger (visible only on small screens) -->
 <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()" aria-label="Open menu">
