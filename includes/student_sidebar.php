@@ -52,7 +52,7 @@ if (isset($pdo) && $pdo instanceof PDO) {
 }
 ?>
 <!-- Sidebar Stylesheet -->
-<link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/student_sidebar.css">
+<link rel="stylesheet" href="/includes/css/student_sidebar.css">
 
 <!-- Mobile hamburger (visible only on small screens) -->
 <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()" aria-label="Open menu">
