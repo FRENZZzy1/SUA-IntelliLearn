@@ -31,7 +31,7 @@ if (function_exists('get_initials')) {
 }
 ?>
 <!-- Sidebar Stylesheet -->
-<link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/admin_sidebar.css">
+<link rel="stylesheet" href="/includes/css/admin_sidebar.css">
 
 
 <aside class="sidebar" id="sidebar">
