@@ -142,6 +142,7 @@
         if (role === 'student') {
             document.getElementById('editLrn').value = card.dataset.lrn || '';
             document.getElementById('editYearLevel').value = card.dataset.yearLevel || '';
+            document.getElementById('editStrand').value = card.dataset.strand || '';
             document.getElementById('editGender').value = card.dataset.gender || 'Male';
             document.getElementById('editBirthdate').value = card.dataset.birthdate || '';
             document.getElementById('editAddress').value = card.dataset.address || '';
@@ -183,6 +184,10 @@
                 <div class="detail-row">
                     <span class="detail-label"><i class="fas fa-venus-mars"></i> Gender</span>
                     <span class="detail-value">${genderLabels[card.dataset.gender] || 'Not set'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-sitemap"></i> Strand</span>
+                    <span class="detail-value">${card.dataset.strand || 'None'}</span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label"><i class="fas fa-cake-candles"></i> Birthdate</span>

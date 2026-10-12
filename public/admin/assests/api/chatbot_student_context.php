@@ -125,7 +125,7 @@ function chatbot_search_student_roster(PDO $pdo, string $question, int $limit = 
         }
 
         if (!empty($strands)) {
-            $where[] = 'sec.strand IN (' . implode(',', array_fill(0, count($strands), '?')) . ')';
+            $where[] = 's.strand IN (' . implode(',', array_fill(0, count($strands), '?')) . ')';
             foreach ($strands as $strand) $params[] = $strand;
         }
 
@@ -179,7 +179,7 @@ function chatbot_search_student_roster(PDO $pdo, string $question, int $limit = 
                     s.student_id,
                     CONCAT(s.firstname, ' ', s.lastname) AS student_name,
                     sec.grade_level,
-                    sec.strand,
+                    s.strand,
                     sec.section_name
                 FROM students s
                 {$joinSql}

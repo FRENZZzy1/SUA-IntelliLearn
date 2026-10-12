@@ -116,7 +116,7 @@ function getOrCreateNoResultsRow() {
     const tbody = document.getElementById('courseTableBody');
     noResultsRow = document.createElement('tr');
     noResultsRow.className = 'no-results-row';
-    noResultsRow.innerHTML = '<td colspan="10">No courses match your search.</td>';
+    noResultsRow.innerHTML = '<td colspan="12">No courses match your search.</td>';
     tbody.appendChild(noResultsRow);
     return noResultsRow;
 }
@@ -349,7 +349,7 @@ function escapeHtml(str) {
 
 let currentViewOfferingId = null;
 let vsAllStudents = [];   // full roster for the currently open offering
-let vsCourseInfo = null;  // { subject_name, section_name, grade_level, strand, capacity }
+let vsCourseInfo = null;  // { subject_name, section_name, grade_level, capacity }
 let vsSelected = new Set(); // student_ids ticked for unenrolling (survives search/filter changes)
 let vsChanged = false;      // true once something was unenrolled -> refresh page counts on close
 
@@ -378,7 +378,7 @@ function openViewStudentsModal(offeringId) {
     errorBox.hidden = true;
     title.textContent = 'Enrolled Students';
     subtitle.textContent = '';
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td></tr>';
     overlay.classList.add('open');
 
     fetch('assests/api/get_course_students.php?offering_id=' + encodeURIComponent(offeringId), {
@@ -419,18 +419,18 @@ function renderVsStudents(list) {
     if (vsCourseInfo) {
         const filtered = list.length !== vsAllStudents.length;
         const activeCount = vsAllStudents.filter(function (s) { return s.status === 'enrolled'; }).length;
-        subtitle.textContent = 'Grade ' + vsCourseInfo.grade_level + (vsCourseInfo.strand ? ' · ' + vsCourseInfo.strand : '')
+        subtitle.textContent = 'Grade ' + vsCourseInfo.grade_level
             + ' · ' + (filtered ? list.length + ' of ' + vsAllStudents.length + ' shown' : activeCount + '/' + vsCourseInfo.capacity + ' enrolled');
     }
 
     if (vsAllStudents.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No students enrolled in this course yet.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">No students enrolled in this course yet.</td></tr>';
         updateVsUnenrollState();
         return;
     }
 
     if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No students match your search.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">No students match your search.</td></tr>';
         updateVsUnenrollState();
         return;
     }
@@ -450,6 +450,7 @@ function renderVsStudents(list) {
             + '<td>' + escapeHtml(fullName) + '</td>'
             + '<td>' + (s.email ? escapeHtml(s.email) : '— None —') + '</td>'
             + '<td>' + escapeHtml(genderLabel) + '</td>'
+            + '<td>' + (s.strand ? escapeHtml(s.strand) : '—') + '</td>'
             + '<td><span class="status-dot-badge ' + (s.status === 'enrolled' ? 'active' : 'inactive') + '"><span class="dot"></span>' + escapeHtml(statusLabel) + '</span></td>'
             + '<td>' + escapeHtml(enrolledDate) + '</td>'
             + '</tr>';
@@ -657,7 +658,6 @@ function openEditSectionModal(triggerEl) {
     document.getElementById('es_section_id').value = section.section_id;
     document.getElementById('es_section_name').value = section.section_name;
     document.getElementById('es_grade_level').value = section.grade_level;
-    document.getElementById('es_strand').value = section.strand;
     document.getElementById('es_adviser_id').value = section.adviser_id;
 
     document.getElementById('editSectionErrors').hidden = true;

@@ -29,7 +29,7 @@ if (!in_array($termFilter, ['all', 'TRM 1', 'TRM 2', 'TRM 3'], true)) {
     $termFilter = 'all';
 }
 
-$stmt = $pdo->prepare("SELECT co.offering_id, co.subject_id, co.section_id, s.subject_name, sec.section_name, sec.grade_level, sec.strand
+$stmt = $pdo->prepare("SELECT co.offering_id, co.subject_id, co.section_id, s.subject_name, sec.section_name, sec.grade_level
 FROM classofferings co JOIN subjects s ON s.subject_id = co.subject_id JOIN sections sec ON sec.section_id = co.section_id
 WHERE co.teacher_id = ? AND co.status = 'active' AND (co.school_year_id = ? OR ? IS NULL)
 ORDER BY sec.grade_level, sec.section_name, s.subject_name");
@@ -746,7 +746,6 @@ $trend = array_reverse($trend);
             <div class="class-meta">
               <span class="badge">Grade <?= (int)$class['grade_level'] ?></span>
               <span><?= htmlspecialchars($class['section_name']) ?></span>
-              <?php if ($class['strand']): ?><span class="badge"><?= htmlspecialchars($class['strand']) ?></span><?php endif; ?>
             </div>
           </div>
           <div class="class-actions">

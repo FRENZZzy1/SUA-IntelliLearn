@@ -40,7 +40,7 @@
             '<div class="batch-actions"><a class="btn-secondary" href="assests/api/student_import_template.php"><i class="fas fa-download"></i> Download Template</a></div>' +
             '<form id="batchStudentForm" enctype="multipart/form-data">' +
             '<input type="hidden" name="csrf_token" value="' + (csrf ? csrf.value : '') + '">' +
-            '<div class="batch-drop"><i class="fas fa-file-arrow-up"></i><input type="file" name="excel_file" accept=".xlsx" required><small>Required: firstname, lastname, lrn, gender, birthdate, year_level</small></div>' +
+            '<div class="batch-drop"><i class="fas fa-file-arrow-up"></i><input type="file" name="excel_file" accept=".xlsx" required><small>Required: firstname, lastname, lrn, gender, birthdate, year_level. Optional: strand (GAS, ABM, HUMSS, TVL)</small></div>' +
             '<div id="batchImportResult" class="batch-result"></div>' +
             '<div class="compose-actions"><div></div><div class="right-actions"><button type="button" class="btn-secondary" onclick="closeBatchStudentImportModal()">Cancel</button><button class="btn-gold" type="submit"><i class="fas fa-upload"></i> Import Students</button></div></div>' +
             '</form></div>';

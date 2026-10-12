@@ -23,7 +23,7 @@ if ($studentId <= 0) {
 // ─── FETCH STUDENT RECORD ───────────────────────────────────────────────────
 
 $studentStmt = $pdo->prepare("
-    SELECT student_id, student_lrn, firstname, middlename, lastname, email 
+    SELECT student_id, student_lrn, firstname, middlename, lastname, email, strand 
     FROM students 
     WHERE student_id = ?
 ");
@@ -48,7 +48,6 @@ $enrollmentStmt = $pdo->prepare("
         s.subject_name,
         sec.section_name,
         sec.grade_level,
-        sec.strand,
         t.firstname AS teacher_firstname,
         t.lastname  AS teacher_lastname,
         co.quarter,
@@ -98,7 +97,7 @@ export_xlsx_modern([
     'sheet_name'     => 'Student Classes',
     'band_title'     => 'Student Class Export',
     'subtitle_lines' => [
-        "{$studentName} · LRN: {$student['student_lrn']}",
+        "{$studentName} · LRN: {$student['student_lrn']}" . (!empty($student['strand']) ? " · Strand: {$student['strand']}" : ''),
         'Generated: ' . date('F j, Y g:i A') . " · {$classCount} class{$pluralSuffix}",
     ],
     'columns' => [
@@ -137,15 +136,11 @@ function buildFullName(string $first, ?string $middle, string $last): string
 }
 
 /**
- * Format section display string: "SectionName (Grade X · Strand)"
+ * Format section display string: "SectionName (Grade X)"
  */
 function formatSection(array $class): string
 {
     $section = $class['section_name'] . ' (Grade ' . $class['grade_level'];
-    
-    if (!empty($class['strand'])) {
-        $section .= ' · ' . $class['strand'];
-    }
     
     return $section . ')';
 }

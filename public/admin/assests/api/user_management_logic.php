@@ -38,6 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $guardian_name    = trim($_POST['guardian_name'] ?? '');
             $guardian_contact = trim($_POST['guardian_contact'] ?? '');
         $year_level       = trim($_POST['year_level'] ?? '');
+        $strand           = trim($_POST['strand'] ?? '');
 
             $errors = [];
             try {
@@ -50,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
             if (!in_array($gender, ['Male', 'Female'])) $errors[] = "Please select a valid gender.";
             if (!in_array($year_level, ['7','8','9','10','11','12'], true)) $errors[] = "Please select a valid year level (Grade 7 to Grade 12).";
+            if ($strand !== '' && !in_array($strand, ['GAS', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = "Please select a valid strand.";
             if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email address is invalid.";
             $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
             if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
@@ -85,8 +87,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     // Insert into Students
                     $stmt = $pdo->prepare("
                         INSERT INTO Students
-                            (user_id, student_lrn, firstname, lastname, middlename, email, gender, birthdate, address, guardian_name, guardian_contact, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+                            (user_id, student_lrn, firstname, lastname, middlename, email, gender, birthdate, address, guardian_name, guardian_contact, year_level, strand, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
                     ");
                     $stmt->execute([
                         $user_id,
@@ -100,6 +102,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $address,
                         $guardian_name,
                         $guardian_contact,
+                        $year_level,
+                        $strand !== '' ? $strand : null,
                     ]);
 
                     $pdo->commit();
@@ -272,6 +276,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $guardian_name    = trim($_POST['guardian_name'] ?? '');
         $guardian_contact = trim($_POST['guardian_contact'] ?? '');
         $year_level       = trim($_POST['year_level'] ?? '');
+        $strand           = trim($_POST['strand'] ?? '');
 
         if ($user_id <= 0) {
             setFlashMessage('error', "Invalid user ID.");
@@ -297,6 +302,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
             if (!in_array($gender, ['Male', 'Female'])) $errors[] = "Please select a valid gender.";
             if (!in_array($year_level, ['7','8','9','10','11','12'], true)) $errors[] = "Please select a valid year level (Grade 7 to Grade 12).";
+            if ($strand !== '' && !in_array($strand, ['GAS', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = "Please select a valid strand.";
             $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
             if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
 
@@ -392,7 +398,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("
                     UPDATE Students
                     SET firstname = ?, lastname = ?, middlename = ?, email = ?, student_lrn = ?, gender = ?,
-                        birthdate = ?, address = ?, guardian_name = ?, guardian_contact = ?, year_level = ?, updated_at = NOW()
+                        birthdate = ?, address = ?, guardian_name = ?, guardian_contact = ?, year_level = ?, strand = ?, updated_at = NOW()
                     WHERE user_id = ?
                 ");
                 $stmt->execute([
@@ -407,6 +413,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $guardian_name !== '' ? $guardian_name : null,
                     $guardian_contact !== '' ? $guardian_contact : null,
                     $year_level,
+                    $strand !== '' ? $strand : null,
                     $user_id,
                 ]);
             }
@@ -560,7 +567,8 @@ $sql = "SELECT
     a.access_level as admin_access_level,
     a.position as admin_position,
    '{}' AS admin_permissions,
-    s.year_level as year_level
+    s.year_level as year_level,
+    s.strand as strand
 FROM Users u
 LEFT JOIN Teachers t ON u.id = t.user_id AND u.role = 'teacher'
 LEFT JOIN Students s ON u.id = s.user_id AND u.role = 'student'

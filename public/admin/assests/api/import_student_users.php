@@ -36,7 +36,7 @@ try {
     $checkLrn = $pdo->prepare("SELECT student_id FROM Students WHERE student_lrn = ? LIMIT 1");
     $checkUsername = $pdo->prepare("SELECT id FROM Users WHERE username = ? LIMIT 1");
     $insertUser = $pdo->prepare("INSERT INTO Users (username,password,role,status,created_at,updated_at) VALUES (?,?, 'student', ?, NOW(), NOW())");
-    $insertStudent = $pdo->prepare("INSERT INTO Students (user_id,student_lrn,firstname,lastname,middlename,email,gender,birthdate,address,guardian_name,guardian_contact,year_level,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())");
+    $insertStudent = $pdo->prepare("INSERT INTO Students (user_id,student_lrn,firstname,lastname,middlename,email,gender,birthdate,address,guardian_name,guardian_contact,year_level,strand,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,NOW(),NOW())");
 
     foreach (array_slice($rows, 1) as $index => $row) {
         $excelRow = $index + 2;
@@ -45,6 +45,9 @@ try {
         $middlename=$get('middlename'); $email=$get('email'); $gender=$get('gender');
         $birthdate=$get('birthdate'); $address=$get('address'); $guardian=$get('guardian_name');
         $guardianContact=$get('guardian_contact'); $year=$get('year_level');
+        // Strand is optional: the column may be absent or blank. 'None' / 'N/A' / '-' also mean no strand.
+        $strand = isset($map['strand']) ? strtoupper($get('strand')) : '';
+        if (in_array($strand, ['NONE','N/A','NA','-'], true)) $strand = '';
 
         if ($firstname==='' && $lastname==='' && $lrn==='') continue;
         $rowErrors=[];
@@ -54,6 +57,7 @@ try {
         else $lrn=preg_replace('/\D/','',$lrn);
         if (!in_array($gender,['Male','Female'],true)) $rowErrors[]='gender must be Male or Female';
         if (!in_array($year,$validLevels,true)) $rowErrors[]='year_level must be 7, 8, 9, 10, 11, or 12';
+        if ($strand!=='' && !in_array($strand,['GAS','ABM','HUMSS','TVL'],true)) $rowErrors[]='strand must be GAS, ABM, HUMSS, TVL, or blank';
         $dateObj = DateTime::createFromFormat('Y-m-d',$birthdate);
         if (!$dateObj) {
             $dateObj = DateTime::createFromFormat('m/d/Y',$birthdate);
@@ -74,7 +78,7 @@ try {
         $passwordPlain=ucfirst(strtolower($lastname)).$dateObj->format('mdy').'!';
         $insertUser->execute([$username,password_hash($passwordPlain,PASSWORD_DEFAULT),'active']);
         $uid=(int)$pdo->lastInsertId();
-        $insertStudent->execute([$uid,$lrn,$firstname,$lastname,$middlename?:null,$email?:null,$gender,$dateObj->format('Y-m-d'),$address?:null,$guardian?:null,$guardianContact?:null,$year]);
+        $insertStudent->execute([$uid,$lrn,$firstname,$lastname,$middlename?:null,$email?:null,$gender,$dateObj->format('Y-m-d'),$address?:null,$guardian?:null,$guardianContact?:null,$year,$strand?:null]);
         $created++;
     }
     $pdo->commit();

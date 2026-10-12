@@ -30,7 +30,7 @@ $teacherName = trim($teacher['firstname'] . ' ' . $teacher['lastname']);
 // ---- The class must belong to this teacher (authorization) ------------------
 $stmt = $pdo->prepare("
     SELECT co.offering_id, co.quarter,
-           sub.subject_name, sec.section_name, sec.grade_level, sec.strand,
+           sub.subject_name, sec.section_name, sec.grade_level,
            sy.label AS school_year_label
     FROM classofferings co
     JOIN subjects sub ON sub.subject_id = co.subject_id
@@ -236,7 +236,6 @@ $statusCol = count($columns) - 1;
 $termNo = (int) substr($class['quarter'], -1);
 
 $subtitle = 'Grade ' . $class['grade_level']
-    . ($class['strand'] ? ' · ' . $class['strand'] : '')
     . ' · Term ' . $termNo
     . ' · School Year ' . ($class['school_year_label'] ?: '—')
     . ' · Teacher ' . $teacherName;

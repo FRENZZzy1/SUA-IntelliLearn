@@ -34,7 +34,6 @@ $avgEnrollment   = $totalCapacity > 0 ? round(($totalEnrolled / $totalCapacity) 
             <?= htmlspecialchars($section['section_name']) ?>
             <span class="section-title-grade">
                 Grade <?= (int) $section['grade_level'] ?>
-                <?= !empty($section['strand']) ? ' · ' . htmlspecialchars($section['strand']) : '' ?>
             </span>
         </h1>
         <?php if ($schoolYearLabel): ?>

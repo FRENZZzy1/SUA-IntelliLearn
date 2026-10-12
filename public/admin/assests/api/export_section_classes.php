@@ -15,7 +15,7 @@ if ($sectionId <= 0) {
 }
 
 $sectionStmt = $pdo->prepare("
-    SELECT sec.section_id, sec.section_name, sec.grade_level, sec.strand,
+    SELECT sec.section_id, sec.section_name, sec.grade_level,
            t.firstname AS adviser_firstname, t.lastname AS adviser_lastname,
            sy.label AS school_year_label
     FROM sections sec
@@ -147,7 +147,21 @@ foreach ($slots as $slot) {
     $prevEnd = $slot['end'];
 }
 
-$sectionLabel = 'GRADE ' . $section['grade_level'] . ': ' . strtoupper($section['section_name']) . ($section['strand'] ? ' (' . $section['strand'] . ')' : '');
+// A section no longer has its own strand; show the strands of the students
+// enrolled in this quarter's classes instead (e.g. "GAS-TVL"), if any.
+$strandStmt = $pdo->prepare("
+    SELECT GROUP_CONCAT(DISTINCT st.strand ORDER BY st.strand SEPARATOR '-')
+    FROM enrollments e
+    JOIN classofferings co ON co.offering_id = e.offering_id
+    JOIN students st       ON st.student_id  = e.student_id
+    WHERE co.section_id = ? AND co.quarter = ? AND e.status = 'enrolled'
+      AND st.strand IS NOT NULL AND st.strand <> ''
+");
+$strandStmt->execute([$sectionId, $quarter]);
+$sectionStrands = $strandStmt->fetchColumn();
+
+$sectionLabel = 'GRADE ' . $section['grade_level'] . ': ' . strtoupper($section['section_name'])
+    . ($sectionStrands ? ' (' . $sectionStrands . ')' : '');
 
 $subtitleLines = [
     'Quarter ' . $quarter . ($section['school_year_label'] ? ' · School Year ' . $section['school_year_label'] : ''),

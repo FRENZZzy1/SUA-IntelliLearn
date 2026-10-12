@@ -11,7 +11,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
     $teacherId = (int)$teacher['teacher_id'];
     $stmt = $pdo->prepare("
         SELECT co.offering_id, sub.subject_name, sec.section_name, sec.grade_level,
-               sec.strand, co.quarter, sy.label AS school_year,
+               co.quarter, sy.label AS school_year,
                co.schedule_days, co.start_time, co.end_time,
                (SELECT COUNT(*) FROM enrollments e
                 WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS student_count

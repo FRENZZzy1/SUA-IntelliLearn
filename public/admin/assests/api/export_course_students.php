@@ -33,7 +33,6 @@ $courseStmt = $pdo->prepare("
         s.subject_name,
         sec.section_name,
         sec.grade_level,
-        sec.strand,
         sy.label AS school_year_label,
         t.firstname AS teacher_firstname,
         t.lastname AS teacher_lastname
@@ -97,7 +96,7 @@ $courseStmt = $pdo->prepare("
     SELECT
         co.offering_id, co.capacity, co.quarter, co.school_year_id,
         co.schedule_days, co.start_time, co.end_time,
-        s.subject_name, sec.section_name, sec.grade_level, sec.strand,
+        s.subject_name, sec.section_name, sec.grade_level,
         sy.label AS school_year_label,
         t.firstname AS teacher_firstname, t.lastname AS teacher_lastname
     FROM classofferings co
@@ -158,7 +157,6 @@ function exportScheduleValue($days, $start, $end): string {
 
 $teacherName = trim(($course['teacher_firstname'] ?? '') . ' ' . ($course['teacher_lastname'] ?? ''));
 $subtitle = 'Grade ' . $course['grade_level']
-    . ($course['strand'] ? ' · ' . $course['strand'] : '')
     . ' · Term ' . $course['quarter']
     . ' · School Year ' . ($course['school_year_label'] ?: '—')
     . ' · Schedule ' . exportScheduleValue($course['schedule_days'], $course['start_time'], $course['end_time'])

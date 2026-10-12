@@ -25,12 +25,10 @@ if (!validateCSRFToken($_POST['csrf'] ?? '')) {
 
 $section_name = trim($_POST['section_name'] ?? '');
 $grade_level  = $_POST['grade_level'] ?? '';
-$strand       = trim($_POST['strand'] ?? '');
 $adviser_id   = $_POST['adviser_id'] ?? '';
 
 if ($section_name === '') $errors[] = 'Please enter a section name.';
 if (!in_array((string) $grade_level, ['7', '8', '9', '10', '11', '12'], true)) $errors[] = 'Please choose a grade level.';
-if ($strand !== '' && !in_array($strand, ['GAS', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = 'Invalid strand.';
 if ($adviser_id !== '' && !ctype_digit((string) $adviser_id)) $errors[] = 'Invalid adviser selected.';
 
 if (!empty($errors)) {
@@ -51,7 +49,6 @@ if (!$schoolYear) {
 
 $school_year_id = (int) $schoolYear['school_year_id'];
 $adviserValue   = $adviser_id !== '' ? (int) $adviser_id : null;
-$strandValue    = $strand !== '' ? $strand : null;
 
 // Friendly, specific checks before we hit the DB unique constraints.
 $dupStmt = $pdo->prepare("SELECT section_id FROM sections WHERE section_name = ? AND grade_level = ? AND school_year_id = ?");
@@ -64,13 +61,12 @@ if ($dupStmt->fetch()) {
 
 try {
     $stmt = $pdo->prepare("
-        INSERT INTO sections (section_name, grade_level, strand, adviser_id, school_year_id)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO sections (section_name, grade_level, adviser_id, school_year_id)
+        VALUES (?, ?, ?, ?)
     ");
     $stmt->execute([
         $section_name,
         (int) $grade_level,
-        $strandValue,
         $adviserValue,
         $school_year_id,
     ]);

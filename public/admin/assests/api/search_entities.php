@@ -42,7 +42,7 @@ if ($type === 'teacher') {
     }
 } elseif ($type === 'section') {
     $stmt = $pdo->prepare("
-        SELECT section_id, section_name, grade_level, strand,
+        SELECT section_id, section_name, grade_level,
                (SELECT COUNT(*) FROM classofferings co WHERE co.section_id = sections.section_id) AS class_count
         FROM sections
         WHERE section_name LIKE ?
@@ -54,7 +54,7 @@ if ($type === 'teacher') {
         $results[] = [
             'id'       => (int) $s['section_id'],
             'label'    => $s['section_name'],
-            'sublabel' => 'Grade ' . $s['grade_level'] . ($s['strand'] ? ' · ' . $s['strand'] : '') . ' · ' . $s['class_count'] . ' class' . ($s['class_count'] == 1 ? '' : 'es'),
+            'sublabel' => 'Grade ' . $s['grade_level'] . ' · ' . $s['class_count'] . ' class' . ($s['class_count'] == 1 ? '' : 'es'),
         ];
     }
 } elseif ($type === 'student') {

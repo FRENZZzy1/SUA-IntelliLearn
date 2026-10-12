@@ -33,8 +33,7 @@ $courseStmt = $pdo->prepare("
         co.capacity,
         s.subject_name,
         sec.section_name,
-        sec.grade_level,
-        sec.strand
+        sec.grade_level
     FROM classofferings co
     JOIN subjects s   ON s.subject_id = co.subject_id
     JOIN sections sec ON sec.section_id = co.section_id
@@ -58,6 +57,7 @@ $studentsStmt = $pdo->prepare("
         st.middlename,
         st.email,
         st.Gender,
+        st.strand,
         e.status,
         e.enrolled_at
     FROM enrollments e

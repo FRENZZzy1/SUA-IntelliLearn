@@ -28,13 +28,11 @@ if (!validateCSRFToken($_POST['csrf'] ?? '')) {
 $section_id   = $_POST['section_id'] ?? '';
 $section_name = trim($_POST['section_name'] ?? '');
 $grade_level  = $_POST['grade_level'] ?? '';
-$strand       = trim($_POST['strand'] ?? '');
 $adviser_id   = $_POST['adviser_id'] ?? '';
 
 if (!ctype_digit((string) $section_id)) $errors[] = 'Missing or invalid section reference.';
 if ($section_name === '') $errors[] = 'Please enter a section name.';
 if (!in_array((string) $grade_level, ['7', '8', '9', '10', '11', '12'], true)) $errors[] = 'Please choose a grade level.';
-if ($strand !== '' && !in_array($strand, ['STEM', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = 'Invalid strand.';
 if ($adviser_id !== '' && !ctype_digit((string) $adviser_id)) $errors[] = 'Invalid adviser selected.';
 
 if (!empty($errors)) {
@@ -55,7 +53,6 @@ if (!$existing) {
 
 $school_year_id = (int) $existing['school_year_id'];
 $adviserValue   = $adviser_id !== '' ? (int) $adviser_id : null;
-$strandValue    = $strand !== '' ? $strand : null;
 
 // Friendly, specific checks before we hit the DB unique constraints.
 $dupStmt = $pdo->prepare("
@@ -72,13 +69,12 @@ if ($dupStmt->fetch()) {
 try {
     $stmt = $pdo->prepare("
         UPDATE sections
-        SET section_name = ?, grade_level = ?, strand = ?, adviser_id = ?
+        SET section_name = ?, grade_level = ?, adviser_id = ?
         WHERE section_id = ?
     ");
     $stmt->execute([
         $section_name,
         (int) $grade_level,
-        $strandValue,
         $adviserValue,
         (int) $section_id,
     ]);

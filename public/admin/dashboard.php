@@ -305,7 +305,7 @@ $usageStats = get_system_usage_stats($pdo);
                                     $subjectInitial = strtoupper(substr($c['subject_name'], 0, 1));
                                     $avatarColor    = get_avatar_color($c['subject_name']);
                                     $isActive       = $c['status'] === 'active';
-                                    $gradeStrand    = 'Grade ' . $c['grade_level'] . ($c['strand'] ? ' &middot; ' . htmlspecialchars($c['strand']) : '');
+                                    $gradeStrand    = 'Grade ' . $c['grade_level'] . ($c['strands'] ? ' &middot; ' . htmlspecialchars($c['strands']) : '');
                                 ?>
                                 <tr>
                                     <td>
@@ -396,7 +396,7 @@ $usageStats = get_system_usage_stats($pdo);
                                     <option value="">Select a section</option>
                                     <?php foreach ($modalSections as $sec): ?>
                                         <option value="<?= (int) $sec['section_id'] ?>">
-                                            Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?><?= $sec['strand'] ? ' (' . clean($sec['strand']) . ')' : '' ?>
+                                            Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>
@@ -540,7 +540,7 @@ $usageStats = get_system_usage_stats($pdo);
 
             <!-- View Students Modal (Courses & Subjects widget) -->
             <div class="modal-overlay" id="viewStudentsOverlay" onclick="if (event.target === this) closeViewStudentsModal()">
-                <div class="modal-box" style="max-width: 900px; width: 90vw;">
+                <div class="modal-box" style="max-width: 1100px; width: 92vw;">
                     <div class="modal-header">
                         <h2 id="vsModalTitle">Enrolled Students</h2>
                         <button type="button" class="modal-close" onclick="closeViewStudentsModal()" aria-label="Close">&times;</button>
@@ -571,13 +571,14 @@ $usageStats = get_system_usage_stats($pdo);
                                     <th>Name</th>
                                     <th>Email</th>
                                     <th>Gender</th>
+                                    <th>Strand</th>
                                     <th>Status</th>
                                     <th>Enrolled On</th>
                                 </tr>
                             </thead>
                             <tbody id="vsStudentsTableBody">
                                 <tr>
-                                    <td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td>
+                                    <td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -620,7 +621,7 @@ $usageStats = get_system_usage_stats($pdo);
                     errorBox.hidden = true;
                     title.textContent = 'Enrolled Students';
                     subtitle.textContent = '';
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">Loading...</td></tr>';
                     overlay.classList.add('open');
 
                     fetch('assests/api/get_course_students.php?offering_id=' + encodeURIComponent(offeringId), {
@@ -658,17 +659,17 @@ $usageStats = get_system_usage_stats($pdo);
 
                     if (vsCourseInfo) {
                         const filtered = list.length !== vsAllStudents.length;
-                        subtitle.textContent = 'Grade ' + vsCourseInfo.grade_level + (vsCourseInfo.strand ? ' · ' + vsCourseInfo.strand : '')
+                        subtitle.textContent = 'Grade ' + vsCourseInfo.grade_level
                             + ' · ' + (filtered ? list.length + ' of ' + vsAllStudents.length + ' shown' : vsAllStudents.length + '/' + vsCourseInfo.capacity + ' enrolled');
                     }
 
                     if (vsAllStudents.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">No students enrolled in this course yet.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No students enrolled in this course yet.</td></tr>';
                         return;
                     }
 
                     if (list.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 24px; color: var(--text-muted);">No students match your search.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">No students match your search.</td></tr>';
                         return;
                     }
 
@@ -682,6 +683,7 @@ $usageStats = get_system_usage_stats($pdo);
                             + '<td>' + escapeHtml(fullName) + '</td>'
                             + '<td>' + (s.email ? escapeHtml(s.email) : '— None —') + '</td>'
                             + '<td>' + escapeHtml(genderLabel) + '</td>'
+                            + '<td>' + (s.strand ? escapeHtml(s.strand) : '—') + '</td>'
                             + '<td><span class="status-dot-badge ' + (s.status === 'enrolled' ? 'active' : 'inactive') + '"><span class="dot"></span>' + escapeHtml(statusLabel) + '</span></td>'
                             + '<td>' + escapeHtml(enrolledDate) + '</td>'
                             + '</tr>';

@@ -78,7 +78,7 @@ try {
     // Look up the class by its code. Must be an active offering.
     $offeringStmt = $pdo->prepare("
         SELECT co.offering_id, co.subject_id, co.capacity, co.quarter,
-            sec.grade_level, sec.strand, sec.school_year_id,
+            sec.grade_level, sec.school_year_id,
             (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count
         FROM classofferings co
         JOIN sections sec ON sec.section_id = co.section_id
@@ -97,7 +97,6 @@ try {
     $offeringId           = (int) $offering['offering_id'];
     $subjectId             = (int) $offering['subject_id'];
     $gradeLevel            = (int) $offering['grade_level'];
-    $strand                = $offering['strand'];
     $offeringTerm          = $offering['quarter'];
     $offeringSchoolYearId  = (int) $offering['school_year_id'];
 
@@ -126,7 +125,7 @@ try {
     }
 
     // Don't allow a new request if the student is already ACTIVELY enrolled
-    // in a class offering for this same subject + grade (+ strand) AND the
+    // in a class offering for this same subject + grade AND the
     // same term/school year.
     $activeSql = "
         SELECT COUNT(*)
@@ -141,10 +140,6 @@ try {
           AND sec.school_year_id = ?
     ";
     $activeParams = [$studentId, $subjectId, $gradeLevel, $offeringTerm, $offeringSchoolYearId];
-    if ($strand !== null && $strand !== '') {
-        $activeSql .= " AND sec.strand = ?";
-        $activeParams[] = $strand;
-    }
 
     $activeStmt = $pdo->prepare($activeSql);
     $activeStmt->execute($activeParams);
@@ -167,12 +162,6 @@ try {
           AND co.quarter = ? AND sec.school_year_id = ?
     ";
     $deniedParams = [$studentId, $subjectId, $gradeLevel, $offeringTerm, $offeringSchoolYearId];
-    if ($strand !== null && $strand !== '') {
-        $deniedSql .= " AND sec.strand = ?";
-        $deniedParams[] = $strand;
-    } else {
-        $deniedSql .= " AND sec.strand IS NULL";
-    }
 
     $deniedStmt = $pdo->prepare($deniedSql);
     $deniedStmt->execute($deniedParams);

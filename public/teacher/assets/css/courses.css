@@ -129,15 +129,6 @@
     border-radius: 999px;
 }
 
-.section-strand {
-    font-size: 0.72rem;
-    color: var(--text-muted, #6b7280);
-    font-weight: 600;
-    background: #f8fafc;
-    padding: 5px 10px;
-    border-radius: 8px;
-}
-
 .section-name {
     margin: 0 0 14px;
     font-size: 1.15rem;

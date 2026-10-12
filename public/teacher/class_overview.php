@@ -41,7 +41,7 @@ if (!empty($submissionRows)) {
         <h1 class="dash-title">
             <?= htmlspecialchars($classInfo['subject_name']) ?>
             <span class="section-title-grade">
-                <?= htmlspecialchars($classInfo['section_name']) ?> · Grade <?= (int) $classInfo['grade_level'] ?><?= !empty($classInfo['strand']) ? ' · ' . htmlspecialchars($classInfo['strand']) : '' ?>
+                <?= htmlspecialchars($classInfo['section_name']) ?> · Grade <?= (int) $classInfo['grade_level'] ?>
             </span>
         </h1>
         <?php if ($activeOffering): ?>

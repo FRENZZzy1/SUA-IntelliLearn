@@ -215,6 +215,16 @@ include 'assests/api/access_permissions_modal.php';
                                 <option value="Female">Female</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label>Strand</label>
+                            <select name="strand" id="editStrand" class="form-control">
+                                <option value="">None</option>
+                                <option value="GAS">GAS</option>
+                                <option value="ABM">ABM</option>
+                                <option value="HUMSS">HUMSS</option>
+                                <option value="TVL">TVL</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Address</label>
@@ -394,6 +404,9 @@ include 'assests/api/access_permissions_modal.php';
                         $details_html .= !empty($user['grade_level'])
                             ? ' <span class="chip"><i class="fas fa-layer-group"></i> Grade ' . clean($user['grade_level']) . '</span>'
                             : '';
+                        $details_html .= !empty($user['strand'])
+                            ? ' <span class="chip"><i class="fas fa-sitemap"></i> ' . clean($user['strand']) . '</span>'
+                            : '';
                         $details_html .= !empty($user['gender'])
                             ? ' <span class="chip"><i class="fas fa-venus-mars"></i> ' . clean($gender_labels[$user['gender']] ?? ucfirst($user['gender'])) . '</span>'
                             : '';
@@ -420,7 +433,7 @@ include 'assests/api/access_permissions_modal.php';
                     data-lrn="<?= clean($user['student_lrn'] ?? '') ?>" data-middlename="<?= clean($user['middlename'] ?? '') ?>"
                     data-gender="<?= clean($user['gender'] ?? '') ?>"
                     data-birthdate="<?= clean($user['birthdate'] ?? '') ?>" data-address="<?= clean($user['address'] ?? '') ?>"
-                    data-guardian="<?= clean($user['guardian_name'] ?? '') ?>" data-guardian-contact="<?= clean($user['guardian_contact'] ?? '') ?>" data-year-level="<?= clean($user['year_level'] ?? '') ?>">
+                    data-guardian="<?= clean($user['guardian_name'] ?? '') ?>" data-guardian-contact="<?= clean($user['guardian_contact'] ?? '') ?>" data-year-level="<?= clean($user['year_level'] ?? '') ?>" data-strand="<?= clean($user['strand'] ?? '') ?>">
                     <td data-label="User">
                         <div class="t-name-cell">
                             <div class="user-avatar-sm" style="background: <?= $role_color ?>;"><?= um_initials($display_name) ?></div>

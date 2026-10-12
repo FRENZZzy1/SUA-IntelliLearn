@@ -91,9 +91,9 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
 
 
                 foreach ($mySections as $index => $sec):
-                    // Pick a consistent (not random-looking) accent based on grade + strand,
+                    // Pick a consistent (not random-looking) accent based on grade level,
                     // cycling through the theme palette instead of a random HSL hue.
-                    $colorSeed = md5($sec['grade_level'] . ($sec['strand'] ?? 'General'));
+                    $colorSeed = md5($sec['grade_level'] . 'General');
                     $paletteIndex = hexdec(substr($colorSeed, 0, 2)) % count($themeAccents);
                     $accent = $themeAccents[$paletteIndex]['accent'];
                     $accentLight = $themeAccents[$paletteIndex]['light'];
@@ -106,7 +106,6 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
 
                     <a class="section-card" href="course_section.php?section_id=<?= (int) $sec['section_id'] ?>"
                         data-grade="grade-<?= (int) $sec['grade_level'] ?>"
-                        data-strand="<?= htmlspecialchars($sec['strand'] ?? '') ?>"
                         data-name="<?= htmlspecialchars(strtolower($sec['section_name'])) ?>"
                         style="--card-accent: <?= $accent ?>; --card-accent-light: <?= $accentLight ?>;">
 
@@ -114,9 +113,6 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
 
                         <div class="section-card__top">
                             <span class="section-grade">Grade <?= (int) $sec['grade_level'] ?></span>
-                            <?php if (!empty($sec['strand'])): ?>
-                                <span class="section-strand"><?= htmlspecialchars($sec['strand']) ?></span>
-                            <?php endif; ?>
                         </div>
 
                         <h3 class="section-name"><?= htmlspecialchars($sec['section_name']) ?></h3>
@@ -161,11 +157,9 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
                 cards.forEach(card => {
                     const name = card.dataset.name || '';
                     const grade = card.dataset.grade || '';
-                    const strand = (card.dataset.strand || '').toLowerCase();
-                    const matchesSearch = !term || name.includes(term) || grade.includes(term) || strand.includes(term);
+                    const matchesSearch = !term || name.includes(term) || grade.includes(term);
                     const matchesChip = activeFilter === 'all'
-                        || activeFilter === grade
-                        || activeFilter.toLowerCase() === strand;
+                        || activeFilter === grade;
                     card.style.display = (matchesSearch && matchesChip) ? '' : 'none';
                 });
             }

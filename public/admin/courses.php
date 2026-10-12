@@ -60,7 +60,6 @@ if (isset($_GET['delete']) && ctype_digit($_GET['delete'])) {
     header("Location: courses.php?" . http_build_query(array_filter([
         'status'      => $_GET['status'] ?? null,
         'grade'       => $_GET['grade'] ?? null,
-        'strand'      => $_GET['strand'] ?? null,
         'quarter'     => $_GET['quarter'] ?? null,
         'school_year' => $_GET['school_year'] ?? null,
         'q'           => $_GET['q'] ?? null,
@@ -136,7 +135,6 @@ if (!in_array($openView, ['sections', 'subjects', 'export'], true)) {
 // ================= FILTER INPUTS =================
 $statusFilter     = $_GET['status']  ?? 'all';             // all | active | inactive
 $gradeFilter      = $_GET['grade']   ?? 'all';             // all | 7..12
-$strandFilter     = $_GET['strand']  ?? 'all';             // all | GAS | ABM | HUMSS | TVL
 $quarterFilter    = $_GET['quarter'] ?? 'all';             // all | 1..3
 $schoolYearFilter = $_GET['school_year'] ?? 'all';         // all | school_year_id
 $searchQuery      = trim($_GET['q'] ?? '');
@@ -165,11 +163,6 @@ if ($statusFilter !== 'all') {
 if ($gradeFilter !== 'all' && ctype_digit($gradeFilter)) {
     $where[] = 'sec.grade_level = ?';
     $params[] = (int) $gradeFilter;
-}
-
-if ($strandFilter !== 'all') {
-    $where[] = 'sec.strand = ?';
-    $params[] = $strandFilter;
 }
 
 if ($quarterFilter !== 'all') {
@@ -208,13 +201,17 @@ $sql = "
         sec.section_id,
         sec.section_name,
         sec.grade_level,
-        sec.strand,
         t.teacher_id,
         t.firstname AS teacher_firstname,
         t.lastname  AS teacher_lastname,
         syco.label AS offering_school_year_label,
         (SELECT COUNT(*) FROM enrollments e
-            WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count
+            WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count,
+        (SELECT GROUP_CONCAT(DISTINCT st.strand ORDER BY st.strand SEPARATOR '-')
+            FROM enrollments es
+            JOIN students st ON st.student_id = es.student_id
+            WHERE es.offering_id = co.offering_id AND es.status = 'enrolled'
+              AND st.strand IS NOT NULL AND st.strand <> '') AS strands
     FROM classofferings co
     JOIN subjects s   ON s.subject_id = co.subject_id
     JOIN sections sec ON sec.section_id = co.section_id
@@ -278,7 +275,6 @@ $sectionsList = $pdo->query("
         sec.section_id,
         sec.section_name,
         sec.grade_level,
-        sec.strand,
         sec.adviser_id,
         t.firstname AS adviser_firstname,
         t.lastname  AS adviser_lastname,
@@ -504,7 +500,6 @@ $subjectsList = $pdo->query("
         <form class="header-actions" method="get" action="courses.php">
             <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
             <input type="hidden" name="grade" value="<?= htmlspecialchars($gradeFilter) ?>">
-            <input type="hidden" name="strand" value="<?= htmlspecialchars($strandFilter) ?>">
             <input type="hidden" name="quarter" value="<?= htmlspecialchars($quarterFilter) ?>">
             <input type="hidden" name="school_year" value="<?= htmlspecialchars($schoolYearFilter) ?>">
           
@@ -549,11 +544,11 @@ $subjectsList = $pdo->query("
     <div class="toolbar">
         <div class="filter-bar">
             <a class="filter-pill <?= $statusFilter === 'all' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['status' => 'all', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">All Courses</a>
+               href="?<?= http_build_query(array_filter(['status' => 'all', 'grade' => $gradeFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">All Courses</a>
             <a class="filter-pill <?= $statusFilter === 'active' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['status' => 'active', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Active</a>
+               href="?<?= http_build_query(array_filter(['status' => 'active', 'grade' => $gradeFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Active</a>
             <a class="filter-pill <?= $statusFilter === 'inactive' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['status' => 'inactive', 'grade' => $gradeFilter, 'strand' => $strandFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Inactive</a>
+               href="?<?= http_build_query(array_filter(['status' => 'inactive', 'grade' => $gradeFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Inactive</a>
 
             <!-- Live client-side search: instantly filters the Class List table below
                  by subject, section, or teacher name. No page reload, no server call. -->
@@ -575,13 +570,6 @@ $subjectsList = $pdo->query("
                     <option value="all" <?= $gradeFilter === 'all' ? 'selected' : '' ?>>All Grade Levels</option>
                     <?php foreach ([7, 8, 9, 10, 11, 12] as $g): ?>
                         <option value="<?= $g ?>" <?= $gradeFilter == $g ? 'selected' : '' ?>>Grade <?= $g ?></option>
-                    <?php endforeach; ?>
-                </select>
-
-                <select class="select-filter" name="strand" onchange="this.form.submit()">
-                    <option value="all" <?= $strandFilter === 'all' ? 'selected' : '' ?>>All Strands</option>
-                    <?php foreach (['GAS', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
-                        <option value="<?= $s ?>" <?= $strandFilter === $s ? 'selected' : '' ?>><?= $s ?></option>
                     <?php endforeach; ?>
                 </select>
 
@@ -630,7 +618,8 @@ $subjectsList = $pdo->query("
                 <tr>
                     <th>Course / Subject</th>
                     <th>Section</th>
-                    <th>Grade Level/Strand</th>
+                    <th>Grade Level</th>
+                    <th>Strand</th>
                     <th>Term</th>
                     <th>School Year</th>
                     <th>Schedule</th>
@@ -644,7 +633,7 @@ $subjectsList = $pdo->query("
             <tbody id="courseTableBody">
                 <?php if (empty($courses)): ?>
                 <tr class="empty-row">
-                    <td colspan="11">
+                    <td colspan="12">
                         No courses match these filters.
                     </td>
                 </tr>
@@ -679,7 +668,8 @@ $subjectsList = $pdo->query("
                         </div>
                     </td>
                     <td class="course-name"><?= $isSibling ? '<span class="sibling-indent">↳</span> ' : '' ?><?= htmlspecialchars($course['section_name']) ?></td>
-                    <td>Grade <?= htmlspecialchars($course['grade_level']) ?><?= $course['strand'] ? ' · ' . htmlspecialchars($course['strand']) : '' ?></td>
+                    <td>Grade <?= htmlspecialchars($course['grade_level']) ?></td>
+                    <td><?= $course['strands'] ? htmlspecialchars($course['strands']) : '—' ?></td>
                     <td>
                         <?= htmlspecialchars($course['quarter']) ?>
                         <?php if (!$isSibling && $siblingCount > 0): ?>
@@ -727,7 +717,7 @@ $subjectsList = $pdo->query("
                                    'status'        => $course['status'],
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditCourseModal(this)">Update</a>
-                            <a class="delete" href="courses.php?delete=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&strand=<?= urlencode($strandFilter) ?>&q=<?= urlencode($searchQuery) ?>"
+                            <a class="delete" href="courses.php?delete=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
                                onclick="return confirmDelete('course')">Delete</a>
                         </div>
                     </td>
@@ -754,7 +744,7 @@ $subjectsList = $pdo->query("
             <thead>
                 <tr>
                     <th>Section</th>
-                    <th>Grade Level/Strand</th>
+                    <th>Grade Level</th>
                     <th>Adviser</th>
                     <th>School Year</th>
                     <th>Courses Offered</th>
@@ -778,7 +768,7 @@ $subjectsList = $pdo->query("
                 ?>
                 <tr>
                     <td><span class="course-name"><?= htmlspecialchars($sec['section_name']) ?></span></td>
-                    <td>Grade <?= htmlspecialchars($sec['grade_level']) ?><?= $sec['strand'] ? ' · ' . htmlspecialchars($sec['strand']) : '' ?></td>
+                    <td>Grade <?= htmlspecialchars($sec['grade_level']) ?></td>
                     <td><?= $adviserName ? htmlspecialchars($adviserName) : '— None —' ?></td>
                     <td><?= $sec['school_year_label'] ? htmlspecialchars($sec['school_year_label']) : '— None —' ?></td>
                     <td><?= (int) $sec['course_count'] ?></td>
@@ -790,7 +780,6 @@ $subjectsList = $pdo->query("
                                    'section_id'   => (int) $sec['section_id'],
                                    'section_name' => $sec['section_name'],
                                    'grade_level'  => (int) $sec['grade_level'],
-                                   'strand'       => $sec['strand'] ?? '',
                                    'adviser_id'   => $sec['adviser_id'] ? (int) $sec['adviser_id'] : '',
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditSectionModal(this)">Update</a>
@@ -970,7 +959,7 @@ $subjectsList = $pdo->query("
                             <option value="">Select a section</option>
                             <?php foreach ($modalSections as $sec): ?>
                                 <option value="<?= (int) $sec['section_id'] ?>">
-                                    Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?><?= $sec['strand'] ? ' (' . clean($sec['strand']) . ')' : '' ?>
+                                    Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -1131,7 +1120,7 @@ $subjectsList = $pdo->query("
 
     <!-- View Students Modal -->
     <div class="modal-overlay" id="viewStudentsOverlay" data-csrf="<?= htmlspecialchars($csrfToken, ENT_QUOTES) ?>" onclick="if (event.target === this) closeViewStudentsModal()">
-        <div class="modal-box" style="max-width: 900px; width: 90vw;">
+        <div class="modal-box" style="max-width: 1100px; width: 92vw;">
             <div class="modal-header">
                 <h2 id="vsModalTitle">Enrolled Students</h2>
                 <button type="button" class="modal-close" onclick="closeViewStudentsModal()" aria-label="Close">&times;</button>
@@ -1165,13 +1154,14 @@ $subjectsList = $pdo->query("
                             <th>Name</th>
                             <th>Email</th>
                             <th>Gender</th>
+                            <th>Strand</th>
                             <th>Status</th>
                             <th>Enrolled On</th>
                         </tr>
                     </thead>
                     <tbody id="vsStudentsTableBody">
                         <tr>
-                            <td colspan="7" style="text-align:center; padding: 24px; color: var(--text-muted);">
+                            <td colspan="8" style="text-align:center; padding: 24px; color: var(--text-muted);">
                                 Loading...
                             </td>
                         </tr>
@@ -1210,26 +1200,14 @@ $subjectsList = $pdo->query("
                         <input type="text" id="s_section_name" name="section_name" placeholder="e.g. Rizal" required>
                     </div>
 
-                    <div class="form-row-split">
-                        <div class="form-row">
-                            <label for="s_grade_level">Grade Level</label>
-                            <select id="s_grade_level" name="grade_level" required>
-                                <option value="">Select</option>
-                                <?php foreach ([7, 8, 9, 10, 11, 12] as $g): ?>
-                                    <option value="<?= $g ?>">Grade <?= $g ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="form-row">
-                            <label for="s_strand">Strand</label>
-                            <select id="s_strand" name="strand">
-                                <option value="">None</option>
-                                <?php foreach (['GAS', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
-                                    <option value="<?= $s ?>"><?= $s ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                    <div class="form-row">
+                        <label for="s_grade_level">Grade Level</label>
+                        <select id="s_grade_level" name="grade_level" required>
+                            <option value="">Select</option>
+                            <?php foreach ([7, 8, 9, 10, 11, 12] as $g): ?>
+                                <option value="<?= $g ?>">Grade <?= $g ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
 
                     <div class="form-row">
@@ -1276,26 +1254,14 @@ $subjectsList = $pdo->query("
                         <input type="text" id="es_section_name" name="section_name" placeholder="e.g. Rizal" required>
                     </div>
 
-                    <div class="form-row-split">
-                        <div class="form-row">
-                            <label for="es_grade_level">Grade Level</label>
-                            <select id="es_grade_level" name="grade_level" required>
-                                <option value="">Select</option>
-                                <?php foreach ([7, 8, 9, 10, 11, 12] as $g): ?>
-                                    <option value="<?= $g ?>">Grade <?= $g ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-
-                        <div class="form-row">
-                            <label for="es_strand">Strand</label>
-                            <select id="es_strand" name="strand">
-                                <option value="">None</option>
-                                <?php foreach (['GAS', 'ABM', 'HUMSS', 'TVL'] as $s): ?>
-                                    <option value="<?= $s ?>"><?= $s ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
+                    <div class="form-row">
+                        <label for="es_grade_level">Grade Level</label>
+                        <select id="es_grade_level" name="grade_level" required>
+                            <option value="">Select</option>
+                            <?php foreach ([7, 8, 9, 10, 11, 12] as $g): ?>
+                                <option value="<?= $g ?>">Grade <?= $g ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
 
                     <div class="form-row">

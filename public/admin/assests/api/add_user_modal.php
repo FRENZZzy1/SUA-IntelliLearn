@@ -106,6 +106,15 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                                 </select>
                             </div>
                         </div>
+                        <div class="aum-group">
+                            <label>Strand</label>
+                            <div class="aum-input-wrap"><i class="fas fa-sitemap aum-input-icon"></i>
+                                <select name="strand" id="aumStrand" class="aum-control">
+                                    <option value="">None</option>
+                                    <option value="GAS">GAS</option><option value="ABM">ABM</option><option value="HUMSS">HUMSS</option><option value="TVL">TVL</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                     <div class="aum-row">
                         <div class="aum-group">

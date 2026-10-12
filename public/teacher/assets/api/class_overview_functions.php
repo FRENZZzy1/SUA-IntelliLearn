@@ -46,7 +46,7 @@ $stmt = $pdo->prepare("
         co.offering_id, co.class_code, co.quarter, co.schedule_days, co.start_time, co.end_time,
         co.capacity, co.teacher_id,
         sub.subject_id, sub.subject_name,
-        sec.section_id, sec.section_name, sec.grade_level, sec.strand,
+        sec.section_id, sec.section_name, sec.grade_level,
         COUNT(e.student_id) AS enrolled_count
     FROM classofferings co
     JOIN subjects sub ON sub.subject_id = co.subject_id
@@ -59,7 +59,7 @@ $stmt = $pdo->prepare("
       AND (co.school_year_id = ? OR ? IS NULL)
     GROUP BY co.offering_id, co.class_code, co.quarter, co.schedule_days, co.start_time, co.end_time,
              co.capacity, co.teacher_id, sub.subject_id, sub.subject_name,
-             sec.section_id, sec.section_name, sec.grade_level, sec.strand
+             sec.section_id, sec.section_name, sec.grade_level
 ");
 $stmt->execute([$teacherId, $subjectId, $sectionId, $schoolYearId, $schoolYearId]);
 $offeringRows = $stmt->fetchAll();
@@ -69,7 +69,7 @@ if (empty($offeringRows)) {
     exit();
 }
 
-// Class-level info (subject name, section name, grade, strand) is the same
+// Class-level info (subject name, section name, grade) is the same
 // across all term rows — take it from whichever row we found first.
 $classInfo = $offeringRows[0];
 

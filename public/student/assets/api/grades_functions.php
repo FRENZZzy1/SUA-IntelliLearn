@@ -102,7 +102,7 @@ if ($selectedYearId !== null) {
             e.enrollment_id, e.status AS enrollment_status,
             co.offering_id, co.quarter, co.schedule_days, co.start_time, co.end_time,
             sub.subject_id, sub.subject_name,
-            sec.section_name, sec.grade_level, sec.strand,
+            sec.section_name, sec.grade_level,
             t.firstname AS teacher_first, t.lastname AS teacher_last
         FROM enrollments e
         JOIN classofferings co ON co.offering_id = e.offering_id
@@ -217,7 +217,6 @@ foreach ($enrollmentRows as $row) {
         'teacher_name'      => trim($row['teacher_first'] . ' ' . $row['teacher_last']),
         'section_name'      => $row['section_name'],
         'grade_level'       => $row['grade_level'],
-        'strand'            => $row['strand'],
         'is_posted'         => $isPosted,
         'final_grade'       => $finalGrade,
         'remarks'           => $remarks,

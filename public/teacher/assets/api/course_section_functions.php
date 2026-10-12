@@ -39,7 +39,7 @@ $schoolYearLabel = $schoolYear['label'] ?? null;
 // bounce them back to the courses list rather than leaking another
 // teacher's section by URL guessing.
 $stmt = $pdo->prepare("
-    SELECT DISTINCT sec.section_id, sec.section_name, sec.grade_level, sec.strand
+    SELECT DISTINCT sec.section_id, sec.section_name, sec.grade_level
     FROM classofferings co
     JOIN sections sec ON sec.section_id = co.section_id
     WHERE co.teacher_id = ?

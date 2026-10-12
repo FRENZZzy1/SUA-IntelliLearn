@@ -2,7 +2,7 @@
 
 $csrfToken = generateCSRFToken();
 $modalSubjects = $pdo->query("SELECT subject_id, subject_name FROM subjects ORDER BY subject_name")->fetchAll();
-$modalSections = $pdo->query("SELECT section_id, section_name, grade_level, strand FROM sections ORDER BY grade_level, section_name")->fetchAll();
+$modalSections = $pdo->query("SELECT section_id, section_name, grade_level FROM sections ORDER BY grade_level, section_name")->fetchAll();
 $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teachers ORDER BY lastname, firstname")->fetchAll();
 $modalSchoolYears = $pdo->query("SELECT school_year_id, label, is_current FROM schoolyears ORDER BY start_date DESC")->fetchAll();
 $modalCurrentTerm = resolveCurrentTerm(getTermIntervals($pdo));
@@ -51,7 +51,7 @@ try {
                         <option value="">Select a section</option>
                         <?php foreach ($modalSections as $sec): ?>
                             <option value="<?= (int) $sec['section_id'] ?>">
-                                Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?><?= $sec['strand'] ? ' (' . clean($sec['strand']) . ')' : '' ?>
+                                Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>

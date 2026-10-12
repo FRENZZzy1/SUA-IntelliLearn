@@ -37,7 +37,7 @@ include 'assets/api/course_view_functions.php';
                 <?= htmlspecialchars($classInfo['subject_name']) ?>
                 <span class="section-title-grade">
                     <?= htmlspecialchars($classInfo['section_name']) ?> · Grade
-                    <?= (int) $classInfo['grade_level'] ?><?= !empty($classInfo['strand']) ? ' · ' . htmlspecialchars($classInfo['strand']) : '' ?>
+                    <?= (int) $classInfo['grade_level'] ?>
                 </span>
             </h1>
             <?php if ($schoolYearLabel): ?>

@@ -29,7 +29,6 @@ $stmt = $pdo->prepare("
         s.subject_name,
         sec.section_name,
         sec.grade_level,
-        sec.strand,
         co.quarter,
         syco.label AS school_year_label,
         co.schedule_days,
@@ -37,7 +36,12 @@ $stmt = $pdo->prepare("
         co.end_time,
         co.capacity,
         co.status,
-        (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count
+        (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count,
+        (SELECT GROUP_CONCAT(DISTINCT st.strand ORDER BY st.strand SEPARATOR '-')
+            FROM enrollments es
+            JOIN students st ON st.student_id = es.student_id
+            WHERE es.offering_id = co.offering_id AND es.status = 'enrolled'
+              AND st.strand IS NOT NULL AND st.strand <> '') AS strands
     FROM classofferings co
     JOIN subjects s     ON s.subject_id = co.subject_id
     JOIN sections sec   ON sec.section_id = co.section_id
@@ -62,7 +66,8 @@ foreach ($classes as $c) {
     $rows[] = [
         $c['subject_name'],
         $c['section_name'],
-        'Grade ' . $c['grade_level'] . ($c['strand'] ? ' · ' . $c['strand'] : ''),
+        'Grade ' . $c['grade_level'],
+        $c['strands'] ?: '—',
         'Q' . $c['quarter'],
         $c['school_year_label'] ?? '—',
         $schedule,
@@ -87,7 +92,8 @@ export_xlsx_modern([
     'columns' => [
         ['label' => 'Subject',     'width' => 22],
         ['label' => 'Section',     'width' => 18],
-        ['label' => 'Grade/Strand', 'width' => 20],
+        ['label' => 'Grade Level', 'width' => 20],
+        ['label' => 'Strand',      'width' => 16],
         ['label' => 'Quarter',     'width' => 10],
         ['label' => 'School Year', 'width' => 14],
         ['label' => 'Schedule',    'width' => 20],
@@ -95,7 +101,7 @@ export_xlsx_modern([
         ['label' => 'Status',      'width' => 12],
     ],
     'rows'       => $rows,
-    'status_col' => 7,
+    'status_col' => 8,
     'footer_text' => 'Total classes handled by ' . $teacherName . ': ' . count($rows),
 ]);
 exit();

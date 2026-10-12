@@ -52,7 +52,7 @@ $stmt = $pdo->prepare("
         e.enrollment_id, co.offering_id, co.quarter, co.schedule_days, co.start_time, co.end_time,
         co.capacity,
         sub.subject_id, sub.subject_name,
-        sec.section_id, sec.section_name, sec.grade_level, sec.strand,
+        sec.section_id, sec.section_name, sec.grade_level,
         t.teacher_id, t.firstname AS teacher_first, t.lastname AS teacher_last, t.email AS teacher_email
     FROM enrollments e
     JOIN classofferings co ON co.offering_id = e.offering_id

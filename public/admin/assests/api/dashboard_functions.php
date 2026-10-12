@@ -136,7 +136,7 @@ function get_pending_enrollment_groups(PDO $pdo, int $limit = 5): array {
                 e.student_id,
                 sec2.grade_level,
                 co2.subject_id,
-                sec2.strand,
+                st.strand,
                 e.offering_id,
                 e.enrolled_at AS submitted_at,
                 st.firstname,
@@ -245,7 +245,7 @@ function get_course_enrollment_progress(PDO $pdo, int $limit = 6): array {
  * offering_id is included so the row's "View Students" action can call the
  * same read-only roster endpoint the full Courses & Subjects page uses.
  *
- * @return array<int, array{offering_id:int, subject_name:string, grade_level:int, strand:?string, teacher_name:?string, status:string}>
+ * @return array<int, array{offering_id:int, subject_name:string, grade_level:int, strands:?string, teacher_name:?string, status:string}>
  */
 function get_recent_course_offerings(PDO $pdo, int $limit = 4): array {
     $sql = "SELECT co.offering_id, co.status,
@@ -253,8 +253,13 @@ function get_recent_course_offerings(PDO $pdo, int $limit = 4): array {
                 co.quarter, co.school_year_id, co.capacity,
                 co.schedule_days, co.start_time, co.end_time,
                 subj.subject_name,
-                sec.grade_level, sec.strand,
-                t.teacher_id AS t_id, t.firstname AS teacher_firstname, t.lastname AS teacher_lastname
+                sec.grade_level,
+                t.teacher_id AS t_id, t.firstname AS teacher_firstname, t.lastname AS teacher_lastname,
+                (SELECT GROUP_CONCAT(DISTINCT st.strand ORDER BY st.strand SEPARATOR '-')
+            FROM enrollments es
+            JOIN students st ON st.student_id = es.student_id
+            WHERE es.offering_id = co.offering_id AND es.status = 'enrolled'
+              AND st.strand IS NOT NULL AND st.strand <> '') AS strands
             FROM classofferings co
             JOIN subjects subj ON subj.subject_id = co.subject_id
             JOIN sections sec  ON sec.section_id  = co.section_id
@@ -272,7 +277,7 @@ function get_recent_course_offerings(PDO $pdo, int $limit = 4): array {
             'offering_id'    => (int) $row['offering_id'],
             'subject_name'   => $row['subject_name'],
             'grade_level'    => (int) $row['grade_level'],
-            'strand'         => $row['strand'],
+            'strands'        => $row['strands'],
             'teacher_name'   => $row['t_id'] ? trim($row['teacher_firstname'] . ' ' . $row['teacher_lastname']) : null,
             'status'         => $row['status'],
             // Raw fields for the Update Course modal (dashboard's own copy).
@@ -526,28 +531,27 @@ function get_current_schoolyear(PDO $pdo): ?array {
 }
 
 /**
- * Search sections by name, strand, or grade level. Includes adviser name
+ * Search sections by name. Includes adviser name
  * and a live count of active class offerings tied to the section, so
  * "how many classes does Rizal have" is answerable without a follow-up.
  */
 function search_sections(PDO $pdo, string $term, int $limit = 6): array {
     $like = '%' . $term . '%';
 
-    $sql = "SELECT sec.section_id, sec.section_name, sec.grade_level, sec.strand,
+    $sql = "SELECT sec.section_id, sec.section_name, sec.grade_level,
                 CONCAT(t.firstname, ' ', t.lastname) AS adviser_name,
                 sy.label AS school_year,
                 (SELECT COUNT(*) FROM classofferings co WHERE co.section_id = sec.section_id AND co.status = 'active') AS active_offerings
              FROM sections sec
              LEFT JOIN teachers t ON t.teacher_id = sec.adviser_id
              LEFT JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id
-             WHERE sec.section_name LIKE ? OR sec.strand LIKE ?
+             WHERE sec.section_name LIKE ?
              ORDER BY sec.grade_level ASC, sec.section_name ASC
              LIMIT ?";
 
     $stmt = $pdo->prepare($sql);
     $stmt->bindValue(1, $like);
-    $stmt->bindValue(2, $like);
-    $stmt->bindValue(3, $limit, PDO::PARAM_INT);
+    $stmt->bindValue(2, $limit, PDO::PARAM_INT);
     $stmt->execute();
 
     return $stmt->fetchAll();
@@ -566,7 +570,7 @@ function search_sections_by_grade(PDO $pdo, array $grades, int $limit = 8): arra
     // cast above the call site is not guaranteed, so force it here too.
     $limit = (int) $limit;
 
-    $sql = "SELECT sec.section_id, sec.section_name, sec.grade_level, sec.strand,
+    $sql = "SELECT sec.section_id, sec.section_name, sec.grade_level,
                 CONCAT(t.firstname, ' ', t.lastname) AS adviser_name
              FROM sections sec
              LEFT JOIN teachers t ON t.teacher_id = sec.adviser_id
@@ -675,7 +679,7 @@ function search_enrollment_requests(PDO $pdo, array $grades = [], array $strands
         foreach ($grades as $g) { $params[] = $g; }
     }
     if (!empty($strands)) {
-        $where[] = 'sec.strand IN (' . implode(',', array_fill(0, count($strands), '?')) . ')';
+        $where[] = 's.strand IN (' . implode(',', array_fill(0, count($strands), '?')) . ')';
         foreach ($strands as $s) { $params[] = $s; }
     }
     // Requests are enrollments rows: pending / enrolled (= approved) / denied.
@@ -694,7 +698,7 @@ function search_enrollment_requests(PDO $pdo, array $grades = [], array $strands
     // $limit is bound separately below via bindValue(..., PDO::PARAM_INT)
     // rather than mixed into $params, since the earlier IN(...) params
     // don't have a fixed type string to track in PDO (unlike mysqli).
-    $sql = "SELECT e.enrollment_id AS request_id, sec.grade_level, sec.strand, e.status, e.enrolled_at AS submitted_at,
+    $sql = "SELECT e.enrollment_id AS request_id, sec.grade_level, s.strand, e.status, e.enrolled_at AS submitted_at,
                 CONCAT(s.firstname, ' ', s.lastname) AS student_name,
                 sub.subject_name
              FROM enrollments e
@@ -842,9 +846,9 @@ function get_chatbot_context(PDO $pdo, string $question): string {
 
     if (!empty($sectionRows)) {
         $foundAnything = true;
-        $lines[] = "\nMATCHING SECTIONS (name · grade · strand · adviser · active offerings):";
+        $lines[] = "\nMATCHING SECTIONS (name · grade · adviser · active offerings):";
         foreach (array_slice($sectionRows, 0, 8) as $s) {
-            $lines[] = "- {$s['section_name']} · Grade {$s['grade_level']}" . ($s['strand'] ? " ({$s['strand']})" : '') .
+            $lines[] = "- {$s['section_name']} · Grade {$s['grade_level']}" .
                 " · adviser: " . ($s['adviser_name'] ?: 'unassigned') . " · {$s['active_offerings']} active offering(s)";
         }
     }
@@ -854,9 +858,9 @@ function get_chatbot_context(PDO $pdo, string $question): string {
         $gradeSections = search_sections_by_grade($pdo, $grades, 8);
         if (!empty($gradeSections)) {
             $foundAnything = true;
-            $lines[] = "\nSECTIONS IN GRADE(S) " . implode(', ', $grades) . " (name · strand · adviser):";
+            $lines[] = "\nSECTIONS IN GRADE(S) " . implode(', ', $grades) . " (name · adviser):";
             foreach ($gradeSections as $s) {
-                $lines[] = "- {$s['section_name']}" . ($s['strand'] ? " ({$s['strand']})" : '') . " · adviser: " . ($s['adviser_name'] ?: 'unassigned');
+                $lines[] = "- {$s['section_name']} · adviser: " . ($s['adviser_name'] ?: 'unassigned');
             }
         }
     }

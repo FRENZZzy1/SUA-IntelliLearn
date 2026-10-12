@@ -75,7 +75,7 @@ if ($term !== '') {
 }
 
 $baseSelect = "
-    co.class_code, s.subject_name, sec.section_name, sec.grade_level, sec.strand,
+    co.class_code, s.subject_name, sec.section_name, sec.grade_level,
     co.quarter, co.status AS class_status,
     t.firstname AS teacher_firstname, t.lastname AS teacher_lastname
 ";
@@ -95,7 +95,7 @@ function report_teacher(array $r): string
 
 function report_grade(array $r): string
 {
-    return 'Grade ' . $r['grade_level'] . ($r['strand'] ? ' · ' . $r['strand'] : '');
+    return 'Grade ' . $r['grade_level'];
 }
 
 function report_avg($v): string
@@ -130,7 +130,7 @@ switch ($reportType) {
             ['label' => 'Class Code', 'width' => 14],
             ['label' => 'Subject', 'width' => 28],
             ['label' => 'Section', 'width' => 20],
-            ['label' => 'Grade / Strand', 'width' => 20],
+            ['label' => 'Grade Level', 'width' => 20],
             ['label' => 'Term', 'width' => 10],
             ['label' => 'Teacher', 'width' => 24],
             ['label' => 'Capacity', 'width' => 11],
@@ -192,7 +192,7 @@ switch ($reportType) {
             ['label' => 'Class Code', 'width' => 14],
             ['label' => 'Subject', 'width' => 28],
             ['label' => 'Section', 'width' => 20],
-            ['label' => 'Grade / Strand', 'width' => 20],
+            ['label' => 'Grade Level', 'width' => 20],
             ['label' => 'Term', 'width' => 10],
             ['label' => 'Teacher', 'width' => 24],
             ['label' => 'Records', 'width' => 11],
@@ -251,7 +251,7 @@ switch ($reportType) {
             ['label' => 'Class Code', 'width' => 14],
             ['label' => 'Subject', 'width' => 28],
             ['label' => 'Section', 'width' => 20],
-            ['label' => 'Grade / Strand', 'width' => 20],
+            ['label' => 'Grade Level', 'width' => 20],
             ['label' => 'Term', 'width' => 10],
             ['label' => 'Teacher', 'width' => 24],
             ['label' => 'Students', 'width' => 11],

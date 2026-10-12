@@ -35,7 +35,6 @@ $stmt = $pdo->prepare("
         sec.section_id,
         sec.section_name,
         sec.grade_level,
-        sec.strand,
         COUNT(DISTINCT co.subject_id) AS subject_count,
         COUNT(DISTINCT e.student_id)  AS student_count
     FROM classofferings co
@@ -45,7 +44,7 @@ $stmt = $pdo->prepare("
     WHERE co.teacher_id = ?
       AND co.status = 'active'
       AND (co.school_year_id = ? OR ? IS NULL)
-    GROUP BY sec.section_id, sec.section_name, sec.grade_level, sec.strand
+    GROUP BY sec.section_id, sec.section_name, sec.grade_level
     ORDER BY sec.grade_level, sec.section_name
 ");
 $stmt->execute([$teacherId, $schoolYearId, $schoolYearId]);

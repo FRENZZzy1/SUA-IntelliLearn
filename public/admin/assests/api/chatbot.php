@@ -109,7 +109,7 @@ Supported IntelliLearn concepts include:
 - Teachers: teacher records and teaching assignments.
 - Users: accounts, roles, and account status.
 - Subjects: academic subjects.
-- Sections: grade-level/strand groupings.
+- Sections: grade-level groupings. Strand (GAS, ABM, HUMSS, TVL) is a student attribute, not a section attribute.
 - School Years: academic-year configuration.
 - Class Offerings/Courses: subject + section + teacher + quarter + school year + capacity + schedule.
 - Enrollments: actual student-to-class records.
