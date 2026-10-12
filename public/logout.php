@@ -45,5 +45,5 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_destroy();
 }
 
-header('Location: /SUA-INTELLILEARN/public/login.php');
+header('Location: /public/login.php');
 exit();
