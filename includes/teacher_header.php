@@ -29,7 +29,7 @@ if (function_exists('get_initials')) {
     $initials = $initials ?: '?';
 }
 ?>
-<link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/header.css">
+<link rel="stylesheet" href="/includes/css/header.css">
 <style>
     /* Student search dropdown — scoped here since header.css is shared/unknown at edit time */
     .header-search { position: relative; }
@@ -491,10 +491,10 @@ if (function_exists('get_initials')) {
                         <div class="thp-profile-header-role"><?php echo htmlspecialchars($userRole); ?></div>
                     </div>
                 </div>
-                <a href="/SUA-INTELLILEARN/public/teacher/profile.php" class="thp-profile-item">
+                <a href="/public/teacher/profile.php" class="thp-profile-item">
                     <i class="fas fa-user-cog"></i> Profile Settings
                 </a>
-                <a href="/SUA-INTELLILEARN/public/logout.php" class="thp-profile-item thp-logout">
+                <a href="/public/logout.php" class="thp-profile-item thp-logout">
                     <i class="fas fa-arrow-right-from-bracket"></i> Logout
                 </a>
             </div>
@@ -529,7 +529,7 @@ if (function_exists('get_initials')) {
     }
 
     // ---------- Student search ----------
-    var API_BASE = '/SUA-INTELLILEARN/public/teacher/assets/api/';
+    var API_BASE = '/public/teacher/assets/api/';
     var input    = document.getElementById('studentSearchInput');
     var dropdown = document.getElementById('searchResultsDropdown');
     var overlay  = document.getElementById('svmOverlay');
@@ -724,7 +724,7 @@ if (function_exists('get_initials')) {
 
 <script>
 (function () {
-    var ENDPOINT = '/SUA-INTELLILEARN/public/teacher/assets/api/notifications.php';
+    var ENDPOINT = '/public/teacher/assets/api/notifications.php';
     // "Read" state lives in this browser only (no database table).
     var STORE_KEY = 'sua_notif_read_<?php echo (int) ($_SESSION['user_id'] ?? 0); ?>';
     // Deleted (dismissed) notifications are also remembered per browser.
@@ -930,4 +930,4 @@ if (function_exists('get_initials')) {
 </script>
 
 <!-- Floating teacher-scoped AI assistant -->
-<script src="/SUA-INTELLILEARN/public/teacher/assets/js/teacher_chatbot.js"></script>
+<script src="/public/teacher/assets/js/teacher_chatbot.js"></script>
