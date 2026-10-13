@@ -124,10 +124,11 @@ if (isset($_GET['action'], $_GET['id'])) {
 /* ---------------------------------------------------------
    Stats
 --------------------------------------------------------- */
-$total     = (int) $pdo->query("SELECT COUNT(*) FROM announcements")->fetchColumn();
-$published = (int) $pdo->query("SELECT COUNT(*) FROM announcements WHERE status = 'published'")->fetchColumn();
-$drafts    = (int) $pdo->query("SELECT COUNT(*) FROM announcements WHERE status = 'draft'")->fetchColumn();
-$pinned    = (int) $pdo->query("SELECT COUNT(*) FROM announcements WHERE status = 'published' AND is_pinned = 1")->fetchColumn();
+$adminStatsSql = "FROM announcements a JOIN users u ON u.id = a.posted_by WHERE u.role = 'admin'";
+$total     = (int) $pdo->query("SELECT COUNT(*) $adminStatsSql")->fetchColumn();
+$published = (int) $pdo->query("SELECT COUNT(*) $adminStatsSql AND a.status = 'published'")->fetchColumn();
+$drafts    = (int) $pdo->query("SELECT COUNT(*) $adminStatsSql AND a.status = 'draft'")->fetchColumn();
+$pinned    = (int) $pdo->query("SELECT COUNT(*) $adminStatsSql AND a.status = 'published' AND a.is_pinned = 1")->fetchColumn();
 
 /* ---------------------------------------------------------
    List announcements (poster name: teacher name if available,
@@ -139,9 +140,29 @@ $sql = "
     FROM announcements a
     JOIN users u ON u.id = a.posted_by
     LEFT JOIN teachers t ON t.user_id = u.id
+    WHERE u.role = 'admin'
     ORDER BY a.is_pinned DESC, COALESCE(a.published_at, a.created_at) DESC
 ";
 $announcements = $pdo->query($sql)->fetchAll(PDO::FETCH_ASSOC);
+
+/* ---------------------------------------------------------
+   Announcements posted by teachers (published only, read-only),
+   along with the course/class each one was published for.
+--------------------------------------------------------- */
+$teacherSql = "
+    SELECT a.*, u.username AS poster_username,
+           t.firstname AS t_first, t.lastname AS t_last,
+           sub.subject_name, sec.grade_level, sec.section_name, co.quarter
+    FROM announcements a
+    JOIN users u ON u.id = a.posted_by
+    LEFT JOIN teachers t ON t.user_id = u.id
+    LEFT JOIN classofferings co ON co.offering_id = a.offering_id
+    LEFT JOIN subjects sub ON sub.subject_id = co.subject_id
+    LEFT JOIN sections sec ON sec.section_id = co.section_id
+    WHERE u.role = 'teacher' AND a.status = 'published'
+    ORDER BY a.is_pinned DESC, COALESCE(a.published_at, a.created_at) DESC
+";
+$teacherAnnouncements = $pdo->query($teacherSql)->fetchAll(PDO::FETCH_ASSOC);
 
 function posterName(array $row): string {
     if (!empty($row['t_first'])) {
@@ -275,6 +296,16 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
         </div>
     </form>
 
+    <!-- Tabs -->
+    <div class="ann-tabs" id="annTabs">
+        <button type="button" class="ann-tab active" data-target="announcementsList">
+            Admin Announcements <span class="count"><?= count($announcements) ?></span>
+        </button>
+        <button type="button" class="ann-tab" data-target="teacherList">
+            From Teachers <span class="count"><?= count($teacherAnnouncements) ?></span>
+        </button>
+    </div>
+
     <!-- Announcements List -->
     <div class="announcements-list" id="announcementsList">
         <?php if (empty($announcements)): ?>
@@ -335,6 +366,38 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
         <?php endforeach; ?>
     </div>
 
+    <!-- From Teachers (read-only) -->
+    <div class="announcements-list" id="teacherList" style="display:none;">
+        <?php if (empty($teacherAnnouncements)): ?>
+            <p style="color:var(--text-muted);">No published announcements from teachers yet.</p>
+        <?php endif; ?>
+
+        <?php foreach ($teacherAnnouncements as $a): ?>
+            <div class="announcement-card <?= $a['is_pinned'] ? 'pinned' : '' ?>">
+                <div class="announcement-body">
+                    <div class="announcement-top-row">
+                        <div class="announcement-title-line">
+                            <?php if ($a['is_pinned']): ?><i class="fas fa-thumbtack pin-icon"></i><?php endif; ?>
+                            <h3><?= htmlspecialchars($a['title']) ?></h3>
+                        </div>
+                    </div>
+                    <p class="announcement-excerpt"><?= nl2br(htmlspecialchars($a['body'])) ?></p>
+                    <div class="announcement-meta">
+                        <span><i class="fas fa-user"></i> <?= posterName($a) ?></span>
+                        <span><i class="far fa-clock"></i> Posted <?= timeAgo($a['published_at'] ?? $a['created_at']) ?></span>
+                        <div class="audience-tags">
+                            <?php if ($a['subject_name']): ?>
+                                <span class="tag"><i class="fas fa-chalkboard"></i> <?= htmlspecialchars($a['subject_name'] . ' · Gr ' . $a['grade_level'] . ' ' . $a['section_name'] . ($a['quarter'] ? ' (' . $a['quarter'] . ')' : '')) ?></span>
+                            <?php else: ?>
+                                <span class="tag">No class (visible to all students)</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    </div>
+
 </div>
 
 <script>
@@ -365,16 +428,32 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
         el.classList.add('active');
     }
 
+    // ---- Tabs ----
+    let activeListId = 'announcementsList';
+    const listIds = ['announcementsList', 'teacherList'];
+
+    document.querySelectorAll('.ann-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.ann-tab').forEach(t => t.classList.toggle('active', t === tab));
+            activeListId = tab.dataset.target;
+            closeCompose();
+        });
+    });
+
     function showPanel() {
         const panel = document.getElementById('composePanel');
         panel.style.display = 'block';
-        document.getElementById('announcementsList').style.display = 'none';
+        document.getElementById('annTabs').style.display = 'none';
+        listIds.forEach(id => document.getElementById(id).style.display = 'none');
         panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function closeCompose() {
         document.getElementById('composePanel').style.display = 'none';
-        document.getElementById('announcementsList').style.display = 'flex';
+        document.getElementById('annTabs').style.display = 'flex';
+        listIds.forEach(id => {
+            document.getElementById(id).style.display = (id === activeListId) ? 'flex' : 'none';
+        });
     }
 
     function setAudience(value) {
@@ -398,10 +477,12 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
 
     function openNewAnnouncement() {
         resetComposeForm();
+        activeListId = 'announcementsList';
         showPanel();
     }
 
     function openEditAnnouncement(data) {
+        activeListId = 'announcementsList';
         document.getElementById('announcementIdInput').value = data.id;
         document.getElementById('titleInput').value = data.title;
         document.getElementById('bodyInput').value = data.body;

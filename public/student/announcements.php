@@ -36,7 +36,7 @@ $studentGradeSection = $sectionRow
     : null;
 
 // ---- Filter / search inputs --------------------------------------------
-$allowedFilters = ['all', 'urgent', 'important', 'normal'];
+$allowedFilters = ['all', 'admin', 'teachers'];
 $filter = $_GET['filter'] ?? 'all';
 if (!in_array($filter, $allowedFilters, true)) {
     $filter = 'all';
@@ -53,19 +53,9 @@ function announcements_filter_url(string $filter, string $q): string
     return '?' . http_build_query($params);
 }
 
-/** Badge class + label for an announcement's priority. */
-function announcement_badge(string $priority): array
-{
-    return match ($priority) {
-        'urgent'    => ['announcement-tag--urgent', 'Urgent'],
-        'important' => ['announcement-tag--event', 'Important'],
-        default     => ['announcement-tag--general', 'General'],
-    };
-}
-
 // ---- Announcements visible to this student, filtered + searched -------
 $sql = "
-    SELECT a.*, u.username AS poster_username,
+    SELECT a.*, u.username AS poster_username, u.role AS poster_role,
            t.firstname AS t_first, t.lastname AS t_last,
            csub.subject_name AS class_subject
     FROM announcements a
@@ -81,9 +71,10 @@ $sql = "
 ";
 $params = [':sid' => (int) $student['student_id']];
 
-if ($filter !== 'all') {
-    $sql .= " AND a.priority = :priority";
-    $params[':priority'] = $filter;
+if ($filter === 'admin') {
+    $sql .= " AND u.role = 'admin'";
+} elseif ($filter === 'teachers') {
+    $sql .= " AND u.role = 'teacher'";
 }
 if ($q !== '') {
     // Two distinct placeholders: $pdo runs with ATTR_EMULATE_PREPARES = false,
@@ -99,23 +90,28 @@ $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
 $announcements = $stmt->fetchAll();
 
-// Counts per priority for the filter tabs (audience-scoped, not search-scoped).
+// Counts per source for the filter tabs (audience-scoped, not search-scoped).
 $countStmt = $pdo->prepare("
-    SELECT a.priority, COUNT(*) AS total
+    SELECT u.role, COUNT(*) AS total
     FROM announcements a
+    JOIN users u ON u.id = a.posted_by
     WHERE a.status = 'published'
       AND (a.audience = 'all' OR a.audience = 'students')
       AND (a.offering_id IS NULL OR a.offering_id IN (
             SELECT e.offering_id FROM enrollments e
             WHERE e.student_id = :sid AND e.status = 'enrolled'))
-    GROUP BY a.priority
+    GROUP BY u.role
 ");
 $countStmt->execute([':sid' => (int) $student['student_id']]);
-$priorityCounts = ['urgent' => 0, 'important' => 0, 'normal' => 0];
+$sourceCounts = ['admin' => 0, 'teachers' => 0];
 foreach ($countStmt->fetchAll() as $row) {
-    $priorityCounts[$row['priority']] = (int) $row['total'];
+    if ($row['role'] === 'admin') {
+        $sourceCounts['admin'] += (int) $row['total'];
+    } elseif ($row['role'] === 'teacher') {
+        $sourceCounts['teachers'] += (int) $row['total'];
+    }
 }
-$totalCount = array_sum($priorityCounts);
+$totalCount = array_sum($sourceCounts);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -147,14 +143,11 @@ $totalCount = array_sum($priorityCounts);
                 <a href="<?= announcements_filter_url('all', $q) ?>" class="filter-tab <?= $filter === 'all' ? 'active' : '' ?>">
                     All <span class="filter-count"><?= $totalCount ?></span>
                 </a>
-                <a href="<?= announcements_filter_url('urgent', $q) ?>" class="filter-tab filter-tab--urgent <?= $filter === 'urgent' ? 'active' : '' ?>">
-                    Urgent <span class="filter-count"><?= $priorityCounts['urgent'] ?></span>
+                <a href="<?= announcements_filter_url('admin', $q) ?>" class="filter-tab <?= $filter === 'admin' ? 'active' : '' ?>">
+                    From Admin <span class="filter-count"><?= $sourceCounts['admin'] ?></span>
                 </a>
-                <a href="<?= announcements_filter_url('important', $q) ?>" class="filter-tab filter-tab--important <?= $filter === 'important' ? 'active' : '' ?>">
-                    Important <span class="filter-count"><?= $priorityCounts['important'] ?></span>
-                </a>
-                <a href="<?= announcements_filter_url('normal', $q) ?>" class="filter-tab filter-tab--general <?= $filter === 'normal' ? 'active' : '' ?>">
-                    General <span class="filter-count"><?= $priorityCounts['normal'] ?></span>
+                <a href="<?= announcements_filter_url('teachers', $q) ?>" class="filter-tab <?= $filter === 'teachers' ? 'active' : '' ?>">
+                    From Teachers <span class="filter-count"><?= $sourceCounts['teachers'] ?></span>
                 </a>
             </div>
 
@@ -183,7 +176,6 @@ $totalCount = array_sum($priorityCounts);
                 <div class="announcement-list announcement-list--full">
                     <?php foreach ($announcements as $a): ?>
                         <?php
-                            [$badgeClass, $badgeLabel] = announcement_badge($a['priority']);
                             $postedBy = $a['t_first']
                                 ? trim($a['t_first'] . ' ' . $a['t_last'])
                                 : 'Administration';
@@ -197,7 +189,6 @@ $totalCount = array_sum($priorityCounts);
                                     <?php if ($a['is_pinned']): ?><i class="fas fa-thumbtack pin-icon" title="Pinned"></i><?php endif; ?>
                                     <?= htmlspecialchars($a['title']) ?>
                                 </h4>
-                                <span class="announcement-tag <?= $badgeClass ?>"><?= $badgeLabel ?></span>
                             </div>
                             <p><?= nl2br(htmlspecialchars($a['body'])) ?></p>
                             <div class="announcement-meta">
