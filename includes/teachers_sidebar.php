@@ -112,8 +112,8 @@ $atRiskCount = $atRiskCount ?? null;
             </a>
             <a href="../../public/teacher/peer_evaluation.php"
                 class="nav-item <?= $current === 'peer_evaluation.php' ? 'active' : '' ?>">
-                <div class="nav-icon-wrap"><i class="fas fa-users-viewfinder"></i></div>
-                <span class="nav-label">Peer Evaluation</span>
+                <div class="nav-icon-wrap"><i class="fas fa-chart-column"></i></div>
+                <span class="nav-label">Student Evaluation Results</span>
             </a>
             <a href="../../public/teacher/calendar.php"
                 class="nav-item <?= $current === 'calendar.php' ? 'active' : '' ?>">
