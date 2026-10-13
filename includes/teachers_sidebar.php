@@ -120,8 +120,8 @@ $atRiskCount = $atRiskCount ?? null;
                 <div class="nav-icon-wrap"><i class="fas fa-calendar-days"></i></div>
                 <span class="nav-label">Calendar</span>
             </a>
-            <a href="../../public/teacher/settings.php"
-                class="nav-item <?= $current === 'settings.php' ? 'active' : '' ?>">
+            <a href="../../public/teacher/profile.php"
+                class="nav-item <?= $current === 'profile.php' ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-cog"></i></div>
                 <span class="nav-label">Settings</span>
             </a>
