@@ -5,7 +5,7 @@ $autoload=__DIR__.'/../../../../vendor/autoload.php';
 if (!is_file($autoload)) { http_response_code(500); exit('PhpSpreadsheet is not installed.'); }
 require_once $autoload;
 
-$book = new \\PhpOffice\\PhpSpreadsheet\\Spreadsheet();
+$book = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
 $sheet = $book->getActiveSheet();
 $sheet->setTitle('Students');
 
@@ -30,8 +30,8 @@ $dropdowns = [
 foreach ($dropdowns as $column => $options) {
     for ($row = 2; $row <= 500; $row++) {
         $validation = $sheet->getCell($column . $row)->getDataValidation();
-        $validation->setType(\\PhpOffice\\PhpSpreadsheet\\Cell\\DataValidation::TYPE_LIST);
-        $validation->setErrorStyle(\\PhpOffice\\PhpSpreadsheet\\Cell\\DataValidation::STYLE_STOP);
+        $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+        $validation->setErrorStyle(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::STYLE_STOP);
         $validation->setAllowBlank($column === 'L');
         $validation->setShowInputMessage(true);
         $validation->setShowErrorMessage(true);
@@ -50,5 +50,5 @@ $sheet->getComment('L1')->getText()->createTextRun('Optional. Select GAS, ABM, H
 header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 header('Content-Disposition: attachment; filename="SUA_Student_Import_Template.xlsx"');
 header('Cache-Control: max-age=0');
-(new \\PhpOffice\\PhpSpreadsheet\\Writer\\Xlsx($book))->save('php://output');
+(new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($book))->save('php://output');
 exit;
