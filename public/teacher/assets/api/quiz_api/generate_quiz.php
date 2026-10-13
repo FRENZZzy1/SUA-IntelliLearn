@@ -7,7 +7,8 @@
  *   "offering_id": 12,
  *   "num_items": 10,
  *   "question_type": "mcq" | "true_false" | "identification" | "mixed",
- *   "difficulty": "easy" | "average" | "difficult",
+ *   "difficulty": "easy" | "average" | "difficult" | "custom",
+ *   "difficulty_mix": {"easy": 3, "average": 7, "difficult": 0},   // required when difficulty = "custom"; must sum to num_items
  *   "source_type": "topic" | "pdf",          // default "topic"
  *   "material_ids": [3, 7],                  // required when source_type = "pdf" (max 3 text-based PDFs of this class)
  *   "topic": "free-text description of the topic/coverage",   // required for "topic"; optional focus hint for "pdf"
@@ -51,6 +52,7 @@ $offeringId  = (int) ($body['offering_id'] ?? 0);
 $numItems    = (int) ($body['num_items'] ?? 0);
 $questionType = $body['question_type'] ?? 'mixed';
 $difficulty   = $body['difficulty'] ?? 'average';
+$difficultyMixIn = is_array($body['difficulty_mix'] ?? null) ? $body['difficulty_mix'] : [];
 $topic        = trim($body['topic'] ?? '');
 $sourceType   = ($body['source_type'] ?? 'topic') === 'pdf' ? 'pdf' : 'topic';
 $materialIds  = array_values(array_unique(array_filter(
@@ -70,8 +72,22 @@ if ($numItems < 1 || $numItems > 50) {
 if (!in_array($questionType, ['mcq', 'true_false', 'identification', 'mixed'], true)) {
     $errors[] = 'Invalid question type.';
 }
-if (!in_array($difficulty, ['easy', 'average', 'difficult'], true)) {
+if (!in_array($difficulty, ['easy', 'average', 'difficult', 'custom'], true)) {
     $errors[] = 'Invalid difficulty.';
+}
+
+// Custom mix: e.g. 3 easy + 7 average. Counts must be whole numbers that add up to num_items.
+$difficultyMix = null;
+if ($difficulty === 'custom') {
+    $difficultyMix = [
+        'easy'      => max(0, (int) ($difficultyMixIn['easy'] ?? 0)),
+        'average'   => max(0, (int) ($difficultyMixIn['average'] ?? 0)),
+        'difficult' => max(0, (int) ($difficultyMixIn['difficult'] ?? 0)),
+    ];
+    $mixTotal = array_sum($difficultyMix);
+    if ($mixTotal !== $numItems) {
+        $errors[] = "Easy + Average + Difficult ({$mixTotal}) must equal the Number of Items ({$numItems}).";
+    }
 }
 if ($sourceType === 'topic' && $topic === '') {
     $errors[] = 'Please describe the topic to cover.';
@@ -270,11 +286,27 @@ $typeInstruction = match ($questionType) {
     default          => 'Use a mix of question types across "mcq", "true_false", and "short_answer" — vary them across the quiz rather than clustering the same type together.',
 };
 
-$difficultyInstruction = match ($difficulty) {
-    'easy'      => 'Keep questions straightforward, testing recall and basic understanding.',
-    'difficult' => 'Make questions challenging, testing application, analysis, or synthesis of the topic — avoid pure recall.',
-    default     => 'Use a moderate difficulty that tests real understanding, not just memorization.',
-};
+$difficultyLevels = [
+    'easy'      => 'Easy = straightforward questions testing recall and basic understanding.',
+    'average'   => 'Average = moderate questions that test real understanding, not just memorization.',
+    'difficult' => 'Difficult = challenging questions testing application, analysis, or synthesis — avoid pure recall.',
+];
+
+if ($difficulty === 'custom') {
+    $parts = [];
+    foreach ($difficultyMix as $level => $count) {
+        if ($count > 0) {
+            $parts[] = "{$count} {$level}";
+        }
+    }
+    $difficultyInstruction = 'Use this EXACT difficulty distribution: ' . implode(', ', $parts) . '. '
+        . implode(' ', array_intersect_key($difficultyLevels, array_filter($difficultyMix)))
+        . ' Tag every question with its difficulty in a "difficulty" field ("easy", "average" or "difficult"), '
+        . 'and mix the order of difficulties instead of grouping them together.';
+} else {
+    $difficultyInstruction = $difficultyLevels[$difficulty === 'average' ? 'average' : $difficulty]
+        . ' Apply this level to every question.';
+}
 
 $gradeContext = 'Grade ' . (int) $offering['grade_level'] . ' — ' . $offering['subject_name'] . ' (' . $offering['section_name'] . ')';
 
@@ -286,6 +318,7 @@ $schemaExample = <<<JSON
     {
       "question_text": "string",
       "question_type": "mcq",
+      "difficulty": "easy",
       "choices": [
         {"text": "string", "is_correct": true},
         {"text": "string", "is_correct": false},
@@ -296,6 +329,7 @@ $schemaExample = <<<JSON
     {
       "question_text": "string",
       "question_type": "true_false",
+      "difficulty": "average",
       "choices": [
         {"text": "True", "is_correct": true},
         {"text": "False", "is_correct": false}
@@ -304,6 +338,7 @@ $schemaExample = <<<JSON
     {
       "question_text": "string",
       "question_type": "short_answer",
+      "difficulty": "difficult",
       "correct_answer": "string"
     }
   ]
@@ -336,6 +371,7 @@ Difficulty: {$difficultyInstruction}
 
 Requirements:
 - Return exactly {$numItems} questions in the "questions" array.
+- Every question must include a "difficulty" field ("easy", "average" or "difficult") that honors the Difficulty rule above.
 - For "mcq" questions: exactly 4 choices, exactly one with "is_correct": true, the other 3 plausible but clearly wrong (no "all of the above").
 - For "true_false" questions: exactly 2 choices, "True" and "False" in that order, exactly one marked "is_correct": true.
 - For "short_answer" questions: no "choices" field — instead include "correct_answer" as a short, unambiguous expected answer (a word or short phrase).
@@ -469,10 +505,15 @@ foreach ($result['questions'] as $q) {
         continue; // skip malformed entries rather than failing the whole batch
     }
 
+    $qDiff = strtolower(trim($q['difficulty'] ?? ''));
     $clean = [
         'question_text' => $qText,
         'question_type' => $qType,
         'points'        => 1,
+        // Shown as a badge in the review screen. For single-level quizzes we just use the chosen level.
+        'difficulty'    => in_array($qDiff, ['easy', 'average', 'difficult'], true)
+            ? $qDiff
+            : ($difficulty !== 'custom' ? $difficulty : null),
     ];
 
     if ($qType === 'short_answer') {
@@ -517,6 +558,22 @@ if (empty($cleanQuestions)) {
     http_response_code(502);
     echo json_encode(['success' => false, 'errors' => ['The AI returned no usable questions. Try adjusting the topic and generating again.']]);
     exit();
+}
+
+// Custom mix: warn the teacher if the model didn't hit the exact counts (or some questions were dropped)
+if ($difficultyMix !== null) {
+    $got = ['easy' => 0, 'average' => 0, 'difficult' => 0];
+    foreach ($cleanQuestions as $cq) {
+        if (isset($got[$cq['difficulty']])) { $got[$cq['difficulty']]++; }
+    }
+    if ($got !== $difficultyMix) {
+        $mixNotice = sprintf(
+            'You asked for %d easy / %d average / %d difficult, but the AI returned %d / %d / %d. You can edit or remove questions below, or generate again.',
+            $difficultyMix['easy'], $difficultyMix['average'], $difficultyMix['difficult'],
+            $got['easy'], $got['average'], $got['difficult']
+        );
+        $truncatedNotice = $truncatedNotice ? $truncatedNotice . ' ' . $mixNotice : $mixNotice;
+    }
 }
 
 $pdo->prepare("UPDATE quiz_generation_jobs SET status = 'completed', completed_at = NOW() WHERE job_id = ?")

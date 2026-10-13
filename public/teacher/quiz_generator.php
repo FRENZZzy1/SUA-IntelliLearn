@@ -77,7 +77,25 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
                                         <option value="easy">Easy</option>
                                         <option value="average" selected>Average</option>
                                         <option value="difficult">Difficult</option>
+                                        <option value="custom">Custom mix (set items per difficulty)…</option>
                                     </select>
+                                </div>
+
+                                <!-- Custom difficulty mix (shown only when Difficulty = Custom mix) -->
+                                <div class="qg-field span-2" id="qgMixField" style="display:none;">
+                                    <label>Items per difficulty <span class="hint">— must add up to the Number of Items</span></label>
+                                    <div class="qg-mix-row">
+                                        <label class="qg-mix-item qg-mix-easy">Easy
+                                            <input type="number" id="qgMixEasy" min="0" max="50" value="0">
+                                        </label>
+                                        <label class="qg-mix-item qg-mix-average">Average
+                                            <input type="number" id="qgMixAverage" min="0" max="50" value="0">
+                                        </label>
+                                        <label class="qg-mix-item qg-mix-difficult">Difficult
+                                            <input type="number" id="qgMixDifficult" min="0" max="50" value="0">
+                                        </label>
+                                        <span class="qg-mix-total" id="qgMixTotal"></span>
+                                    </div>
                                 </div>
 
                                 <div class="qg-field span-2">

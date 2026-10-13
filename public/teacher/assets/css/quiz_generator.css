@@ -507,3 +507,17 @@
     color: var(--text-muted);
     font-size: 0.85rem;
 }
+
+
+/* ---------- Custom difficulty mix ---------- */
+.qg-mix-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.qg-mix-item { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 600; }
+.qg-mix-item input { width: 90px; }
+.qg-mix-total { font-size: 0.9rem; font-weight: 700; padding: 8px 12px; border-radius: 8px; }
+.qg-mix-total.ok  { background: #e6f6ec; color: #1e7a3f; }
+.qg-mix-total.bad { background: #fdecec; color: #b3261e; }
+
+.qg-diff-tag { font-size: 0.72rem; font-weight: 700; text-transform: capitalize; padding: 2px 8px; border-radius: 999px; }
+.qg-diff-easy      { background: #e6f6ec; color: #1e7a3f; }
+.qg-diff-average   { background: #fff4e0; color: #9a6200; }
+.qg-diff-difficult { background: #fdecec; color: #b3261e; }
