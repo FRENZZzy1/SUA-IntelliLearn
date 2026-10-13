@@ -190,8 +190,8 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                             <div class="aum-input-wrap"><i class="fas fa-building aum-input-icon"></i>
                                 <select name="department" class="aum-control">
                                     <option value="">-- Select --</option>
-                                    <option value="Senior High">Senior High</option>
-                                    <option value="High School">High School</option>
+                                    <option value="Senior High">Senior High only</option>
+                                    <option value="High School">High School only</option>
                                     <option value="Highschool/Senior High">Highschool/Senior High</option>
                                 </select>
                             </div>

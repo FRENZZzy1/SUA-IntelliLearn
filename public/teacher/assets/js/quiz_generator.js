@@ -153,6 +153,52 @@
         };
     }
 
+    // ---------------- Custom difficulty mix ----------------
+    const difficultySelect = document.getElementById('qgDifficulty');
+    const mixField = document.getElementById('qgMixField');
+    const mixTotal = document.getElementById('qgMixTotal');
+    const numItemsInput = document.getElementById('qgNumItems');
+    const mixInputs = {
+        easy: document.getElementById('qgMixEasy'),
+        average: document.getElementById('qgMixAverage'),
+        difficult: document.getElementById('qgMixDifficult'),
+    };
+
+    function readMix() {
+        const n = (el) => Math.max(0, parseInt(el.value, 10) || 0);
+        return { easy: n(mixInputs.easy), average: n(mixInputs.average), difficult: n(mixInputs.difficult) };
+    }
+
+    function updateMixTotal() {
+        const m = readMix();
+        const total = m.easy + m.average + m.difficult;
+        const items = parseInt(numItemsInput.value, 10) || 0;
+        const ok = total === items;
+        mixTotal.textContent = `Total: ${total} / ${items}`;
+        mixTotal.classList.toggle('ok', ok);
+        mixTotal.classList.toggle('bad', !ok);
+    }
+
+    function toggleMixField() {
+        const custom = difficultySelect.value === 'custom';
+        mixField.style.display = custom ? '' : 'none';
+        if (custom) {
+            // Pre-fill a sensible default split the first time so the total already matches
+            const m = readMix();
+            if (m.easy + m.average + m.difficult === 0) {
+                const items = parseInt(numItemsInput.value, 10) || 0;
+                mixInputs.easy.value = Math.floor(items / 3);
+                mixInputs.difficult.value = Math.floor(items / 3);
+                mixInputs.average.value = items - 2 * Math.floor(items / 3);
+            }
+            updateMixTotal();
+        }
+    }
+
+    difficultySelect.addEventListener('change', toggleMixField);
+    numItemsInput.addEventListener('input', updateMixTotal);
+    Object.values(mixInputs).forEach((el) => el.addEventListener('input', updateMixTotal));
+
     // ---------------- Generate ----------------
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -167,12 +213,25 @@
             return;
         }
 
+        // Custom difficulty mix: counts must add up to the number of items
+        let difficultyMix = null;
+        if (formData.get('difficulty') === 'custom') {
+            difficultyMix = readMix();
+            const total = difficultyMix.easy + difficultyMix.average + difficultyMix.difficult;
+            const items = Number(formData.get('num_items')) || 0;
+            if (total !== items) {
+                showAlert(genAlert, 'error', [`Easy + Average + Difficult (${total}) must equal the Number of Items (${items}).`]);
+                return;
+            }
+        }
+
         const payload = {
             csrf_token: csrfToken,
             offering_id: formData.get('offering_id'),
             num_items: formData.get('num_items'),
             question_type: formData.get('question_type'),
             difficulty: formData.get('difficulty'),
+            difficulty_mix: difficultyMix,
             source_type: sourceType,
             material_ids: sourceType === 'pdf' ? materialIds : [],
             topic: formData.get('topic'),
@@ -243,6 +302,7 @@
         card.innerHTML = `
             <div class="qg-qcard-head">
                 <span class="qg-qnum">Q${index + 1}</span>
+                ${q.difficulty ? `<span class="qg-diff-tag qg-diff-${escapeHtml(q.difficulty)}">${escapeHtml(q.difficulty)}</span>` : ''}
                 <div style="display:flex; align-items:center; gap:10px;">
                     <span class="qg-edited-tag ${q.teacher_edited ? 'active' : ''}">Edited</span>
                     <select class="qg-qtype-select" data-field="question_type">
