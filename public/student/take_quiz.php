@@ -31,6 +31,15 @@ if (!$quiz) {
     die("Quiz not found or is not available.");
 }
 
+// 2a. Respect the teacher's schedule: not open yet / already closed.
+$nowTs = time();
+if (!empty($quiz['available_from']) && $nowTs < strtotime($quiz['available_from'])) {
+    die("This quiz isn't open yet. It opens on " . date('M j, Y g:i A', strtotime($quiz['available_from'])) . ".");
+}
+if (!empty($quiz['available_until']) && $nowTs > strtotime($quiz['available_until'])) {
+    die("This quiz closed on " . date('M j, Y g:i A', strtotime($quiz['available_until'])) . ".");
+}
+
 // 2b. The student must have an ACTIVE enrollment in the class this quiz belongs
 //     to. Unenrolled ('dropped') students, and students who were never in the
 //     class, can't open or submit it even if they have the direct URL.

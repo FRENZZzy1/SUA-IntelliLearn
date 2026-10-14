@@ -61,15 +61,34 @@ $maxAttempts = max(1, (int) ($body['max_attempts'] ?? 1));
 $shuffle = !empty($body['shuffle_questions']) ? 1 : 0;
 $status = in_array($body['status'] ?? '', ['draft', 'published'], true) ? $body['status'] : 'draft';
 $questions = is_array($body['questions'] ?? null) ? $body['questions'] : [];
-$availFrom = !empty($body['available_from']) ? date('Y-m-d H:i:s', strtotime($body['available_from'])) : null;
-$availUntil = !empty($body['available_until']) ? date('Y-m-d H:i:s', strtotime($body['available_until'])) : null;
+$errors = [];
 
-
+// Dates: parse strictly, so a bad value is reported instead of silently saved as 1970/NULL
+$availFrom = null;
+$availUntil = null;
+if (!empty($body['available_from'])) {
+    $ts = strtotime($body['available_from']);
+    if ($ts === false) {
+        $errors[] = 'Available From is not a valid date and time.';
+    } else {
+        $availFrom = date('Y-m-d H:i:s', $ts);
+    }
+}
+if (!empty($body['available_until'])) {
+    $ts = strtotime($body['available_until']);
+    if ($ts === false) {
+        $errors[] = 'Available Until (deadline) is not a valid date and time.';
+    } else {
+        $availUntil = date('Y-m-d H:i:s', $ts);
+    }
+}
 if ($availFrom && $availUntil && strtotime($availUntil) <= strtotime($availFrom)) {
     $errors[] = 'Available Until (deadline) must be a date and time after Available From.';
 }
+if ($availUntil && $status === 'published' && strtotime($availUntil) <= time()) {
+    $errors[] = 'Available Until (deadline) is already in the past. Pick a future date or leave it empty.';
+}
 
-$errors = [];
 if ($offeringId <= 0)
     $errors[] = 'Missing subject/class.';
 if ($title === '')

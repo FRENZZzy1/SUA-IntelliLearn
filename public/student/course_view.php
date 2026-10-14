@@ -459,6 +459,10 @@ include 'assets/api/course_view_functions.php';
                             <?php foreach ($quizzes as $q):
                                 $qStatus = quizStatusInfo($q['quiz_status']);
                                 $attemptStatus = quizAttemptStatusInfo($q['attempt_status']);
+                                $qNow = time();
+                                $qNotOpen = !empty($q['available_from']) && $qNow < strtotime($q['available_from']);
+                                $qClosed  = !empty($q['available_until']) && $qNow > strtotime($q['available_until']);
+                                $qNoAttempts = (int) $q['attempts_used'] >= (int) $q['max_attempts'];
                                 ?>
                                 <?php
                                     // Pull the score out of the small meta line and into its
@@ -485,6 +489,18 @@ include 'assets/api/course_view_functions.php';
                                             · <span
                                                 class="chip chip-<?= $attemptStatus['class'] ?>"><?= $attemptStatus['label'] ?></span>
                                         </div>
+                                        <?php if (!empty($q['available_from']) || !empty($q['available_until'])): ?>
+                                            <div class="material-meta">
+                                                <i class="far fa-clock"></i>
+                                                <?php if (!empty($q['available_from'])): ?>
+                                                    Opens <?= date('M j, Y g:i A', strtotime($q['available_from'])) ?>
+                                                <?php endif; ?>
+                                                <?php if (!empty($q['available_from']) && !empty($q['available_until'])): ?> · <?php endif; ?>
+                                                <?php if (!empty($q['available_until'])): ?>
+                                                    <span class="<?= $qClosed ? 'due-overdue' : '' ?>">Due <?= date('M j, Y g:i A', strtotime($q['available_until'])) ?></span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if ($q['score'] !== null): ?>
                                             <div class="quiz-score-highlight quiz-score-highlight--<?= $qScoreTier ?>">
                                                 <i class="fas fa-trophy"></i>
@@ -502,9 +518,15 @@ include 'assets/api/course_view_functions.php';
                                             View
                                         </a>
 
-                                        <a href="take_quiz.php?quiz_id=<?= (int) $q['quiz_id'] ?>" class="btn-primary">
-                                            Take Quiz
-                                        </a>
+                                        <?php if ($qNotOpen): ?>
+                                            <span class="btn-secondary" style="opacity:.6;cursor:not-allowed;"><i class="fas fa-lock"></i> Not open yet</span>
+                                        <?php elseif ($qClosed || $qNoAttempts): ?>
+                                            <span class="btn-secondary" style="opacity:.6;cursor:not-allowed;"><i class="fas fa-lock"></i> Closed</span>
+                                        <?php else: ?>
+                                            <a href="take_quiz.php?quiz_id=<?= (int) $q['quiz_id'] ?>" class="btn-primary">
+                                                Take Quiz
+                                            </a>
+                                        <?php endif; ?>
                                     </div>
                                 </li>
                             <?php endforeach; ?>

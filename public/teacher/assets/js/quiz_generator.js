@@ -269,6 +269,9 @@
             state.jobId = data.job_id;
             state.questions = data.questions.map((q) => ({ ...q, ai_generated: true, teacher_edited: false }));
 
+            availFromInput.value = getNowForInput();
+            availUntilInput.min = availFromInput.value;
+            availUntilInput.value = '';
             document.getElementById('qgQuizTitle').value = data.quiz.title;
             document.getElementById('qgQuizDescription').value = data.quiz.description;
             modelBadge.innerHTML = `<i class="fas fa-robot"></i> Generated with ${escapeHtml(data.model_used)}`;
@@ -528,9 +531,15 @@
         return now.toISOString().slice(0, 16);
     }
 
-    // Inside form.addEventListener('submit', ...) after data is returned successfully:
-    document.getElementById('qgAvailableFrom').value = getNowForInput();
-    document.getElementById('qgAvailableUntil').value = ''; // clear any prior value
+    // Keep the deadline from ever being earlier than the start date
+    const availFromInput = document.getElementById('qgAvailableFrom');
+    const availUntilInput = document.getElementById('qgAvailableUntil');
+    availFromInput.addEventListener('change', () => {
+        availUntilInput.min = availFromInput.value || '';
+        if (availUntilInput.value && availFromInput.value && availUntilInput.value <= availFromInput.value) {
+            availUntilInput.value = '';
+        }
+    });
 
     document.getElementById('qgSaveDraftBtn').addEventListener('click', () => saveQuiz('draft'));
     document.getElementById('qgPublishBtn').addEventListener('click', () => saveQuiz('published'));

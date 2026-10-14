@@ -261,6 +261,7 @@ if ($activeOfferingId && in_array($activeView, ['overview', 'quizzes'], true)) {
             q.time_limit_minutes, q.max_attempts, q.available_from, q.available_until,
             (SELECT COALESCE(SUM(points), 0) FROM quiz_questions WHERE quiz_id = q.quiz_id) AS total_points,
             (SELECT COUNT(*) FROM quiz_questions WHERE quiz_id = q.quiz_id) AS question_count,
+            (SELECT COUNT(*) FROM quiz_attempts qa3 WHERE qa3.quiz_id = q.quiz_id AND qa3.student_id = ? AND qa3.status != 'in_progress') AS attempts_used,
             qa.attempt_id, qa.attempt_number, qa.status AS attempt_status, qa.score, qa.max_score, qa.submitted_at
         FROM quizzes q
         LEFT JOIN quiz_attempts qa
@@ -274,7 +275,7 @@ if ($activeOfferingId && in_array($activeView, ['overview', 'quizzes'], true)) {
         WHERE q.offering_id = ? AND q.status = 'published'
         ORDER BY q.created_at DESC
     ");
-    $stmt->execute([$studentId, $studentId, $activeOfferingId]);
+    $stmt->execute([$studentId, $studentId, $studentId, $activeOfferingId]);
     $quizzes = $stmt->fetchAll();
 }
 
