@@ -44,6 +44,7 @@ $enrolledSubjects = count($activeOfferings);
 // status (if any) attached -----------------------------------------------
 $pendingAssignments = [];
 $dueTodayAssignments = [];
+$completedAssignmentsCount = 0;
 
 if ($offeringIds) {
     $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
@@ -78,6 +79,8 @@ if ($offeringIds) {
 
         if (!$isDone) {
             $pendingAssignments[] = $row;
+        } else {
+            $completedAssignmentsCount++;
         }
         if ($row['due_date'] && substr($row['due_date'], 0, 10) === $today) {
             $dueTodayAssignments[] = $row;
@@ -92,6 +95,7 @@ $dueTodayCount = count($dueTodayAssignments);
 // (if any) attached -------------------------------------------------------
 $pendingQuizzes  = [];
 $dueTodayQuizzes = [];
+$completedQuizzesCount = 0;
 
 if ($offeringIds) {
     $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
@@ -126,6 +130,8 @@ if ($offeringIds) {
 
         if (!$isDone) {
             $pendingQuizzes[] = $row;
+        } else {
+            $completedQuizzesCount++;
         }
         if ($row['due_date'] && substr($row['due_date'], 0, 10) === $today) {
             $dueTodayQuizzes[] = $row;
@@ -135,6 +141,41 @@ if ($offeringIds) {
 
 $pendingQuizCount  = count($pendingQuizzes);
 $dueTodayQuizCount = count($dueTodayQuizzes);
+
+// ---- Completed activities + dynamic attendance summary -----------------
+// Completed activities = assignments with a non-missing submission plus
+// quizzes with a submitted or graded attempt, across current enrolled classes.
+$completedActivitiesCount = $completedAssignmentsCount + $completedQuizzesCount;
+
+// Match the student Attendance page's rate definition: Present, Late, and
+// Excused count as attended; Absent counts in the denominator but not numerator.
+$attendanceRate = 0;
+$attendanceRecordedCount = 0;
+if ($offeringIds) {
+    $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
+    $stmt = $pdo->prepare("
+        SELECT status, COUNT(*) AS status_count
+        FROM attendance
+        WHERE student_id = ?
+          AND offering_id IN ($placeholders)
+        GROUP BY status
+    ");
+    $stmt->execute(array_merge([$studentId], $offeringIds));
+    $attendanceCounts = $stmt->fetchAll();
+
+    $attendedCount = 0;
+    foreach ($attendanceCounts as $attendanceRow) {
+        $count = (int) $attendanceRow['status_count'];
+        $attendanceRecordedCount += $count;
+        if (in_array($attendanceRow['status'], ['Present', 'Late', 'Excused'], true)) {
+            $attendedCount += $count;
+        }
+    }
+
+    if ($attendanceRecordedCount > 0) {
+        $attendanceRate = (int) round(($attendedCount / $attendanceRecordedCount) * 100);
+    }
+}
 
 // ---- Merge assignments + quizzes for the dashboard's task panels --------
 // Each merged item is tagged with 'type' so the dashboard can build the
