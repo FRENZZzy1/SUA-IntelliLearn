@@ -45,10 +45,8 @@ require_once __DIR__ . '/assets/api/dashboard_functions.php';
 require_once __DIR__ . '/../../includes/teacher_evaluation.php';
 $tevalStatus = teval_status_for_user($pdo, $userId);
 
-// ---- Still placeholder: no grades/attendance data exists yet to average.
-// TODO: replace once the grades and attendance tables have real rows.
-$overallAvgGrade    = 88;
-$attendanceRate     = 95;
+// Completed activities and attendance are calculated from this student's records.
+// See dashboard_functions.php for the queries and counting rules.
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -105,11 +103,11 @@ $attendanceRate     = 95;
 
             <article class="metric-card">
                 <div class="metric-head">
-                    <span class="metric-label">Overall Average Grade</span>
-                    <i class="fas fa-file-lines metric-icon"></i>
+                    <span class="metric-label">Completed Activities</span>
+                    <i class="fas fa-list-check metric-icon"></i>
                 </div>
-                <div class="metric-value"><?= $overallAvgGrade ?>%</div>
-                <div class="metric-foot">▲ 8%</div>
+                <div class="metric-value"><?= (int) $completedActivitiesCount ?></div>
+                <div class="metric-foot"><?= (int) $completedAssignmentsCount ?> assignments · <?= (int) $completedQuizzesCount ?> quizzes</div>
             </article>
 
             <article class="metric-card">
@@ -124,10 +122,10 @@ $attendanceRate     = 95;
             <article class="metric-card">
                 <div class="metric-head">
                     <span class="metric-label">Attendance Rate</span>
-                    <i class="fas fa-folder metric-icon"></i>
+                    <i class="fas fa-calendar-check metric-icon"></i>
                 </div>
-                <div class="metric-value"><?= $attendanceRate ?>%</div>
-                <div class="metric-foot">▲ 2%</div>
+                <div class="metric-value"><?= (int) $attendanceRate ?>%</div>
+                <div class="metric-foot"><?= (int) $attendanceRecordedCount ?> attendance records</div>
             </article>
         </section>
 
