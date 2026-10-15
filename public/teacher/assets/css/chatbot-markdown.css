@@ -1,0 +1,10 @@
+/* Change .bot-msg to whatever class your bot message bubble uses */
+.bot-msg p { margin: 0 0 8px; line-height: 1.5; }
+.bot-msg ul, .bot-msg ol { margin: 0 0 8px; padding-left: 20px; }
+.bot-msg li { margin-bottom: 4px; }
+.bot-msg h4 { margin: 10px 0 4px; font-size: 0.95rem; }
+.bot-msg code { background: rgba(0,0,0,.07); padding: 1px 5px; border-radius: 4px; }
+.md-table-wrap { overflow-x: auto; margin-bottom: 8px; }
+.bot-msg table { border-collapse: collapse; font-size: 0.85rem; width: 100%; }
+.bot-msg th, .bot-msg td { border: 1px solid #ddd; padding: 4px 8px; text-align: left; }
+.bot-msg th { background: rgba(0,0,0,.05); }

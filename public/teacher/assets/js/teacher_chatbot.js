@@ -5,10 +5,10 @@
     var FAB_ICON = '/SUA-INTELLILEARN/public/admin/assests/images/icon_chat.png';
     var MAX_HISTORY = 8;
     var SUGGESTIONS = [
-        'How many students do I have?',
-        'Who are my students?',
-        'What assignments are due?',
-        'Which students have missing work?'
+        'Who is at risk in my classes?',
+        'What is due in the next 2 weeks?',
+        'How do I take attendance?',
+        'Ideas to help my struggling students'
     ];
     var history = [];
     var sending = false;
@@ -20,38 +20,67 @@
     }
 
     function renderMarkdown(raw) {
-        var text = esc(raw);
-        text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-        var lines = text.split('\n');
-        var html = '', list = [], inList = false, para = [];
+        // Escape first (XSS-safe), then apply a small Markdown subset:
+        // headings, bold, inline code, bullet/numbered lists, tables, paragraphs.
+        var lines = String(raw == null ? '' : raw).replace(/\r/g, '').split('\n');
+        var html = '', list = null, para = [], i = 0;
 
-        function flushList() {
-            if (!inList) return;
-            html += '<ul>' + list.map(function (x) { return '<li>' + x + '</li>'; }).join('') + '</ul>';
-            list = []; inList = false;
+        function inline(t) {
+            return esc(t)
+                .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+                .replace(/`([^`\n]+)`/g, '<code>$1</code>');
         }
         function flushPara() {
             if (!para.length) return;
-            html += '<p>' + para.join('<br>') + '</p>';
+            html += '<p>' + para.map(inline).join('<br>') + '</p>';
             para = [];
         }
+        function closeList() {
+            if (list) { html += '</' + list + '>'; list = null; }
+        }
+        function cells(l) {
+            return l.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(function (c) { return c.trim(); });
+        }
+        var isRow = function (l) { return /^\s*\|.+\|\s*$/.test(l); };
+        var isSep = function (l) { return /^\s*\|[\s:\-|]+\|\s*$/.test(l || ''); };
 
-        lines.forEach(function (line) {
-            var t = line.trim();
-            var bullet = t.match(/^[-*+]\s+(.*)$/);
-            var numbered = t.match(/^\d+[.)]\s+(.*)$/);
-            if (!t) { flushList(); flushPara(); }
-            else if (bullet || numbered) {
-                flushPara();
-                if (!inList) inList = true;
-                list.push((bullet || numbered)[1]);
-            } else {
-                flushList();
-                para.push(t);
+        while (i < lines.length) {
+            var line = lines[i], t = line.trim(), m;
+
+            if (isRow(line) && isSep(lines[i + 1])) {
+                flushPara(); closeList();
+                html += '<div class="tca-table-wrap"><table><thead><tr>' +
+                    cells(line).map(function (c) { return '<th>' + inline(c) + '</th>'; }).join('') +
+                    '</tr></thead><tbody>';
+                i += 2;
+                while (i < lines.length && isRow(lines[i])) {
+                    html += '<tr>' + cells(lines[i]).map(function (c) { return '<td>' + inline(c) + '</td>'; }).join('') + '</tr>';
+                    i++;
+                }
+                html += '</tbody></table></div>';
+                continue;
             }
-        });
-        flushList(); flushPara();
-        return html || '<p>' + text + '</p>';
+
+            if (!t) { flushPara(); closeList(); }
+            else if ((m = t.match(/^#{1,4}\s+(.*)$/))) {
+                flushPara(); closeList();
+                html += '<h4>' + inline(m[1]) + '</h4>';
+            }
+            else if ((m = t.match(/^[-*+]\s+(.*)$/))) {
+                flushPara();
+                if (list !== 'ul') { closeList(); html += '<ul>'; list = 'ul'; }
+                html += '<li>' + inline(m[1]) + '</li>';
+            }
+            else if ((m = t.match(/^\d+[.)]\s+(.*)$/))) {
+                flushPara();
+                if (list !== 'ol') { closeList(); html += '<ol>'; list = 'ol'; }
+                html += '<li>' + inline(m[1]) + '</li>';
+            }
+            else { closeList(); para.push(t); }
+            i++;
+        }
+        flushPara(); closeList();
+        return html || '<p>' + esc(raw) + '</p>';
     }
 
     var style = document.createElement('style');
@@ -69,8 +98,9 @@
         '.tca-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;flex-shrink:0;position:relative}.tca-avatar:after{content:"";position:absolute;right:-1px;bottom:-1px;width:9px;height:9px;border-radius:50%;background:#22c55e;border:2px solid #1b4332}',
         '.tca-title{font-size:14px;font-weight:700}.tca-subtitle{font-size:11px;opacity:.82;margin-top:2px}.tca-actions{margin-left:auto;display:flex;gap:5px}.tca-icon{width:30px;height:30px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;cursor:pointer}',
         '.tca-messages{flex:1;overflow-y:auto;padding:14px 12px;background:#f6f8f7;scroll-behavior:smooth}.tca-row{display:flex;gap:7px;margin:7px 0}.tca-row.user{flex-direction:row-reverse}.tca-row-avatar{width:27px;height:27px;border-radius:50%;flex:0 0 27px;display:grid;place-items:center;font-size:11px;background:#1b4332;color:#fff;margin-top:2px}.tca-row.user .tca-row-avatar{background:#d1d5db;color:#374151}',
-        '.tca-group{max-width:80%}.tca-row.user .tca-group{text-align:right}.tca-msg{display:inline-block;text-align:left;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.5;word-break:break-word}.tca-bot{background:#fff;border:1px solid #e5e7eb;border-bottom-left-radius:4px;color:#1f2937}.tca-user{background:#1b4332;color:#fff;border-bottom-right-radius:4px}.tca-error{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3}',
+        '.tca-group{max-width:88%}.tca-row.user .tca-group{text-align:right}.tca-msg{display:inline-block;text-align:left;padding:9px 12px;border-radius:14px;font-size:13.5px;line-height:1.5;word-break:break-word}.tca-bot{background:#fff;border:1px solid #e5e7eb;border-bottom-left-radius:4px;color:#1f2937}.tca-user{background:#1b4332;color:#fff;border-bottom-right-radius:4px}.tca-error{background:#fff1f2;color:#b91c1c;border:1px solid #fecdd3}',
         '.tca-msg p{margin:0 0 7px}.tca-msg p:last-child{margin-bottom:0}.tca-msg ul{margin:4px 0 5px;padding-left:20px}.tca-msg li{margin-bottom:3px}.tca-time{font-size:10px;color:#94a3b8;margin:3px 3px 0}',
+        '.tca-msg h4{margin:9px 0 4px;font-size:13.5px;font-weight:700;color:#1b4332}.tca-msg h4:first-child{margin-top:0}.tca-msg ol{margin:4px 0 5px;padding-left:22px}.tca-msg code{background:#eef2ef;padding:1px 5px;border-radius:4px;font-size:12.5px}.tca-table-wrap{overflow-x:auto;margin:6px 0}.tca-msg table{border-collapse:collapse;font-size:12px;min-width:100%}.tca-msg th,.tca-msg td{border:1px solid #e1e7e3;padding:4px 8px;text-align:left;white-space:nowrap}.tca-msg th{background:#eef5f0;color:#1b4332}',
         '.tca-suggestions{padding:3px 3px 10px 34px;display:flex;flex-wrap:wrap;gap:6px}.tca-chip{border:1px solid #dbe5df;background:#fff;color:#1b4332;border-radius:15px;padding:6px 10px;font-size:11.5px;cursor:pointer;max-width:100%}',
         '.tca-input{display:flex;gap:7px;align-items:flex-end;padding:10px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0}.tca-input textarea{flex:1;resize:none;min-width:0;max-height:105px;min-height:38px;border:1px solid #dbe1dd;border-radius:18px;padding:9px 12px;font:13.5px/1.4 inherit;outline:none}.tca-input textarea:focus{border-color:#2d6a4f}.tca-send{width:38px;height:38px;border:0;border-radius:50%;background:#1b4332;color:#fff;cursor:pointer;flex:0 0 38px}.tca-send:disabled{opacity:.45;cursor:not-allowed}',
         '.tca-typing{display:flex;gap:3px;padding:6px 3px}.tca-typing span{width:6px;height:6px;border-radius:50%;background:#94a3b8;animation:tcaBounce 1.1s infinite}.tca-typing span:nth-child(2){animation-delay:.15s}.tca-typing span:nth-child(3){animation-delay:.3s}@keyframes tcaBounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}',
@@ -89,8 +119,8 @@
         '<div><div class="tca-title">IntelliLearn Teacher Assistant</div><div class="tca-subtitle">Your classes, students & learning data</div></div>' +
         '<div class="tca-actions"><button class="tca-icon" id="tcaClear" title="Clear conversation"><i class="fas fa-broom"></i></button><button class="tca-icon" id="tcaClose" title="Close"><i class="fas fa-times"></i></button></div></header>' +
         '<div class="tca-messages" id="tcaMessages"></div>' +
-        '<div class="tca-input"><textarea id="tcaInput" rows="1" placeholder="Ask about your students or classes..."></textarea><button class="tca-send" id="tcaSend" aria-label="Send"><i class="fas fa-paper-plane"></i></button></div>' +
-        '<div class="tca-disclaimer">Answers use your teacher-scoped IntelliLearn data.</div></section>';
+        '<div class="tca-input"><textarea id="tcaInput" rows="1" placeholder="Ask about your classes, or how to use IntelliLearn..."></textarea><button class="tca-send" id="tcaSend" aria-label="Send"><i class="fas fa-paper-plane"></i></button></div>' +
+        '<div class="tca-disclaimer">Answers use your IntelliLearn class data. AI can make mistakes.</div></section>';
     document.body.appendChild(root);
 
     var fab = document.getElementById('tcaFab');
@@ -140,7 +170,7 @@
     function reset() {
         history = [];
         messages.innerHTML = '';
-        addMessage('assistant', 'Hi! I can answer questions about your students, classes, assignments, quizzes, attendance, scores, and other teacher-scoped IntelliLearn data.');
+        addMessage('assistant', 'Hi! I can report on your classes, students, attendance, assignments and quizzes, explain how to use IntelliLearn, and suggest ways to support your students. What would you like to know?');
         addSuggestions();
     }
 
