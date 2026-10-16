@@ -468,9 +468,10 @@ if (function_exists('get_initials')) {
                 <div class="shn-list" id="shnList"></div>
             </div>
         </div>
-        <button class="header-btn">
+        <button type="button" class="header-btn sua-help-trigger" id="suaHelpTrigger" aria-label="Help and about SUA IntelliLearn" title="Help and about SUA IntelliLearn">
             <i class="fas fa-question-circle"></i>
         </button>
+        <?php include __DIR__ . '/help_center.php'; ?>
         <div class="thp-profile" id="thpProfile">
             <button type="button"
                     class="header-btn thp-profile-trigger"
