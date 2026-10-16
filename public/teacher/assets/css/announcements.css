@@ -665,3 +665,266 @@
     color: var(--text-muted);
     margin: 4px 0 0;
 }
+
+
+/* ==========================================================
+   Responsive layout fixes for teacher announcements
+   Scoped to this page so dashboard and other modules are unchanged.
+   ========================================================== */
+.ann-page {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.ann-page *,
+.ann-page *::before,
+.ann-page *::after {
+    box-sizing: border-box;
+}
+
+.ann-page .page-header,
+.ann-page .stats-row,
+.ann-page .compose-panel,
+.ann-page .ann-tabs,
+.ann-page .announcements-list,
+.ann-page .announcement-card {
+    min-width: 0;
+}
+
+.ann-page .announcement-title-line h3,
+.ann-page .announcement-excerpt,
+.ann-page .tag {
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+.ann-page .form-control {
+    max-width: 100%;
+    min-width: 0;
+}
+
+.ann-page select.form-control {
+    display: block;
+}
+
+.ann-page .ann-tabs {
+    flex-wrap: wrap;
+}
+
+.ann-page .ann-tab {
+    max-width: 100%;
+    white-space: normal;
+    text-align: left;
+}
+
+.ann-page .compose-actions .right-actions {
+    flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+    .main-content,
+    .sidebar.collapsed ~ .main-content {
+        min-width: 0;
+    }
+
+    .ann-page .page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .ann-page .page-header h1 {
+        font-size: clamp(1.45rem, 6vw, 1.8rem);
+        overflow-wrap: anywhere;
+    }
+
+    .ann-page .page-header p {
+        line-height: 1.5;
+    }
+
+    .ann-page .page-header .btn-primary {
+        width: 100%;
+        justify-content: center;
+        white-space: normal;
+    }
+
+    .ann-page .stats-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .ann-page .stat-card {
+        min-width: 0;
+        padding: 14px 12px;
+        gap: 10px;
+    }
+
+    .ann-page .stat-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        font-size: .9rem;
+    }
+
+    .ann-page .stat-value {
+        font-size: 1.2rem;
+    }
+
+    .ann-page .stat-label {
+        font-size: .72rem;
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+    }
+
+    .ann-page .compose-panel {
+        padding: 18px 14px;
+        margin-bottom: 20px;
+    }
+
+    .ann-page .compose-panel-header {
+        gap: 10px;
+    }
+
+    .ann-page .compose-panel-header h2 {
+        font-size: 1.05rem;
+        line-height: 1.4;
+    }
+
+    .ann-page .form-control {
+        font-size: 16px;
+    }
+
+    .ann-page .compose-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+    .ann-page .compose-actions .left-actions,
+    .ann-page .compose-actions .left-actions label {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        line-height: 1.5;
+    }
+
+    .ann-page .compose-actions .right-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+        gap: 9px;
+    }
+
+    .ann-page .compose-actions .right-actions button {
+        width: 100%;
+        min-height: 44px;
+        white-space: normal;
+    }
+
+    .ann-page .ann-tabs {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4px;
+        margin-bottom: 14px;
+    }
+
+    .ann-page .ann-tab {
+        padding: 11px 8px;
+        font-size: .82rem;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
+    }
+
+    .ann-page .ann-tab .count {
+        margin-left: 3px;
+        padding: 1px 6px;
+    }
+
+    .ann-page .announcement-card {
+        flex-direction: column;
+        padding: 16px 14px;
+        gap: 14px;
+    }
+
+    .ann-page .announcement-title-line {
+        align-items: flex-start;
+        gap: 7px;
+    }
+
+    .ann-page .announcement-title-line h3 {
+        flex: 1 1 100%;
+        font-size: 1rem;
+        line-height: 1.45;
+    }
+
+    .ann-page .announcement-excerpt {
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+    }
+
+    .ann-page .announcement-meta {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 9px;
+        line-height: 1.45;
+    }
+
+    .ann-page .announcement-meta > span {
+        max-width: 100%;
+        flex-wrap: wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .ann-page .audience-tags {
+        max-width: 100%;
+    }
+
+    .ann-page .tag {
+        white-space: normal;
+        line-height: 1.45;
+    }
+
+    .ann-page .card-actions {
+        align-self: stretch;
+        justify-content: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+    }
+
+    .ann-page .card-actions .icon-btn {
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+    }
+}
+
+@media (max-width: 420px) {
+    .ann-page .stats-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ann-page .stat-card {
+        padding: 12px 14px;
+    }
+
+    .ann-page .ann-tabs {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ann-page .ann-tab {
+        width: 100%;
+    }
+
+    .ann-page .compose-panel {
+        padding: 15px 12px;
+    }
+
+    .ann-page .announcement-card {
+        padding: 14px 12px;
+    }
+}
