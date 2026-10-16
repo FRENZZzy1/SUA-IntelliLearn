@@ -3,7 +3,7 @@
  * Shared help center for the admin, teacher, and student headers.
  * Add the published tutorial URLs below when the videos are ready.
  */
-$helpStudentVideoUrl = '';
+$helpStudentVideoUrl = 'https://youtu.be/VlcoKz39ZKA?si=ymzNeNbUtWdctsVD';
 $helpTeacherVideoUrl = '';
 ?>
 <style>
@@ -78,10 +78,7 @@ $helpTeacherVideoUrl = '';
         display:flex; align-items:center; gap:13px; margin-top:22px; padding:15px 16px;
         border-radius:15px; background:#f3f7f4; border:1px solid #e6eee8;
     }
-    .sua-help-creator-icon { width:42px; height:42px; display:grid; place-items:center; flex-shrink:0; border-radius:50%; background:#deeee3; color:#216a45; font-size:1rem; }
-    .sua-help-creator-label { margin:0 0 3px; color:#78877d; font-size:.68rem; font-weight:800; letter-spacing:.09em; text-transform:uppercase; }
-    .sua-help-creator-name { margin:0; color:#23382a; font-size:.86rem; font-weight:800; }
-    .sua-help-creator-sub { margin:3px 0 0; color:#6c7a70; font-size:.75rem; line-height:1.4; }
+
     .sua-help-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:18px; color:#849087; font-size:.7rem; }
     .sua-help-footer span { display:flex; align-items:center; gap:6px; }
     .sua-help-footer i { color:#39805a; }
@@ -132,14 +129,7 @@ $helpTeacherVideoUrl = '';
                     </div>
                 </a>
             </div>
-            <div class="sua-help-creator">
-                <div class="sua-help-creator-icon"><i class="fas fa-code"></i></div>
-                <div>
-                    <p class="sua-help-creator-label">Created as a capstone project by</p>
-                    <p class="sua-help-creator-name">SUA IntelliLearn Development Team</p>
-                    <p class="sua-help-creator-sub">Project Leader: Frenz Allen Paller · Saint Uriel Academy of Taguig City</p>
-                </div>
-            </div>
+           
             <div class="sua-help-footer">
                 <span><i class="fas fa-shield-halved"></i> Designed to support organized learning</span>
                 <span>Need help? Start with the guides above.</span>
