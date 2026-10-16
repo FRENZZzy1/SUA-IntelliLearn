@@ -29,6 +29,47 @@ $catStatus = [];
 foreach (GB_CATEGORIES as $key => $label)
     $catStatus[$key] = gb_category_status($items[$key], $studentDone);
 $name = htmlspecialchars($student['firstname'] . ' ' . $student['lastname']);
+
+// REQ021 - performance trend data (score % per scored item, student vs class average)
+$trend = [];
+$catSum = [];
+foreach (GB_CATEGORIES as $key => $label) {
+    $catSum[$key] = ['stu' => [], 'cls' => []];
+    foreach ($items[$key] as $it) {
+        if ($it['max'] <= 0) continue;
+        $classPcts = [];
+        foreach ($loaded['scores'] as $sid => $rows) {
+            if (isset($rows[$it['uid']]) && $rows[$it['uid']]['score'] !== null && !empty($loaded['done'][$sid][$it['uid']]))
+                $classPcts[] = $rows[$it['uid']]['score'] / $it['max'] * 100;
+        }
+        $sc = $studentScores[$it['uid']] ?? null;
+        $hasScore = !empty($studentDone[$it['uid']]) && $sc !== null && $sc['score'] !== null;
+        $stuPct = $hasScore ? round($sc['score'] / $it['max'] * 100, 1) : null;
+        $clsPct = $classPcts ? round(array_sum($classPcts) / count($classPcts), 1) : null;
+        if ($stuPct !== null) $catSum[$key]['stu'][] = $stuPct;
+        if ($clsPct !== null) $catSum[$key]['cls'][] = $clsPct;
+        if ($stuPct === null) continue;
+        $trend[] = ['label' => $it['title'], 'cat' => $label, 'date' => $it['created_at'] ?? '', 'student' => $stuPct, 'class' => $clsPct];
+    }
+}
+usort($trend, fn($a, $b) => strcmp($a['date'], $b['date']));
+$trendCount = count($trend);
+$avgOf = fn(array $a) => $a ? round(array_sum($a) / count($a), 1) : null;
+$overall = $avgOf(array_column($trend, 'student'));
+$trendDir = 'steady';
+if ($trendCount >= 2) {
+    $half = intdiv($trendCount, 2);
+    $first = $avgOf(array_column(array_slice($trend, 0, $half), 'student'));
+    $last = $avgOf(array_column(array_slice($trend, -$half), 'student'));
+    if ($last - $first >= 3) $trendDir = 'up';
+    elseif ($first - $last >= 3) $trendDir = 'down';
+}
+$catChart = ['labels' => [], 'student' => [], 'class' => []];
+foreach (GB_CATEGORIES as $key => $label) {
+    $catChart['labels'][] = $label;
+    $catChart['student'][] = $avgOf($catSum[$key]['stu']);
+    $catChart['class'][] = $avgOf($catSum[$key]['cls']);
+}
 ?>
 <!doctype html>
 <html lang="en">
@@ -227,6 +268,61 @@ $name = htmlspecialchars($student['firstname'] . ' ' . $student['lastname']);
             padding: 28px !important
         }
 
+        /* REQ021 - performance trends */
+        .trend-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 16px 20px 0
+        }
+
+        .trend-chip {
+            background: #f8fafc;
+            border: 1px solid #e5eaf0;
+            border-radius: 999px;
+            padding: 6px 14px;
+            font-size: 12px;
+            color: #64748b
+        }
+
+        .trend-chip strong {
+            color: #1c2b24;
+            margin-left: 4px
+        }
+
+        .trend-chip.up strong {
+            color: #047857
+        }
+
+        .trend-chip.down strong {
+            color: #dc2626
+        }
+
+        .trend-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 18px;
+            padding: 18px 20px 20px
+        }
+
+        .trend-box h4 {
+            margin: 0 0 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #64748b
+        }
+
+        .chart-wrap {
+            position: relative;
+            height: 260px
+        }
+
+        @media(max-width:900px) {
+            .trend-grid {
+                grid-template-columns: 1fr
+            }
+        }
+
         @media(max-width:700px) {
             .student-hero {
                 align-items: flex-start
@@ -275,6 +371,32 @@ $name = htmlspecialchars($student['firstname'] . ' ' . $student['lastname']);
                     <article class="score-card"><span><?= htmlspecialchars($label) ?></span><strong><span class="status-pill status-<?= $catStatus[$key] ?>"><?= gb_status_label($catStatus[$key]) ?></span></strong><small><?= count($items[$key]) ?> item<?= count($items[$key]) == 1 ? '' : 's' ?></small></article>
                 <?php endforeach; ?>
             </section>
+            <section class="detail-panel">
+                <h3><i class="fas fa-chart-line"></i> Performance Trends</h3>
+                <?php if ($trendCount): ?>
+                    <div class="trend-summary">
+                        <span class="trend-chip">Average score<strong><?= ss_fmt($overall) ?>%</strong></span>
+                        <span class="trend-chip">Scored items<strong><?= $trendCount ?></strong></span>
+                        <span class="trend-chip <?= $trendDir ?>">Trend<strong>
+                                <?php if ($trendCount < 2): ?>Not enough data
+                                <?php elseif ($trendDir === 'up'): ?><i class="fas fa-arrow-trend-up"></i> Improving
+                                <?php elseif ($trendDir === 'down'): ?><i class="fas fa-arrow-trend-down"></i> Declining
+                                <?php else: ?><i class="fas fa-minus"></i> Steady<?php endif; ?></strong></span>
+                    </div>
+                    <div class="trend-grid">
+                        <div class="trend-box">
+                            <h4>Score per item (%) vs class average</h4>
+                            <div class="chart-wrap"><canvas id="trendLine"></canvas></div>
+                        </div>
+                        <div class="trend-box">
+                            <h4>Average by category (%)</h4>
+                            <div class="chart-wrap"><canvas id="trendBar"></canvas></div>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="empty-row" style="padding:28px">No scored work yet, so there is no trend to show.</div>
+                <?php endif; ?>
+            </section>
             <?php $icons = ['ww' => 'fa-file-circle-question', 'pt' => 'fa-clipboard-check', 'exam' => 'fa-file-pen'];
             foreach (GB_CATEGORIES as $key => $label): ?>
                 <section class="detail-panel">
@@ -317,6 +439,54 @@ $name = htmlspecialchars($student['firstname'] . ' ' . $student['lastname']);
             <?php endforeach; ?>
         </div>
     </main>
+    <?php if ($trendCount): ?>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+        <script>
+            (function () {
+                var trend = <?= json_encode($trend, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+                var cat = <?= json_encode($catChart) ?>;
+                var green = '#2d9d63', grey = '#94a3b8';
+                var pctScale = { min: 0, max: 100, ticks: { callback: function (v) { return v + '%'; } } };
+                new Chart(document.getElementById('trendLine'), {
+                    type: 'line',
+                    data: {
+                        labels: trend.map(function (t) { return t.label; }),
+                        datasets: [
+                            { label: 'Student', data: trend.map(function (t) { return t.student; }), borderColor: green, backgroundColor: 'rgba(45,157,99,.12)', fill: true, tension: .3, pointRadius: 4 },
+                            { label: 'Class average', data: trend.map(function (t) { return t.class; }), borderColor: grey, borderDash: [6, 4], tension: .3, pointRadius: 3, fill: false }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { y: pctScale, x: { ticks: { maxRotation: 40, autoSkip: true } } },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterTitle: function (c) { return trend[c[0].dataIndex].cat; },
+                                    label: function (c) { return c.dataset.label + ': ' + c.parsed.y + '%'; }
+                                }
+                            }
+                        }
+                    }
+                });
+                new Chart(document.getElementById('trendBar'), {
+                    type: 'bar',
+                    data: {
+                        labels: cat.labels,
+                        datasets: [
+                            { label: 'Student', data: cat.student, backgroundColor: green, borderRadius: 6 },
+                            { label: 'Class average', data: cat.class, backgroundColor: '#cbd5e1', borderRadius: 6 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { y: pctScale },
+                        plugins: { tooltip: { callbacks: { label: function (c) { return c.dataset.label + ': ' + (c.parsed.y === null ? 'N/A' : c.parsed.y + '%'); } } } }
+                    }
+                });
+            })();
+        </script>
+    <?php endif; ?>
 </body>
 
 </html>
