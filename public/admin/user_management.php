@@ -482,21 +482,49 @@ include 'assests/api/access_permissions_modal.php';
     <?php endif; ?>
 
     <!-- Pagination -->
+  
+    <!-- Pagination -->
     <?php if ($total_pages > 1): ?>
     <div class="pagination">
+
+        <!-- First Page -->
         <?php if ($page > 1): ?>
-        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>" class="page-btn"><i class="fas fa-chevron-left"></i></a>
+        <a href="?<?= http_build_query(array_merge($_GET, ['page' => 1])) ?>"
+           class="page-btn" title="First Page">
+            <i class="fas fa-angles-left"></i>
+        </a>
+
+        <!-- Previous Page -->
+        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>"
+           class="page-btn" title="Previous Page">
+            <i class="fas fa-chevron-left"></i>
+        </a>
         <?php endif; ?>
 
+        <!-- Page Numbers -->
         <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
-        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>" class="page-btn <?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
+        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>"
+           class="page-btn <?= $i === $page ? 'active' : '' ?>">
+            <?= $i ?>
+        </a>
         <?php endfor; ?>
 
+        <!-- Next and Last Page -->
         <?php if ($page < $total_pages): ?>
-        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>" class="page-btn"><i class="fas fa-chevron-right"></i></a>
+        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>"
+           class="page-btn" title="Next Page">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+
+        <a href="?<?= http_build_query(array_merge($_GET, ['page' => $total_pages])) ?>"
+           class="page-btn" title="Last Page">
+            <i class="fas fa-angles-right"></i>
+        </a>
         <?php endif; ?>
+
     </div>
     <?php endif; ?>
+
 
 </div>
 

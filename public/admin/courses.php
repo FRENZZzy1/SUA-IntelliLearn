@@ -613,6 +613,7 @@ $subjectsList = $pdo->query("
             <span class="count-note" id="courseCountTop">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
         </div>
 
+        <div class="course-table-wrap" role="region" aria-label="Class list table" tabindex="0">
         <table class="course-table" id="courseTable">
             <thead>
                 <tr>
@@ -725,6 +726,7 @@ $subjectsList = $pdo->query("
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
 
         <div class="list-panel-footer">
             <span class="count-note" id="courseCountBottom">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>

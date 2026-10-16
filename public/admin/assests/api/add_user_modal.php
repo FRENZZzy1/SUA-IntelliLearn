@@ -87,7 +87,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                     </div>
                     <div class="aum-row">
                         <div class="aum-group">
-                            <label>Email</label>
+                            <label>Email <span class="aum-req">*</span></label>
                             <div class="aum-input-wrap"><i class="fas fa-envelope aum-input-icon"></i><input type="email" name="student_email" id="aumStudentEmail" class="aum-control" placeholder="e.g. maria@sturiel.edu.ph" data-student-required></div>
                         </div>
                         <div class="aum-group">

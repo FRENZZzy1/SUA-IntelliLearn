@@ -459,6 +459,39 @@ body {
     color: var(--text-muted);
 }
 
+/* ---------- Responsive class table ---------- */
+/* Keep every column and action accessible without requiring browser zoom. */
+.course-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-gutter: stable;
+}
+
+.course-table-wrap:focus-visible {
+    outline: 2px solid var(--primary-light);
+    outline-offset: -2px;
+}
+
+#courseTable {
+    min-width: 1180px;
+}
+
+@media (max-width: 1200px) {
+    .main-content {
+        padding-left: 24px;
+        padding-right: 24px;
+    }
+
+    #courseTable thead th,
+    #courseTable tbody td {
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+}
+
 /* ---------- Table ---------- */
 .course-table {
     width: 100%;
