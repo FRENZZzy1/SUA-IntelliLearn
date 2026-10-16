@@ -159,9 +159,10 @@ if (function_exists('get_initials')) {
             <i class="fas fa-bell"></i>
             <span class="notif-dot"></span>
         </button>
-        <button class="header-btn">
+        <button type="button" class="header-btn sua-help-trigger" id="suaHelpTrigger" aria-label="Help and about SUA IntelliLearn" title="Help and about SUA IntelliLearn">
             <i class="fas fa-question-circle"></i>
         </button>
+        <?php include __DIR__ . '/help_center.php'; ?>
         <div class="ahp-profile" id="ahpProfile">
             <button type="button"
                     class="header-btn ahp-profile-trigger"
