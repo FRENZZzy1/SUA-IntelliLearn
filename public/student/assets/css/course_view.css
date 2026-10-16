@@ -1469,3 +1469,117 @@
     color: var(--text-muted, #6b7280);
     margin-top: 2px;
 }
+
+
+/* ==========================================================
+   MOBILE FIXES — Student class view (Overview / Quizzes)
+   Appended last so it wins over dashboard.css + earlier rules.
+   ========================================================== */
+
+/* Long titles / emails should wrap instead of pushing the page wide */
+.material-title,
+.material-meta,
+.panel-header h2,
+.course-teacher-email,
+.course-teacher-name {
+    overflow-wrap: anywhere;
+}
+
+.course-teacher-info,
+.stat-card__info {
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+
+    /* --- Overview: 3 stat cards in a 2-col grid left an orphan card --- */
+    .stat-card:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+
+    .course-teacher-row {
+        align-items: flex-start;
+    }
+
+    /* --- Panel headers --- */
+    .panel-header h2 {
+        font-size: 1rem;
+        align-items: flex-start;
+        min-width: 0;
+    }
+
+    /* Pill shape looks broken when the badge text wraps to 2-3 lines */
+    .enrolled-badge {
+        border-radius: 14px;
+        line-height: 1.5;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* --- Quizzes list row --- */
+    .material-item {
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .material-info {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .material-meta {
+        line-height: 1.6;
+    }
+
+    /* Buttons drop to their own full-width row under the quiz info
+       instead of being squeezed beside it. */
+    .material-actions--quiz {
+        flex: 0 0 100%;
+        width: 100%;
+        margin-left: 0;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+
+    .material-actions--quiz > * {
+        width: 100%;
+        box-sizing: border-box;
+        justify-content: center;
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    /* Score badge never wider than the card */
+    .quiz-score-highlight {
+        max-width: 100%;
+    }
+
+    /* Attempts table wrapper: no side scroll (table is stacked cards) */
+    .table-scroll {
+        border: none;
+        overflow-x: visible;
+    }
+}
+
+@media (max-width: 480px) {
+    .material-item {
+        padding: 12px 6px;
+    }
+
+    .material-actions--quiz .btn-primary,
+    .material-actions--quiz .btn-secondary {
+        padding: 10px 8px;
+        font-size: 0.82rem;
+    }
+
+    /* Stat cards: one per row, so reset the full-width orphan rule */
+    .stat-card:last-child:nth-child(odd) {
+        grid-column: auto;
+    }
+
+    .class-nav-item {
+        padding: 10px 12px;
+        gap: 6px;
+    }
+}
