@@ -128,7 +128,7 @@ $stmt = $pdo->prepare("
     FROM classofferings co
     JOIN subjects s ON s.subject_id = co.subject_id
     JOIN sections sec ON sec.section_id = co.section_id
-    WHERE co.offering_id = ? AND co.teacher_id = ?
+    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.offering_id = ? AND co.teacher_id = ?
 ");
 $stmt->execute([$offeringId, $teacherId]);
 $offering = $stmt->fetch();

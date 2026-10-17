@@ -55,7 +55,7 @@ if (!$materialId || !$offeringId) {
 $stmt = $pdo->prepare("
     SELECT lm.material_id, lm.file_path
     FROM learning_materials lm
-    JOIN classofferings co ON co.offering_id = lm.offering_id
+    JOIN classofferings co ON co.offering_id = lm.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     WHERE lm.material_id = ? AND lm.offering_id = ? AND co.teacher_id = ?
     LIMIT 1
 ");

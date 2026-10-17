@@ -48,7 +48,7 @@ $stmt = $pdo->prepare("
     SELECT t.teacher_id, t.firstname, t.lastname, t.department,
            (SELECT COUNT(*)
               FROM enrollments e
-              JOIN classofferings co ON co.offering_id = e.offering_id
+              JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
              WHERE e.student_id = :me AND e.status = 'enrolled'
                AND co.teacher_id = t.teacher_id) AS teaches_me
     FROM teachers t
@@ -74,12 +74,12 @@ foreach ($stmt->fetchAll() as $t) {
 $stmt = $pdo->prepare("
     SELECT s.student_id, s.firstname, s.lastname, s.year_level,
            (SELECT sec.section_name FROM enrollments e2
-              JOIN classofferings co2 ON co2.offering_id = e2.offering_id
+              JOIN classofferings co2 ON co2.offering_id = e2.offering_id AND co2.is_archived = 0 AND co2.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
               JOIN sections sec ON sec.section_id = co2.section_id
              WHERE e2.student_id = s.student_id AND e2.status = 'enrolled'
              ORDER BY e2.enrollment_id DESC LIMIT 1) AS section_name,
            (SELECT sec.grade_level FROM enrollments e2
-              JOIN classofferings co2 ON co2.offering_id = e2.offering_id
+              JOIN classofferings co2 ON co2.offering_id = e2.offering_id AND co2.is_archived = 0 AND co2.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
               JOIN sections sec ON sec.section_id = co2.section_id
              WHERE e2.student_id = s.student_id AND e2.status = 'enrolled'
              ORDER BY e2.enrollment_id DESC LIMIT 1) AS grade_level,

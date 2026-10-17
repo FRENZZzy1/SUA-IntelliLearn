@@ -30,7 +30,7 @@ $stmt = $pdo->prepare("
     JOIN subjects sub ON sub.subject_id = co.subject_id
     JOIN sections sec ON sec.section_id = co.section_id
     JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
-    WHERE co.teacher_id = :tid AND co.status = 'active' AND sy.is_current = 1
+    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = :tid AND co.status = 'active' AND sy.is_current = 1
     ORDER BY sub.subject_name, sec.grade_level, sec.section_name, co.quarter
 ");
 $stmt->execute([':tid' => $teacherId]);
@@ -195,7 +195,7 @@ $stmt = $pdo->prepare("
       AND u.role = 'admin'
       AND a.audience IN ('all', 'teachers')
       AND (a.offering_id IS NULL
-           OR a.offering_id IN (SELECT offering_id FROM classofferings WHERE teacher_id = :tid))
+           OR a.offering_id IN (SELECT offering_id FROM classofferings WHERE section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND teacher_id = :tid))
     ORDER BY a.is_pinned DESC, COALESCE(a.published_at, a.created_at) DESC
 ");
 $stmt->execute([':tid' => $teacherId]);

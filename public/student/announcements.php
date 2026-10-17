@@ -22,7 +22,7 @@ $studentFullName = trim($student['firstname'] . ' ' . $student['lastname']);
 $stmt = $pdo->prepare("
     SELECT sec.grade_level, sec.section_name
     FROM enrollments e
-    JOIN classofferings co ON co.offering_id = e.offering_id
+    JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     JOIN sections sec ON sec.section_id = co.section_id
     JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
     WHERE e.student_id = ? AND e.status = 'enrolled' AND sy.is_current = 1
@@ -67,6 +67,9 @@ $sql = "
       AND (a.audience = 'all' OR a.audience = 'students')
       AND (a.offering_id IS NULL OR a.offering_id IN (
             SELECT e.offering_id FROM enrollments e
+            JOIN classofferings aco ON aco.offering_id = e.offering_id
+                 AND aco.is_archived = 0
+                 AND aco.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
             WHERE e.student_id = :sid AND e.status = 'enrolled'))
 ";
 $params = [':sid' => (int) $student['student_id']];
@@ -99,6 +102,9 @@ $countStmt = $pdo->prepare("
       AND (a.audience = 'all' OR a.audience = 'students')
       AND (a.offering_id IS NULL OR a.offering_id IN (
             SELECT e.offering_id FROM enrollments e
+            JOIN classofferings aco ON aco.offering_id = e.offering_id
+                 AND aco.is_archived = 0
+                 AND aco.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
             WHERE e.student_id = :sid AND e.status = 'enrolled'))
     GROUP BY u.role
 ");

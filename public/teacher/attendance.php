@@ -31,7 +31,7 @@ if (!in_array($termFilter, ['all', 'TRM 1', 'TRM 2', 'TRM 3'], true)) {
 
 $stmt = $pdo->prepare("SELECT co.offering_id, co.subject_id, co.section_id, s.subject_name, sec.section_name, sec.grade_level
 FROM classofferings co JOIN subjects s ON s.subject_id = co.subject_id JOIN sections sec ON sec.section_id = co.section_id
-WHERE co.teacher_id = ? AND co.status = 'active' AND (co.school_year_id = ? OR ? IS NULL)
+WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ? AND co.status = 'active' AND (co.school_year_id = ? OR ? IS NULL)
 ORDER BY sec.grade_level, sec.section_name, s.subject_name");
 $stmt->execute([$teacherId, $schoolYearId, $schoolYearId]);
 $classes = $stmt->fetchAll();
@@ -58,7 +58,7 @@ $stmt = $pdo->prepare("
     SELECT a.attendance_id, a.attendance_date, a.status, a.remarks, a.offering_id, a.student_id,
         co.subject_id, co.section_id, s.subject_name, sec.section_name, st.firstname, st.lastname
     FROM attendance a
-    JOIN classofferings co ON co.offering_id = a.offering_id
+    JOIN classofferings co ON co.offering_id = a.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     JOIN subjects s        ON s.subject_id = co.subject_id
     JOIN sections sec      ON sec.section_id = co.section_id
     JOIN students st       ON st.student_id = a.student_id

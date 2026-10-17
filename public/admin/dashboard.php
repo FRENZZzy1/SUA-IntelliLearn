@@ -323,7 +323,7 @@ $usageStats = get_system_usage_stats($pdo);
                                         <div class="table-actions">
                                             <button class="btn-view" onclick="openViewStudentsModal(<?php echo (int) $c['offering_id']; ?>)">View Students</button>
                                             <button class="btn-edit" onclick="editCourseOffering(<?php echo (int) $c['offering_id']; ?>)">Update</button>
-                                            <button class="btn-deactivate" onclick="deleteCourseOffering(<?php echo (int) $c['offering_id']; ?>, this)">Delete</button>
+                                            <button class="btn-deactivate" onclick="deleteCourseOffering(<?php echo (int) $c['offering_id']; ?>, this)">Archive</button>
                                         </div>
                                     </td>
                                 </tr>
@@ -384,8 +384,8 @@ $usageStats = get_system_usage_stats($pdo);
                                 <label for="e_subject_id">Subject</label>
                                 <select id="e_subject_id" name="subject_id" required>
                                     <option value="">Select a subject</option>
-                                    <?php foreach ($modalSubjects as $s): ?>
-                                        <option value="<?= (int) $s['subject_id'] ?>"><?= clean($s['subject_name']) ?></option>
+                                    <?php foreach ($modalSubjectsAll as $s): ?>
+                                        <option value="<?= (int) $s['subject_id'] ?>"><?= clean($s['subject_name']) ?><?= !empty($s['is_archived']) ? ' (archived)' : '' ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>
@@ -394,9 +394,9 @@ $usageStats = get_system_usage_stats($pdo);
                                 <label for="e_section_id">Section</label>
                                 <select id="e_section_id" name="section_id" required>
                                     <option value="">Select a section</option>
-                                    <?php foreach ($modalSections as $sec): ?>
+                                    <?php foreach ($modalSectionsAll as $sec): ?>
                                         <option value="<?= (int) $sec['section_id'] ?>">
-                                            Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?>
+                                            Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?><?= !empty($sec['is_archived']) ? ' (archived)' : '' ?>
                                         </option>
                                     <?php endforeach; ?>
                                 </select>

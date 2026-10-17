@@ -1,8 +1,10 @@
 <?php
 /**
- * AJAX endpoint: delete a single class offering.
+ * AJAX endpoint: ARCHIVE a class (formerly "delete a class offering").
  * Called via fetch() from the dashboard's Courses & Subjects widget.
- * Mirrors the delete handler already used on courses.php.
+ * Nothing is deleted any more: the class (every term row of the same
+ * subject + section + school year) is flagged is_archived = 1, which hides
+ * it from its students. It can be restored from admin/courses.php.
  * Always returns JSON, never renders a page.
  */
 
@@ -33,8 +35,21 @@ if ($id <= 0) {
 }
 
 try {
-    $stmt = $pdo->prepare("DELETE FROM classofferings WHERE offering_id = :id");
-    $stmt->execute([':id' => $id]);
+    $find = $pdo->prepare("SELECT subject_id, section_id, school_year_id FROM classofferings WHERE offering_id = :id");
+    $find->execute([':id' => $id]);
+    $row = $find->fetch();
+
+    if (!$row) {
+        http_response_code(404);
+        echo json_encode(['success' => false, 'errors' => ['That class no longer exists.']]);
+        exit();
+    }
+
+    $stmt = $pdo->prepare(
+        "UPDATE classofferings SET is_archived = 1, archived_at = NOW()
+         WHERE subject_id = :sub AND section_id = :sec AND school_year_id = :sy AND is_archived = 0"
+    );
+    $stmt->execute([':sub' => $row['subject_id'], ':sec' => $row['section_id'], ':sy' => $row['school_year_id']]);
 
     echo json_encode(['success' => true]);
 } catch (PDOException $e) {

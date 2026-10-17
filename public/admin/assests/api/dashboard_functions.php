@@ -19,7 +19,7 @@ function get_total_students(PDO $pdo): int {
 }
 
 function get_total_Class(PDO $pdo): int {
-    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM classofferings")->fetch();
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM classofferings WHERE is_archived = 0 AND section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)")->fetch();
     return $row ? (int) $row['cnt'] : 0;
 }
 
@@ -93,7 +93,7 @@ function get_avatar_color(string $seed): string {
  * Total number of active class offerings (courses).
  */
 function get_active_courses_count(PDO $pdo): int {
-    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM classofferings WHERE status = 'active'")->fetch();
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM classofferings WHERE status = 'active' AND is_archived = 0 AND section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)")->fetch();
     return $row ? (int) $row['cnt'] : 0;
 }
 
@@ -101,7 +101,7 @@ function get_active_courses_count(PDO $pdo): int {
  * Total number of class offerings, regardless of status.
  */
 function get_total_courses_count(PDO $pdo): int {
-    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM classofferings")->fetch();
+    $row = $pdo->query("SELECT COUNT(*) AS cnt FROM classofferings WHERE is_archived = 0 AND section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)")->fetch();
     return $row ? (int) $row['cnt'] : 0;
 }
 
@@ -209,6 +209,7 @@ function get_course_enrollment_progress(PDO $pdo, int $limit = 6): array {
                 JOIN subjects subj ON subj.subject_id = co.subject_id
                 JOIN sections sec  ON sec.section_id  = co.section_id
                 WHERE co.status = 'active'
+                  AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
             ) x
             GROUP BY subject_id, subject_name, grade_level
             ORDER BY grade_level ASC, subject_name ASC
@@ -264,6 +265,7 @@ function get_recent_course_offerings(PDO $pdo, int $limit = 4): array {
             JOIN subjects subj ON subj.subject_id = co.subject_id
             JOIN sections sec  ON sec.section_id  = co.section_id
             LEFT JOIN teachers t ON t.teacher_id = co.teacher_id
+            WHERE co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
             ORDER BY co.created_at DESC
             LIMIT ?";
 

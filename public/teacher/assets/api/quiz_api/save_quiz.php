@@ -151,7 +151,7 @@ if (!$teacherRow) {
 }
 $teacherId = (int) $teacherRow['teacher_id'];
 
-$stmt = $pdo->prepare("SELECT offering_id FROM classofferings WHERE offering_id = ? AND teacher_id = ?");
+$stmt = $pdo->prepare("SELECT offering_id FROM classofferings WHERE section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND offering_id = ? AND teacher_id = ?");
 $stmt->execute([$offeringId, $teacherId]);
 if (!$stmt->fetch()) {
     http_response_code(403);

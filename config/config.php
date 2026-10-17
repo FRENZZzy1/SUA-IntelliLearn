@@ -53,6 +53,33 @@ try {
 
 
 /**
+ * Archive support for the Classes & Subjects module.
+ * Adds is_archived / archived_at to classofferings, sections and subjects the
+ * first time it runs (so no manual SQL import is required). Safe to run on
+ * every request: it only issues ALTER TABLE when a column is missing.
+ */
+function ensureArchiveColumns(PDO $pdo): void {
+    try {
+        $have = $pdo->query(
+            "SELECT TABLE_NAME FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'is_archived'
+               AND TABLE_NAME IN ('classofferings', 'sections', 'subjects')"
+        )->fetchAll(PDO::FETCH_COLUMN);
+        foreach (['classofferings', 'sections', 'subjects'] as $table) {
+            if (!in_array($table, $have, true)) {
+                $pdo->exec("ALTER TABLE `$table`
+                            ADD COLUMN `is_archived` TINYINT(1) NOT NULL DEFAULT 0,
+                            ADD COLUMN `archived_at` DATETIME NULL DEFAULT NULL");
+            }
+        }
+    } catch (PDOException $e) {
+        // Never block the page load; the migration file archive_migration.sql can be run by hand.
+    }
+}
+ensureArchiveColumns($pdo);
+
+
+/**
  * Validate and normalize Philippine mobile numbers.
  * Accepted input: 09XXXXXXXXX or +63 9XX XXX XXXX (spaces/hyphens are optional).
  * Returns the canonical +639XXXXXXXXX value, or null for an empty value.
@@ -269,7 +296,7 @@ function syncCourseTermsToCurrent($pdo) {
     if (!$schoolYearId) return;
 
     try {
-        $stmt = $pdo->prepare("SELECT offering_id, subject_id, section_id, teacher_id, schedule_days, start_time, end_time, capacity, status, quarter FROM classofferings WHERE school_year_id = ?");
+        $stmt = $pdo->prepare("SELECT offering_id, subject_id, section_id, teacher_id, schedule_days, start_time, end_time, capacity, status, quarter, is_archived, archived_at FROM classofferings WHERE school_year_id = ?");
         $stmt->execute([$schoolYearId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
     } catch (PDOException $e) {
@@ -288,7 +315,7 @@ function syncCourseTermsToCurrent($pdo) {
         }
     }
 
-    $insertOffering = $pdo->prepare("INSERT INTO classofferings (class_code, subject_id, teacher_id, section_id, quarter, school_year_id, schedule_days, start_time, end_time, capacity, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $insertOffering = $pdo->prepare("INSERT INTO classofferings (class_code, subject_id, teacher_id, section_id, quarter, school_year_id, schedule_days, start_time, end_time, capacity, status, is_archived, archived_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $copyEnrollments = $pdo->prepare("INSERT INTO enrollments (student_id, offering_id, status) SELECT student_id, ?, 'enrolled' FROM enrollments WHERE offering_id = ? AND status = 'enrolled'");
 
     foreach ($latest as $source) {
@@ -302,7 +329,8 @@ function syncCourseTermsToCurrent($pdo) {
                     generateClassCode($pdo),
                     $source['subject_id'], $source['teacher_id'], $source['section_id'], $nextTerm,
                     $schoolYearId, $source['schedule_days'], $source['start_time'], $source['end_time'],
-                    $source['capacity'], $source['status']
+                    $source['capacity'], $source['status'],
+                    (int) $source['is_archived'], $source['archived_at']
                 ]);
                 $newOfferingId = (int)$pdo->lastInsertId();
                 $copyEnrollments->execute([$newOfferingId, $source['offering_id']]);

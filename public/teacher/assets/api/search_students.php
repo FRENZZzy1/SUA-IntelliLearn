@@ -53,14 +53,14 @@ $stmt = $pdo->prepare("
         (
             SELECT COUNT(DISTINCT co2.offering_id)
             FROM enrollments e2
-            JOIN classofferings co2 ON co2.offering_id = e2.offering_id
+            JOIN classofferings co2 ON co2.offering_id = e2.offering_id AND co2.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
             WHERE e2.student_id = s.student_id
               AND co2.teacher_id = :teacher_id2
               AND e2.status = 'enrolled'
         ) AS classes_with_you
     FROM students s
     JOIN enrollments e       ON e.student_id = s.student_id
-    JOIN classofferings co   ON co.offering_id = e.offering_id
+    JOIN classofferings co   ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     JOIN sections sec        ON sec.section_id = co.section_id
     WHERE co.teacher_id = :teacher_id
       AND e.status = 'enrolled'

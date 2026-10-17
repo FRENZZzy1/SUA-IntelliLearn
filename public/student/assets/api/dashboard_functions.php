@@ -26,7 +26,7 @@ $stmt = $pdo->prepare("
            sec.grade_level, sec.section_name,
            t.firstname AS teacher_first, t.lastname AS teacher_last
     FROM enrollments e
-    JOIN classofferings co ON co.offering_id = e.offering_id
+    JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     JOIN subjects sub      ON sub.subject_id = co.subject_id
     JOIN sections sec      ON sec.section_id = co.section_id
     JOIN teachers t        ON t.teacher_id = co.teacher_id
@@ -54,7 +54,7 @@ if ($offeringIds) {
                t.firstname AS teacher_first, t.lastname AS teacher_last,
                sub2.status AS submission_status
         FROM assignments a
-        JOIN classofferings co ON co.offering_id = a.offering_id
+        JOIN classofferings co ON co.offering_id = a.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN teachers t        ON t.teacher_id = co.teacher_id
         LEFT JOIN submissions sub2
@@ -105,7 +105,7 @@ if ($offeringIds) {
                t.firstname AS teacher_first, t.lastname AS teacher_last,
                qa.status AS attempt_status
         FROM quizzes q
-        JOIN classofferings co ON co.offering_id = q.offering_id
+        JOIN classofferings co ON co.offering_id = q.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN teachers t        ON t.teacher_id = co.teacher_id
         LEFT JOIN quiz_attempts qa
@@ -229,6 +229,9 @@ $stmt = $pdo->prepare("
       AND (a.audience = 'all' OR a.audience = 'students')
       AND (a.offering_id IS NULL OR a.offering_id IN (
             SELECT e.offering_id FROM enrollments e
+            JOIN classofferings aco ON aco.offering_id = e.offering_id
+                 AND aco.is_archived = 0
+                 AND aco.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
             WHERE e.student_id = :sid AND e.status = 'enrolled'))
     ORDER BY a.is_pinned DESC, a.created_at DESC
     LIMIT 4

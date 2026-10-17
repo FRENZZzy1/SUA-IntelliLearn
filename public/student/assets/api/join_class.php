@@ -83,6 +83,7 @@ try {
         FROM classofferings co
         JOIN sections sec ON sec.section_id = co.section_id
         WHERE co.class_code = ? AND co.status = 'active'
+          AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         LIMIT 1
     ");
     $offeringStmt->execute([$classCode]);
@@ -111,7 +112,7 @@ try {
     $dupStmt = $pdo->prepare("
         SELECT COUNT(*)
         FROM enrollments er
-        JOIN classofferings co ON co.offering_id = er.offering_id
+        JOIN classofferings co ON co.offering_id = er.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN sections sec ON sec.section_id = co.section_id
         WHERE er.student_id = ? AND co.subject_id = ? AND sec.grade_level = ? AND er.status = 'pending'
           AND co.quarter = ? AND sec.school_year_id = ?
@@ -130,7 +131,7 @@ try {
     $activeSql = "
         SELECT COUNT(*)
         FROM enrollments en
-        JOIN classofferings co ON co.offering_id = en.offering_id
+        JOIN classofferings co ON co.offering_id = en.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN sections sec ON sec.section_id = co.section_id
         WHERE en.student_id = ?
           AND en.status = 'enrolled'
@@ -156,7 +157,7 @@ try {
     $deniedSql = "
         SELECT COUNT(*)
         FROM enrollments er
-        JOIN classofferings co ON co.offering_id = er.offering_id
+        JOIN classofferings co ON co.offering_id = er.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN sections sec ON sec.section_id = co.section_id
         WHERE er.student_id = ? AND co.subject_id = ? AND sec.grade_level = ? AND er.status = 'denied'
           AND co.quarter = ? AND sec.school_year_id = ?

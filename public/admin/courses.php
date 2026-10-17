@@ -4,6 +4,11 @@
 require_once __DIR__ . '/../../config/config.php';
 
 requireAdmin();
+
+// add_class_modal.php prints its modal markup as soon as it's included. Buffer
+// the output so the archive/restore handlers below can still redirect with
+// header() (otherwise PHP raises "Cannot modify header information").
+ob_start();
 include 'assests/api/add_class_modal.php';
 
 // ================= FLASH MESSAGE (e.g. after a delete) =================
@@ -46,69 +51,122 @@ function formatScheduleDisplay(?string $days, ?string $start, ?string $end): ?st
     return $days !== '' ? $days : $time;
 }
 
-// ================= DELETE HANDLER =================
-// courses.php?delete=ID&csrf=...  (confirmed client-side, then this runs on reload)
-if (isset($_GET['delete']) && ctype_digit($_GET['delete'])) {
-    if (!validateCSRFToken($_GET['csrf'] ?? '')) {
-        setFlashMessage('error', 'That delete link expired. Please try again.');
-    } else {
-        $stmt = $pdo->prepare("DELETE FROM classofferings WHERE offering_id = ?");
-        $stmt->execute([(int) $_GET['delete']]);
-        setFlashMessage('success', 'Course deleted.');
+// ================= ARCHIVE / RESTORE HANDLERS =================
+// Nothing in this module is deleted any more. "Archive" flags the row with
+// is_archived = 1 (and stamps archived_at); "Restore" clears the flag again.
+//   - An archived class is hidden from the students enrolled in it.
+//   - An archived section hides EVERY class of that section from students
+//     and teachers (the classes themselves keep their own flag untouched, so
+//     restoring the section brings them straight back).
+//   - An archived subject can no longer be picked for new classes.
+
+/**
+ * Archive/restore a class. A class has one classofferings row per term
+ * (TRM 1/2/3), so every row of the same subject + section + school year is
+ * flagged together. Returns the number of rows changed.
+ */
+function setClassArchived(PDO $pdo, int $offeringId, bool $archive): int
+{
+    $find = $pdo->prepare("SELECT subject_id, section_id, school_year_id FROM classofferings WHERE offering_id = ?");
+    $find->execute([$offeringId]);
+    $row = $find->fetch();
+    if (!$row) {
+        return 0;
     }
 
-    header("Location: courses.php?" . http_build_query(array_filter([
-        'status'      => $_GET['status'] ?? null,
-        'grade'       => $_GET['grade'] ?? null,
-        'quarter'     => $_GET['quarter'] ?? null,
-        'school_year' => $_GET['school_year'] ?? null,
-        'q'           => $_GET['q'] ?? null,
-    ])));
-    exit();
+    $sql = $archive
+        ? "UPDATE classofferings SET is_archived = 1, archived_at = NOW()
+           WHERE subject_id = ? AND section_id = ? AND school_year_id = ?"
+        : "UPDATE classofferings SET is_archived = 0, archived_at = NULL
+           WHERE subject_id = ? AND section_id = ? AND school_year_id = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$row['subject_id'], $row['section_id'], $row['school_year_id']]);
+    return $stmt->rowCount();
 }
 
-// courses.php?delete_section=ID&csrf=...  (Sections List "Delete" link)
-if (isset($_GET['delete_section']) && ctype_digit($_GET['delete_section'])) {
-    if (!validateCSRFToken($_GET['csrf'] ?? '')) {
-        setFlashMessage('error', 'That delete link expired. Please try again.');
-    } else {
-        try {
-            $stmt = $pdo->prepare("DELETE FROM sections WHERE section_id = ?");
-            $stmt->execute([(int) $_GET['delete_section']]);
-            setFlashMessage('success', 'Section deleted.');
-        } catch (PDOException $e) {
-            if ($e->getCode() === '23000') {
-                setFlashMessage('error', 'That section still has courses assigned to it. Remove those courses first.');
-            } else {
+// courses.php?archive=ID&csrf=...   |   courses.php?restore=ID&csrf=...   (Class List)
+foreach (['archive' => true, 'restore' => false] as $param => $doArchive) {
+    if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
+        if (!validateCSRFToken($_GET['csrf'] ?? '')) {
+            setFlashMessage('error', 'That link expired. Please try again.');
+        } else {
+            try {
+                $changed = setClassArchived($pdo, (int) $_GET[$param], $doArchive);
+                if ($changed === 0) {
+                    setFlashMessage('error', 'That class no longer exists.');
+                } elseif ($doArchive) {
+                    setFlashMessage('success', 'Class archived. It is now hidden from its students. Use the "Archived" filter to restore it.');
+                } else {
+                    $secCheck = $pdo->prepare("SELECT sec.is_archived FROM classofferings co JOIN sections sec ON sec.section_id = co.section_id WHERE co.offering_id = ?");
+                    $secCheck->execute([(int) $_GET[$param]]);
+                    if ((int) $secCheck->fetchColumn() === 1) {
+                        setFlashMessage('success', 'Class restored, but it stays hidden until its section is restored too.');
+                    } else {
+                        setFlashMessage('success', 'Class restored.');
+                    }
+                }
+            } catch (PDOException $e) {
                 setFlashMessage('error', 'Database error: ' . $e->getMessage());
             }
         }
-    }
 
-    header("Location: courses.php?open=sections");
-    exit();
+        header("Location: courses.php?" . http_build_query(array_filter([
+            'status'      => $_GET['status'] ?? null,
+            'grade'       => $_GET['grade'] ?? null,
+            'quarter'     => $_GET['quarter'] ?? null,
+            'school_year' => $_GET['school_year'] ?? null,
+            'q'           => $_GET['q'] ?? null,
+        ])));
+        exit();
+    }
 }
 
-// courses.php?delete_subject=ID&csrf=...  (Subjects List "Delete" link)
-if (isset($_GET['delete_subject']) && ctype_digit($_GET['delete_subject'])) {
-    if (!validateCSRFToken($_GET['csrf'] ?? '')) {
-        setFlashMessage('error', 'That delete link expired. Please try again.');
-    } else {
-        try {
-            $stmt = $pdo->prepare("DELETE FROM subjects WHERE subject_id = ?");
-            $stmt->execute([(int) $_GET['delete_subject']]);
-            setFlashMessage('success', 'Subject deleted.');
-        } catch (PDOException $e) {
-            if ($e->getCode() === '23000') {
-                setFlashMessage('error', 'That subject is still used by existing courses. Remove those courses first.');
-            } else {
+// courses.php?archive_section=ID / restore_section=ID&csrf=...  (Sections List)
+foreach (['archive_section' => true, 'restore_section' => false] as $param => $doArchive) {
+    if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
+        if (!validateCSRFToken($_GET['csrf'] ?? '')) {
+            setFlashMessage('error', 'That link expired. Please try again.');
+        } else {
+            try {
+                $stmt = $pdo->prepare($doArchive
+                    ? "UPDATE sections SET is_archived = 1, archived_at = NOW() WHERE section_id = ?"
+                    : "UPDATE sections SET is_archived = 0, archived_at = NULL WHERE section_id = ?");
+                $stmt->execute([(int) $_GET[$param]]);
+                setFlashMessage('success', $doArchive
+                    ? 'Section archived. All of its classes are now hidden from students and teachers.'
+                    : 'Section restored. Its classes are visible again.');
+            } catch (PDOException $e) {
                 setFlashMessage('error', 'Database error: ' . $e->getMessage());
             }
         }
-    }
 
-    header("Location: courses.php?open=subjects");
-    exit();
+        header("Location: courses.php?open=sections");
+        exit();
+    }
+}
+
+// courses.php?archive_subject=ID / restore_subject=ID&csrf=...  (Subjects List)
+foreach (['archive_subject' => true, 'restore_subject' => false] as $param => $doArchive) {
+    if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
+        if (!validateCSRFToken($_GET['csrf'] ?? '')) {
+            setFlashMessage('error', 'That link expired. Please try again.');
+        } else {
+            try {
+                $stmt = $pdo->prepare($doArchive
+                    ? "UPDATE subjects SET is_archived = 1, archived_at = NOW() WHERE subject_id = ?"
+                    : "UPDATE subjects SET is_archived = 0, archived_at = NULL WHERE subject_id = ?");
+                $stmt->execute([(int) $_GET[$param]]);
+                setFlashMessage('success', $doArchive
+                    ? 'Subject archived. It can no longer be used for new classes.'
+                    : 'Subject restored.');
+            } catch (PDOException $e) {
+                setFlashMessage('error', 'Database error: ' . $e->getMessage());
+            }
+        }
+
+        header("Location: courses.php?open=subjects");
+        exit();
+    }
 }
 
 $csrfToken = generateCSRFToken();
@@ -133,13 +191,13 @@ if (!in_array($openView, ['sections', 'subjects', 'export'], true)) {
 }
 
 // ================= FILTER INPUTS =================
-$statusFilter     = $_GET['status']  ?? 'all';             // all | active | inactive
+$statusFilter     = $_GET['status']  ?? 'all';             // all | active | inactive | archived
 $gradeFilter      = $_GET['grade']   ?? 'all';             // all | 7..12
 $quarterFilter    = $_GET['quarter'] ?? 'all';             // all | 1..3
 $schoolYearFilter = $_GET['school_year'] ?? 'all';         // all | school_year_id
 $searchQuery      = trim($_GET['q'] ?? '');
 
-if (!in_array($statusFilter, ['all', 'active', 'inactive'], true)) {
+if (!in_array($statusFilter, ['all', 'active', 'inactive', 'archived'], true)) {
     $statusFilter = 'all';
 }
 
@@ -155,9 +213,15 @@ if ($schoolYearFilter !== 'all' && !ctype_digit((string) $schoolYearFilter)) {
 $where  = [];
 $params = [];
 
-if ($statusFilter !== 'all') {
-    $where[] = 'co.status = ?';
-    $params[] = $statusFilter;
+if ($statusFilter === 'archived') {
+    // Archived = the class itself was archived, or its whole section was.
+    $where[] = '(co.is_archived = 1 OR sec.is_archived = 1)';
+} else {
+    $where[] = 'co.is_archived = 0 AND sec.is_archived = 0';
+    if ($statusFilter !== 'all') {
+        $where[] = 'co.status = ?';
+        $params[] = $statusFilter;
+    }
 }
 
 if ($gradeFilter !== 'all' && ctype_digit($gradeFilter)) {
@@ -192,6 +256,8 @@ $sql = "
         co.subject_id,
         co.capacity,
         co.status,
+        co.is_archived,
+        sec.is_archived AS section_archived,
         co.quarter,
         co.school_year_id,
         co.schedule_days,
@@ -255,13 +321,14 @@ foreach ($courseGroups as $groupKey => $groupRows) {
 }
 
 // ================= STATS (unaffected by filters — whole school) =================
-$totalCourses  = (int) $pdo->query("SELECT COUNT(*) FROM classofferings")->fetchColumn();
-$activeCourses = (int) $pdo->query("SELECT COUNT(*) FROM classofferings WHERE status = 'active'")->fetchColumn();
+$notArchivedSql = "is_archived = 0 AND section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)";
+$totalCourses  = (int) $pdo->query("SELECT COUNT(*) FROM classofferings WHERE {$notArchivedSql}")->fetchColumn();
+$activeCourses = (int) $pdo->query("SELECT COUNT(*) FROM classofferings WHERE status = 'active' AND {$notArchivedSql}")->fetchColumn();
 
-$teachersAssigned = (int) $pdo->query("SELECT COUNT(DISTINCT teacher_id) FROM classofferings")->fetchColumn();
+$teachersAssigned = (int) $pdo->query("SELECT COUNT(DISTINCT teacher_id) FROM classofferings WHERE {$notArchivedSql}")->fetchColumn();
 $totalTeachers    = (int) $pdo->query("SELECT COUNT(*) FROM teachers")->fetchColumn();
 
-$totalEnrollees = (int) $pdo->query("SELECT COUNT(DISTINCT student_id) FROM enrollments WHERE status = 'enrolled'")->fetchColumn();
+$totalEnrollees = (int) $pdo->query("SELECT COUNT(DISTINCT student_id) FROM enrollments WHERE status = 'enrolled' AND offering_id IN (SELECT offering_id FROM classofferings WHERE {$notArchivedSql})")->fetchColumn();
 
 // ================= DATA FOR "NEW COURSE" / "UPDATE COURSE" MODALS =================
 
@@ -276,14 +343,15 @@ $sectionsList = $pdo->query("
         sec.section_name,
         sec.grade_level,
         sec.adviser_id,
+        sec.is_archived,
         t.firstname AS adviser_firstname,
         t.lastname  AS adviser_lastname,
         sy.label AS school_year_label,
         (SELECT COUNT(*) FROM classofferings co
-            WHERE co.section_id = sec.section_id) AS course_count,
+            WHERE co.section_id = sec.section_id AND co.is_archived = 0) AS course_count,
         (SELECT COUNT(*) FROM enrollments e
             JOIN classofferings co2 ON co2.offering_id = e.offering_id
-            WHERE co2.section_id = sec.section_id AND e.status = 'enrolled') AS student_count
+            WHERE co2.section_id = sec.section_id AND co2.is_archived = 0 AND e.status = 'enrolled') AS student_count
     FROM sections sec
     LEFT JOIN teachers t     ON t.teacher_id = sec.adviser_id
     LEFT JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id
@@ -296,10 +364,11 @@ $subjectsList = $pdo->query("
         s.subject_id,
         s.subject_name,
         s.description,
+        s.is_archived,
         (SELECT COUNT(*) FROM classofferings co
-            WHERE co.subject_id = s.subject_id) AS offering_count,
+            WHERE co.subject_id = s.subject_id AND co.is_archived = 0) AS offering_count,
         (SELECT COUNT(DISTINCT co.section_id) FROM classofferings co
-            WHERE co.subject_id = s.subject_id) AS section_count
+            WHERE co.subject_id = s.subject_id AND co.is_archived = 0) AS section_count
     FROM subjects s
     ORDER BY s.subject_name ASC
 ")->fetchAll();
@@ -549,6 +618,8 @@ $subjectsList = $pdo->query("
                href="?<?= http_build_query(array_filter(['status' => 'active', 'grade' => $gradeFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Active</a>
             <a class="filter-pill <?= $statusFilter === 'inactive' ? 'active' : '' ?>"
                href="?<?= http_build_query(array_filter(['status' => 'inactive', 'grade' => $gradeFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Inactive</a>
+            <a class="filter-pill <?= $statusFilter === 'archived' ? 'active' : '' ?>"
+               href="?<?= http_build_query(array_filter(['status' => 'archived', 'grade' => $gradeFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>"><i class="fas fa-box-archive"></i> Archived</a>
 
             <!-- Live client-side search: instantly filters the Class List table below
                  by subject, section, or teacher name. No page reload, no server call. -->
@@ -649,6 +720,9 @@ $subjectsList = $pdo->query("
                     $pct = $course['capacity'] > 0 ? round(($course['enrolled_count'] / $course['capacity']) * 100) : 0;
                     $teacherName = $course['teacher_id'] ? trim($course['teacher_firstname'] . ' ' . $course['teacher_lastname']) : null;
                     $scheduleDisplay = formatScheduleDisplay($course['schedule_days'], $course['start_time'], $course['end_time']);
+                    $ownArchived     = (int) $course['is_archived'] === 1;
+                    $sectionArchived = (int) $course['section_archived'] === 1;
+                    $isArchivedRow   = $ownArchived || $sectionArchived;
                     // Pre-baked lowercase blob this row matches against for the
                     // instant client-side search box (subject + section + teacher name).
                     $searchBlob = mb_strtolower(trim(
@@ -657,7 +731,7 @@ $subjectsList = $pdo->query("
                         ($teacherName ?? '')
                     ));
                 ?>
-                <tr class="course-row<?= $isSibling ? ' sibling-row' : '' ?>"
+                <tr class="course-row<?= $isSibling ? ' sibling-row' : '' ?><?= $isArchivedRow ? ' archived-row' : '' ?>"
                     data-search="<?= htmlspecialchars($searchBlob) ?>"
                     data-group="<?= htmlspecialchars($groupKey) ?>"
                     <?= $isSibling ? 'data-expanded="false" style="display:none"' : '' ?>>
@@ -693,16 +767,24 @@ $subjectsList = $pdo->query("
                         </div>
                     </td>
                     <td>
+                        <?php if ($isArchivedRow): ?>
+                        <span class="status-dot-badge archived" title="<?= $ownArchived ? 'This class is archived' : 'Hidden because its section is archived' ?>">
+                            <span class="dot"></span>
+                            <?= $ownArchived ? 'Archived' : 'Section archived' ?>
+                        </span>
+                        <?php else: ?>
                         <span class="status-dot-badge <?= $course['status'] ?>">
                             <span class="dot"></span>
                             <?= $course['status'] === 'active' ? 'Active' : 'Inactive' ?>
                         </span>
+                        <?php endif; ?>
                     </td>
                     <td><span class="class-code-badge"><?= htmlspecialchars($course['class_code']) ?></span></td>
                     <td class="col-actions">
                         <div class="row-actions">
                             <a href="javascript:void(0)"
                                onclick="openViewStudentsModal(<?= (int) $course['offering_id'] ?>)">View Students</a>
+                            <?php if (!$isArchivedRow): ?>
                             <a href="javascript:void(0)"
                                data-course="<?= htmlspecialchars(json_encode([
                                    'offering_id'   => (int) $course['offering_id'],
@@ -718,8 +800,14 @@ $subjectsList = $pdo->query("
                                    'status'        => $course['status'],
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditCourseModal(this)">Update</a>
-                            <a class="delete" href="courses.php?delete=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
-                               onclick="return confirmDelete('course')">Delete</a>
+                            <a class="archive" href="courses.php?archive=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
+                               onclick="return confirmArchive('course')">Archive</a>
+                            <?php elseif ($ownArchived): ?>
+                            <a class="restore" href="courses.php?restore=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
+                               onclick="return confirmArchive('restore-course')">Restore</a>
+                            <?php else: ?>
+                            <span class="field-note" title="Restore the section from the Sections List to bring this class back">Restore its section</span>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>
@@ -768,8 +856,8 @@ $subjectsList = $pdo->query("
                         ? trim($sec['adviser_firstname'] . ' ' . $sec['adviser_lastname'])
                         : null;
                 ?>
-                <tr>
-                    <td><span class="course-name"><?= htmlspecialchars($sec['section_name']) ?></span></td>
+                <tr class="<?= !empty($sec['is_archived']) ? 'archived-row' : '' ?>">
+                    <td><span class="course-name"><?= htmlspecialchars($sec['section_name']) ?></span><?= !empty($sec['is_archived']) ? ' <span class="archive-badge">Archived</span>' : '' ?></td>
                     <td>Grade <?= htmlspecialchars($sec['grade_level']) ?></td>
                     <td><?= $adviserName ? htmlspecialchars($adviserName) : '— None —' ?></td>
                     <td><?= $sec['school_year_label'] ? htmlspecialchars($sec['school_year_label']) : '— None —' ?></td>
@@ -777,6 +865,7 @@ $subjectsList = $pdo->query("
                     <td><?= (int) $sec['student_count'] ?></td>
                     <td class="col-actions">
                         <div class="row-actions">
+                            <?php if (empty($sec['is_archived'])): ?>
                             <a href="javascript:void(0)"
                                data-section="<?= htmlspecialchars(json_encode([
                                    'section_id'   => (int) $sec['section_id'],
@@ -785,8 +874,12 @@ $subjectsList = $pdo->query("
                                    'adviser_id'   => $sec['adviser_id'] ? (int) $sec['adviser_id'] : '',
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditSectionModal(this)">Update</a>
-                            <a class="delete" href="courses.php?delete_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
-                               onclick="return confirmDelete('section')">Delete</a>
+                            <a class="archive" href="courses.php?archive_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
+                               onclick="return confirmArchive('section')">Archive</a>
+                            <?php else: ?>
+                            <a class="restore" href="courses.php?restore_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
+                               onclick="return confirmArchive('restore-section')">Restore</a>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>
@@ -831,12 +924,13 @@ $subjectsList = $pdo->query("
                 <?php foreach ($subjectsList as $subj):
                     $colors = $subjectColors[$subj['subject_name']] ?? ['bg' => '#e5e7eb', 'text' => '#374151', 'bar' => '#9ca3af'];
                 ?>
-                <tr>
+                <tr class="<?= !empty($subj['is_archived']) ? 'archived-row' : '' ?>">
                     <td>
                         <div class="course-cell">
                             <span class="subject-tag" style="background: <?= $colors['bg'] ?>; color: <?= $colors['text'] ?>;">
                                 <?= htmlspecialchars($subj['subject_name']) ?>
                             </span>
+                            <?= !empty($subj['is_archived']) ? '<span class="archive-badge">Archived</span>' : '' ?>
                         </div>
                     </td>
                     <td style="white-space: normal;"><?= $subj['description'] ? htmlspecialchars($subj['description']) : '— No description —' ?></td>
@@ -844,6 +938,7 @@ $subjectsList = $pdo->query("
                     <td><?= (int) $subj['section_count'] ?></td>
                     <td class="col-actions">
                         <div class="row-actions">
+                            <?php if (empty($subj['is_archived'])): ?>
                             <a href="javascript:void(0)"
                                data-subject="<?= htmlspecialchars(json_encode([
                                    'subject_id'   => (int) $subj['subject_id'],
@@ -851,8 +946,12 @@ $subjectsList = $pdo->query("
                                    'description'  => $subj['description'] ?? '',
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditSubjectModal(this)">Update</a>
-                            <a class="delete" href="courses.php?delete_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
-                               onclick="return confirmDelete('subject')">Delete</a>
+                            <a class="archive" href="courses.php?archive_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
+                               onclick="return confirmArchive('subject')">Archive</a>
+                            <?php else: ?>
+                            <a class="restore" href="courses.php?restore_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
+                               onclick="return confirmArchive('restore-subject')">Restore</a>
+                            <?php endif; ?>
                         </div>
                     </td>
                 </tr>
@@ -949,8 +1048,8 @@ $subjectsList = $pdo->query("
                         <label for="e_subject_id">Subject</label>
                         <select id="e_subject_id" name="subject_id" required>
                             <option value="">Select a subject</option>
-                            <?php foreach ($modalSubjects as $s): ?>
-                                <option value="<?= (int) $s['subject_id'] ?>"><?= clean($s['subject_name']) ?></option>
+                            <?php foreach ($modalSubjectsAll as $s): ?>
+                                <option value="<?= (int) $s['subject_id'] ?>"><?= clean($s['subject_name']) ?><?= !empty($s['is_archived']) ? ' (archived)' : '' ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -959,9 +1058,9 @@ $subjectsList = $pdo->query("
                         <label for="e_section_id">Section</label>
                         <select id="e_section_id" name="section_id" required>
                             <option value="">Select a section</option>
-                            <?php foreach ($modalSections as $sec): ?>
+                            <?php foreach ($modalSectionsAll as $sec): ?>
                                 <option value="<?= (int) $sec['section_id'] ?>">
-                                    Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?>
+                                    Grade <?= clean($sec['grade_level']) ?> — <?= clean($sec['section_name']) ?><?= !empty($sec['is_archived']) ? ' (archived)' : '' ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>

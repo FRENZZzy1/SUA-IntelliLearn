@@ -62,7 +62,7 @@ $stmt = $pdo->prepare("
         sec.grade_level
     FROM students s
     JOIN enrollments e     ON e.student_id = s.student_id
-    JOIN classofferings co ON co.offering_id = e.offering_id
+    JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     JOIN sections sec      ON sec.section_id = co.section_id
     WHERE s.student_id = :student_id
       AND co.teacher_id = :teacher_id
@@ -91,7 +91,7 @@ $stmt = $pdo->prepare("
         co.start_time,
         co.end_time
     FROM enrollments e
-    JOIN classofferings co ON co.offering_id = e.offering_id
+    JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     JOIN subjects sub      ON sub.subject_id = co.subject_id
     WHERE e.student_id = :student_id
       AND co.teacher_id = :teacher_id

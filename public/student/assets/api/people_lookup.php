@@ -70,7 +70,7 @@ if ($type === 'teacher') {
     $stmt = $pdo->prepare("
         SELECT DISTINCT sub.subject_name, sec.section_name, co.schedule_days, co.start_time, co.end_time
         FROM enrollments e
-        JOIN classofferings co ON co.offering_id = e.offering_id
+        JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub ON sub.subject_id = co.subject_id
         JOIN sections sec ON sec.section_id = co.section_id
         WHERE e.student_id = :me AND e.status = 'enrolled' AND co.teacher_id = :t
@@ -89,6 +89,7 @@ if ($type === 'teacher') {
         JOIN subjects sub ON sub.subject_id = co.subject_id
         JOIN sections sec ON sec.section_id = co.section_id
         WHERE co.teacher_id = ? AND co.status = 'active'
+          AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         ORDER BY sec.grade_level, sub.subject_name, sec.section_name
     ");
     $stmt->execute([$id]);
@@ -115,12 +116,12 @@ if ($type === 'teacher') {
 $stmt = $pdo->prepare("
     SELECT s.student_id, s.firstname, s.lastname, s.year_level,
            (SELECT sec.section_name FROM enrollments e2
-              JOIN classofferings co2 ON co2.offering_id = e2.offering_id
+              JOIN classofferings co2 ON co2.offering_id = e2.offering_id AND co2.is_archived = 0 AND co2.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
               JOIN sections sec ON sec.section_id = co2.section_id
              WHERE e2.student_id = s.student_id AND e2.status = 'enrolled'
              ORDER BY e2.enrollment_id DESC LIMIT 1) AS section_name,
            (SELECT sec.grade_level FROM enrollments e2
-              JOIN classofferings co2 ON co2.offering_id = e2.offering_id
+              JOIN classofferings co2 ON co2.offering_id = e2.offering_id AND co2.is_archived = 0 AND co2.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
               JOIN sections sec ON sec.section_id = co2.section_id
              WHERE e2.student_id = s.student_id AND e2.status = 'enrolled'
              ORDER BY e2.enrollment_id DESC LIMIT 1) AS grade_level
@@ -142,7 +143,7 @@ $stmt = $pdo->prepare("
            t.firstname AS t_first, t.lastname AS t_last
     FROM enrollments mine
     JOIN enrollments theirs ON theirs.offering_id = mine.offering_id
-    JOIN classofferings co ON co.offering_id = mine.offering_id
+    JOIN classofferings co ON co.offering_id = mine.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     JOIN subjects sub ON sub.subject_id = co.subject_id
     LEFT JOIN teachers t ON t.teacher_id = co.teacher_id
     WHERE mine.student_id = :me AND mine.status = 'enrolled'

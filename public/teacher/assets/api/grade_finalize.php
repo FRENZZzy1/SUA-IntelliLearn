@@ -38,7 +38,7 @@ if (!$offeringId) {
     header('Location: ../../grade_book.php');
     exit();
 }
-$stmt = $pdo->prepare("SELECT offering_id FROM classofferings WHERE offering_id = ? AND teacher_id = ? AND status = 'active' LIMIT 1");
+$stmt = $pdo->prepare("SELECT offering_id FROM classofferings WHERE section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND offering_id = ? AND teacher_id = ? AND status = 'active' LIMIT 1");
 $stmt->execute([$offeringId, $teacherId]);
 if (!$stmt->fetch()) {
     setFlashMessage('error', 'You do not have access to that class.');

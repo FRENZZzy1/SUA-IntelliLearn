@@ -74,7 +74,7 @@ function get_at_risk_roster(PDO $pdo, array $offeringIds): array
             sub.subject_name, sec.section_name, sec.grade_level
         FROM enrollments e
         JOIN students s        ON s.student_id = e.student_id
-        JOIN classofferings co ON co.offering_id = e.offering_id
+        JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN sections sec      ON sec.section_id = co.section_id
         LEFT JOIN schoolyears sy ON sy.school_year_id = co.school_year_id

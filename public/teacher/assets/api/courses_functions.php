@@ -41,7 +41,7 @@ $stmt = $pdo->prepare("
     JOIN sections sec ON sec.section_id = co.section_id
     LEFT JOIN enrollments e
            ON e.offering_id = co.offering_id AND e.status = 'enrolled'
-    WHERE co.teacher_id = ?
+    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ?
       AND co.status = 'active'
       AND (co.school_year_id = ? OR ? IS NULL)
     GROUP BY sec.section_id, sec.section_name, sec.grade_level

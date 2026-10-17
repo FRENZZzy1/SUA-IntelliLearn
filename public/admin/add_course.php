@@ -71,6 +71,17 @@ if ($end_time_raw !== '') {
 
 if ($start_time !== null && $end_time !== null && $start_time >= $end_time) $errors[] = 'End time must be after start time.';
 
+// Archived subjects / sections can't be used for new classes (restore them first).
+if (empty($errors)) {
+    $archCheck = $pdo->prepare("SELECT
+        (SELECT is_archived FROM subjects WHERE subject_id = ?) AS subject_archived,
+        (SELECT is_archived FROM sections WHERE section_id = ?) AS section_archived");
+    $archCheck->execute([(int) $subject_id, (int) $section_id]);
+    $archRow = $archCheck->fetch();
+    if ($archRow && (int) $archRow['subject_archived'] === 1) $errors[] = 'That subject is archived. Restore it first before adding a class.';
+    if ($archRow && (int) $archRow['section_archived'] === 1) $errors[] = 'That section is archived. Restore it first before adding a class.';
+}
+
 if (!empty($errors)) {
     http_response_code(422);
     echo json_encode(['success' => false, 'errors' => $errors]);

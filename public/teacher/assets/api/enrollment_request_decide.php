@@ -65,7 +65,7 @@ $stmt = $pdo->prepare("
     SELECT e.enrollment_id, e.student_id, e.offering_id, e.status,
            s.firstname, s.lastname
     FROM enrollments e
-    JOIN classofferings co ON co.offering_id = e.offering_id
+    JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     JOIN students s ON s.student_id = e.student_id
     WHERE e.enrollment_id = ? AND co.teacher_id = ?
     LIMIT 1
@@ -149,7 +149,7 @@ try {
         SELECT co.offering_id, co.capacity,
             (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status = 'enrolled') AS enrolled_count
         FROM classofferings co
-        WHERE co.offering_id = ? AND co.teacher_id = ? AND co.status = 'active'
+        WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.offering_id = ? AND co.teacher_id = ? AND co.status = 'active'
         FOR UPDATE
     ");
     $lockStmt->execute([$offeringId, $teacherId]);
@@ -181,7 +181,7 @@ try {
     // of this same class (subject + section + school year).
     $pdo->prepare("
         UPDATE enrollments e
-        JOIN classofferings co     ON co.offering_id = e.offering_id
+        JOIN classofferings co     ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN classofferings target ON target.offering_id = ?
         SET e.status = 'enrolled'
         WHERE e.student_id = ?

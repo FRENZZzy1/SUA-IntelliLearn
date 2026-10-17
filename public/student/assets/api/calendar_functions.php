@@ -56,7 +56,7 @@ $stmt = $pdo->prepare("
     SELECT co.offering_id, sub.subject_name,
            t.firstname AS teacher_first, t.lastname AS teacher_last
     FROM enrollments e
-    JOIN classofferings co ON co.offering_id = e.offering_id
+    JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     JOIN subjects sub      ON sub.subject_id = co.subject_id
     JOIN teachers t        ON t.teacher_id = co.teacher_id
     WHERE e.student_id = ? AND e.status = 'enrolled'
@@ -81,7 +81,7 @@ if ($offeringIds) {
                t.firstname AS teacher_first, t.lastname AS teacher_last,
                sub2.status AS submission_status
         FROM assignments a
-        JOIN classofferings co ON co.offering_id = a.offering_id
+        JOIN classofferings co ON co.offering_id = a.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN teachers t        ON t.teacher_id = co.teacher_id
         LEFT JOIN submissions sub2
@@ -127,7 +127,7 @@ if ($offeringIds) {
                t.firstname AS teacher_first, t.lastname AS teacher_last,
                sub2.status AS submission_status
         FROM assignments a
-        JOIN classofferings co ON co.offering_id = a.offering_id
+        JOIN classofferings co ON co.offering_id = a.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN teachers t        ON t.teacher_id = co.teacher_id
         LEFT JOIN submissions sub2
@@ -170,7 +170,7 @@ if ($offeringIds) {
                t.firstname AS teacher_first, t.lastname AS teacher_last,
                qa.status AS attempt_status
         FROM quizzes q
-        JOIN classofferings co ON co.offering_id = q.offering_id
+        JOIN classofferings co ON co.offering_id = q.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN teachers t        ON t.teacher_id = co.teacher_id
         LEFT JOIN quiz_attempts qa
@@ -214,7 +214,7 @@ if ($offeringIds) {
                t.firstname AS teacher_first, t.lastname AS teacher_last,
                qa.status AS attempt_status
         FROM quizzes q
-        JOIN classofferings co ON co.offering_id = q.offering_id
+        JOIN classofferings co ON co.offering_id = q.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN teachers t        ON t.teacher_id = co.teacher_id
         LEFT JOIN quiz_attempts qa
@@ -324,7 +324,7 @@ function calendar_due_time(?string $dueDate): string
 $stmt = $pdo->prepare("
     SELECT sec.grade_level, sec.section_name
     FROM enrollments e
-    JOIN classofferings co ON co.offering_id = e.offering_id
+    JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     JOIN sections sec ON sec.section_id = co.section_id
     JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
     WHERE e.student_id = ? AND e.status = 'enrolled' AND sy.is_current = 1

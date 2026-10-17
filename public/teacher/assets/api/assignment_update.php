@@ -66,7 +66,7 @@ if (!$assignmentId || !$offeringId) {
 $stmt = $pdo->prepare("
     SELECT a.assignment_id
     FROM assignments a
-    JOIN classofferings co ON co.offering_id = a.offering_id
+    JOIN classofferings co ON co.offering_id = a.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     WHERE a.assignment_id = ? AND a.offering_id = ? AND co.teacher_id = ?
     LIMIT 1
 ");

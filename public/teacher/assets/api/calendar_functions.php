@@ -64,7 +64,7 @@ $schoolYearId = $stmt->fetchColumn() ?: null;
 $stmt = $pdo->prepare("
     SELECT co.offering_id
     FROM classofferings co
-    WHERE co.teacher_id = ?
+    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ?
       AND co.status = 'active'
       AND (co.school_year_id = ? OR ? IS NULL)
 ");
@@ -113,7 +113,7 @@ if ($offeringIds) {
                                             WHERE s2.assignment_id = s.assignment_id
                                               AND s2.student_id = s.student_id)) AS to_grade
         FROM assignments a
-        JOIN classofferings co ON co.offering_id = a.offering_id
+        JOIN classofferings co ON co.offering_id = a.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN sections sec      ON sec.section_id = co.section_id
         WHERE a.offering_id IN ($placeholders)
@@ -161,7 +161,7 @@ if ($offeringIds) {
                                              WHERE y.quiz_id = qa.quiz_id AND y.student_id = qa.student_id
                                                AND y.status IN ('submitted','graded'))) AS to_grade
         FROM quizzes q
-        JOIN classofferings co ON co.offering_id = q.offering_id
+        JOIN classofferings co ON co.offering_id = q.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN sections sec      ON sec.section_id = co.section_id
         WHERE q.offering_id IN ($placeholders)

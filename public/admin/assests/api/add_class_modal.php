@@ -1,8 +1,13 @@
 <?php
 
 $csrfToken = generateCSRFToken();
-$modalSubjects = $pdo->query("SELECT subject_id, subject_name FROM subjects ORDER BY subject_name")->fetchAll();
-$modalSections = $pdo->query("SELECT section_id, section_name, grade_level FROM sections ORDER BY grade_level, section_name")->fetchAll();
+// Archived subjects/sections can't be picked for a NEW class. The *All lists
+// (with the is_archived flag) are used by the Update modal so an existing
+// class that still points at an archived one keeps its selection.
+$modalSubjectsAll = $pdo->query("SELECT subject_id, subject_name, is_archived FROM subjects ORDER BY subject_name")->fetchAll();
+$modalSectionsAll = $pdo->query("SELECT section_id, section_name, grade_level, is_archived FROM sections ORDER BY grade_level, section_name")->fetchAll();
+$modalSubjects = array_values(array_filter($modalSubjectsAll, static fn($r) => (int) $r['is_archived'] === 0));
+$modalSections = array_values(array_filter($modalSectionsAll, static fn($r) => (int) $r['is_archived'] === 0));
 $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teachers ORDER BY lastname, firstname")->fetchAll();
 $modalSchoolYears = $pdo->query("SELECT school_year_id, label, is_current FROM schoolyears ORDER BY start_date DESC")->fetchAll();
 $modalCurrentTerm = resolveCurrentTerm(getTermIntervals($pdo));

@@ -49,7 +49,7 @@ $stmt = $pdo->prepare("
            (SELECT COALESCE(SUM(points), 0) FROM quiz_questions WHERE quiz_id = q.quiz_id) AS quiz_total
     FROM quiz_attempts qa
     JOIN quizzes q ON q.quiz_id = qa.quiz_id
-    JOIN classofferings co ON co.offering_id = q.offering_id
+    JOIN classofferings co ON co.offering_id = q.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
     WHERE qa.attempt_id = ? AND qa.quiz_id = ? AND co.teacher_id = ?
     LIMIT 1
 ");

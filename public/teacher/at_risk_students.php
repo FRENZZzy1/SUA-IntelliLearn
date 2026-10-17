@@ -17,7 +17,7 @@ $teacherId = (int) $teacher['teacher_id'];
 $stmt = $pdo->prepare("
     SELECT co.offering_id
     FROM classofferings co
-    WHERE co.teacher_id = ? AND co.status = 'active'
+    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ? AND co.status = 'active'
 ");
 $stmt->execute([$teacherId]);
 $offeringIds = array_column($stmt->fetchAll(), 'offering_id');

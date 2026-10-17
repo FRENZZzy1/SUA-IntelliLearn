@@ -33,7 +33,7 @@ $stmt = $pdo->prepare("
     FROM classofferings co
     JOIN subjects sub  ON sub.subject_id = co.subject_id
     JOIN sections sec  ON sec.section_id = co.section_id
-    WHERE co.teacher_id = ?
+    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ?
       AND co.status = 'active'
       AND (co.school_year_id = ? OR ? IS NULL)
     ORDER BY sec.grade_level, sub.subject_name
@@ -156,7 +156,7 @@ if ($offeringIds) {
         SELECT s.firstname, s.lastname, e.enrolled_at, sub.subject_name
         FROM enrollments e
         JOIN students s   ON s.student_id = e.student_id
-        JOIN classofferings co ON co.offering_id = e.offering_id
+        JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub ON sub.subject_id = co.subject_id
         WHERE e.offering_id IN ($placeholders)
           AND e.status = 'enrolled'

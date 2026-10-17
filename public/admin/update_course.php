@@ -75,11 +75,30 @@ if (!empty($errors)) {
 }
 
 // Confirm the course actually exists before attempting the update.
-$check = $pdo->prepare("SELECT offering_id FROM classofferings WHERE offering_id = ?");
+$check = $pdo->prepare("SELECT offering_id, subject_id, section_id FROM classofferings WHERE offering_id = ?");
 $check->execute([(int) $offering_id]);
-if (!$check->fetch()) {
+$existingOffering = $check->fetch();
+if (!$existingOffering) {
     http_response_code(404);
     echo json_encode(['success' => false, 'errors' => ['That course no longer exists. Please refresh the page.']]);
+    exit();
+}
+
+// Moving a class onto an archived subject / section isn't allowed (keeping its current one is fine).
+$archErrors = [];
+if ((int) $subject_id !== (int) $existingOffering['subject_id']) {
+    $q = $pdo->prepare("SELECT is_archived FROM subjects WHERE subject_id = ?");
+    $q->execute([(int) $subject_id]);
+    if ((int) $q->fetchColumn() === 1) $archErrors[] = 'That subject is archived. Restore it first.';
+}
+if ((int) $section_id !== (int) $existingOffering['section_id']) {
+    $q = $pdo->prepare("SELECT is_archived FROM sections WHERE section_id = ?");
+    $q->execute([(int) $section_id]);
+    if ((int) $q->fetchColumn() === 1) $archErrors[] = 'That section is archived. Restore it first.';
+}
+if ($archErrors) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'errors' => $archErrors]);
     exit();
 }
 

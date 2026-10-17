@@ -484,7 +484,7 @@ function escapeHtml(str) {
 // of navigating away.
 
 function deleteCourseOffering(offeringId, btnEl) {
-    if (!confirm('Delete this course offering? This cannot be undone.')) return;
+    if (!confirm('Archive this class? It will be hidden from its students (and can be restored later from Classes & Subjects).')) return;
 
     fetch('assests/api/delete_course_offering.php', {
         method: 'POST',
@@ -497,15 +497,15 @@ function deleteCourseOffering(offeringId, btnEl) {
         .then(res => res.json())
         .then(data => {
             if (!data.success) {
-                showToast((data.errors && data.errors[0]) || 'Failed to delete course.');
+                showToast((data.errors && data.errors[0]) || 'Failed to archive class.');
                 return;
             }
-            showToast('Course offering deleted.');
+            showToast('Class archived.');
             const row = btnEl.closest('tr');
             if (row) row.remove();
         })
         .catch(() => {
-            showToast('Failed to delete course.');
+            showToast('Failed to archive class.');
         });
 }
 

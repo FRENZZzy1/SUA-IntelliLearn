@@ -81,7 +81,7 @@ $stmt = $pdo->prepare(
             WHERE qq.quiz_id = q.quiz_id
         ) AS total_points
      FROM quizzes q
-     JOIN classofferings co ON co.offering_id = q.offering_id
+     JOIN classofferings co ON co.offering_id = q.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
      WHERE q.quiz_id = ?
        AND q.offering_id = ?
        AND co.teacher_id = ?

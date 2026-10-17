@@ -47,7 +47,7 @@ if ($studentId <= 0 || $offeringId <= 0) {
 }
 
 // ---- Ownership check: this offering must belong to this teacher -------
-$stmt = $pdo->prepare("SELECT 1 FROM classofferings WHERE offering_id = ? AND teacher_id = ? LIMIT 1");
+$stmt = $pdo->prepare("SELECT 1 FROM classofferings WHERE section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND offering_id = ? AND teacher_id = ? LIMIT 1");
 $stmt->execute([$offeringId, $teacherId]);
 if (!$stmt->fetch()) {
     http_response_code(403);

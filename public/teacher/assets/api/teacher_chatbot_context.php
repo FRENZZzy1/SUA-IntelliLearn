@@ -36,7 +36,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
         JOIN subjects sub ON sub.subject_id = co.subject_id
         JOIN sections sec ON sec.section_id = co.section_id
         LEFT JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
-        WHERE co.teacher_id = ? AND co.status = 'active'
+        WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ? AND co.status = 'active'
         ORDER BY sec.grade_level, sec.section_name, sub.subject_name, co.quarter
     ");
     $stmt->execute([$teacherId]);
@@ -141,7 +141,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
     $stmt = $pdo->prepare("
         SELECT a.title, a.due_date, sub.subject_name, sec.section_name
         FROM assignments a
-        JOIN classofferings co ON co.offering_id = a.offering_id
+        JOIN classofferings co ON co.offering_id = a.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub ON sub.subject_id = co.subject_id
         JOIN sections sec ON sec.section_id = co.section_id
         WHERE co.teacher_id = ? AND co.status = 'active' AND $asgOk
@@ -160,7 +160,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
     $stmt = $pdo->prepare("
         SELECT q.title, q.available_from, q.available_until, sub.subject_name, sec.section_name
         FROM quizzes q
-        JOIN classofferings co ON co.offering_id = q.offering_id
+        JOIN classofferings co ON co.offering_id = q.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
         JOIN subjects sub ON sub.subject_id = co.subject_id
         JOIN sections sec ON sec.section_id = co.section_id
         WHERE co.teacher_id = ? AND co.status = 'active'
@@ -179,7 +179,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
     /* ---------- ALWAYS: pending request count ---------- */
     $stmt = $pdo->prepare("
         SELECT COUNT(*) FROM enrollments e
-        JOIN classofferings co ON co.offering_id = e.offering_id AND co.teacher_id = ?
+        JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ?
         WHERE e.status IN ('pending','requested')
     ");
     $stmt->execute([$teacherId]);
@@ -205,7 +205,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
             SELECT a.title, a.points, a.type, a.status, a.due_date,
                    sub.subject_name, sec.section_name
             FROM assignments a
-            JOIN classofferings co ON co.offering_id = a.offering_id
+            JOIN classofferings co ON co.offering_id = a.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
             JOIN subjects sub ON sub.subject_id = co.subject_id
             JOIN sections sec ON sec.section_id = co.section_id
             WHERE co.teacher_id = ? AND co.status = 'active'
@@ -225,7 +225,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
             SELECT q.title, q.status, q.available_from, q.available_until,
                    sub.subject_name, sec.section_name
             FROM quizzes q
-            JOIN classofferings co ON co.offering_id = q.offering_id
+            JOIN classofferings co ON co.offering_id = q.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
             JOIN subjects sub ON sub.subject_id = co.subject_id
             JOIN sections sec ON sec.section_id = co.section_id
             WHERE co.teacher_id = ? AND co.status = 'active'
@@ -248,7 +248,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
                    a.title, a.points, MAX(sm.score) AS best_score
             FROM students s
             JOIN enrollments e ON e.student_id = s.student_id AND e.status = 'enrolled'
-            JOIN classofferings co ON co.offering_id = e.offering_id AND co.teacher_id = ?
+            JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ?
             JOIN subjects sub ON sub.subject_id = co.subject_id
             JOIN sections sec ON sec.section_id = co.section_id
             JOIN assignments a ON a.offering_id = co.offering_id
@@ -273,7 +273,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
                    q.title, MAX(CASE WHEN qa.max_score > 0 THEN (qa.score / qa.max_score) * 100 ELSE NULL END) AS best_pct
             FROM students s
             JOIN enrollments e ON e.student_id = s.student_id AND e.status = 'enrolled'
-            JOIN classofferings co ON co.offering_id = e.offering_id AND co.teacher_id = ?
+            JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ?
             JOIN subjects sub ON sub.subject_id = co.subject_id
             JOIN sections sec ON sec.section_id = co.section_id
             JOIN quizzes q ON q.offering_id = co.offering_id
@@ -299,7 +299,7 @@ function teacher_chatbot_context(PDO $pdo, string $question): string
                    e.status, e.enrolled_at
             FROM enrollments e
             JOIN students s ON s.student_id = e.student_id
-            JOIN classofferings co ON co.offering_id = e.offering_id AND co.teacher_id = ?
+            JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ?
             JOIN subjects sub ON sub.subject_id = co.subject_id
             JOIN sections sec ON sec.section_id = co.section_id
             WHERE e.status IN ('pending','requested')
