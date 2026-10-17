@@ -253,12 +253,185 @@
                     <span class="detail-value">${new Date(card.dataset.created).toLocaleDateString()}</span>
                 </div>
             </div>
+            <div class="history-section">
+                <button type="button" class="btn-secondary history-toggle" id="historyToggleBtn"
+                        onclick="um_toggleHistory(${Number(userId)})">
+                    <i class="fas fa-clock-rotate-left"></i> History
+                    <i class="fas fa-chevron-down history-chevron"></i>
+                </button>
+                <div class="history-panel" id="userHistoryPanel" style="display:none;"></div>
+            </div>
         `;
+        um_historyState.token++;   // drop any in-flight request from a previously viewed user
         document.getElementById('viewModal').style.display = 'flex';
     }
 
     function closeViewModal() {
+        um_historyState.token++;
         document.getElementById('viewModal').style.display = 'none';
+    }
+
+    // ---- User activity history (View User modal > History) ----
+    const um_historyState = { userId: null, category: 'all', offset: 0, loading: false, lastDay: null, token: 0 };
+
+    const UM_HISTORY_ICONS = {
+        enrollment:    'fa-user-check',
+        materials:     'fa-file-arrow-up',
+        assignments:   'fa-list-check',
+        quizzes:       'fa-circle-question',
+        grading:       'fa-pen-to-square',
+        grades:        'fa-star',
+        attendance:    'fa-calendar-check',
+        announcements: 'fa-bullhorn',
+        submissions:   'fa-paper-plane',
+        evaluations:   'fa-clipboard-check'
+    };
+
+    function um_escape(value) {
+        const div = document.createElement('div');
+        div.textContent = value == null ? '' : String(value);
+        return div.innerHTML;
+    }
+
+    function um_toggleHistory(userId) {
+        const panel = document.getElementById('userHistoryPanel');
+        const btn = document.getElementById('historyToggleBtn');
+        if (!panel || !btn) return;
+
+        if (panel.style.display !== 'none') {
+            panel.style.display = 'none';
+            btn.classList.remove('open');
+            return;
+        }
+
+        panel.innerHTML = `
+            <div class="history-toolbar">
+                <label for="historyFilter"><i class="fas fa-filter"></i> Show</label>
+                <select id="historyFilter" class="select-filter" onchange="um_changeHistoryCategory(this.value)">
+                    <option value="all">All activity</option>
+                </select>
+            </div>
+            <div class="history-list" id="historyList"></div>
+            <div class="history-footer">
+                <button type="button" class="btn-secondary" id="historyMoreBtn" style="display:none;" onclick="um_loadHistory(false)">Load more</button>
+            </div>
+        `;
+        panel.style.display = 'block';
+        btn.classList.add('open');
+
+        um_historyState.userId = userId;
+        um_historyState.category = 'all';
+        um_loadHistory(true);
+    }
+
+    function um_changeHistoryCategory(category) {
+        um_historyState.category = category;
+        um_loadHistory(true);
+    }
+
+    function um_dayLabel(date) {
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+        if (date.toDateString() === today.toDateString()) return 'Today';
+        if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+
+    function um_renderHistoryItems(items, listEl) {
+        let html = '';
+        items.forEach(item => {
+            // "2026-10-08 12:00:00" -> local Date
+            const when = new Date(String(item.occurred_at).replace(' ', 'T'));
+            const day = um_dayLabel(when);
+            if (day !== um_historyState.lastDay) {
+                html += `<div class="history-day">${um_escape(day)}</div>`;
+                um_historyState.lastDay = day;
+            }
+            const icon = UM_HISTORY_ICONS[item.category] || 'fa-circle';
+            const time = when.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+            html += `
+                <div class="history-item">
+                    <div class="history-icon cat-${um_escape(item.category)}"><i class="fas ${icon}"></i></div>
+                    <div class="history-body">
+                        <div class="history-action">${um_escape(item.action)}</div>
+                        <div class="history-title">${um_escape(item.title)}</div>
+                        ${item.detail ? `<div class="history-detail">${um_escape(item.detail)}</div>` : ''}
+                    </div>
+                    <div class="history-time" title="${um_escape(when.toLocaleString())}">${um_escape(time)}</div>
+                </div>`;
+        });
+        listEl.insertAdjacentHTML('beforeend', html);
+    }
+
+    function um_historyError(listEl, message, reset) {
+        const html = `<div class="history-empty error"><i class="fas fa-triangle-exclamation"></i> ${um_escape(message)}</div>`;
+        if (reset) listEl.innerHTML = html;      // keep already-loaded entries when only "Load more" failed
+        else listEl.insertAdjacentHTML('beforeend', html);
+    }
+
+    async function um_loadHistory(reset) {
+        const listEl = document.getElementById('historyList');
+        const moreBtn = document.getElementById('historyMoreBtn');
+        const filterEl = document.getElementById('historyFilter');
+        if (!listEl || um_historyState.userId == null) return;
+        if (um_historyState.loading && !reset) return;
+
+        if (reset) {
+            um_historyState.offset = 0;
+            um_historyState.lastDay = null;
+            listEl.innerHTML = '<div class="history-empty"><i class="fas fa-spinner fa-spin"></i> Loading activity...</div>';
+            moreBtn.style.display = 'none';
+        }
+
+        const token = ++um_historyState.token;
+        um_historyState.loading = true;
+        moreBtn.disabled = true;
+
+        const params = new URLSearchParams({
+            user_id: um_historyState.userId,
+            category: um_historyState.category,
+            offset: um_historyState.offset
+        });
+
+        try {
+            const res = await fetch('assests/api/user_history.php?' + params.toString(), {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await res.json();
+            if (token !== um_historyState.token) return;   // a newer request / another user took over
+
+            if (!data.success) {
+                um_historyError(listEl, (data.errors || ['Could not load history.'])[0], reset);
+                return;
+            }
+
+            // Fill the category filter once (options depend on the user's role).
+            if (filterEl && filterEl.options.length <= 1) {
+                filterEl.innerHTML = data.categories
+                    .map(c => `<option value="${um_escape(c.key)}">${um_escape(c.label)}</option>`).join('');
+                filterEl.value = um_historyState.category;
+            }
+
+            if (reset) listEl.innerHTML = '';
+
+            if (data.items.length === 0 && um_historyState.offset === 0) {
+                listEl.innerHTML = `<div class="history-empty"><i class="fas fa-inbox"></i> No activity recorded${um_historyState.category === 'all' ? '' : ' in this category'}.</div>`;
+            } else {
+                um_renderHistoryItems(data.items, listEl);
+            }
+
+            um_historyState.offset = data.next_offset;
+            moreBtn.style.display = data.has_more ? '' : 'none';
+        } catch (err) {
+            if (token !== um_historyState.token) return;
+            um_historyError(listEl, 'Could not load history. Please try again.', reset);
+        } finally {
+            if (token === um_historyState.token) {
+                um_historyState.loading = false;
+                moreBtn.disabled = false;
+            }
+        }
     }
 
     // Close modals on outside click
