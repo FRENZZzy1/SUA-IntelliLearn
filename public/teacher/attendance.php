@@ -36,6 +36,21 @@ ORDER BY sec.grade_level, sec.section_name, s.subject_name");
 $stmt->execute([$teacherId, $schoolYearId, $schoolYearId]);
 $classes = $stmt->fetchAll();
 
+// The system keeps a separate classofferings row for every term (TRM 1-3) of
+// the same subject + section. Show each class once and remember every term row
+// that belongs to it, so its attendance rate covers all of them.
+$groupedClasses = [];
+foreach ($classes as $c) {
+    $key = $c['subject_id'] . ':' . $c['section_id'];
+    if (!isset($groupedClasses[$key])) {
+        $c['offering_ids'] = [];
+        $groupedClasses[$key] = $c;
+    }
+    $groupedClasses[$key]['offering_ids'][] = (int) $c['offering_id'];
+}
+$classes = array_values($groupedClasses);
+unset($groupedClasses);
+
 // ---- Pull every attendance record for this teacher's active classes,
 // then bucket by term in PHP (see attendanceTermForDate() above) and
 // apply the term filter before computing any of the aggregates below.
@@ -75,7 +90,7 @@ $attendanceRate = $totalRecords ? round((($present + $late) / $totalRecords) * 1
 // ---- Per-class stats (attendance rate shown against each class row) ----
 $classStats = [];
 foreach ($classes as $class) {
-    $rows = array_filter($attendanceRows, fn($r) => (int) $r['offering_id'] === (int) $class['offering_id']);
+    $rows = array_filter($attendanceRows, fn($r) => in_array((int) $r['offering_id'], $class['offering_ids'], true));
     $total = count($rows);
     $p = $a = $l = $e = 0;
     foreach ($rows as $r) {
