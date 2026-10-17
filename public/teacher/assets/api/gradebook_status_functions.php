@@ -37,7 +37,7 @@ function gb_load_items(PDO $pdo, int $offeringId): array
 
     // Assignments: "submitted" = any submission row that isn't flagged 'missing'.
     $stmt = $pdo->prepare("
-        SELECT a.assignment_id, a.title, a.type, a.points, s.student_id, s.score
+        SELECT a.assignment_id, a.title, a.type, a.points, a.created_at, s.student_id, s.score
         FROM assignments a
         LEFT JOIN (
             SELECT sb.assignment_id, sb.student_id, sb.score
@@ -61,7 +61,7 @@ function gb_load_items(PDO $pdo, int $offeringId): array
         $uid = 'a' . $id;
         if (!isset($seen[$uid])) {
             $seen[$uid] = true;
-            $items[$key][] = ['uid' => $uid, 'title' => $r['title'], 'kind' => 'Assignment', 'type' => $r['type'] ?: 'Activity', 'max' => (float) $r['points']];
+            $items[$key][] = ['uid' => $uid, 'title' => $r['title'], 'kind' => 'Assignment', 'type' => $r['type'] ?: 'Activity', 'max' => (float) $r['points'], 'created_at' => $r['created_at']];
         }
         if ($r['student_id'] !== null) {
             $done[(int) $r['student_id']][$uid] = true;
@@ -74,7 +74,7 @@ function gb_load_items(PDO $pdo, int $offeringId): array
 
     // Quizzes are always Written Works. "Submitted" = a finished attempt.
     $stmt = $pdo->prepare("
-        SELECT q.quiz_id, q.title, x.student_id, x.score, x.max_score,
+        SELECT q.quiz_id, q.title, q.created_at, x.student_id, x.score, x.max_score,
                (SELECT COALESCE(SUM(qq.points), 0) FROM quiz_questions qq WHERE qq.quiz_id = q.quiz_id) AS total_points
         FROM quizzes q
         LEFT JOIN (
@@ -98,7 +98,7 @@ function gb_load_items(PDO $pdo, int $offeringId): array
         $uid = 'q' . $id;
         if (!isset($seen[$uid])) {
             $seen[$uid] = true;
-            $items['ww'][] = ['uid' => $uid, 'title' => $r['title'], 'kind' => 'Quiz', 'type' => 'Written Work', 'max' => (float) $r['total_points']];
+            $items['ww'][] = ['uid' => $uid, 'title' => $r['title'], 'kind' => 'Quiz', 'type' => 'Written Work', 'max' => (float) $r['total_points'], 'created_at' => $r['created_at']];
         }
         if ($r['student_id'] !== null) {
             $done[(int) $r['student_id']][$uid] = true;
