@@ -84,11 +84,16 @@ function setClassArchived(PDO $pdo, int $offeringId, bool $archive): int
     return $stmt->rowCount();
 }
 
+// Archiving is locked while a term is running (restoring is always allowed).
+$archiveLockedTerm = getActiveTerm($pdo);
+
 // courses.php?archive=ID&csrf=...   |   courses.php?restore=ID&csrf=...   (Class List)
 foreach (['archive' => true, 'restore' => false] as $param => $doArchive) {
     if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
         if (!validateCSRFToken($_GET['csrf'] ?? '')) {
             setFlashMessage('error', 'That link expired. Please try again.');
+        } elseif ($doArchive && $archiveLockedTerm !== null) {
+            setFlashMessage('error', archiveBlockedMessage($archiveLockedTerm));
         } else {
             try {
                 $changed = setClassArchived($pdo, (int) $_GET[$param], $doArchive);
@@ -126,6 +131,8 @@ foreach (['archive_section' => true, 'restore_section' => false] as $param => $d
     if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
         if (!validateCSRFToken($_GET['csrf'] ?? '')) {
             setFlashMessage('error', 'That link expired. Please try again.');
+        } elseif ($doArchive && $archiveLockedTerm !== null) {
+            setFlashMessage('error', archiveBlockedMessage($archiveLockedTerm));
         } else {
             try {
                 $stmt = $pdo->prepare($doArchive
@@ -150,6 +157,8 @@ foreach (['archive_subject' => true, 'restore_subject' => false] as $param => $d
     if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
         if (!validateCSRFToken($_GET['csrf'] ?? '')) {
             setFlashMessage('error', 'That link expired. Please try again.');
+        } elseif ($doArchive && $archiveLockedTerm !== null) {
+            setFlashMessage('error', archiveBlockedMessage($archiveLockedTerm));
         } else {
             try {
                 $stmt = $pdo->prepare($doArchive
@@ -800,8 +809,12 @@ $subjectsList = $pdo->query("
                                    'status'        => $course['status'],
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditCourseModal(this)">Update</a>
+                            <?php if ($archiveLockedTerm !== null): ?>
+                            <span class="archive archive-disabled" title="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock"></i> Archive</span>
+                            <?php else: ?>
                             <a class="archive" href="courses.php?archive=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
                                onclick="return confirmArchive('course')">Archive</a>
+                            <?php endif; ?>
                             <?php elseif ($ownArchived): ?>
                             <a class="restore" href="courses.php?restore=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
                                onclick="return confirmArchive('restore-course')">Restore</a>
@@ -874,8 +887,12 @@ $subjectsList = $pdo->query("
                                    'adviser_id'   => $sec['adviser_id'] ? (int) $sec['adviser_id'] : '',
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditSectionModal(this)">Update</a>
+                            <?php if ($archiveLockedTerm !== null): ?>
+                            <span class="archive archive-disabled" title="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock"></i> Archive</span>
+                            <?php else: ?>
                             <a class="archive" href="courses.php?archive_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
                                onclick="return confirmArchive('section')">Archive</a>
+                            <?php endif; ?>
                             <?php else: ?>
                             <a class="restore" href="courses.php?restore_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
                                onclick="return confirmArchive('restore-section')">Restore</a>
@@ -946,8 +963,12 @@ $subjectsList = $pdo->query("
                                    'description'  => $subj['description'] ?? '',
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditSubjectModal(this)">Update</a>
+                            <?php if ($archiveLockedTerm !== null): ?>
+                            <span class="archive archive-disabled" title="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock"></i> Archive</span>
+                            <?php else: ?>
                             <a class="archive" href="courses.php?archive_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
                                onclick="return confirmArchive('subject')">Archive</a>
+                            <?php endif; ?>
                             <?php else: ?>
                             <a class="restore" href="courses.php?restore_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
                                onclick="return confirmArchive('restore-subject')">Restore</a>
@@ -1262,7 +1283,7 @@ $subjectsList = $pdo->query("
                 <div class="modal-body">
                     <div class="form-row">
                         <label for="s_section_name">Section Name</label>
-                        <input type="text" id="s_section_name" name="section_name" placeholder="e.g. Rizal" required>
+                        <input type="text" id="s_section_name" name="section_name" placeholder="e.g. Rizal" pattern="[\p{L}\p{N} \-]+" title="Letters, numbers, spaces and dashes (-) only" maxlength="255" required>
                     </div>
 
                     <div class="form-row">
@@ -1316,7 +1337,7 @@ $subjectsList = $pdo->query("
                 <div class="modal-body">
                     <div class="form-row">
                         <label for="es_section_name">Section Name</label>
-                        <input type="text" id="es_section_name" name="section_name" placeholder="e.g. Rizal" required>
+                        <input type="text" id="es_section_name" name="section_name" placeholder="e.g. Rizal" pattern="[\p{L}\p{N} \-]+" title="Letters, numbers, spaces and dashes (-) only" maxlength="255" required>
                     </div>
 
                     <div class="form-row">
@@ -1365,7 +1386,7 @@ $subjectsList = $pdo->query("
                 <div class="modal-body">
                     <div class="form-row">
                         <label for="sub_subject_name">Subject Name</label>
-                        <input type="text" id="sub_subject_name" name="subject_name" placeholder="e.g. Research" required>
+                        <input type="text" id="sub_subject_name" name="subject_name" placeholder="e.g. Research" pattern="[\p{L}\p{N} \-]+" title="Letters, numbers, spaces and dashes (-) only" maxlength="255" required>
                     </div>
 
                     <div class="form-row">
@@ -1399,7 +1420,7 @@ $subjectsList = $pdo->query("
                 <div class="modal-body">
                     <div class="form-row">
                         <label for="esub_subject_name">Subject Name</label>
-                        <input type="text" id="esub_subject_name" name="subject_name" placeholder="e.g. Research" required>
+                        <input type="text" id="esub_subject_name" name="subject_name" placeholder="e.g. Research" pattern="[\p{L}\p{N} \-]+" title="Letters, numbers, spaces and dashes (-) only" maxlength="255" required>
                     </div>
 
                     <div class="form-row">

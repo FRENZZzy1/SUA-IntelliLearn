@@ -28,6 +28,7 @@ $grade_level  = $_POST['grade_level'] ?? '';
 $adviser_id   = $_POST['adviser_id'] ?? '';
 
 if ($section_name === '') $errors[] = 'Please enter a section name.';
+if ($section_name !== '' && (!preg_match('/^[\p{L}\p{N} \-]+$/u', $section_name) || !preg_match('/[\p{L}\p{N}]/u', $section_name))) $errors[] = 'Section name can only contain letters, numbers, spaces and dashes (-).';
 if (!in_array((string) $grade_level, ['7', '8', '9', '10', '11', '12'], true)) $errors[] = 'Please choose a grade level.';
 if ($adviser_id !== '' && !ctype_digit((string) $adviser_id)) $errors[] = 'Invalid adviser selected.';
 

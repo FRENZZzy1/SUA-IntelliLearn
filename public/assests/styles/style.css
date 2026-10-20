@@ -643,16 +643,10 @@ body::before {
     gap: 6px;
 }
 
-.contact-numbers a {
+.contact-numbers span {
     color: var(--secondary-green);
-    text-decoration: none;
     font-size: 13px;
     font-weight: 500;
-    transition: color 0.3s;
-}
-
-.contact-numbers a:hover {
-    color: var(--primary-green);
 }
 
 .contact-numbers i {

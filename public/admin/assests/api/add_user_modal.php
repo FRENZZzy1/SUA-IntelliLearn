@@ -220,8 +220,15 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                     <div class="aum-row" id="aumPasswordRow">
                         <div class="aum-group">
                             <label id="aumPasswordLabel">Password <span class="aum-req">*</span> <small>(min 8 characters, 1 uppercase, 1 special character)</small></label>
-                            <div class="aum-input-wrap"><i class="fas fa-key aum-input-icon"></i><input type="password" name="password" id="aumStaffPassword" class="aum-control" placeholder="Enter secure password" minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" data-staff-required></div>
+                            <div class="aum-input-wrap aum-has-eye"><i class="fas fa-key aum-input-icon"></i><input type="password" name="password" id="aumStaffPassword" class="aum-control" placeholder="Enter secure password" minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}" autocomplete="new-password" data-staff-required><button type="button" class="aum-eye-btn" data-eye-for="aumStaffPassword" title="Show password" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
                             <small id="aumTeacherPasswordHint" style="display:none;" class="aum-help-text"><i class="fas fa-envelope"></i> Teachers set their password through a secure link sent to their email.</small>
+                        </div>
+                    </div>
+                    <div class="aum-row" id="aumPasswordConfirmRow">
+                        <div class="aum-group">
+                            <label id="aumPasswordConfirmLabel">Confirm Password <span class="aum-req">*</span></label>
+                            <div class="aum-input-wrap aum-has-eye"><i class="fas fa-key aum-input-icon"></i><input type="password" name="password_confirm" id="aumStaffPasswordConfirm" class="aum-control" placeholder="Re-enter the password" autocomplete="new-password"><button type="button" class="aum-eye-btn" data-eye-for="aumStaffPasswordConfirm" title="Show password" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
+                            <small id="aumPasswordMatchHint" class="aum-help-text" style="display:none;"></small>
                         </div>
                     </div>
                 </div>
@@ -375,6 +382,12 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
     background: #fafbfc; transition: all 0.2s ease;
 }
 .aum-control::placeholder { color: #b0b8c4; }
+.aum-has-eye .aum-control { padding-right: 44px; }
+.aum-eye-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: none; background: none; border-radius: 8px; color: #9ca3af; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; transition: color 0.2s ease, background 0.2s ease; }
+.aum-eye-btn:hover { color: #1a5c3a; background: rgba(26,92,58,0.08); }
+.aum-eye-btn:focus-visible { outline: 2px solid #1a5c3a; outline-offset: 1px; }
+.aum-help-text.match-ok { color: #16a34a; }
+.aum-help-text.match-bad { color: #dc2626; }
 .aum-control:hover { border-color: #c5d5cb; background: #f8faf9; }
 .aum-control:focus { outline: none; border-color: #1a5c3a; background: #ffffff; box-shadow: 0 0 0 4px rgba(26,92,58,0.1); }
 .aum-control:focus + .aum-input-icon, .aum-input-wrap:focus-within .aum-input-icon { color: #1a5c3a; }
@@ -547,6 +560,13 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
         if (passwordLabel) passwordLabel.style.display = isTeacher ? 'none' : '';
         if (passwordHint) passwordHint.style.display = isTeacher ? '' : 'none';
     }
+    var confirmRow = document.getElementById('aumPasswordConfirmRow');
+    var confirmInput = document.getElementById('aumStaffPasswordConfirm');
+    if (confirmRow && confirmInput) {
+        confirmRow.style.display = isAdmin ? '' : 'none';
+        confirmInput.required = isAdmin;
+        confirmInput.disabled = !isAdmin;
+    }
 
     document.querySelectorAll('#aumOverlay [data-teacher-required]').forEach(function (i) {
         i.required = isTeacher;
@@ -560,6 +580,8 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
     function aumResetForm() {
         var form = document.getElementById('aumForm');
         form.reset();
+        document.querySelectorAll('#aumOverlay .aum-eye-btn').forEach(function (b) { aumSetEye(b, false); });
+        aumCheckPasswordMatch();
         var alertBox = document.getElementById('aumAlert');
         alertBox.className = 'aum-alert';
         alertBox.innerHTML = '';
@@ -594,9 +616,53 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
         input.addEventListener('blur', function () { aumValidatePhilippineMobile(input); });
     });
 
+    // Show / hide password (eye icon) for the password + confirm fields.
+    function aumSetEye(btn, show) {
+        var input = document.getElementById(btn.getAttribute('data-eye-for'));
+        if (!input) return;
+        input.type = show ? 'text' : 'password';
+        btn.querySelector('i').className = 'fas ' + (show ? 'fa-eye-slash' : 'fa-eye');
+        var t = show ? 'Hide password' : 'Show password';
+        btn.title = t;
+        btn.setAttribute('aria-label', t);
+    }
+    document.querySelectorAll('#aumOverlay .aum-eye-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var input = document.getElementById(btn.getAttribute('data-eye-for'));
+            aumSetEye(btn, input && input.type === 'password');
+        });
+    });
+
+    // Live "passwords match" check on the confirm field.
+    function aumCheckPasswordMatch() {
+        var pw = document.getElementById('aumStaffPassword');
+        var cf = document.getElementById('aumStaffPasswordConfirm');
+        var hint = document.getElementById('aumPasswordMatchHint');
+        if (!pw || !cf || !hint) return true;
+        if (cf.disabled || cf.value === '') {
+            cf.setCustomValidity('');
+            hint.style.display = 'none';
+            hint.className = 'aum-help-text';
+            return true;
+        }
+        var ok = pw.value === cf.value;
+        cf.setCustomValidity(ok ? '' : 'Passwords do not match.');
+        hint.style.display = '';
+        hint.className = 'aum-help-text ' + (ok ? 'match-ok' : 'match-bad');
+        hint.innerHTML = ok
+            ? '<i class="fas fa-check-circle"></i> Passwords match.'
+            : '<i class="fas fa-exclamation-circle"></i> Passwords do not match.';
+        return ok;
+    }
+    ['aumStaffPassword', 'aumStaffPasswordConfirm'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('input', aumCheckPasswordMatch);
+    });
+
     document.getElementById('aumForm').addEventListener('submit', function (e) {
         e.preventDefault();
         var form = e.target;
+        aumCheckPasswordMatch();
 
         var mobileValid = true;
         document.querySelectorAll('#aumOverlay input[data-ph-mobile]').forEach(function (input) {

@@ -270,6 +270,19 @@ function resolveCurrentTerm(array $intervals, ?DateTime $onDate = null) {
     return null;
 }
 
+/**
+ * The term that is running today (e.g. 'TRM 2'), or null when today is not
+ * inside any configured term interval. While a term is active, archiving
+ * classes, sections and subjects is disabled (restoring is still allowed).
+ */
+function getActiveTerm($pdo) {
+    return resolveCurrentTerm(getTermIntervals($pdo));
+}
+
+function archiveBlockedMessage($activeTerm) {
+    return 'Archiving is disabled while a term is active (' . $activeTerm . ' is currently running). You can archive classes, sections and subjects once the term has ended.';
+}
+
 function syncCourseTermsToCurrent($pdo) {
     $currentTerm = resolveCurrentTerm(getTermIntervals($pdo));
     if ($currentTerm === null) return;

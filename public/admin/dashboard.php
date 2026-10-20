@@ -323,7 +323,12 @@ $usageStats = get_system_usage_stats($pdo);
                                         <div class="table-actions">
                                             <button class="btn-view" onclick="openViewStudentsModal(<?php echo (int) $c['offering_id']; ?>)">View Students</button>
                                             <button class="btn-edit" onclick="editCourseOffering(<?php echo (int) $c['offering_id']; ?>)">Update</button>
+                                            <?php $archiveLockedTerm = $archiveLockedTerm ?? getActiveTerm($pdo); ?>
+                                            <?php if ($archiveLockedTerm !== null): ?>
+                                            <button class="btn-deactivate" disabled style="opacity:.5;cursor:not-allowed;" title="Archiving is disabled while <?php echo htmlspecialchars((string) $archiveLockedTerm); ?> is active"><i class="fas fa-lock"></i> Archive</button>
+                                            <?php else: ?>
                                             <button class="btn-deactivate" onclick="deleteCourseOffering(<?php echo (int) $c['offering_id']; ?>, this)">Archive</button>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>

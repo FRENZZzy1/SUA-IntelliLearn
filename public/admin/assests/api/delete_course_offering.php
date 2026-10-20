@@ -26,6 +26,14 @@ if (!validateCSRFToken($_POST['csrf'] ?? '')) {
     exit();
 }
 
+// Archiving is locked while a term is running.
+$activeTerm = getActiveTerm($pdo);
+if ($activeTerm !== null) {
+    http_response_code(409);
+    echo json_encode(['success' => false, 'errors' => [archiveBlockedMessage($activeTerm)]]);
+    exit();
+}
+
 $id = (int) ($_POST['offering_id'] ?? 0);
 
 if ($id <= 0) {

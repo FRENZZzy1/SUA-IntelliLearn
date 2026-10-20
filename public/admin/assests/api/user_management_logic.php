@@ -4,6 +4,16 @@ requireAdmin();
 
 $flash = getFlashMessage();
 
+// The page is split into three categories (tabs): Admins, Teachers, Students.
+// There is no "all roles" view — an unknown/missing ?role= falls back to Admins.
+$um_roles = ['admin', 'teacher', 'student'];
+$role_filter = $_GET['role'] ?? 'admin';
+if (!in_array($role_filter, $um_roles, true)) {
+    $role_filter = 'admin';
+}
+// After any POST action, send the admin back to the category they were on.
+$um_return = $_SERVER['PHP_SELF'] . '?role=' . $role_filter;
+
 // ============================================================
 // HANDLE ALL FORM SUBMISSIONS (POST requests)
 // ============================================================
@@ -12,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate CSRF token
     if (!isset($_POST['csrf_token']) || !validateCSRFToken($_POST['csrf_token'])) {
         setFlashMessage('error', 'Invalid security token. Please try again.');
-        header("Location: " . $_SERVER['PHP_SELF']);
+        header("Location: " . $um_return);
         exit();
     }
 
@@ -115,7 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 setFlashMessage('error', implode(" ", $errors));
             }
-            header("Location: " . $_SERVER['PHP_SELF']);
+            header("Location: " . $um_return);
             exit();
         }
 
@@ -133,7 +143,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $contact = validatePhilippineMobileNumber($contact);
             } catch (InvalidArgumentException $e) {
                 setFlashMessage('error', $e->getMessage());
-                header("Location: " . $_SERVER['PHP_SELF']);
+                header("Location: " . $um_return);
                 exit();
             }
         }
@@ -247,7 +257,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             setFlashMessage('error', implode(" ", $errors));
         }
-        header("Location: " . $_SERVER['PHP_SELF']);
+        header("Location: " . $um_return);
         exit();
     }
 
@@ -280,7 +290,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user_id <= 0) {
             setFlashMessage('error', "Invalid user ID.");
-            header("Location: " . $_SERVER['PHP_SELF']);
+            header("Location: " . $um_return);
             exit();
         }
 
@@ -289,7 +299,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $guardian_contact = validatePhilippineMobileNumber($guardian_contact);
             } catch (InvalidArgumentException $e) {
                 setFlashMessage('error', $e->getMessage());
-                header("Location: " . $_SERVER['PHP_SELF']);
+                header("Location: " . $um_return);
                 exit();
             }
         }
@@ -308,7 +318,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!empty($errors)) {
                 setFlashMessage('error', implode(" ", $errors));
-                header("Location: " . $_SERVER['PHP_SELF']);
+                header("Location: " . $um_return);
                 exit();
             }
 
@@ -317,7 +327,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $check->execute([$lrn, $user_id]);
             if ($check->fetch()) {
                 setFlashMessage('error', "Another student already has this LRN.");
-                header("Location: " . $_SERVER['PHP_SELF']);
+                header("Location: " . $um_return);
                 exit();
             }
         }
@@ -334,7 +344,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!empty($errors)) {
                 setFlashMessage('error', implode(" ", $errors));
-                header("Location: " . $_SERVER['PHP_SELF']);
+                header("Location: " . $um_return);
                 exit();
             }
         }
@@ -347,7 +357,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $check->execute([$email, $user_id]);
             if ($check->fetch()) {
                 setFlashMessage('error', "This email is already in use as a login username by another account.");
-                header("Location: " . $_SERVER['PHP_SELF']);
+                header("Location: " . $um_return);
                 exit();
             }
             $new_username = $email;
@@ -429,7 +439,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->rollBack();
             setFlashMessage('error', "Database error: " . $e->getMessage());
         }
-        header("Location: " . $_SERVER['PHP_SELF']);
+        header("Location: " . $um_return);
         exit();
     }
 
@@ -439,14 +449,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($user_id <= 0) {
             setFlashMessage('error', "Invalid user ID.");
-            header("Location: " . $_SERVER['PHP_SELF']);
+            header("Location: " . $um_return);
             exit();
         }
 
         // Prevent deleting self
         if ($user_id == $_SESSION['user_id']) {
             setFlashMessage('error', "You cannot delete your own account.");
-            header("Location: " . $_SERVER['PHP_SELF']);
+            header("Location: " . $um_return);
             exit();
         }
 
@@ -458,7 +468,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (PDOException $e) {
             setFlashMessage('error', "Database error: " . $e->getMessage());
         }
-        header("Location: " . $_SERVER['PHP_SELF']);
+        header("Location: " . $um_return);
         exit();
     }
 }
@@ -467,11 +477,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // FETCH USERS FROM DATABASE
 // ============================================================
 $search = trim($_GET['search'] ?? '');
-$role_filter = $_GET['role'] ?? 'all';
 $status_filter = $_GET['status'] ?? 'all';
 $department_filter = trim($_GET['department'] ?? 'all');
 $grade_level_filter = trim($_GET['grade_level'] ?? 'all');
 $gender_filter = $_GET['gender'] ?? 'all';
+
+// Category-specific filters only exist inside their own category, so a stale
+// ?department= / ?grade_level= / ?gender= from another tab is ignored.
+if ($role_filter !== 'teacher') { $department_filter = 'all'; }
+if ($role_filter !== 'student') { $grade_level_filter = 'all'; $gender_filter = 'all'; }
 $sort = $_GET['sort'] ?? 'newest';
 $page = max(1, intval($_GET['page'] ?? 1));
 $per_page = 10;
@@ -490,10 +504,9 @@ if (!empty($search)) {
     $params[] = $search_param;
 }
 
-if ($role_filter !== 'all' && in_array($role_filter, ['admin', 'teacher', 'student'])) {
-    $where_clauses[] = "u.role = ?";
-    $params[] = $role_filter;
-}
+// Always scoped to the active category (Admins / Teachers / Students).
+$where_clauses[] = "u.role = ?";
+$params[] = $role_filter;
 
 if ($status_filter !== 'all' && in_array($status_filter, ['active', 'suspended'])) {
     $where_clauses[] = "u.status = ?";

@@ -144,6 +144,7 @@ $employment_status = trim($_POST['employment_status'] ?? '');
 $position          = trim($_POST['position'] ?? '');
 $access_level      = trim($_POST['access_level'] ?? '');
 $password          = $_POST['password'] ?? '';
+$password_confirm  = $_POST['password_confirm'] ?? '';
 
 $fullname = $role === 'admin'
     ? $email
@@ -160,6 +161,9 @@ if ($role === 'admin') {
         $errors[] = "Password is required.";
     } else {
         $errors = array_merge($errors, validate_password_policy($password));
+        if (!hash_equals($password, (string)$password_confirm)) {
+            $errors[] = "Passwords do not match.";
+        }
     }
 }
 if (!in_array($role, ['admin', 'teacher'])) $errors[] = "Invalid role selected.";

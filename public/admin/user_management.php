@@ -286,25 +286,43 @@ include 'assests/api/access_permissions_modal.php';
         </div>
     </div>
 
+    <!-- Category Tabs (Admins / Teachers / Students) -->
+    <?php
+        $um_tab_keep = array_filter([
+            'search' => $search,
+            'status' => $status_filter !== 'all' ? $status_filter : '',
+            'sort'   => $sort !== 'newest' ? $sort : '',
+        ], fn($v) => $v !== '');
+        $um_tabs = [
+            'admin'   => ['label' => 'Admins',   'icon' => 'fa-user-shield',        'count' => $stats['admins']],
+            'teacher' => ['label' => 'Teachers', 'icon' => 'fa-chalkboard-teacher', 'count' => $stats['teachers']],
+            'student' => ['label' => 'Students', 'icon' => 'fa-user-graduate',      'count' => $stats['students']],
+        ];
+    ?>
+    <div class="um-tabs" id="umTabs">
+        <?php foreach ($um_tabs as $tab_key => $tab): ?>
+        <a href="?<?= http_build_query(array_merge(['role' => $tab_key], $um_tab_keep)) ?>"
+           class="um-tab <?= $role_filter === $tab_key ? 'active' : '' ?>">
+            <i class="fas <?= $tab['icon'] ?>"></i> <?= $tab['label'] ?>
+            <span class="count"><?= number_format($tab['count']) ?></span>
+        </a>
+        <?php endforeach; ?>
+    </div>
+
     <!-- Filter / Search Toolbar -->
     <form method="GET" action="" class="toolbar-row" id="searchForm">
+        <input type="hidden" name="role" value="<?= clean($role_filter) ?>">
         <div class="search-box">
             <i class="fas fa-search"></i>
-            <input type="text" name="search" placeholder="Search users by name or email..." 
+            <input type="text" name="search" placeholder="Search <?= strtolower($um_tabs[$role_filter]['label']) ?> by name or email..." 
                    value="<?= clean($search) ?>" onkeydown="if(event.key==='Enter') this.form.submit()">
         </div>
-        <select name="role" class="select-filter" onchange="this.form.submit()">
-            <option value="all" <?= $role_filter === 'all' ? 'selected' : '' ?>>All Roles</option>
-            <option value="student" <?= $role_filter === 'student' ? 'selected' : '' ?>>Students</option>
-            <option value="teacher" <?= $role_filter === 'teacher' ? 'selected' : '' ?>>Teachers</option>
-            <option value="admin" <?= $role_filter === 'admin' ? 'selected' : '' ?>>Admins</option>
-        </select>
         <select name="status" class="select-filter" onchange="this.form.submit()">
             <option value="all" <?= $status_filter === 'all' ? 'selected' : '' ?>>All Status</option>
             <option value="active" <?= $status_filter === 'active' ? 'selected' : '' ?>>Active</option>
             <option value="suspended" <?= $status_filter === 'suspended' ? 'selected' : '' ?>>Suspended</option>
         </select>
-        <?php if ($role_filter === 'all' || $role_filter === 'teacher'): ?>
+        <?php if ($role_filter === 'teacher'): ?>
         <select name="department" class="select-filter" onchange="this.form.submit()">
             <option value="all" <?= $department_filter === 'all' ? 'selected' : '' ?>>All Departments</option>
             <?php foreach ($departments as $dept): ?>
@@ -312,15 +330,13 @@ include 'assests/api/access_permissions_modal.php';
             <?php endforeach; ?>
         </select>
         <?php endif; ?>
-        <?php if ($role_filter === 'all' || $role_filter === 'student'): ?>
+        <?php if ($role_filter === 'student'): ?>
         <select name="grade_level" class="select-filter" onchange="this.form.submit()">
             <option value="all" <?= $grade_level_filter === 'all' ? 'selected' : '' ?>>All Year Levels</option>
             <?php foreach ($grade_levels as $gl): ?>
             <option value="<?= clean($gl) ?>" <?= (string)$grade_level_filter === (string)$gl ? 'selected' : '' ?>>Grade <?= clean($gl) ?></option>
             <?php endforeach; ?>
         </select>
-        <?php endif; ?>
-        <?php if ($role_filter === 'all' || $role_filter === 'student'): ?>
         <select name="gender" class="select-filter" onchange="this.form.submit()">
             <option value="all" <?= $gender_filter === 'all' ? 'selected' : '' ?>>All Genders</option>
             <option value="Male" <?= $gender_filter === 'Male' ? 'selected' : '' ?>>Male</option>
@@ -334,8 +350,8 @@ include 'assests/api/access_permissions_modal.php';
             <option value="name_desc" <?= $sort === 'name_desc' ? 'selected' : '' ?>>Name Z–A</option>
             <option value="last_active" <?= $sort === 'last_active' ? 'selected' : '' ?>>Last Active</option>
         </select>
-        <?php if (!empty($search) || $role_filter !== 'all' || $status_filter !== 'all' || $department_filter !== 'all' || $grade_level_filter !== 'all' || $gender_filter !== 'all'): ?>
-        <a href="?" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
+        <?php if (!empty($search) || $status_filter !== 'all' || $department_filter !== 'all' || $grade_level_filter !== 'all' || $gender_filter !== 'all'): ?>
+        <a href="?role=<?= clean($role_filter) ?>" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
             <i class="fas fa-times"></i> Clear Filters
         </a>
         <?php endif; ?>
@@ -356,7 +372,7 @@ include 'assests/api/access_permissions_modal.php';
     </div>
 
     <?php else: ?>
-    <!-- ============== USERS TABLE VIEW (all roles) ============== -->
+    <!-- ============== USERS TABLE VIEW (active category) ============== -->
     <div class="users-table-wrap">
         <table class="users-table">
             <thead>
@@ -364,22 +380,11 @@ include 'assests/api/access_permissions_modal.php';
                     <th class="th-user">User</th>
                     <th>Role</th>
                     <th>Email</th>
-                    <th><?php
-                        $effective_role = $role_filter;
-                        if ($effective_role === 'all') {
-                            if ($department_filter !== 'all' && $department_filter !== '') {
-                                $effective_role = 'teacher';
-                            } elseif ($grade_level_filter !== 'all' && $grade_level_filter !== '') {
-                                $effective_role = 'student';
-                            }
-                        }
-                        echo match($effective_role) {
-                            'student' => 'LRN',
-                            'teacher' => 'Department',
-                            'admin' => 'Position',
-                            default => 'Details',
-                        };
-                    ?></th>
+                    <th><?= match($role_filter) {
+                        'student' => 'LRN',
+                        'teacher' => 'Department',
+                        default   => 'Position',
+                    } ?></th>
                     <th>Status</th>
                     <th>Last Active</th>
                     <th class="th-actions">Actions</th>

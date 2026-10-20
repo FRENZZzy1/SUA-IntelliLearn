@@ -802,3 +802,20 @@ body {
     background: rgba(34, 197, 94, 0.12);
     color: var(--success);
 }
+
+/* Archive is locked while a term is active */
+.row-actions .archive-disabled {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: #9ca3af;
+    cursor: not-allowed;
+    padding: 4px 8px;
+    border-radius: 6px;
+    opacity: 0.8;
+    user-select: none;
+}
+
+.row-actions .archive-disabled i {
+    font-size: 0.7rem;
+}

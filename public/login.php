@@ -409,8 +409,8 @@ if(isset($_POST['login'])){
                 <div class="login-footer">
                     <p>Need help? Contact us</p>
                     <div class="contact-numbers">
-                        <a href="tel:09566354765"><i class="fas fa-phone"></i> 0956-635-4765</a>
-                        <a href="tel:09213718889"><i class="fas fa-phone"></i> 0921-371-8889</a>
+                        <span><i class="fas fa-phone"></i> 0956-635-4765</span>
+                        <span><i class="fas fa-phone"></i> 0921-371-8889</span>
                     </div>
                 </div>
 
