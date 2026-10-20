@@ -178,6 +178,7 @@ if ($contact !== '') {
 if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_status, ['full-time', 'part-time'])) {
     $errors[] = "Invalid employment status selected.";
 }
+$fullAccessDays = null;
 if ($role === 'admin') {
     if (!in_array($position, ['principal', 'registrar', 'it_administrator'])) $errors[] = "Invalid position selected.";
     if (!in_array($access_level, ['full', 'limited', 'read_only'])) $errors[] = "Invalid access level selected.";
@@ -185,6 +186,8 @@ if ($role === 'admin') {
         $decodedPermissions = json_decode($_POST['permissions_json'] ?? '', true);
         if (!is_array($decodedPermissions) || empty($decodedPermissions)) $errors[] = "Select at least one module permission for this admin account.";
     }
+    // Non-Principal admins can only be given Full access for a limited number of days.
+    $fullAccessDays = validateFullAccessDays($access_level, $position, $_POST['full_access_days'] ?? '', false, $errors);
 }
 
 if (empty($errors)) {
@@ -247,6 +250,7 @@ try {
         ");
         $stmt->execute([$user_id, $email, $access_level, $position]);
         saveAdminPermissions($pdo, (int)$user_id, $access_level, $_POST['permissions_json'] ?? '');
+        saveAdminFullAccessExpiry($pdo, (int)$user_id, $access_level, $position, $fullAccessDays);
     }
 
     $pdo->commit();

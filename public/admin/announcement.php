@@ -200,6 +200,7 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
 <body>
 
 <?php include '../../includes/admin_sidebar.php';  ?>
+<?php include '../../includes/admin_header.php'; ?>
 
 <div class="main-content" id="mainContent">
 

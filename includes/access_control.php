@@ -42,6 +42,104 @@ function ensureAdminPermissionsTable(PDO $pdo): void {
     }
 }
 
+/**
+ * Temporary Full access.
+ *
+ * A Full-access admin who is NOT the Principal must be given a limited number of
+ * days (admin.full_access_expires_at). When that moment passes the account is
+ * downgraded to Read Only automatically; the Principal keeps Full access for good.
+ */
+if (!defined('SUA_FULL_ACCESS_MAX_DAYS')) define('SUA_FULL_ACCESS_MAX_DAYS', 365);
+if (!defined('SUA_FULL_ACCESS_FALLBACK_LEVEL')) define('SUA_FULL_ACCESS_FALLBACK_LEVEL', 'read_only');
+
+/** Adds admin.full_access_expires_at when missing. Returns true if the column is usable. */
+function ensureAdminFullAccessExpiry(PDO $pdo): bool {
+    static $available = null;
+    if ($available !== null) return $available;
+    try {
+        $has = $pdo->query("SHOW COLUMNS FROM admin LIKE 'full_access_expires_at'")->fetch();
+        if (!$has) {
+            $pdo->exec("ALTER TABLE admin ADD COLUMN full_access_expires_at DATETIME NULL DEFAULT NULL AFTER access_level");
+        }
+        return $available = true;
+    } catch (Throwable $e) {
+        // No DDL permission: run admin_full_access_expiry.sql by hand.
+        return $available = false;
+    }
+}
+
+/** Downgrades every admin whose temporary Full access has lapsed. */
+function expireDueFullAccess(PDO $pdo): void {
+    static $done = false;
+    if ($done) return;
+    $done = true;
+    if (!ensureAdminFullAccessExpiry($pdo)) return;
+    try {
+        $ids = $pdo->query("SELECT user_id FROM admin
+                            WHERE access_level = 'full'
+                              AND full_access_expires_at IS NOT NULL
+                              AND full_access_expires_at <= NOW()")->fetchAll(PDO::FETCH_COLUMN);
+        if (!$ids) return;
+        $in = implode(',', array_map('intval', $ids));
+        $fallback = SUA_FULL_ACCESS_FALLBACK_LEVEL;
+        $pdo->exec("UPDATE admin SET access_level = " . $pdo->quote($fallback) . ", full_access_expires_at = NULL WHERE user_id IN ($in)");
+        // Full access had stored Read & Write on every module; keep the modules visible but read-only.
+        $pdo->exec("UPDATE admin_permissions SET permission = 'read' WHERE user_id IN ($in)");
+    } catch (Throwable $e) {
+        // Fail closed below: adminAccessLevel() also refuses a lapsed Full level.
+    }
+}
+
+/** Only non-Principal admins with Full access get a time limit. */
+function adminFullAccessNeedsExpiry(string $accessLevel, string $position): bool {
+    return $accessLevel === 'full' && $position !== 'principal';
+}
+
+/**
+ * Validates the "full access for N days" input.
+ * Returns N, 0 = keep the current expiry (only when $canKeep), or null = nothing to set.
+ */
+function validateFullAccessDays(string $accessLevel, string $position, $raw, bool $canKeep, array &$errors): ?int {
+    if (!adminFullAccessNeedsExpiry($accessLevel, $position)) return null;
+    $raw = trim((string)$raw);
+    if ($raw === '') {
+        if ($canKeep) return 0;
+        $errors[] = "Enter how many days this admin keeps Full access.";
+        return null;
+    }
+    if (!ctype_digit($raw) || (int)$raw < 1 || (int)$raw > SUA_FULL_ACCESS_MAX_DAYS) {
+        $errors[] = "Full access duration must be between 1 and " . SUA_FULL_ACCESS_MAX_DAYS . " days.";
+        return null;
+    }
+    return (int)$raw;
+}
+
+/** Stores (or clears) the expiry that matches the saved access level / position. */
+function saveAdminFullAccessExpiry(PDO $pdo, int $userId, string $accessLevel, string $position, ?int $days): void {
+    if (!ensureAdminFullAccessExpiry($pdo)) return;
+    if (!adminFullAccessNeedsExpiry($accessLevel, $position)) {
+        $pdo->prepare("UPDATE admin SET full_access_expires_at = NULL WHERE user_id = ?")->execute([$userId]);
+    } elseif ($days !== null && $days > 0) {
+        $pdo->prepare("UPDATE admin SET full_access_expires_at = DATE_ADD(NOW(), INTERVAL ? DAY) WHERE user_id = ?")
+            ->execute([$days, $userId]);
+    } // $days === 0: keep the existing expiry untouched
+}
+
+/** Expiry info for display: ['expires_at' => 'Y-m-d H:i:s', 'days_left' => int] or null. */
+function adminFullAccessInfo(PDO $pdo, int $userId): ?array {
+    if (!ensureAdminFullAccessExpiry($pdo)) return null;
+    try {
+        $stmt = $pdo->prepare("SELECT full_access_expires_at AS expires_at,
+                                      GREATEST(0, CEIL(TIMESTAMPDIFF(MINUTE, NOW(), full_access_expires_at) / 1440)) AS days_left
+                               FROM admin WHERE user_id = ? AND access_level = 'full' AND full_access_expires_at IS NOT NULL");
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? ['expires_at' => $row['expires_at'], 'days_left' => (int)$row['days_left']] : null;
+    } catch (Throwable $e) {
+        return null;
+    }
+}
+
 function adminAccessLevel(): string {
     global $pdo;
     static $level = null;
@@ -52,9 +150,16 @@ function adminAccessLevel(): string {
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT access_level FROM admin WHERE user_id = ? LIMIT 1");
+        $hasExpiry = ensureAdminFullAccessExpiry($pdo);
+        if ($hasExpiry) expireDueFullAccess($pdo);
+        $stmt = $pdo->prepare($hasExpiry
+            ? "SELECT access_level, (full_access_expires_at IS NOT NULL AND full_access_expires_at <= NOW()) AS lapsed FROM admin WHERE user_id = ? LIMIT 1"
+            : "SELECT access_level, 0 AS lapsed FROM admin WHERE user_id = ? LIMIT 1");
         $stmt->execute([(int)$_SESSION['user_id']]);
-        $value = $stmt->fetchColumn();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $value = $row['access_level'] ?? null;
+        // A lapsed temporary Full access never grants Full, even if the downgrade write failed.
+        if ($value === 'full' && !empty($row['lapsed'])) $value = SUA_FULL_ACCESS_FALLBACK_LEVEL;
         // Fail closed: an unknown / missing level must never grant more than read access.
         return $level = in_array($value, ['full', 'limited', 'read_only'], true) ? $value : 'read_only';
     } catch (Throwable $e) {

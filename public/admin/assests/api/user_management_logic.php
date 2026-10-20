@@ -179,9 +179,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($role === 'teacher' && $employment_status !== '' && !in_array($employment_status, ['full-time', 'part-time'])) {
             $errors[] = "Invalid employment status selected.";
         }
+        $fullAccessDays = null;
         if ($role === 'admin') {
             if (!in_array($position, ['principal', 'registrar', 'it_administrator'])) $errors[] = "Invalid position selected.";
             if (!in_array($access_level, ['full', 'limited', 'read_only'])) $errors[] = "Invalid access level selected.";
+            // Non-Principal admins can only be given Full access for a limited number of days.
+            $fullAccessDays = validateFullAccessDays($access_level, $position, $_POST['full_access_days'] ?? '', false, $errors);
         }
 
         // Friendly duplicate-email check (teachers.email and admin.email are UNIQUE)
@@ -246,6 +249,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ");
                     $stmt->execute([$user_id, $email, $access_level, $position]);
                     saveAdminPermissions($pdo, (int)$user_id, $access_level, $_POST['permissions_json'] ?? '');
+                    saveAdminFullAccessExpiry($pdo, (int)$user_id, $access_level, $position, $fullAccessDays);
                 }
 
                 $pdo->commit();
@@ -333,6 +337,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         // Validate admin-specific fields before touching the database
+        $fullAccessDays = null;
         if ($role === 'admin') {
             $errors = [];
             if (!in_array($position, ['principal', 'registrar', 'it_administrator'])) $errors[] = "Invalid position selected.";
@@ -341,6 +346,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $decodedPermissions = json_decode($_POST['permissions_json'] ?? '', true);
                 if (!is_array($decodedPermissions) || empty($decodedPermissions)) $errors[] = "Select at least one module permission for this admin account.";
             }
+
+            // Temporary Full access: current state decides whether a blank duration may "keep current".
+            ensureAdminFullAccessExpiry($pdo);
+            $curAdmin = null;
+            try {
+                $curStmt = $pdo->prepare("SELECT access_level, position, full_access_expires_at FROM admin WHERE user_id = ?");
+                $curStmt->execute([$user_id]);
+                $curAdmin = $curStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+            } catch (Throwable $e) { /* column missing: treated as no current expiry */ }
+            $canKeepExpiry = $curAdmin && $curAdmin['access_level'] === 'full' && !empty($curAdmin['full_access_expires_at']);
+
+            // An admin must not extend or raise their own access from the edit form.
+            if ($curAdmin && $user_id == $_SESSION['user_id'] && (
+                    $access_level !== $curAdmin['access_level']
+                    || $position !== $curAdmin['position']
+                    || trim($_POST['full_access_days'] ?? '') !== ''
+                )) {
+                $errors[] = "You cannot change your own position, access level or Full access duration.";
+            }
+            $fullAccessDays = validateFullAccessDays($access_level, $position, $_POST['full_access_days'] ?? '', $canKeepExpiry, $errors);
 
             if (!empty($errors)) {
                 setFlashMessage('error', implode(" ", $errors));
@@ -431,6 +456,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $pdo->prepare("UPDATE Admin SET email = ?, access_level = ?, position = ? WHERE user_id = ?");
                 $stmt->execute([$email, $access_level, $position, $user_id]);
                 saveAdminPermissions($pdo, (int)$user_id, $access_level, $_POST['permissions_json'] ?? '');
+                saveAdminFullAccessExpiry($pdo, (int)$user_id, $access_level, $position, $fullAccessDays);
             }
 
             $pdo->commit();
@@ -578,6 +604,9 @@ $sql = "SELECT
     s.guardian_name,
     s.guardian_contact,
     a.access_level as admin_access_level,
+    a.full_access_expires_at as admin_full_expires,
+    CASE WHEN a.full_access_expires_at IS NULL THEN NULL
+         ELSE GREATEST(0, CEIL(TIMESTAMPDIFF(MINUTE, NOW(), a.full_access_expires_at) / 1440)) END as admin_full_days_left,
     a.position as admin_position,
    '{}' AS admin_permissions,
     s.year_level as year_level,
@@ -592,6 +621,10 @@ LIMIT ? OFFSET ?";
 
 $params[] = $per_page;
 $params[] = $offset;
+
+// Make sure lapsed temporary Full access has been downgraded before the list is shown.
+ensureAdminFullAccessExpiry($pdo);
+expireDueFullAccess($pdo);
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

@@ -21,6 +21,7 @@ require_once 'assests/api/user_management_logic.php';
 <body>
 
 <?php include '../../includes/admin_sidebar.php';
+include '../../includes/admin_header.php';
     $aum_endpoint = '/public/admin/assests/api/add_user_handler.php';
 $aum_endpoint = '/SUA-IntelliLearn/public/admin/assests/api/add_user_handler.php';
 include 'assests/api/add_user_modal.php';
@@ -180,6 +181,16 @@ include 'assests/api/access_permissions_modal.php';
                             <option value="limited">Limited</option>
                             <option value="read_only">Read Only</option>
                         </select>
+                    </div>
+                </div>
+
+                <!-- Admin only: temporary Full access duration -->
+                <div class="form-row" id="editFullDaysRow" style="display:none;">
+                    <div class="form-group">
+                        <label>Full Access Duration <small>(days)</small></label>
+                        <input type="number" name="full_access_days" id="editFullDays" class="form-control" min="1" max="365" step="1" placeholder="e.g. 7" disabled>
+                        <small id="editFullDaysHint" data-keep-hint style="display:none;margin-top:6px;color:#6b7280;font-size:.78rem;"></small>
+                        <small style="display:block;margin-top:6px;color:#6b7280;font-size:.78rem;">Full access ends automatically after this many days and the account becomes Read Only. The Principal is not time-limited.</small>
                     </div>
                 </div>
 
@@ -423,6 +434,10 @@ include 'assests/api/access_permissions_modal.php';
                         $position_labels = ['principal' => 'Principal', 'registrar' => 'Registrar', 'it_administrator' => 'IT Administrator'];
                         $position_text = $position_labels[$user['admin_position'] ?? ''] ?? 'IT Administrator';
                         $details_html = '<span class="chip"><i class="fas fa-user-tie"></i> ' . clean($position_text) . '</span>';
+                        if (($user['admin_access_level'] ?? '') === 'full' && !empty($user['admin_full_expires'])) {
+                            $dl = (int)$user['admin_full_days_left'];
+                            $details_html .= ' <span class="chip" title="Full access ends ' . clean(date('M j, Y g:i A', strtotime($user['admin_full_expires']))) . '"><i class="fas fa-hourglass-half"></i> Full access: ' . $dl . ' day' . ($dl === 1 ? '' : 's') . ' left</span>';
+                        }
                     } else {
                         $details_html = '<span class="t-muted">—</span>';
                     }
@@ -433,7 +448,7 @@ include 'assests/api/access_permissions_modal.php';
                     data-role="<?= $user['role'] ?>" data-status="<?= $user['status'] ?>"
                     data-department="<?= clean($user['department']) ?>" data-notes="<?= clean($user['notes']) ?>"
                     data-employment-status="<?= clean($user['employment_status'] ?? '') ?>"
-                    data-position="<?= clean($user['admin_position'] ?? '') ?>" data-access-level="<?= clean($user['admin_access_level'] ?? '') ?>" data-admin-permissions="<?= clean($user['admin_permissions'] ?? '{}') ?>"
+                    data-position="<?= clean($user['admin_position'] ?? '') ?>" data-access-level="<?= clean($user['admin_access_level'] ?? '') ?>" data-admin-permissions="<?= clean($user['admin_permissions'] ?? '{}') ?>" data-full-expires="<?= clean($user['admin_full_expires'] ?? '') ?>" data-full-days-left="<?= clean($user['admin_full_days_left'] ?? '') ?>"
                     data-username="<?= clean($user['username']) ?>" data-created="<?= $user['created_at'] ?>"
                     data-lrn="<?= clean($user['student_lrn'] ?? '') ?>" data-middlename="<?= clean($user['middlename'] ?? '') ?>"
                     data-gender="<?= clean($user['gender'] ?? '') ?>"

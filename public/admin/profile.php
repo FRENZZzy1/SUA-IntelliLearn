@@ -88,6 +88,8 @@ $memberSince = date('F j, Y', strtotime($profile['created_at']));
                                 <div class="meta-content">
                                     <span class="label">Access Level</span>
                                     <span class="value"><?php echo htmlspecialchars(ucfirst(str_replace('_', ' ', $profile['access_level']))); ?></span>
+                                    <?php $__fa = ($profile['access_level'] === 'full') ? adminFullAccessInfo($pdo, (int)$_SESSION['user_id']) : null; ?>
+                                    <?php if ($__fa): ?><span class="label" style="display:block;margin-top:2px;">Full access ends <?php echo htmlspecialchars(date('M j, Y g:i A', strtotime($__fa['expires_at']))); ?> (<?php echo (int)$__fa['days_left']; ?> day<?php echo $__fa['days_left'] === 1 ? '' : 's'; ?> left)</span><?php endif; ?>
                                 </div>
                             </div>
                             <div class="profile-meta-item">

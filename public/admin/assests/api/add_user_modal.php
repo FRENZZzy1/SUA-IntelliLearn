@@ -217,6 +217,13 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                             <div class="aum-input-wrap"><i class="fas fa-lock aum-input-icon"></i><select name="access_level" class="aum-control" data-admin-required><option value="full">Full</option><option value="limited" selected>Limited</option><option value="read_only">Read Only</option></select></div>
                         </div>
                     </div>
+                    <div class="aum-row" id="aumFullDaysRow" style="display:none;">
+                        <div class="aum-group">
+                            <label>Full Access Duration <span class="aum-req">*</span> <small>(days)</small></label>
+                            <div class="aum-input-wrap"><i class="fas fa-hourglass-half aum-input-icon"></i><input type="number" name="full_access_days" class="aum-control" min="1" max="365" step="1" placeholder="e.g. 7" disabled></div>
+                            <small class="aum-help-text"><i class="fas fa-circle-info"></i> Full access ends automatically after this many days and the account becomes Read Only. The Principal is not time-limited.</small>
+                        </div>
+                    </div>
                     <div class="aum-row" id="aumPasswordRow">
                         <div class="aum-group">
                             <label id="aumPasswordLabel">Password <span class="aum-req">*</span> <small>(min 8 characters, 1 uppercase, 1 special character)</small></label>
@@ -575,6 +582,7 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
     document.querySelectorAll('#aumOverlay [data-admin-required]').forEach(function (i) {
         i.required = isAdmin;
     });
+    if (window.syncFullAccessDays) window.syncFullAccessDays('aumForm');
 }
 
     function aumResetForm() {

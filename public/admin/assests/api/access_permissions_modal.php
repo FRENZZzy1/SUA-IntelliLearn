@@ -87,7 +87,29 @@
     }
     openAccessPermissions(formId,level,hidden.value);
   };
+  // Show the "Full Access Duration (days)" field only for a non-Principal admin set to Full.
+  window.syncFullAccessDays=function(formId){
+    const form=document.getElementById(formId);
+    const row=document.getElementById(formId==='aumForm'?'aumFullDaysRow':'editFullDaysRow');
+    const input=form&&form.querySelector('[name="full_access_days"]');
+    if(!form||!row||!input) return;
+    const role=form.querySelector('[name="role"]')?.value;
+    const level=form.querySelector('[name="access_level"]')?.value;
+    const pos=form.querySelector('[name="position"]')?.value;
+    const show=role==='admin'&&level==='full'&&pos!=='principal';
+    const canKeep=form.dataset.canKeepExpiry==='1';
+    row.style.display=show?'':'none';
+    input.disabled=!show;
+    input.required=show&&!canKeep;
+    const keep=row.querySelector('[data-keep-hint]');
+    if(keep) keep.style.display=(show&&canKeep)?'':'none';
+  };
   document.addEventListener('DOMContentLoaded',()=>{
+    [['aumForm'],['editUserForm']].forEach(([id])=>{
+      const f=document.getElementById(id); if(!f) return;
+      f.querySelector('[name="access_level"]')?.addEventListener('change',()=>syncFullAccessDays(id));
+      f.querySelector('[name="position"]')?.addEventListener('change',()=>syncFullAccessDays(id));
+    });
     const addLevel=document.querySelector('#aumForm [name="access_level"]');
     if(addLevel) addLevel.addEventListener('change',()=>handleAccessLevelChange(addLevel,'aumForm'));
     const editLevel=document.getElementById('editAccessLevel');

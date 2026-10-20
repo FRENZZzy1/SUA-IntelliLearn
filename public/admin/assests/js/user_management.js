@@ -137,6 +137,20 @@
             document.getElementById('editAccessLevel').value = card.dataset.accessLevel || 'limited';
             const permissionsField = document.getElementById('editPermissionsJson');
             if (permissionsField) permissionsField.value = card.dataset.adminPermissions || '';
+
+            // Temporary Full access: blank duration = keep the current expiry.
+            const editForm = document.getElementById('editUserForm');
+            const daysInput = document.getElementById('editFullDays');
+            const hasExpiry = card.dataset.accessLevel === 'full' && !!card.dataset.fullExpires;
+            if (daysInput) daysInput.value = '';
+            if (editForm) editForm.dataset.canKeepExpiry = hasExpiry ? '1' : '0';
+            const keepHint = document.getElementById('editFullDaysHint');
+            if (keepHint) keepHint.textContent = hasExpiry
+                ? 'Currently ' + card.dataset.fullDaysLeft + ' day(s) left. Leave blank to keep it, or enter days to restart the countdown.'
+                : '';
+            if (window.syncFullAccessDays) window.syncFullAccessDays('editUserForm');
+        } else if (window.syncFullAccessDays) {
+            window.syncFullAccessDays('editUserForm'); // hides the Full-access days field for non-admins
         }
 
         if (role === 'student') {
@@ -218,6 +232,11 @@
                     <span class="detail-label"><i class="fas fa-key"></i> Access Level</span>
                     <span class="detail-value">${accessLabels[card.dataset.accessLevel] || 'Not set'}</span>
                 </div>
+                ${card.dataset.accessLevel === 'full' && card.dataset.fullExpires ? `
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-hourglass-half"></i> Full Access Ends</span>
+                    <span class="detail-value">${card.dataset.fullExpires} (${card.dataset.fullDaysLeft} day(s) left)</span>
+                </div>` : ''}
             `;
         }
 
