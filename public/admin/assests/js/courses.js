@@ -639,11 +639,6 @@ function closeTermIntervalModal() {
     document.getElementById('termIntervalOverlay').classList.remove('open');
 }
 
-function toggleTermMode(n, mode) {
-    document.getElementById('term_' + n + '_month_fields').hidden = (mode !== 'month');
-    document.getElementById('term_' + n + '_date_fields').hidden = (mode !== 'date');
-}
-
 document.getElementById('termIntervalForm').addEventListener('submit', function (e) {
     e.preventDefault();
     submitModalForm(

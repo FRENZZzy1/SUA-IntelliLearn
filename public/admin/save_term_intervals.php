@@ -3,7 +3,7 @@
  * Backend endpoint for the "Set Term Interval" modal on courses.php.
  * Called via fetch() — always returns JSON.
  *
- * Saves one JSON blob (TRM 1/2/3 -> mode + month range or date range)
+ * Saves one JSON blob (TRM 1/2/3 -> start/end date range)
  * into system_settings.setting_value under key 'term_intervals'. Classes
  * no longer pick a term directly — add_course.php derives it from these
  * intervals against today's date (see resolveCurrentTerm() in config.php).
@@ -32,41 +32,21 @@ $termLabels = [1 => 'TRM 1', 2 => 'TRM 2', 3 => 'TRM 3'];
 $intervals  = [];
 
 foreach ($termLabels as $n => $label) {
-    $mode = $_POST["term_{$n}_mode"] ?? 'month';
+    $entry = ['mode' => 'date', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null];
 
-    if (!in_array($mode, ['month', 'date'], true)) {
-        $errors[] = "$label: invalid mode.";
-        continue;
-    }
+    $startDate = trim($_POST["term_{$n}_start_date"] ?? '');
+    $endDate   = trim($_POST["term_{$n}_end_date"] ?? '');
 
-    $entry = ['mode' => $mode, 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null];
+    $startOk = (bool) DateTime::createFromFormat('Y-m-d', $startDate);
+    $endOk   = (bool) DateTime::createFromFormat('Y-m-d', $endDate);
 
-    if ($mode === 'month') {
-        $startMonth = $_POST["term_{$n}_start_month"] ?? '';
-        $endMonth   = $_POST["term_{$n}_end_month"] ?? '';
-
-        if (!ctype_digit((string) $startMonth) || (int) $startMonth < 1 || (int) $startMonth > 12
-            || !ctype_digit((string) $endMonth) || (int) $endMonth < 1 || (int) $endMonth > 12) {
-            $errors[] = "$label: choose a start and end month.";
-        } else {
-            $entry['start_month'] = (int) $startMonth;
-            $entry['end_month']   = (int) $endMonth;
-        }
+    if (!$startOk || !$endOk) {
+        $errors[] = "$label: choose a valid start and end date.";
+    } elseif ($startDate > $endDate) {
+        $errors[] = "$label: start date must be on or before the end date.";
     } else {
-        $startDate = trim($_POST["term_{$n}_start_date"] ?? '');
-        $endDate   = trim($_POST["term_{$n}_end_date"] ?? '');
-
-        $startOk = (bool) DateTime::createFromFormat('Y-m-d', $startDate);
-        $endOk   = (bool) DateTime::createFromFormat('Y-m-d', $endDate);
-
-        if (!$startOk || !$endOk) {
-            $errors[] = "$label: choose a valid start and end date.";
-        } elseif ($startDate > $endDate) {
-            $errors[] = "$label: start date must be on or before the end date.";
-        } else {
-            $entry['start_date'] = $startDate;
-            $entry['end_date']   = $endDate;
-        }
+        $entry['start_date'] = $startDate;
+        $entry['end_date']   = $endDate;
     }
 
     $intervals[$label] = $entry;
@@ -80,7 +60,7 @@ foreach ($termLabels as $n => $label) {
 // and the later term can never become active on it. Reject that here so
 // it can't be saved in the first place.
 if (empty($errors)) {
-    $dateTerms = array_filter($intervals, static fn($entry) => $entry['mode'] === 'date');
+    $dateTerms = array_filter($intervals, static fn($entry) => $entry['start_date'] !== null);
     $labels    = array_keys($dateTerms);
 
     for ($i = 0; $i < count($labels); $i++) {

@@ -230,9 +230,9 @@ function getFlashMessage() {
 
 function getTermIntervals($pdo) {
     $defaults = [
-        'TRM 1' => ['mode' => 'month', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
-        'TRM 2' => ['mode' => 'month', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
-        'TRM 3' => ['mode' => 'month', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
+        'TRM 1' => ['mode' => 'date', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
+        'TRM 2' => ['mode' => 'date', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
+        'TRM 3' => ['mode' => 'date', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
     ];
 
     try {
@@ -263,19 +263,8 @@ function resolveCurrentTerm(array $intervals, ?DateTime $onDate = null) {
     foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $term) {
         $cfg = $intervals[$term] ?? null;
         if (!$cfg) continue;
-        if ($cfg['mode'] === 'date') {
-            if ($cfg['start_date'] && $cfg['end_date'] && $ymd >= $cfg['start_date'] && $ymd <= $cfg['end_date']) {
-                return $term;
-            }
-        } else {
-            $start = $cfg['start_month'] !== null ? (int)$cfg['start_month'] : null;
-            $end = $cfg['end_month'] !== null ? (int)$cfg['end_month'] : null;
-            if ($start === null || $end === null) continue;
-            if ($start <= $end) {
-                if ($month >= $start && $month <= $end) return $term;
-            } else {
-                if ($month >= $start || $month <= $end) return $term;
-            }
+        if (!empty($cfg['start_date']) && !empty($cfg['end_date']) && $ymd >= $cfg['start_date'] && $ymd <= $cfg['end_date']) {
+            return $term;
         }
     }
     return null;

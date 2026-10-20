@@ -1154,50 +1154,14 @@ $subjectsList = $pdo->query("
                     </div>
 
                     <?php
-                    $monthNames = [1=>'January',2=>'February',3=>'March',4=>'April',5=>'May',6=>'June',7=>'July',8=>'August',9=>'September',10=>'October',11=>'November',12=>'December'];
                     $termNums   = ['TRM 1' => 1, 'TRM 2' => 2, 'TRM 3' => 3];
                     foreach ($termNums as $termLabel => $n):
                         $cfg = $termIntervals[$termLabel];
-                        $isDateMode = $cfg['mode'] === 'date';
                     ?>
                     <fieldset style="border:1px solid var(--border,#e2e8f0); border-radius:8px; padding:14px 16px; margin-bottom:16px;">
                         <legend style="padding:0 6px; font-weight:600;"><?= clean($termLabel) ?></legend>
 
-                        <div class="form-row" style="display:flex; gap:20px; margin-bottom:12px;">
-                            <label style="font-weight:400; display:flex; align-items:center; gap:6px;">
-                                <input type="radio" name="term_<?= $n ?>_mode" value="month" style="width:auto;"
-                                       onchange="toggleTermMode(<?= $n ?>, 'month')" <?= !$isDateMode ? 'checked' : '' ?>>
-                                By Month
-                            </label>
-                            <label style="font-weight:400; display:flex; align-items:center; gap:6px;">
-                                <input type="radio" name="term_<?= $n ?>_mode" value="date" style="width:auto;"
-                                       onchange="toggleTermMode(<?= $n ?>, 'date')" <?= $isDateMode ? 'checked' : '' ?>>
-                                Specific Dates
-                            </label>
-                        </div>
-
-                        <div class="form-row-split" id="term_<?= $n ?>_month_fields" <?= $isDateMode ? 'hidden' : '' ?>>
-                            <div class="form-row">
-                                <label for="term_<?= $n ?>_start_month">Start Month</label>
-                                <select id="term_<?= $n ?>_start_month" name="term_<?= $n ?>_start_month">
-                                    <option value="">Select</option>
-                                    <?php foreach ($monthNames as $mNum => $mName): ?>
-                                        <option value="<?= $mNum ?>" <?= (int) $cfg['start_month'] === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="form-row">
-                                <label for="term_<?= $n ?>_end_month">End Month</label>
-                                <select id="term_<?= $n ?>_end_month" name="term_<?= $n ?>_end_month">
-                                    <option value="">Select</option>
-                                    <?php foreach ($monthNames as $mNum => $mName): ?>
-                                        <option value="<?= $mNum ?>" <?= (int) $cfg['end_month'] === $mNum ? 'selected' : '' ?>><?= $mName ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-row-split" id="term_<?= $n ?>_date_fields" <?= !$isDateMode ? 'hidden' : '' ?>>
+                        <div class="form-row-split" id="term_<?= $n ?>_date_fields">
                             <div class="form-row">
                                 <label for="term_<?= $n ?>_start_date">Start Date</label>
                                 <input type="date" id="term_<?= $n ?>_start_date" name="term_<?= $n ?>_start_date" value="<?= clean($cfg['start_date'] ?? '') ?>">
