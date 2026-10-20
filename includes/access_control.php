@@ -77,7 +77,7 @@ function adminPermissions(int $userId = 0): array {
         foreach ($rows as $row) {
             $out[$row['module_key']] = [
                 'permission' => in_array($row['permission'], ['read', 'write'], true) ? $row['permission'] : 'read',
-                'can_approve_enrollment' => (bool)$row['can_approve_enrollment'],
+                'can_approve_enrollment' => !empty($row['can_approve_enrollment']),
             ];
         }
         return $cache[$userId] = $out;
@@ -95,7 +95,9 @@ function adminCanRead(string $module): bool {
 
 function adminCanWrite(string $module): bool {
     if (($_SESSION['role'] ?? '') !== 'admin') return false;
-    if (adminAccessLevel() === 'full') return true;
+    $level = adminAccessLevel();
+    if ($level === 'full') return true;
+    if ($level === 'read_only') return false; // Read Only never writes, whatever is in admin_permissions
     $p = adminPermissions();
     return isset($p[$module]) && $p[$module]['permission'] === 'write';
 }
@@ -134,33 +136,84 @@ function saveAdminPermissions(PDO $pdo, int $userId, string $accessLevel, string
 }
 
 /**
- * Map the current admin PHP endpoint to a logical module.
+ * Every admin endpoint and the module it belongs to.
+ *
+ *   mode 'auto'  : GET = read, POST = write
+ *   mode 'read'  : always a read-only action (exports, lookups, reports)
+ *   mode 'write' : always a state-changing action
+ *   mode 'open'  : not module-specific (own profile, notifications, search, chatbot)
+ *
+ * Any script inside /public/admin/ that is NOT listed here is treated as
+ * write-protected: a POST to it is refused for non-Full admins, so a newly
+ * added endpoint can never silently bypass the permission check.
+ */
+function adminAccessRules(): array {
+    return [
+        // Dashboard
+        'dashboard.php'            => ['dashboard', 'auto'],
+        'generate_report.php'      => ['dashboard', 'read'],
+        'backup_data.php'          => ['dashboard', 'write'],
+        'model_settings.php'       => ['dashboard', 'auto'],
+
+        // User Management
+        'user_management.php'      => ['users', 'auto'],
+        'user_management_logic.php'=> ['users', 'auto'],
+        'add_user_handler.php'     => ['users', 'write'],
+        'import_student_users.php' => ['users', 'write'],
+        'export_student_accounts.php' => ['users', 'read'],
+        'student_import_template.php' => ['users', 'read'],
+        'user_history.php'         => ['users', 'read'],
+
+        // Classes & Subjects
+        'courses.php'              => ['courses', 'auto'],
+        'add_course.php'           => ['courses', 'write'],
+        'update_course.php'        => ['courses', 'write'],
+        'add_section.php'          => ['courses', 'write'],
+        'update_section.php'       => ['courses', 'write'],
+        'add_subject.php'          => ['courses', 'write'],
+        'update_subject.php'       => ['courses', 'write'],
+        'delete_course_offering.php' => ['courses', 'write'],
+        'unenroll_students.php'    => ['courses', 'write'],
+        'get_course_students.php'  => ['courses', 'read'],
+        'search_entities.php'      => ['courses', 'read'],
+        'export_course_students.php' => ['courses', 'read'],
+        'export_section_classes.php' => ['courses', 'read'],
+        'export_student_classes.php' => ['courses', 'read'],
+        'export_teacher_classes.php' => ['courses', 'read'],
+
+        // Announcements
+        'announcement.php'         => ['announcements', 'auto'],
+        'delete_announcement.php'  => ['announcements', 'write'],
+        'get_announcements.php'    => ['announcements', 'read'],
+
+        // System Analytics
+        'analytics.php'            => ['analytics', 'auto'],
+        'evaluation_ai_summary.php'=> ['analytics', 'read'],
+
+        // Settings
+        'settings.php'             => ['settings', 'auto'],
+        'save_settings.php'        => ['settings', 'write'],
+        'save_term_intervals.php'  => ['settings', 'write'],
+        'set_current_school_year.php' => ['settings', 'write'],
+        'add_school_year.php'      => ['settings', 'write'],
+        'teacher_evaluation_round.php' => ['settings', 'write'],
+
+        // Not module-specific
+        'profile.php'              => [null, 'open'],
+        'profile_handler.php'      => [null, 'open'],
+        'notifications.php'        => [null, 'open'],
+        'search.php'               => [null, 'open'],
+        'chatbot.php'              => [null, 'open'],
+    ];
+}
+
+/**
+ * Backwards-compatible helper: which module does the current script belong to?
  */
 function adminModuleForCurrentScript(): ?string {
     $file = basename($_SERVER['SCRIPT_FILENAME'] ?? '');
-
-    $map = [
-        'dashboard.php' => 'dashboard',
-        'user_management.php' => 'users',
-        'courses.php' => 'courses',
-        'add_course.php' => 'courses',
-        'update_course.php' => 'courses',
-        'add_section.php' => 'courses',
-        'update_section.php' => 'courses',
-        'add_subject.php' => 'courses',
-        'update_subject.php' => 'courses',
-
-        'announcement.php' => 'announcements',
-
-        'analytics.php' => 'analytics',
-
-        'settings.php' => 'settings',
-        'save_settings.php' => 'settings',
-        'save_term_intervals.php' => 'settings',
-        'set_current_school_year.php' => 'settings',
-    ];
-
-    return $map[$file] ?? null;
+    $rules = adminAccessRules();
+    return $rules[$file][0] ?? null;
 }
 
 function requireAdminModule(string $module, string $permission = 'read'): void {
@@ -185,17 +238,42 @@ function requireAdminModule(string $module, string $permission = 'read'): void {
 
 /**
  * Enforce permissions automatically for admin pages after config.php loads.
- * GET = read; POST = write.
+ * GET = read; POST = write (unless the endpoint is flagged read/write/open).
  */
 function enforceCurrentAdminModuleAccess(): void {
     global $pdo;
     ensureAdminPermissionsTable($pdo);
     if (($_SESSION['role'] ?? '') !== 'admin') return;
 
-    $module = adminModuleForCurrentScript();
-    if ($module === null) return;
+    $scriptPath = str_replace('\\', '/', $_SERVER['SCRIPT_FILENAME'] ?? '');
+    if (strpos($scriptPath, '/public/admin/') === false) return; // only guard admin endpoints
 
-    $permission = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' ? 'write' : 'read';
+    $file   = basename($scriptPath);
+    $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    $rules  = adminAccessRules();
+
+    // Unknown admin endpoint: reads pass, writes are refused unless Full Access.
+    if (!isset($rules[$file])) {
+        if ($method !== 'GET' && $method !== 'HEAD') {
+            requireAdminModule('__unmapped__', 'write');
+        }
+        return;
+    }
+
+    [$module, $mode] = $rules[$file];
+    if ($mode === 'open' || $module === null) return;
+
+    if ($mode === 'auto') {
+        $permission = ($method === 'GET' || $method === 'HEAD') ? 'read' : 'write';
+    } else {
+        $permission = $mode;
+    }
+
+    // announcement.php changes data through GET links (?action=delete|publish|toggle_pin).
+    if ($file === 'announcement.php' && isset($_GET['action'])) {
+        $permission = 'write';
+    }
+
     requireAdminModule($module, $permission);
 }
 ?>
