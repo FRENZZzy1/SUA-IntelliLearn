@@ -195,6 +195,7 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
 
 <!-- Announcements Stylesheet -->
 <link rel="stylesheet" href="assests/css/announcement.css">
+<?php include '../../includes/admin_readonly_ui.php'; ?>
 </head>
 <body>
 

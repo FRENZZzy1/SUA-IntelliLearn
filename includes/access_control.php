@@ -52,12 +52,13 @@ function adminAccessLevel(): string {
     }
 
     try {
-        $stmt = $pdo->prepare("SELECT access_level FROM Admin WHERE user_id = ? LIMIT 1");
+        $stmt = $pdo->prepare("SELECT access_level FROM admin WHERE user_id = ? LIMIT 1");
         $stmt->execute([(int)$_SESSION['user_id']]);
         $value = $stmt->fetchColumn();
-        return $level = $value ?: 'limited';
+        // Fail closed: an unknown / missing level must never grant more than read access.
+        return $level = in_array($value, ['full', 'limited', 'read_only'], true) ? $value : 'read_only';
     } catch (Throwable $e) {
-        return $level = 'limited';
+        return $level = 'read_only';
     }
 }
 
@@ -100,6 +101,28 @@ function adminCanWrite(string $module): bool {
     if ($level === 'read_only') return false; // Read Only never writes, whatever is in admin_permissions
     $p = adminPermissions();
     return isset($p[$module]) && $p[$module]['permission'] === 'write';
+}
+
+function adminIsReadOnly(): bool {
+    return ($_SESSION['role'] ?? '') === 'admin' && adminAccessLevel() === 'read_only';
+}
+
+/**
+ * Some admin pages change data through plain GET links (e.g. courses.php?archive=5,
+ * announcement.php?action=delete). A GET is normally treated as "read", which let
+ * Read Only / read-permission admins run those actions. This detects them so they
+ * are checked as WRITE requests.
+ */
+function adminRequestIsMutatingGet(string $file): bool {
+    $perFile = [
+        'courses.php'      => ['archive', 'restore', 'archive_section', 'restore_section', 'archive_subject', 'restore_subject'],
+        'announcement.php' => ['action'],
+    ];
+    $generic = ['action', 'delete', 'remove', 'archive', 'restore', 'publish', 'unpublish', 'toggle_pin', 'approve', 'decline', 'unenroll'];
+    foreach (array_merge($perFile[$file] ?? [], $generic) as $key) {
+        if (isset($_GET[$key])) return true;
+    }
+    return false;
 }
 
 /**
@@ -252,9 +275,11 @@ function enforceCurrentAdminModuleAccess(): void {
     $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     $rules  = adminAccessRules();
 
+    $isSafeMethod = ($method === 'GET' || $method === 'HEAD');
+
     // Unknown admin endpoint: reads pass, writes are refused unless Full Access.
     if (!isset($rules[$file])) {
-        if ($method !== 'GET' && $method !== 'HEAD') {
+        if (!$isSafeMethod || adminRequestIsMutatingGet($file)) {
             requireAdminModule('__unmapped__', 'write');
         }
         return;
@@ -264,14 +289,13 @@ function enforceCurrentAdminModuleAccess(): void {
     if ($mode === 'open' || $module === null) return;
 
     if ($mode === 'auto') {
-        $permission = ($method === 'GET' || $method === 'HEAD') ? 'read' : 'write';
+        $permission = $isSafeMethod ? 'read' : 'write';
+        // GET links that change data (archive/restore/delete/publish/pin...) are WRITE actions.
+        if ($isSafeMethod && adminRequestIsMutatingGet($file)) {
+            $permission = 'write';
+        }
     } else {
         $permission = $mode;
-    }
-
-    // announcement.php changes data through GET links (?action=delete|publish|toggle_pin).
-    if ($file === 'announcement.php' && isset($_GET['action'])) {
-        $permission = 'write';
     }
 
     requireAdminModule($module, $permission);

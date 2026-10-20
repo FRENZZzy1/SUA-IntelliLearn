@@ -556,6 +556,7 @@ $subjectsList = $pdo->query("
         color: var(--text-muted, #64748b);
     }
 </style>
+<?php include '../../includes/admin_readonly_ui.php'; ?>
 </head>
 <body>
 

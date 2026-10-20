@@ -52,6 +52,7 @@ $usageStats = get_system_usage_stats($pdo);
 
     <!-- Header Module Styles (paired with includes/admin_header.php) -->
     
+<?php include '../../includes/admin_readonly_ui.php'; ?>
 </head>
 <body>
 
