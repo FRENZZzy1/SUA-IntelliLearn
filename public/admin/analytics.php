@@ -33,7 +33,9 @@ $qFlat     = teval_questions_flat();
 $hasData   = $results && $results['overview']['submitted'] > 0;
 $isLive    = $round ? teval_round_is_live($round) : false;
 $minForAi  = TEACHER_EVAL_MIN_RESPONSES_FOR_AI;
-$canSeeSettings = adminCanRead('settings');
+// Read / Read-Only admins can view the results but get no action buttons.
+$canSeeSettings = adminCanWrite('settings');   // "Go to Settings" / "Survey settings" shortcuts
+$canUseAi       = adminCanWrite('analytics');  // "Generate summary" buttons
 
 // Data handed to analytics.js (rendered client-side with textContent, never innerHTML).
 $clientTeachers = [];
@@ -45,6 +47,7 @@ if ($hasData) {
 }
 $clientData = [
     'csrf'         => $csrfToken,
+    'canGenerateAi' => $canUseAi,
     'roundId'      => $round ? (int) $round['round_id'] : 0,
     'minResponses' => $minForAi,
     'categories'   => array_map(fn($c) => ['label' => $c['label'], 'icon' => $c['icon']], $cats),
@@ -174,6 +177,7 @@ function an_score(?float $avg): string
 <?php else: ?>
 
             <!-- ================= AI SUMMARY (school-wide) ================= -->
+            <?php if ($canUseAi): ?>
             <div class="card an-card">
                 <div class="card-header">
                     <h2><i class="fas fa-wand-magic-sparkles"></i> AI Survey Summary</h2>
@@ -196,6 +200,8 @@ function an_score(?float $avg): string
                     <div id="schoolAiResult" class="an-ai-result" aria-live="polite"></div>
                 </div>
             </div>
+
+            <?php endif; /* canUseAi */ ?>
 
             <!-- ================= CATEGORY + DISTRIBUTION ================= -->
             <div class="an-grid-2">

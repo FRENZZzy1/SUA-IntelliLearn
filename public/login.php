@@ -40,7 +40,7 @@ function clearRememberCookie() {
 
 function redirectByRole($role) {
     if ($role === 'admin') {
-        header("Location: admin/dashboard.php");
+        header("Location: " . adminLandingUrl());
     } elseif ($role === 'teacher') {
         header("Location: teacher/dashboard.php");
     } else {

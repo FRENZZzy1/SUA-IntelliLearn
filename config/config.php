@@ -397,7 +397,8 @@ define('GEMINI_API_KEY', '');
 if (basename($_SERVER['SCRIPT_FILENAME'] ?? '') === 'login.php' && isLoggedIn()) {
     $role = $_SESSION['role'] ?? '';
     if ($role === 'admin') {
-        header('Location: admin/dashboard.php');
+        require_once __DIR__ . '/../includes/access_control.php';
+        header('Location: ' . adminLandingUrl());
     } elseif ($role === 'teacher') {
         header('Location: teacher/dashboard.php');
     } elseif ($role === 'student') {

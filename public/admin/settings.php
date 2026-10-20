@@ -13,6 +13,9 @@ requireAdmin();
 $csrfToken = generateCSRFToken();
 $flash     = getFlashMessage();
 
+// Read / Read-Only admins can view this page but must not see any write controls.
+$canWrite  = adminCanWrite('settings');
+
 // ---- Load key/value settings, falling back to defaults if a key is missing ----
 $defaults = [
     'school_name'             => 'St. Uriel Academy',
@@ -37,7 +40,7 @@ $schoolYears = $pdo->query("SELECT * FROM schoolyears ORDER BY start_date DESC")
 
 // ---- Teacher evaluation survey state ----
 require_once '../../includes/teacher_evaluation.php';
-$isFullAdmin   = adminAccessLevel() === 'full';   // only Full Access admins may send/close a survey
+$isFullAdmin   = adminAccessLevel() === 'full' && $canWrite;   // only Full Access admins may send/close a survey
 $tevalReady    = teval_tables_ready($pdo);
 $tevalOpen     = $tevalReady ? teval_get_open_round($pdo) : null;
 $tevalRounds   = $tevalReady ? teval_get_rounds($pdo, 6) : [];
@@ -123,7 +126,7 @@ foreach ($schoolYears as $sy) {
                             </div>
                             <?php if ($sy['is_current']): ?>
                                 <span class="badge-current">Current</span>
-                            <?php else: ?>
+                            <?php elseif ($canWrite): ?>
                                 <button type="button" class="btn btn-outline btn-sm"
                                     onclick="setCurrentYear(<?= (int) $sy['school_year_id'] ?>, this)">
                                     Set as Current
@@ -133,11 +136,11 @@ foreach ($schoolYears as $sy) {
                         <?php endforeach; ?>
 
                         <?php if (empty($schoolYears)): ?>
-                        <p style="color: var(--text-muted); font-size: 0.88rem;">No school years yet. Add one below.</p>
+                        <p style="color: var(--text-muted); font-size: 0.88rem;">No school years yet.<?= $canWrite ? ' Add one below.' : '' ?></p>
                         <?php endif; ?>
                     </div>
 
-                    <form id="addYearForm">
+                    <form id="addYearForm"<?= $canWrite ? '' : ' hidden style="display:none"' ?>>
                         <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
                         <div class="form-alert" id="yearFormError" hidden></div>
                         <div class="form-row">
@@ -194,7 +197,7 @@ foreach ($schoolYears as $sy) {
                         <div class="form-group">
                             <label><i class="fas fa-users"></i> Default Class Capacity</label>
                             <input type="number" name="default_class_capacity" min="1" max="500"
-                                value="<?= clean($settings['default_class_capacity']) ?>" required>
+                                value="<?= clean($settings['default_class_capacity']) ?>" required <?= $canWrite ? '' : 'disabled' ?>>
                             <small>Used as the pre-filled capacity when a new class offering is created.</small>
                         </div>
 
@@ -205,16 +208,18 @@ foreach ($schoolYears as $sy) {
                                 <span>Turn off to stop students from joining classes with a class code. Teachers approve or deny each request.</span>
                             </div>
                             <label class="switch">
-                                <input type="checkbox" name="enrollment_open" <?= $settings['enrollment_open'] === '1' ? 'checked' : '' ?>>
+                                <input type="checkbox" name="enrollment_open" <?= $settings['enrollment_open'] === '1' ? 'checked' : '' ?> <?= $canWrite ? '' : 'disabled' ?>>
                                 <span class="switch-slider"></span>
                             </label>
                         </div>
 
+                        <?php if ($canWrite): ?>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary" id="saveEnrollmentBtn">
                                 <i class="fas fa-floppy-disk"></i> Save Changes
                             </button>
                         </div>
+                        <?php endif; ?>
                     </form>
                 </div>
             </div>
@@ -236,14 +241,16 @@ foreach ($schoolYears as $sy) {
                         <div class="form-group">
                             <label><i class="fas fa-signature"></i> School Name</label>
                             <input type="text" name="school_name" maxlength="150"
-                                value="<?= clean($settings['school_name']) ?>" required>
+                                value="<?= clean($settings['school_name']) ?>" required <?= $canWrite ? '' : 'disabled' ?>>
                         </div>
 
+                        <?php if ($canWrite): ?>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary" id="saveGeneralBtn">
                                 <i class="fas fa-floppy-disk"></i> Save Changes
                             </button>
                         </div>
+                        <?php endif; ?>
                     </form>
                 </div>
             </div>

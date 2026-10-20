@@ -103,6 +103,27 @@ function adminCanWrite(string $module): bool {
     return isset($p[$module]) && $p[$module]['permission'] === 'write';
 }
 
+/**
+ * First admin page the current admin may open (Dashboard if allowed, otherwise the
+ * first module with Read / Write). Used as the landing page after login and as the
+ * "go back" target, so an admin without Dashboard access is not sent to a dead end.
+ */
+function adminLandingUrl(): string {
+    $base  = '/SUA-INTELLILEARN/public/admin/';
+    $pages = [
+        'dashboard'     => 'dashboard.php',
+        'users'         => 'user_management.php',
+        'courses'       => 'courses.php',
+        'announcements' => 'announcement.php',
+        'analytics'     => 'analytics.php',
+        'settings'      => 'settings.php',
+    ];
+    foreach ($pages as $module => $page) {
+        if (adminCanRead($module)) return $base . $page;
+    }
+    return $base . 'profile.php'; // no module access at all: profile is always allowed
+}
+
 function adminIsReadOnly(): bool {
     return ($_SESSION['role'] ?? '') === 'admin' && adminAccessLevel() === 'read_only';
 }
@@ -211,7 +232,7 @@ function adminAccessRules(): array {
 
         // System Analytics
         'analytics.php'            => ['analytics', 'auto'],
-        'evaluation_ai_summary.php'=> ['analytics', 'read'],
+        'evaluation_ai_summary.php'=> ['analytics', 'write'],
 
         // Settings
         'settings.php'             => ['settings', 'auto'],
@@ -253,7 +274,13 @@ function requireAdminModule(string $module, string $permission = 'read'): void {
             header('Content-Type: application/json');
             echo json_encode(['success' => false, 'errors' => ['You do not have permission to perform this action.']]);
         } else {
-            echo '<!doctype html><html><head><meta charset="utf-8"><title>Access Denied</title></head><body style="font-family:Arial,sans-serif;padding:40px"><h2>Access denied</h2><p>Your account does not have permission to access this module.</p><p><a href="/SUA-INTELLILEARN/public/admin/dashboard.php">Return to Dashboard</a></p></body></html>';
+            $landing = adminLandingUrl();
+            // Default landing page (Dashboard) not allowed: send the admin to the first module they can open.
+            if ($module === 'dashboard' && basename(parse_url($landing, PHP_URL_PATH)) !== basename($_SERVER['SCRIPT_FILENAME'] ?? '')) {
+                header('Location: ' . $landing);
+                exit();
+            }
+            echo '<!doctype html><html><head><meta charset="utf-8"><title>Access Denied</title></head><body style="font-family:Arial,sans-serif;padding:40px"><h2>Access denied</h2><p>Your account does not have permission to access this module.</p><p><a href="' . htmlspecialchars($landing, ENT_QUOTES) . '">Go back</a></p></body></html>';
         }
         exit();
     }

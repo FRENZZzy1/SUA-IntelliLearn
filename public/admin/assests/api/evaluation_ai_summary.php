@@ -21,7 +21,7 @@ require_once __DIR__ . '/../../../../includes/gemini_evaluation.php';
 header('Content-Type: application/json');
 header('Cache-Control: no-store, max-age=0');
 
-requireAdminModule('analytics', 'read');
+requireAdminModule('analytics', 'write');
 
 function teval_ai_fail(int $code, string $message): void
 {

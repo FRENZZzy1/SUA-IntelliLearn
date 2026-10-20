@@ -249,26 +249,28 @@
             bodyEl.appendChild(cSec);
         }
 
-        // AI summary (per teacher)
-        var aiSec = section('AI summary', 'fa-wand-magic-sparkles');
-        aiSec.appendChild(el('p', 'an-muted',
-            'Generated on request and not saved. Closing this panel discards it.'));
-        var out = el('div', 'an-ai-result');
-        out.setAttribute('aria-live', 'polite');
-        var btn = el('button', 'btn btn-primary');
-        btn.type = 'button';
-        setButton(btn, 'fa-wand-magic-sparkles', 'Generate summary');
-        if (t.responses < data.minResponses) {
-            btn.disabled = true;
-            aiSec.appendChild(btn);
-            aiSec.appendChild(el('p', 'an-hint',
-                'Needs at least ' + data.minResponses + ' responses (currently ' + t.responses + ') to protect student anonymity.'));
-        } else {
-            btn.addEventListener('click', function () { requestSummary(t.teacher_id, btn, out); });
-            aiSec.appendChild(btn);
+        // AI summary (per teacher) - hidden for Read / Read-Only admins
+        if (data.canGenerateAi) {
+            var aiSec = section('AI summary', 'fa-wand-magic-sparkles');
+            aiSec.appendChild(el('p', 'an-muted',
+                'Generated on request and not saved. Closing this panel discards it.'));
+            var out = el('div', 'an-ai-result');
+            out.setAttribute('aria-live', 'polite');
+            var btn = el('button', 'btn btn-primary');
+            btn.type = 'button';
+            setButton(btn, 'fa-wand-magic-sparkles', 'Generate summary');
+            if (t.responses < data.minResponses) {
+                btn.disabled = true;
+                aiSec.appendChild(btn);
+                aiSec.appendChild(el('p', 'an-hint',
+                    'Needs at least ' + data.minResponses + ' responses (currently ' + t.responses + ') to protect student anonymity.'));
+            } else {
+                btn.addEventListener('click', function () { requestSummary(t.teacher_id, btn, out); });
+                aiSec.appendChild(btn);
+            }
+            aiSec.appendChild(out);
+            bodyEl.appendChild(aiSec);
         }
-        aiSec.appendChild(out);
-        bodyEl.appendChild(aiSec);
 
         // Comments (already in random order from the server)
         var d = t.detail || {};
