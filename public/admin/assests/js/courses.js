@@ -29,17 +29,71 @@ function confirmArchive(type) {
     return confirm(messages[type] || messages.course);
 }
 
-// ---- Toggle the Sections / Subjects list panels ----
-// Each panel is independent and hidden by default; clicking its
-// "View..." button reveals it (and clicking again hides it).
-function togglePanel(view, btn) {
-    const panel = document.getElementById('view-' + view);
-    const isOpen = panel.classList.toggle('open');
-    btn.classList.toggle('active', isOpen);
+// ---- View tabs: Classes / Subjects / Sections / Search & Export ----
+// Exactly one view is shown at a time. The active tab is mirrored in the
+// URL (?open=...) so a refresh keeps the admin on the same tab.
+const CS_VIEWS = ['classes', 'subjects', 'sections', 'export'];
 
-    if (isOpen) {
-        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+function showView(view) {
+    if (CS_VIEWS.indexOf(view) === -1) view = 'classes';
+
+    CS_VIEWS.forEach(function (v) {
+        const panel = document.getElementById('view-' + v);
+        if (panel) panel.classList.toggle('open', v === view);
+
+        const tab = document.querySelector('[data-view-tab="' + v + '"]');
+        if (tab) {
+            tab.classList.toggle('active', v === view);
+            tab.setAttribute('aria-selected', v === view ? 'true' : 'false');
+        }
+    });
+
+    try {
+        const url = new URL(window.location.href);
+        if (view === 'classes') {
+            url.searchParams.delete('open');
+        } else {
+            url.searchParams.set('open', view);
+        }
+        window.history.replaceState(null, '', url.toString());
+    } catch (e) { /* non-critical */ }
+}
+
+// Kept for backwards compatibility with older markup.
+function togglePanel(view) {
+    showView(view);
+}
+
+// ---- Click-to-copy class code ----
+function copyClassCode(btn) {
+    const code = btn.dataset.code || '';
+    const done = function () {
+        const icon = btn.querySelector('i');
+        btn.classList.add('copied');
+        if (icon) icon.className = 'fas fa-check';
+        setTimeout(function () {
+            btn.classList.remove('copied');
+            if (icon) icon.className = 'far fa-copy';
+        }, 1300);
+    };
+
+    if (navigator.clipboard && window.isSecureContext !== false) {
+        navigator.clipboard.writeText(code).then(done).catch(function () { legacyCopy(code); done(); });
+    } else {
+        legacyCopy(code);
+        done();
     }
+}
+
+function legacyCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) { /* ignore */ }
+    document.body.removeChild(ta);
 }
 
 // ---- Generic modal submit helper ----
@@ -120,7 +174,7 @@ function getOrCreateNoResultsRow() {
     const tbody = document.getElementById('courseTableBody');
     noResultsRow = document.createElement('tr');
     noResultsRow.className = 'no-results-row';
-    noResultsRow.innerHTML = '<td colspan="12">No courses match your search.</td>';
+    noResultsRow.innerHTML = '<td colspan="8"><div class="empty-state"><div class="empty-icon"><i class="fas fa-magnifying-glass"></i></div><strong>No classes match your search</strong><span>Try a different teacher, subject, or section.</span></div></td>';
     tbody.appendChild(noResultsRow);
     return noResultsRow;
 }

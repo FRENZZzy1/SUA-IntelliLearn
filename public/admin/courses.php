@@ -387,7 +387,7 @@ $subjectsList = $pdo->query("
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Courses & Subjects | SUA IntelliLearn Admin</title>
+<title>Classes & Subjects | SUA IntelliLearn Admin</title>
 
 <!-- Fonts & Icons -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -398,175 +398,19 @@ $subjectsList = $pdo->query("
 <link rel="stylesheet" href="assests/css/courses.css">
 <link rel="stylesheet" href="assests/css/add_course.css">
 
-<style>
-    /* ---- Search & Export panel (self-contained, doesn't require courses.css changes) ---- */
-    .export-search-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 18px;
-        padding: 20px;
-    }
-    .export-search-card {
-        background: var(--card-bg, #fff);
-        border: 1px solid var(--border, #e2e8f0);
-        border-radius: 12px;
-        padding: 18px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-    .export-search-card-title {
-        font-weight: 700;
-        font-size: 15px;
-        color: var(--text, #1e293b);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .export-search-card-title i { color: #2563eb; }
-    .export-search-card-hint {
-        margin: -4px 0 2px;
-        font-size: 12.5px;
-        color: var(--text-muted, #64748b);
-    }
-    .export-search-box { position: relative; }
-    .export-search-box input {
-        width: 100%;
-        box-sizing: border-box;
-        padding: 10px 12px;
-        border: 1px solid var(--border, #e2e8f0);
-        border-radius: 8px;
-        font-size: 14px;
-        font-family: inherit;
-    }
-    .export-search-box input:focus {
-        outline: none;
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-    }
-    .export-search-dropdown {
-        position: absolute;
-        top: calc(100% + 4px);
-        left: 0;
-        right: 0;
-        background: #fff;
-        border: 1px solid var(--border, #e2e8f0);
-        border-radius: 8px;
-        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-        max-height: 260px;
-        overflow-y: auto;
-        z-index: 30;
-    }
-    .export-search-dropdown-item {
-        padding: 10px 12px;
-        cursor: pointer;
-        border-bottom: 1px solid #f1f5f9;
-    }
-    .export-search-dropdown-item:last-child { border-bottom: none; }
-    .export-search-dropdown-item:hover { background: #f8fafc; }
-    .export-search-dropdown-item .esdi-name { font-weight: 600; font-size: 13.5px; color: #1e293b; }
-    .export-search-dropdown-item .esdi-sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
-    .export-search-dropdown-empty {
-        padding: 14px 12px;
-        font-size: 13px;
-        color: #94a3b8;
-        text-align: center;
-    }
-    .export-selected-chip {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        background: #eff6ff;
-        border: 1px solid #bfdbfe;
-        color: #1d4ed8;
-        border-radius: 8px;
-        padding: 8px 10px;
-        font-size: 13px;
-        font-weight: 600;
-    }
-    .export-selected-chip button {
-        background: none;
-        border: none;
-        color: #1d4ed8;
-        cursor: pointer;
-        font-size: 15px;
-        line-height: 1;
-        padding: 0 2px;
-    }
-    .export-btn {
-        width: 100%;
-        justify-content: center;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .export-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    /* ---- Live search box (Class List, instant client-side filter) ---- */
-    .live-search-box {
-        position: relative;
-        max-width: 280px;
-        flex: 1 1 220px;
-    }
-    .live-search-box i {
-        position: absolute;
-        left: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #94a3b8;
-        font-size: 13px;
-        pointer-events: none;
-    }
-    .live-search-box input {
-        width: 100%;
-        box-sizing: border-box;
-        padding: 10px 12px 10px 32px;
-        border: 1px solid var(--border, #e2e8f0);
-        border-radius: 8px;
-        font-size: 14px;
-        font-family: inherit;
-    }
-    .live-search-box input:focus {
-        outline: none;
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
-    }
-    .live-search-clear {
-        position: absolute;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: none;
-        border: none;
-        color: #94a3b8;
-        cursor: pointer;
-        font-size: 15px;
-        line-height: 1;
-        padding: 2px 4px;
-        display: none;
-    }
-    .live-search-clear.show { display: inline-block; }
-    .no-results-row td {
-        text-align: center;
-        padding: 40px;
-        color: var(--text-muted, #64748b);
-    }
-</style>
 <?php include '../../includes/admin_readonly_ui.php'; ?>
 </head>
 <body>
 
 <?php include '../../includes/admin_sidebar.php'; ?>
 <?php include '../../includes/admin_header.php'; ?>
-<div class="main-content" id="mainContent">
+<div class="main-content cs-page" id="mainContent">
 
     <?php if ($flash): ?>
-    <div class="flash-message flash-<?= clean($flash['type']) ?>">
-        <?= clean($flash['message']) ?>
+    <div class="flash-message flash-<?= clean($flash['type']) ?>" role="status">
+        <i class="fas <?= $flash['type'] === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation' ?>" aria-hidden="true"></i>
+        <span><?= clean($flash['message']) ?></span>
+        <button type="button" class="flash-close" aria-label="Dismiss" onclick="this.parentElement.remove()">&times;</button>
     </div>
     <?php endif; ?>
 
@@ -576,42 +420,38 @@ $subjectsList = $pdo->query("
             <h1>Classes &amp; Subjects</h1>
             <p>Manage class offerings, sections, and subjects across the school.</p>
         </div>
-        <form class="header-actions" method="get" action="courses.php">
-            <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
-            <input type="hidden" name="grade" value="<?= htmlspecialchars($gradeFilter) ?>">
-            <input type="hidden" name="quarter" value="<?= htmlspecialchars($quarterFilter) ?>">
-            <input type="hidden" name="school_year" value="<?= htmlspecialchars($schoolYearFilter) ?>">
-          
-        </form>
+        <div class="header-actions">
+            <button type="button" class="btn-secondary" onclick="openAddSubjectModal()"><i class="fas fa-book" aria-hidden="true"></i> New Subject</button>
+            <button type="button" class="btn-secondary" onclick="openAddSectionModal()"><i class="fas fa-layer-group" aria-hidden="true"></i> New Section</button>
+            <button type="button" class="btn-primary" onclick="openAddCourseModal()"><i class="fas fa-plus" aria-hidden="true"></i> New Class</button>
+        </div>
     </div>
 
     <!-- Quick Stats -->
     <div class="stats-row">
         <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-book-open"></i></div>
+            <div class="stat-icon"><i class="fas fa-book-open" aria-hidden="true"></i></div>
             <div class="stat-body">
-                <div class="stat-trend info">Live</div>
                 <div class="stat-value"><?= htmlspecialchars($totalCourses) ?></div>
                 <div class="stat-label">Total Courses</div>
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon"><i class="fas fa-circle-check"></i></div>
+            <div class="stat-icon success"><i class="fas fa-circle-check" aria-hidden="true"></i></div>
             <div class="stat-body">
                 <div class="stat-value"><?= htmlspecialchars($activeCourses) ?></div>
                 <div class="stat-label">Active Courses</div>
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon info"><i class="fas fa-chalkboard-teacher"></i></div>
+            <div class="stat-icon info"><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i></div>
             <div class="stat-body">
-                <div class="stat-trend info"><?= htmlspecialchars($teachersAssigned) ?>/<?= htmlspecialchars($totalTeachers) ?></div>
-                <div class="stat-value"><?= htmlspecialchars($teachersAssigned) ?></div>
+                <div class="stat-value"><?= htmlspecialchars($teachersAssigned) ?><span class="stat-of"> / <?= htmlspecialchars($totalTeachers) ?></span></div>
                 <div class="stat-label">Teachers Assigned</div>
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon accent"><i class="fas fa-user-graduate"></i></div>
+            <div class="stat-icon accent"><i class="fas fa-user-graduate" aria-hidden="true"></i></div>
             <div class="stat-body">
                 <div class="stat-value"><?= htmlspecialchars($totalEnrollees) ?></div>
                 <div class="stat-label">Total Enrollees</div>
@@ -619,93 +459,116 @@ $subjectsList = $pdo->query("
         </div>
     </div>
 
-    <!-- Filter / Action Toolbar -->
+    <!-- View tabs: Classes / Subjects / Sections / Search & Export -->
+    <div class="view-tabs" role="tablist" aria-label="Classes and subjects views">
+        <button type="button" role="tab" class="view-tab <?= $openView === '' ? 'active' : '' ?>" data-view-tab="classes"
+                id="toggleClassesBtn" aria-selected="<?= $openView === '' ? 'true' : 'false' ?>" onclick="showView('classes')">
+            <i class="fas fa-chalkboard" aria-hidden="true"></i> Classes
+            <span class="tab-count"><?= htmlspecialchars($totalCourses) ?></span>
+        </button>
+        <button type="button" role="tab" class="view-tab <?= $openView === 'subjects' ? 'active' : '' ?>" data-view-tab="subjects"
+                id="toggleSubjectsBtn" aria-selected="<?= $openView === 'subjects' ? 'true' : 'false' ?>" onclick="showView('subjects')">
+            <i class="fas fa-book" aria-hidden="true"></i> Subjects
+            <span class="tab-count"><?= htmlspecialchars(count($subjectsList)) ?></span>
+        </button>
+        <button type="button" role="tab" class="view-tab <?= $openView === 'sections' ? 'active' : '' ?>" data-view-tab="sections"
+                id="toggleSectionsBtn" aria-selected="<?= $openView === 'sections' ? 'true' : 'false' ?>" onclick="showView('sections')">
+            <i class="fas fa-layer-group" aria-hidden="true"></i> Sections
+            <span class="tab-count"><?= htmlspecialchars(count($sectionsList)) ?></span>
+        </button>
+        <button type="button" role="tab" class="view-tab <?= $openView === 'export' ? 'active' : '' ?>" data-view-tab="export"
+                id="toggleExportBtn" aria-selected="<?= $openView === 'export' ? 'true' : 'false' ?>" onclick="showView('export')">
+            <i class="fas fa-file-export" aria-hidden="true"></i> Search &amp; Export
+        </button>
+        <span class="view-tabs-spacer"></span>
+        <button type="button" class="btn-secondary btn-sm" id="toggleTermIntervalBtn" onclick="openTermIntervalModal()">
+            <i class="fas fa-calendar-days" aria-hidden="true"></i> Set Term Interval
+        </button>
+    </div>
+
+    <!-- ================= CLASSES VIEW ================= -->
+    <div class="view-panel <?= $openView === '' ? 'open' : '' ?>" id="view-classes">
+
+    <?php
+        $filtersActive = ($statusFilter !== 'all' || $gradeFilter !== 'all' || $quarterFilter !== 'all' || $schoolYearFilter !== 'all');
+        $pillQuery = static function (string $status) use ($gradeFilter, $quarterFilter, $schoolYearFilter, $searchQuery): string {
+            return '?' . http_build_query(array_filter([
+                'status' => $status, 'grade' => $gradeFilter, 'quarter' => $quarterFilter,
+                'school_year' => $schoolYearFilter, 'q' => $searchQuery,
+            ]));
+        };
+    ?>
+
+    <!-- Filter Toolbar -->
     <div class="toolbar">
-        <div class="filter-bar">
-            <a class="filter-pill <?= $statusFilter === 'all' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['status' => 'all', 'grade' => $gradeFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">All Courses</a>
-            <a class="filter-pill <?= $statusFilter === 'active' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['status' => 'active', 'grade' => $gradeFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Active</a>
-            <a class="filter-pill <?= $statusFilter === 'inactive' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['status' => 'inactive', 'grade' => $gradeFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>">Inactive</a>
-            <a class="filter-pill <?= $statusFilter === 'archived' ? 'active' : '' ?>"
-               href="?<?= http_build_query(array_filter(['status' => 'archived', 'grade' => $gradeFilter, 'quarter' => $quarterFilter, 'school_year' => $schoolYearFilter, 'q' => $searchQuery])) ?>"><i class="fas fa-box-archive"></i> Archived</a>
-
-            <!-- Live client-side search: instantly filters the Class List table below
-                 by subject, section, or teacher name. No page reload, no server call. -->
-            <div class="live-search-box">
-                <i class="fas fa-search"></i>
-                <input type="text"
-                       id="liveSearchInput"
-                       placeholder="Search teacher, subject, or section..."
-                       autocomplete="off"
-                       oninput="filterCourseList(this.value)">
-                <button type="button" class="live-search-clear" id="liveSearchClearBtn" onclick="clearCourseListSearch()" aria-label="Clear search">&times;</button>
-            </div>
-
-            <form method="get" action="courses.php" style="display:contents">
-                <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
-                <input type="hidden" name="q" value="<?= htmlspecialchars($searchQuery) ?>">
-
-                <select class="select-filter" name="grade" onchange="this.form.submit()">
-                    <option value="all" <?= $gradeFilter === 'all' ? 'selected' : '' ?>>All Grade Levels</option>
-                    <?php foreach ([7, 8, 9, 10, 11, 12] as $g): ?>
-                        <option value="<?= $g ?>" <?= $gradeFilter == $g ? 'selected' : '' ?>>Grade <?= $g ?></option>
-                    <?php endforeach; ?>
-                </select>
-
-                <select class="select-filter" name="quarter" onchange="this.form.submit()">
-                    <option value="all" <?= $quarterFilter === 'all' ? 'selected' : '' ?>>All Terms</option>
-                    <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $q): ?>
-                        <option value="<?= $q ?>" <?= $quarterFilter === $q ? 'selected' : '' ?>><?= $q ?></option>
-                    <?php endforeach; ?>
-                </select>
-
-                <select class="select-filter" name="school_year" onchange="this.form.submit()">
-                    <option value="all" <?= $schoolYearFilter === 'all' ? 'selected' : '' ?>>All School Years</option>
-                    <?php foreach ($modalSchoolYears as $sy): ?>
-                        <option value="<?= (int) $sy['school_year_id'] ?>" <?= $schoolYearFilter == $sy['school_year_id'] ? 'selected' : '' ?>><?= clean($sy['label']) ?></option>
-                    <?php endforeach; ?>
-                </select>
-            </form>
+        <!-- Live client-side search: instantly filters the Class List table below
+             by subject, section, or teacher name. No page reload, no server call. -->
+        <div class="live-search-box">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="text"
+                   id="liveSearchInput"
+                   placeholder="Search teacher, subject, or section..."
+                   aria-label="Search classes"
+                   autocomplete="off"
+                   oninput="filterCourseList(this.value)">
+            <button type="button" class="live-search-clear" id="liveSearchClearBtn" onclick="clearCourseListSearch()" aria-label="Clear search">&times;</button>
         </div>
 
-        <div class="action-bar">
-            <div class="action-bar-group">
-                <span class="action-bar-group-label">View</span>
-                <button class="btn-secondary <?= $openView === 'subjects' ? 'active' : '' ?>" id="toggleSubjectsBtn" onclick="togglePanel('subjects', this)"><i class="fas fa-list"></i> Subjects</button>
-                <button class="btn-secondary <?= $openView === 'sections' ? 'active' : '' ?>" id="toggleSectionsBtn" onclick="togglePanel('sections', this)"><i class="fas fa-list"></i> Sections</button>
-                <button class="btn-secondary <?= $openView === 'export' ? 'active' : '' ?>" id="toggleExportBtn" onclick="togglePanel('export', this)"><i class="fas fa-file-export"></i> Search &amp; Export</button>
-                <button class="btn-secondary" id="toggleTermIntervalBtn" onclick="openTermIntervalModal()"><i class="fas fa-calendar-days"></i> Set Term Interval</button>
-            </div>
-            <div class="action-bar-group">
-                <span class="action-bar-group-label">Create</span>
-                <button class="btn-secondary" onclick="openAddSubjectModal()"><i class="fas fa-book"></i> New Subject</button>
-                <button class="btn-secondary" onclick="openAddSectionModal()"><i class="fas fa-layer-group"></i> New Section</button>
-                <button class="btn-primary" onclick="openAddCourseModal()"><i class="fas fa-plus"></i> New Class</button>
-            </div>
+        <div class="segmented" role="group" aria-label="Filter by status">
+            <a class="filter-pill <?= $statusFilter === 'all' ? 'active' : '' ?>" href="<?= $pillQuery('all') ?>">All</a>
+            <a class="filter-pill <?= $statusFilter === 'active' ? 'active' : '' ?>" href="<?= $pillQuery('active') ?>">Active</a>
+            <a class="filter-pill <?= $statusFilter === 'inactive' ? 'active' : '' ?>" href="<?= $pillQuery('inactive') ?>">Inactive</a>
+            <a class="filter-pill <?= $statusFilter === 'archived' ? 'active' : '' ?>" href="<?= $pillQuery('archived') ?>"><i class="fas fa-box-archive" aria-hidden="true"></i> Archived</a>
         </div>
+
+        <form method="get" action="courses.php" class="filter-selects">
+            <input type="hidden" name="status" value="<?= htmlspecialchars($statusFilter) ?>">
+            <input type="hidden" name="q" value="<?= htmlspecialchars($searchQuery) ?>">
+
+            <select class="select-filter" name="grade" aria-label="Filter by grade level" onchange="this.form.submit()">
+                <option value="all" <?= $gradeFilter === 'all' ? 'selected' : '' ?>>All Grade Levels</option>
+                <?php foreach ([7, 8, 9, 10, 11, 12] as $g): ?>
+                    <option value="<?= $g ?>" <?= $gradeFilter == $g ? 'selected' : '' ?>>Grade <?= $g ?></option>
+                <?php endforeach; ?>
+            </select>
+
+            <select class="select-filter" name="quarter" aria-label="Filter by term" onchange="this.form.submit()">
+                <option value="all" <?= $quarterFilter === 'all' ? 'selected' : '' ?>>All Terms</option>
+                <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $q): ?>
+                    <option value="<?= $q ?>" <?= $quarterFilter === $q ? 'selected' : '' ?>><?= $q ?></option>
+                <?php endforeach; ?>
+            </select>
+
+            <select class="select-filter" name="school_year" aria-label="Filter by school year" onchange="this.form.submit()">
+                <option value="all" <?= $schoolYearFilter === 'all' ? 'selected' : '' ?>>All School Years</option>
+                <?php foreach ($modalSchoolYears as $sy): ?>
+                    <option value="<?= (int) $sy['school_year_id'] ?>" <?= $schoolYearFilter == $sy['school_year_id'] ? 'selected' : '' ?>><?= clean($sy['label']) ?></option>
+                <?php endforeach; ?>
+            </select>
+
+            <?php if ($filtersActive): ?>
+            <a class="reset-filters" href="courses.php"><i class="fas fa-rotate-left" aria-hidden="true"></i> Reset</a>
+            <?php endif; ?>
+        </form>
     </div>
 
     <!-- Course List -->
     <div class="list-panel">
         <div class="list-panel-header">
-            <h2>Class List</h2>
-            <span class="count-note" id="courseCountTop">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
+            <div class="list-panel-title">
+                <h2>Class List</h2>
+                <span class="count-note" id="courseCountTop">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
+            </div>
         </div>
 
         <div class="course-table-wrap" role="region" aria-label="Class list table" tabindex="0">
-        <table class="course-table" id="courseTable">
+        <table class="course-table stack-table" id="courseTable">
             <thead>
                 <tr>
-                    <th>Course / Subject</th>
-                    <th>Section</th>
-                    <th>Grade Level</th>
-                    <th>Strand</th>
+                    <th>Class</th>
                     <th>Term</th>
-                    <th>School Year</th>
                     <th>Schedule</th>
-                    <th>Teacher Assigned</th>
+                    <th>Teacher</th>
                     <th>Enrollment</th>
                     <th>Status</th>
                     <th>Class Code</th>
@@ -715,8 +578,12 @@ $subjectsList = $pdo->query("
             <tbody id="courseTableBody">
                 <?php if (empty($courses)): ?>
                 <tr class="empty-row">
-                    <td colspan="12">
-                        No courses match these filters.
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <div class="empty-icon"><i class="fas fa-inbox" aria-hidden="true"></i></div>
+                            <strong>No classes match these filters</strong>
+                            <span>Try a different filter, or create a new class.</span>
+                        </div>
                     </td>
                 </tr>
                 <?php endif; ?>
@@ -729,10 +596,14 @@ $subjectsList = $pdo->query("
                     $colors = $subjectColors[$course['subject_name']] ?? ['bg' => '#e5e7eb', 'text' => '#374151', 'bar' => '#9ca3af'];
                     $pct = $course['capacity'] > 0 ? round(($course['enrolled_count'] / $course['capacity']) * 100) : 0;
                     $teacherName = $course['teacher_id'] ? trim($course['teacher_firstname'] . ' ' . $course['teacher_lastname']) : null;
+                    $teacherInitials = $teacherName
+                        ? mb_strtoupper(mb_substr((string) $course['teacher_firstname'], 0, 1) . mb_substr((string) $course['teacher_lastname'], 0, 1))
+                        : '';
                     $scheduleDisplay = formatScheduleDisplay($course['schedule_days'], $course['start_time'], $course['end_time']);
                     $ownArchived     = (int) $course['is_archived'] === 1;
                     $sectionArchived = (int) $course['section_archived'] === 1;
                     $isArchivedRow   = $ownArchived || $sectionArchived;
+                    $barColor        = $pct >= 100 ? '#dc2626' : $colors['bar'];
                     // Pre-baked lowercase blob this row matches against for the
                     // instant client-side search box (subject + section + teacher name).
                     $searchBlob = mb_strtolower(trim(
@@ -745,38 +616,56 @@ $subjectsList = $pdo->query("
                     data-search="<?= htmlspecialchars($searchBlob) ?>"
                     data-group="<?= htmlspecialchars($groupKey) ?>"
                     <?= $isSibling ? 'data-expanded="false" style="display:none"' : '' ?>>
-                    <td>
-                        <div class="course-cell">
+                    <td data-label="Class">
+                        <div class="class-cell">
                             <span class="subject-tag" style="background: <?= $colors['bg'] ?>; color: <?= $colors['text'] ?>;">
                                 <?= htmlspecialchars($course['subject_name']) ?>
                             </span>
+                            <div class="class-meta">
+                                <span class="course-name"><?= $isSibling ? '<span class="sibling-indent">↳</span>' : '' ?>Section <?= htmlspecialchars($course['section_name']) ?></span>
+                                <span class="class-sub">Grade <?= htmlspecialchars($course['grade_level']) ?><?= $course['strands'] ? ' · ' . htmlspecialchars($course['strands']) : '' ?></span>
+                            </div>
                         </div>
                     </td>
-                    <td class="course-name"><?= $isSibling ? '<span class="sibling-indent">↳</span> ' : '' ?><?= htmlspecialchars($course['section_name']) ?></td>
-                    <td>Grade <?= htmlspecialchars($course['grade_level']) ?></td>
-                    <td><?= $course['strands'] ? htmlspecialchars($course['strands']) : '—' ?></td>
-                    <td>
-                        <?= htmlspecialchars($course['quarter']) ?>
-                        <?php if (!$isSibling && $siblingCount > 0): ?>
-                            <button type="button" class="term-toggle" data-group="<?= htmlspecialchars($groupKey) ?>"
-                                    aria-expanded="false" onclick="toggleCourseSiblings(this)">
-                                <span class="chevron">▸</span>
-                                <?= $siblingCount ?> earlier <?= $siblingCount === 1 ? 'term' : 'terms' ?>
-                            </button>
+                    <td data-label="Term">
+                        <div class="term-cell">
+                            <span class="term-chip"><?= htmlspecialchars($course['quarter']) ?></span>
+                            <span class="term-sy"><?= $course['offering_school_year_label'] ? htmlspecialchars($course['offering_school_year_label']) : '<span class="field-note">No school year</span>' ?></span>
+                            <?php if (!$isSibling && $siblingCount > 0): ?>
+                                <button type="button" class="term-toggle" data-group="<?= htmlspecialchars($groupKey) ?>"
+                                        aria-expanded="false" onclick="toggleCourseSiblings(this)">
+                                    <span class="chevron">▸</span>
+                                    <?= $siblingCount ?> earlier <?= $siblingCount === 1 ? 'term' : 'terms' ?>
+                                </button>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                    <td data-label="Schedule">
+                        <?php if ($scheduleDisplay): ?>
+                            <span class="sched"><i class="far fa-clock" aria-hidden="true"></i> <?= htmlspecialchars($scheduleDisplay) ?></span>
+                        <?php else: ?>
+                            <span class="field-note">Not set</span>
                         <?php endif; ?>
                     </td>
-                    <td><?= $course['offering_school_year_label'] ? htmlspecialchars($course['offering_school_year_label']) : '<span class="field-note">— None —</span>' ?></td>
-                    <td><?= $scheduleDisplay ? htmlspecialchars($scheduleDisplay) : '<span class="field-note">— Not set —</span>' ?></td>
-                    <td><?= $teacherName ? htmlspecialchars($teacherName) : '— Unassigned —' ?></td>
-                    <td>
-                        <div class="enrollment-cell">
-                            <div class="enrollment-bar">
-                                <div class="enrollment-bar-fill" style="width: <?= min($pct, 100) ?>%; background: <?= $colors['bar'] ?>;"></div>
+                    <td data-label="Teacher">
+                        <?php if ($teacherName): ?>
+                            <div class="person-cell">
+                                <span class="avatar-sm" aria-hidden="true"><?= htmlspecialchars($teacherInitials) ?></span>
+                                <span class="person-name"><?= htmlspecialchars($teacherName) ?></span>
                             </div>
-                            <span class="enrollment-fraction"><?= htmlspecialchars($course['enrolled_count']) ?>/<?= htmlspecialchars($course['capacity']) ?></span>
+                        <?php else: ?>
+                            <span class="chip-muted"><i class="fas fa-user-slash" aria-hidden="true"></i> Unassigned</span>
+                        <?php endif; ?>
+                    </td>
+                    <td data-label="Enrollment">
+                        <div class="enrollment-cell" title="<?= (int) $pct ?>% of capacity">
+                            <div class="enrollment-bar">
+                                <div class="enrollment-bar-fill" style="width: <?= min($pct, 100) ?>%; background: <?= $barColor ?>;"></div>
+                            </div>
+                            <span class="enrollment-fraction"><strong><?= htmlspecialchars($course['enrolled_count']) ?></strong>/<?= htmlspecialchars($course['capacity']) ?></span>
                         </div>
                     </td>
-                    <td>
+                    <td data-label="Status">
                         <?php if ($isArchivedRow): ?>
                         <span class="status-dot-badge archived" title="<?= $ownArchived ? 'This class is archived' : 'Hidden because its section is archived' ?>">
                             <span class="dot"></span>
@@ -789,13 +678,20 @@ $subjectsList = $pdo->query("
                         </span>
                         <?php endif; ?>
                     </td>
-                    <td><span class="class-code-badge"><?= htmlspecialchars($course['class_code']) ?></span></td>
-                    <td class="col-actions">
+                    <td data-label="Class Code">
+                        <button type="button" class="class-code-badge" data-code="<?= htmlspecialchars($course['class_code']) ?>"
+                                title="Click to copy" aria-label="Copy class code <?= htmlspecialchars($course['class_code']) ?>"
+                                onclick="copyClassCode(this)">
+                            <span><?= htmlspecialchars($course['class_code']) ?></span>
+                            <i class="far fa-copy" aria-hidden="true"></i>
+                        </button>
+                    </td>
+                    <td class="col-actions" data-label="Actions">
                         <div class="row-actions">
-                            <a href="javascript:void(0)"
-                               onclick="openViewStudentsModal(<?= (int) $course['offering_id'] ?>)">View Students</a>
+                            <button type="button" class="ra-btn" data-tip="View students" aria-label="View students"
+                                    onclick="openViewStudentsModal(<?= (int) $course['offering_id'] ?>)"><i class="fas fa-users" aria-hidden="true"></i></button>
                             <?php if (!$isArchivedRow): ?>
-                            <a href="javascript:void(0)"
+                            <button type="button" class="ra-btn" data-tip="Update class" aria-label="Update class"
                                data-course="<?= htmlspecialchars(json_encode([
                                    'offering_id'   => (int) $course['offering_id'],
                                    'subject_id'    => (int) $course['subject_id'],
@@ -809,18 +705,18 @@ $subjectsList = $pdo->query("
                                    'capacity'      => (int) $course['capacity'],
                                    'status'        => $course['status'],
                                ]), ENT_QUOTES, 'UTF-8') ?>"
-                               onclick="openEditCourseModal(this)">Update</a>
+                               onclick="openEditCourseModal(this)"><i class="fas fa-pen" aria-hidden="true"></i></button>
                             <?php if ($archiveLockedTerm !== null): ?>
-                            <span class="archive archive-disabled" title="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock"></i> Archive</span>
+                            <span class="ra-btn archive archive-disabled" data-tip="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i></span>
                             <?php else: ?>
-                            <a class="archive" href="courses.php?archive=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
-                               onclick="return confirmArchive('course')">Archive</a>
+                            <a class="ra-btn archive" data-tip="Archive class" aria-label="Archive class" href="courses.php?archive=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
+                               onclick="return confirmArchive('course')"><i class="fas fa-box-archive" aria-hidden="true"></i></a>
                             <?php endif; ?>
                             <?php elseif ($ownArchived): ?>
-                            <a class="restore" href="courses.php?restore=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
-                               onclick="return confirmArchive('restore-course')">Restore</a>
+                            <a class="ra-btn restore" data-tip="Restore class" aria-label="Restore class" href="courses.php?restore=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
+                               onclick="return confirmArchive('restore-course')"><i class="fas fa-rotate-left" aria-hidden="true"></i></a>
                             <?php else: ?>
-                            <span class="field-note" title="Restore the section from the Sections List to bring this class back">Restore its section</span>
+                            <span class="chip-muted" title="Restore the section from the Sections List to bring this class back">Restore its section</span>
                             <?php endif; ?>
                         </div>
                     </td>
@@ -835,16 +731,22 @@ $subjectsList = $pdo->query("
         </div>
     </div>
     <!-- /Course List -->
+    </div>
+    <!-- /Classes view -->
 
-    <!-- Sections List (hidden until "View Sections" is clicked) -->
+    <!-- Sections List -->
     <div class="view-panel <?= $openView === 'sections' ? 'open' : '' ?>" id="view-sections">
     <div class="list-panel">
         <div class="list-panel-header">
-            <h2>Sections List</h2>
-            <span class="count-note"><?= htmlspecialchars(count($sectionsList)) ?> sections</span>
+            <div class="list-panel-title">
+                <h2>Sections List</h2>
+                <span class="count-note"><?= htmlspecialchars(count($sectionsList)) ?> sections</span>
+            </div>
+            <button type="button" class="btn-primary btn-sm" onclick="openAddSectionModal()"><i class="fas fa-plus" aria-hidden="true"></i> New Section</button>
         </div>
 
-        <table class="course-table">
+        <div class="course-table-wrap" tabindex="0" role="region" aria-label="Sections table">
+        <table class="course-table stack-table">
             <thead>
                 <tr>
                     <th>Section</th>
@@ -860,7 +762,11 @@ $subjectsList = $pdo->query("
                 <?php if (empty($sectionsList)): ?>
                 <tr class="empty-row">
                     <td colspan="7">
-                        No sections found. Use "New Section" to add one.
+                        <div class="empty-state">
+                            <div class="empty-icon"><i class="fas fa-layer-group" aria-hidden="true"></i></div>
+                            <strong>No sections yet</strong>
+                            <span>Use “New Section” to add one.</span>
+                        </div>
                     </td>
                 </tr>
                 <?php endif; ?>
@@ -869,34 +775,46 @@ $subjectsList = $pdo->query("
                     $adviserName = $sec['adviser_firstname']
                         ? trim($sec['adviser_firstname'] . ' ' . $sec['adviser_lastname'])
                         : null;
+                    $adviserInitials = $adviserName
+                        ? mb_strtoupper(mb_substr((string) $sec['adviser_firstname'], 0, 1) . mb_substr((string) $sec['adviser_lastname'], 0, 1))
+                        : '';
                 ?>
                 <tr class="<?= !empty($sec['is_archived']) ? 'archived-row' : '' ?>">
-                    <td><span class="course-name"><?= htmlspecialchars($sec['section_name']) ?></span><?= !empty($sec['is_archived']) ? ' <span class="archive-badge">Archived</span>' : '' ?></td>
-                    <td>Grade <?= htmlspecialchars($sec['grade_level']) ?></td>
-                    <td><?= $adviserName ? htmlspecialchars($adviserName) : '— None —' ?></td>
-                    <td><?= $sec['school_year_label'] ? htmlspecialchars($sec['school_year_label']) : '— None —' ?></td>
-                    <td><?= (int) $sec['course_count'] ?></td>
-                    <td><?= (int) $sec['student_count'] ?></td>
-                    <td class="col-actions">
+                    <td data-label="Section"><span class="course-name"><?= htmlspecialchars($sec['section_name']) ?></span><?= !empty($sec['is_archived']) ? ' <span class="archive-badge">Archived</span>' : '' ?></td>
+                    <td data-label="Grade Level"><span class="term-chip">Grade <?= htmlspecialchars($sec['grade_level']) ?></span></td>
+                    <td data-label="Adviser">
+                        <?php if ($adviserName): ?>
+                            <div class="person-cell">
+                                <span class="avatar-sm" aria-hidden="true"><?= htmlspecialchars($adviserInitials) ?></span>
+                                <span class="person-name"><?= htmlspecialchars($adviserName) ?></span>
+                            </div>
+                        <?php else: ?>
+                            <span class="chip-muted"><i class="fas fa-user-slash" aria-hidden="true"></i> None</span>
+                        <?php endif; ?>
+                    </td>
+                    <td data-label="School Year"><?= $sec['school_year_label'] ? htmlspecialchars($sec['school_year_label']) : '<span class="field-note">None</span>' ?></td>
+                    <td data-label="Courses Offered"><span class="count-pill"><?= (int) $sec['course_count'] ?></span></td>
+                    <td data-label="Enrolled Students"><span class="count-pill"><?= (int) $sec['student_count'] ?></span></td>
+                    <td class="col-actions" data-label="Actions">
                         <div class="row-actions">
                             <?php if (empty($sec['is_archived'])): ?>
-                            <a href="javascript:void(0)"
+                            <button type="button" class="ra-btn" data-tip="Update section" aria-label="Update section"
                                data-section="<?= htmlspecialchars(json_encode([
                                    'section_id'   => (int) $sec['section_id'],
                                    'section_name' => $sec['section_name'],
                                    'grade_level'  => (int) $sec['grade_level'],
                                    'adviser_id'   => $sec['adviser_id'] ? (int) $sec['adviser_id'] : '',
                                ]), ENT_QUOTES, 'UTF-8') ?>"
-                               onclick="openEditSectionModal(this)">Update</a>
+                               onclick="openEditSectionModal(this)"><i class="fas fa-pen" aria-hidden="true"></i></button>
                             <?php if ($archiveLockedTerm !== null): ?>
-                            <span class="archive archive-disabled" title="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock"></i> Archive</span>
+                            <span class="ra-btn archive archive-disabled" data-tip="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i></span>
                             <?php else: ?>
-                            <a class="archive" href="courses.php?archive_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
-                               onclick="return confirmArchive('section')">Archive</a>
+                            <a class="ra-btn archive" data-tip="Archive section" aria-label="Archive section" href="courses.php?archive_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
+                               onclick="return confirmArchive('section')"><i class="fas fa-box-archive" aria-hidden="true"></i></a>
                             <?php endif; ?>
                             <?php else: ?>
-                            <a class="restore" href="courses.php?restore_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
-                               onclick="return confirmArchive('restore-section')">Restore</a>
+                            <a class="ra-btn restore" data-tip="Restore section" aria-label="Restore section" href="courses.php?restore_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
+                               onclick="return confirmArchive('restore-section')"><i class="fas fa-rotate-left" aria-hidden="true"></i></a>
                             <?php endif; ?>
                         </div>
                     </td>
@@ -904,6 +822,7 @@ $subjectsList = $pdo->query("
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
 
         <div class="list-panel-footer">
             <span class="count-note"><?= htmlspecialchars(count($sectionsList)) ?> sections total</span>
@@ -912,15 +831,19 @@ $subjectsList = $pdo->query("
     </div>
     <!-- /Sections List -->
 
-    <!-- Subjects List (hidden until "View Subjects" is clicked) -->
+    <!-- Subjects List -->
     <div class="view-panel <?= $openView === 'subjects' ? 'open' : '' ?>" id="view-subjects">
     <div class="list-panel">
         <div class="list-panel-header">
-            <h2>Subjects List</h2>
-            <span class="count-note"><?= htmlspecialchars(count($subjectsList)) ?> subjects</span>
+            <div class="list-panel-title">
+                <h2>Subjects List</h2>
+                <span class="count-note"><?= htmlspecialchars(count($subjectsList)) ?> subjects</span>
+            </div>
+            <button type="button" class="btn-primary btn-sm" onclick="openAddSubjectModal()"><i class="fas fa-plus" aria-hidden="true"></i> New Subject</button>
         </div>
 
-        <table class="course-table">
+        <div class="course-table-wrap" tabindex="0" role="region" aria-label="Subjects table">
+        <table class="course-table stack-table">
             <thead>
                 <tr>
                     <th>Subject</th>
@@ -934,7 +857,11 @@ $subjectsList = $pdo->query("
                 <?php if (empty($subjectsList)): ?>
                 <tr class="empty-row">
                     <td colspan="5">
-                        No subjects found. Use "New Subject" to add one.
+                        <div class="empty-state">
+                            <div class="empty-icon"><i class="fas fa-book" aria-hidden="true"></i></div>
+                            <strong>No subjects yet</strong>
+                            <span>Use “New Subject” to add one.</span>
+                        </div>
                     </td>
                 </tr>
                 <?php endif; ?>
@@ -943,7 +870,7 @@ $subjectsList = $pdo->query("
                     $colors = $subjectColors[$subj['subject_name']] ?? ['bg' => '#e5e7eb', 'text' => '#374151', 'bar' => '#9ca3af'];
                 ?>
                 <tr class="<?= !empty($subj['is_archived']) ? 'archived-row' : '' ?>">
-                    <td>
+                    <td data-label="Subject">
                         <div class="course-cell">
                             <span class="subject-tag" style="background: <?= $colors['bg'] ?>; color: <?= $colors['text'] ?>;">
                                 <?= htmlspecialchars($subj['subject_name']) ?>
@@ -951,28 +878,28 @@ $subjectsList = $pdo->query("
                             <?= !empty($subj['is_archived']) ? '<span class="archive-badge">Archived</span>' : '' ?>
                         </div>
                     </td>
-                    <td style="white-space: normal;"><?= $subj['description'] ? htmlspecialchars($subj['description']) : '— No description —' ?></td>
-                    <td><?= (int) $subj['offering_count'] ?></td>
-                    <td><?= (int) $subj['section_count'] ?></td>
-                    <td class="col-actions">
+                    <td data-label="Description" class="cell-wrap"><?= $subj['description'] ? htmlspecialchars($subj['description']) : '<span class="field-note">No description</span>' ?></td>
+                    <td data-label="Courses Offered"><span class="count-pill"><?= (int) $subj['offering_count'] ?></span></td>
+                    <td data-label="Sections Covered"><span class="count-pill"><?= (int) $subj['section_count'] ?></span></td>
+                    <td class="col-actions" data-label="Actions">
                         <div class="row-actions">
                             <?php if (empty($subj['is_archived'])): ?>
-                            <a href="javascript:void(0)"
+                            <button type="button" class="ra-btn" data-tip="Update subject" aria-label="Update subject"
                                data-subject="<?= htmlspecialchars(json_encode([
                                    'subject_id'   => (int) $subj['subject_id'],
                                    'subject_name' => $subj['subject_name'],
                                    'description'  => $subj['description'] ?? '',
                                ]), ENT_QUOTES, 'UTF-8') ?>"
-                               onclick="openEditSubjectModal(this)">Update</a>
+                               onclick="openEditSubjectModal(this)"><i class="fas fa-pen" aria-hidden="true"></i></button>
                             <?php if ($archiveLockedTerm !== null): ?>
-                            <span class="archive archive-disabled" title="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock"></i> Archive</span>
+                            <span class="ra-btn archive archive-disabled" data-tip="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i></span>
                             <?php else: ?>
-                            <a class="archive" href="courses.php?archive_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
-                               onclick="return confirmArchive('subject')">Archive</a>
+                            <a class="ra-btn archive" data-tip="Archive subject" aria-label="Archive subject" href="courses.php?archive_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
+                               onclick="return confirmArchive('subject')"><i class="fas fa-box-archive" aria-hidden="true"></i></a>
                             <?php endif; ?>
                             <?php else: ?>
-                            <a class="restore" href="courses.php?restore_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
-                               onclick="return confirmArchive('restore-subject')">Restore</a>
+                            <a class="ra-btn restore" data-tip="Restore subject" aria-label="Restore subject" href="courses.php?restore_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
+                               onclick="return confirmArchive('restore-subject')"><i class="fas fa-rotate-left" aria-hidden="true"></i></a>
                             <?php endif; ?>
                         </div>
                     </td>
@@ -980,6 +907,7 @@ $subjectsList = $pdo->query("
                 <?php endforeach; ?>
             </tbody>
         </table>
+        </div>
 
         <div class="list-panel-footer">
             <span class="count-note"><?= htmlspecialchars(count($subjectsList)) ?> subjects total</span>
@@ -992,8 +920,10 @@ $subjectsList = $pdo->query("
     <div class="view-panel <?= $openView === 'export' ? 'open' : '' ?>" id="view-export">
     <div class="list-panel">
         <div class="list-panel-header">
-            <h2>Search &amp; Export Classes</h2>
-            <span class="count-note">Find a teacher, section, or student and export their classes to Excel</span>
+            <div class="list-panel-title">
+                <h2>Search &amp; Export Classes</h2>
+                <span class="count-note">Find a teacher, section, or student and export their classes to Excel</span>
+            </div>
         </div>
 
         <div class="export-search-grid">
@@ -1231,6 +1161,7 @@ $subjectsList = $pdo->query("
                     </select>
                 </div>
 
+                <div class="table-scroll">
                 <table class="course-table">
                     <thead>
                         <tr>
@@ -1254,6 +1185,7 @@ $subjectsList = $pdo->query("
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </div>
 
             <div class="modal-footer">

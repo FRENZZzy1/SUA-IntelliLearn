@@ -285,11 +285,162 @@ if (function_exists('get_initials')) {
         .shn.open .shn-panel { animation: shnIn 0.14s ease-out; }
         @keyframes shnIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
     }
+
+    /* =====================================================================
+       MODERN ADMIN HEADER
+       Scoped to .admin-top-header so the shared header.css (also used by the
+       student and teacher headers) is left untouched.
+    ===================================================================== */
+    .top-header.admin-top-header {
+        isolation: isolate;
+        gap: 16px;
+        padding: 0 28px;
+        background: transparent;
+        border-bottom: 1px solid rgba(20, 35, 28, 0.07);
+        box-shadow: 0 8px 24px -18px rgba(16, 24, 20, 0.35);
+    }
+    /* The frosted-glass layer lives on a pseudo-element: a backdrop-filter on the
+       header itself would trap the position:fixed mobile notification panel. */
+    .top-header.admin-top-header::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: rgba(255, 255, 255, 0.82);
+        -webkit-backdrop-filter: saturate(1.6) blur(14px);
+        backdrop-filter: saturate(1.6) blur(14px);
+    }
+
+    /* ---- Search ---- */
+    .top-header.admin-top-header .header-search { flex: 0 1 440px; width: 100%; max-width: 440px; }
+    .top-header.admin-top-header .header-search > i {
+        left: 15px; font-size: 0.85rem; color: #8a9791; transition: color 0.15s ease; pointer-events: none;
+    }
+    .top-header.admin-top-header .header-search:focus-within > i { color: #1a5c3a; }
+    .top-header.admin-top-header .header-search input {
+        width: 100%; height: 42px; padding: 0 56px 0 42px;
+        border: 1px solid transparent; border-radius: 12px;
+        background: #f1f5f3; color: #14231c; box-shadow: none;
+        font-family: inherit; font-size: 0.875rem; font-weight: 500;
+        transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .top-header.admin-top-header .header-search input::placeholder { color: #8a9791; font-weight: 400; }
+    .top-header.admin-top-header .header-search input:hover { background: #eaf0ed; }
+    .top-header.admin-top-header .header-search input:focus {
+        background: #fff; border-color: #2d7a52; box-shadow: 0 0 0 4px rgba(45, 122, 82, 0.14);
+    }
+    .hs-kbd {
+        position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+        min-width: 22px; height: 22px; padding: 0 6px; border-radius: 6px;
+        border: 1px solid #d9e1dd; border-bottom-width: 2px; background: #fff; color: #7b8982;
+        font: 600 0.7rem/19px ui-monospace, SFMono-Regular, Consolas, Menlo, monospace;
+        text-align: center; pointer-events: none; transition: opacity 0.15s ease;
+    }
+    .header-search:focus-within .hs-kbd { opacity: 0; }
+
+    /* ---- Right-hand actions ---- */
+    .top-header.admin-top-header .header-actions { display: flex; align-items: center; gap: 6px; margin: 0; }
+    .top-header.admin-top-header .header-btn {
+        width: 40px; height: 40px; border-radius: 12px; font-size: 1rem; color: #5b6a63;
+        transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    }
+    .top-header.admin-top-header .header-btn:hover { background: #eef3f0; color: #14231c; }
+    .top-header.admin-top-header .header-btn:active { transform: scale(0.95); }
+    .top-header.admin-top-header .header-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(45, 122, 82, 0.28); }
+    .top-header.admin-top-header .shn.open > .header-btn { background: #e3efe8; color: #1a5c3a; }
+    .top-header.admin-top-header .shn-badge {
+        top: 3px; left: auto; right: 1px; min-width: 18px; height: 18px; padding: 0 5px;
+        border-radius: 999px; border: 2px solid #fff; font-size: 0.6rem; font-weight: 700;
+        background: #ef4444; box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+    }
+    .header-divider { width: 1px; height: 26px; margin: 0 8px; background: #e3e9e6; flex-shrink: 0; }
+
+    /* ---- Profile chip ---- */
+    .top-header.admin-top-header .ahp-profile-trigger {
+        width: auto; height: 46px; gap: 10px; padding: 4px 10px 4px 5px;
+        border-radius: 14px; border: 1px solid transparent; font-family: inherit; text-align: left;
+    }
+    .top-header.admin-top-header .ahp-profile-trigger:hover,
+    .top-header.admin-top-header .ahp-profile.open .ahp-profile-trigger { background: #eef3f0; }
+    .ahp-avatar {
+        width: 36px; height: 36px; border-radius: 12px; font-size: 0.78rem; letter-spacing: 0.02em;
+        background: linear-gradient(135deg, #2d7a52 0%, #124029 100%);
+        box-shadow: 0 2px 6px rgba(26, 92, 58, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .ahp-avatar.ahp-avatar-lg { width: 40px; height: 40px; font-size: 0.85rem; }
+    .ahp-user { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; line-height: 1.15; }
+    .ahp-user-name {
+        max-width: 160px; font-size: 0.82rem; font-weight: 600; color: #14231c;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .ahp-user-role { font-size: 0.7rem; font-weight: 500; color: #7b8982; text-transform: capitalize; }
+
+    /* ---- Dropdown surfaces (search, notifications, profile) ---- */
+    .admin-top-header .search-results-dropdown,
+    .admin-top-header .shn-panel,
+    .admin-top-header .ahp-profile-menu {
+        border: 1px solid rgba(20, 35, 28, 0.08);
+        border-radius: 16px;
+        box-shadow: 0 24px 48px -16px rgba(16, 24, 20, 0.28), 0 4px 14px rgba(16, 24, 20, 0.06);
+        top: calc(100% + 10px);
+    }
+    .admin-top-header .search-results-dropdown { width: 100%; min-width: 380px; padding: 6px; }
+    .admin-top-header .search-group-label { padding: 10px 12px 4px; color: #8a9791; }
+    .admin-top-header .search-result-item { padding: 8px 10px; border-radius: 10px; transition: background 0.12s ease; }
+    .admin-top-header .search-result-item:hover { background: #eef6f1; }
+    .admin-top-header .search-result-icon { width: 32px; height: 32px; border-radius: 10px; }
+    .admin-top-header .search-result-sub { color: #7b8982; }
+
+    .admin-top-header .ahp-profile-menu { width: 252px; padding: 8px; }
+    .admin-top-header .ahp-profile-header {
+        gap: 12px; padding: 12px; margin-bottom: 6px; border-bottom: 0; border-radius: 12px; background: #f4f8f6;
+    }
+    .admin-top-header .ahp-profile-header-name { font-size: 0.88rem; color: #14231c; }
+    .admin-top-header .ahp-profile-header-role { color: #7b8982; }
+    .admin-top-header .ahp-profile-item { padding: 10px 12px; border-radius: 10px; font-weight: 500; color: #2b3a33; transition: background 0.12s ease, color 0.12s ease; }
+    .admin-top-header .ahp-profile-item i { color: #7b8982; }
+    .admin-top-header .ahp-profile-item:hover { background: #eef6f1; color: #1a5c3a; }
+    .admin-top-header .ahp-profile-item:hover i { color: #1a5c3a; }
+    .admin-top-header .ahp-profile-item.ahp-logout { margin-top: 6px; border-top: 1px solid #f0f2f1; border-radius: 0 0 10px 10px; padding-top: 12px; }
+    .admin-top-header .ahp-profile-item.ahp-logout:hover { background: #fef2f2; color: #b91c1c; }
+    .admin-top-header .ahp-profile-item.ahp-logout:hover i { color: #b91c1c; }
+
+    .admin-top-header .shn-head { padding: 16px 18px 10px; }
+    .admin-top-header .shn-title { font-size: 1rem; letter-spacing: -0.01em; }
+    .admin-top-header .shn-tabs { padding: 0 18px 12px; }
+    .admin-top-header .shn-tab { padding: 5px 14px; border-color: transparent; background: #f1f5f3; }
+    .admin-top-header .shn-tab:hover { background: #e6eeea; }
+    .admin-top-header .shn-tab.active { background: #1a5c3a; color: #fff; }
+    .admin-top-header .shn-icon { border-radius: 12px; }
+    .admin-top-header .shn-item { padding: 12px 18px; }
+    .admin-top-header .shn-item:hover { background: #f4f8f6; }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .admin-top-header .ahp-profile.open .ahp-profile-menu,
+        .admin-top-header .search-results-dropdown.open { animation: ahpIn 0.14s ease-out; }
+        @keyframes ahpIn { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+    }
+
+    @media (max-width: 1024px) {
+        .top-header.admin-top-header .ahp-user,
+        .top-header.admin-top-header .ahp-profile-trigger .fa-chevron-down { display: none; }
+        .top-header.admin-top-header .ahp-profile-trigger { padding: 4px; }
+    }
+    @media (max-width: 768px) {
+        .top-header.admin-top-header { padding: 0 14px; gap: 8px; }
+        .top-header.admin-top-header .header-search { flex: 1 1 auto; width: auto; max-width: none; }
+        .hs-kbd, .header-divider { display: none; }
+        .admin-top-header .search-results-dropdown { min-width: 0; }
+    }
+    @media (max-width: 480px) {
+        .top-header.admin-top-header .sua-help-trigger { display: none; }
+    }
 </style>
-<header class="top-header">
+<header class="top-header admin-top-header">
     <div class="header-search">
         <i class="fas fa-search"></i>
-        <input type="text" id="globalSearchInput" placeholder="Search users, courses, subjects..." autocomplete="off">
+        <input type="text" id="globalSearchInput" placeholder="Search users, courses, subjects..." autocomplete="off" aria-label="Search users, courses, subjects" aria-keyshortcuts="/ Control+K Meta+K">
+        <kbd class="hs-kbd" aria-hidden="true">/</kbd>
         <div id="searchResultsDropdown" class="search-results-dropdown"></div>
     </div>
     <div class="header-actions">
@@ -319,21 +470,27 @@ if (function_exists('get_initials')) {
             <i class="fas fa-question-circle"></i>
         </button>
         <?php include __DIR__ . '/help_center.php'; ?>
+        <span class="header-divider" aria-hidden="true"></span>
         <div class="ahp-profile" id="ahpProfile">
             <button type="button"
                     class="header-btn ahp-profile-trigger"
-                    style="width: auto; gap: 8px; padding: 0 12px; border-radius: 20px;"
                     title="<?php echo htmlspecialchars($userRole); ?>"
                     onclick="ahpToggleMenu()"
                     aria-haspopup="true"
-                    aria-expanded="false">
-                <div class="header-avatar" style="width: 28px; height: 28px; font-size: 0.7rem;"><?php echo htmlspecialchars($initials); ?></div>
-                <span style="font-size: 0.8rem; font-weight: 500;"><?php echo htmlspecialchars($displayName); ?></span>
+                    aria-expanded="false"
+                    aria-label="Account menu for <?php echo htmlspecialchars($displayName); ?>">
+                <div class="header-avatar ahp-avatar"><?php echo htmlspecialchars($initials); ?></div>
+                <span class="ahp-user">
+                    <span class="ahp-user-name"><?php echo htmlspecialchars($displayName); ?></span>
+                    <?php if ($userRole !== ''): ?>
+                    <span class="ahp-user-role"><?php echo htmlspecialchars($userRole); ?></span>
+                    <?php endif; ?>
+                </span>
                 <i class="fas fa-chevron-down"></i>
             </button>
             <div class="ahp-profile-menu" id="ahpProfileMenu">
                 <div class="ahp-profile-header">
-                    <div class="header-avatar" style="width: 34px; height: 34px; font-size: 0.75rem;"><?php echo htmlspecialchars($initials); ?></div>
+                    <div class="header-avatar ahp-avatar ahp-avatar-lg"><?php echo htmlspecialchars($initials); ?></div>
                     <div class="ahp-profile-header-text">
                         <div class="ahp-profile-header-name"><?php echo htmlspecialchars($displayName); ?></div>
                         <div class="ahp-profile-header-role"><?php echo htmlspecialchars($userRole); ?></div>
@@ -376,6 +533,20 @@ if (function_exists('get_initials')) {
     // Close on Escape.
     document.addEventListener('keydown', function (e) {
         if (e.key === 'Escape') ahpClose();
+    });
+
+    // "/" or Ctrl/Cmd + K focuses the global search box.
+    document.addEventListener('keydown', function (e) {
+        var input = document.getElementById('globalSearchInput');
+        if (!input) return;
+        var tag = (e.target && e.target.tagName || '').toLowerCase();
+        var typing = tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable);
+        var combo = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
+        if (combo || (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+            e.preventDefault();
+            input.focus();
+            input.select();
+        }
     });
 })();
 </script>
