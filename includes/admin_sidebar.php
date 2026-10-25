@@ -35,7 +35,7 @@ if (function_exists('get_initials')) {
 
 
 <aside class="sidebar" id="sidebar">
-    <div class="toggle-btn" onclick="toggleSidebar()" title="Toggle Sidebar">
+    <div class="toggle-btn" onclick="suaToggleSidebar()" title="Toggle Sidebar" role="button" tabindex="0" aria-label="Toggle sidebar" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();suaToggleSidebar();}">
         <i class="fas fa-chevron-left"></i>
     </div>
 
@@ -104,3 +104,42 @@ if (function_exists('get_initials')) {
         </div>
     </div>
 </aside>
+<script>
+/* Remember the sidebar's collapsed/expanded state across pages.
+   The state is stored in this browser and only changes when the toggle
+   button is clicked, so moving to another module keeps it as it was. */
+(function () {
+    var KEY = 'sua_admin_sidebar_collapsed';
+    var sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+
+    function read() {
+        try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; }
+    }
+    function write(collapsed) {
+        try { localStorage.setItem(KEY, collapsed ? '1' : '0'); } catch (e) {}
+    }
+
+    // Apply the saved state immediately, without animating on page load.
+    if (read()) {
+        var guard = document.createElement('style');
+        guard.id = 'suaSidebarNoAnim';
+        guard.textContent = '.sidebar, .sidebar *, .main-content, .top-header { transition: none !important; }';
+        document.head.appendChild(guard);
+        sidebar.classList.add('collapsed');
+        window.addEventListener('load', function () {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    var g = document.getElementById('suaSidebarNoAnim');
+                    if (g) g.remove();
+                });
+            });
+        });
+    }
+
+    window.suaToggleSidebar = function () {
+        var collapsed = sidebar.classList.toggle('collapsed');
+        write(collapsed);
+    };
+})();
+</script>

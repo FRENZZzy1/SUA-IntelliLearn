@@ -363,3 +363,28 @@
 .nav-item.active {
     animation: activePulse 3s ease-in-out infinite;
 }
+
+/* ---------- Collapsed: centre icons in the rail ---------- */
+/* Expanded layout uses horizontal padding + a gap before the label, which
+   pushes the icon right of centre once the label collapses to zero width. */
+.sidebar.collapsed .nav-item {
+    justify-content: center;
+    gap: 0;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.sidebar.collapsed .nav-item .nav-label {
+    overflow: hidden;
+    flex: 0 0 0;
+}
+
+.sidebar.collapsed .user-mini {
+    justify-content: center;
+    gap: 0;
+}
+
+.sidebar.collapsed .sidebar-footer {
+    padding-left: 0;
+    padding-right: 0;
+}
