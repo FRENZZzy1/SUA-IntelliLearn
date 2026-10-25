@@ -75,10 +75,16 @@ if (!empty($submissionRows)) {
         <a class="class-nav-item <?= $activeView === 'assignments' ? 'active' : '' ?>"
            href="<?= assignmentsUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm) ?>">
             <i class="fas fa-marker"></i> Assignments
+            <?php if ($pendingAssignmentCount > 0): ?>
+                <span class="nav-badge" title="<?= (int) $pendingAssignmentCount ?> submitted, not graded yet"><?= (int) $pendingAssignmentCount ?></span>
+            <?php endif; ?>
         </a>
         <a class="class-nav-item <?= $activeView === 'quizzes' ? 'active' : '' ?>"
            href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm) ?>">
             <i class="fas fa-file-circle-question"></i> Quizzes
+            <?php if ($pendingQuizCount > 0): ?>
+                <span class="nav-badge" title="<?= (int) $pendingQuizCount ?> answered, not graded yet"><?= (int) $pendingQuizCount ?></span>
+            <?php endif; ?>
         </a>
         <a class="class-nav-item <?= $activeView === 'requests' ? 'active' : '' ?>"
            href="<?= classOverviewUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, 'requests') ?>">

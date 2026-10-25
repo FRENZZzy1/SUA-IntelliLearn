@@ -496,6 +496,48 @@ if ($classOfferingIds) {
     }
 }
 
+// ---- "Needs your attention" badges for the Assignments / Quizzes tabs --------
+// Same idea as the Enrollment Requests badge: a red count on the tab while
+// something is waiting on the teacher. Counts the latest attempt per student
+// that a student has turned in but the teacher hasn't graded yet (a graded
+// submission / quiz attempt drops out of the count). Scoped to the active term,
+// i.e. the same data the tab itself shows. Needed on every view, so always computed.
+$pendingAssignmentCount = 0;
+$pendingQuizCount       = 0;
+if ($activeOfferingId) {
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM submissions s
+        JOIN assignments a  ON a.assignment_id = s.assignment_id
+        JOIN enrollments e  ON e.offering_id = a.offering_id
+                           AND e.student_id = s.student_id AND e.status = 'enrolled'
+        WHERE a.offering_id = ?
+          AND s.status IN ('submitted', 'late')
+          AND s.attempt_number = (SELECT MAX(y.attempt_number) FROM submissions y
+                                   WHERE y.assignment_id = s.assignment_id
+                                     AND y.student_id = s.student_id
+                                     AND y.status <> 'missing')
+    ");
+    $stmt->execute([$activeOfferingId]);
+    $pendingAssignmentCount = (int) $stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*)
+        FROM quiz_attempts qa
+        JOIN quizzes q      ON q.quiz_id = qa.quiz_id
+        JOIN enrollments e  ON e.offering_id = q.offering_id
+                           AND e.student_id = qa.student_id AND e.status = 'enrolled'
+        WHERE q.offering_id = ?
+          AND qa.status = 'submitted'
+          AND qa.attempt_number = (SELECT MAX(y.attempt_number) FROM quiz_attempts y
+                                    WHERE y.quiz_id = qa.quiz_id
+                                      AND y.student_id = qa.student_id
+                                      AND y.status IN ('submitted', 'graded'))
+    ");
+    $stmt->execute([$activeOfferingId]);
+    $pendingQuizCount = (int) $stmt->fetchColumn();
+}
+
 $csrfToken = generateCSRFToken();
 
 /**

@@ -310,6 +310,74 @@ if ($activeOfferingId && $activeView === 'quizzes') {
     }
 }
 
+// ---- Badges for the Assignments / Quizzes tabs ----------------------------------
+// Student-side counterpart of the teacher's red tab badges. A tab shows a count when:
+//   (1) the teacher has given something the student still has to do
+//       (a published assignment not yet turned in and not past due, or a
+//       published quiz that is open and not yet taken), or
+//   (2) the teacher has graded something the student hasn't looked at yet.
+// (1) clears by itself once the student submits. (2) clears when the student
+// opens that tab; "seen" state lives in the browser (localStorage), the same
+// approach the notification bell uses. Scoped to the active term, always computed.
+$assignmentTodoCount  = 0;
+$quizTodoCount        = 0;
+$assignmentGradedKeys = [];
+$quizGradedKeys       = [];
+if ($activeOfferingId) {
+    $nowSql = date('Y-m-d H:i:s');
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM assignments a
+        WHERE a.offering_id = ? AND a.status = 'published'
+          AND (a.due_date IS NULL OR a.due_date > ?)
+          AND NOT EXISTS (SELECT 1 FROM submissions s
+                           WHERE s.assignment_id = a.assignment_id
+                             AND s.student_id = ? AND s.status <> 'missing')
+    ");
+    $stmt->execute([$activeOfferingId, $nowSql, $studentId]);
+    $assignmentTodoCount = (int) $stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("
+        SELECT s.submission_id, s.graded_at
+        FROM submissions s
+        JOIN assignments a ON a.assignment_id = s.assignment_id
+        WHERE a.offering_id = ? AND a.status = 'published'
+          AND s.student_id = ? AND s.status IN ('graded', 'returned')
+          AND s.attempt_number = (SELECT MAX(y.attempt_number) FROM submissions y
+                                   WHERE y.assignment_id = s.assignment_id AND y.student_id = s.student_id)
+    ");
+    $stmt->execute([$activeOfferingId, $studentId]);
+    foreach ($stmt->fetchAll() as $r) {
+        $assignmentGradedKeys[] = 'a' . $r['submission_id'] . '-' . ($r['graded_at'] ? strtotime($r['graded_at']) : 0);
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT COUNT(*) FROM quizzes q
+        WHERE q.offering_id = ? AND q.status = 'published'
+          AND (q.available_from IS NULL OR q.available_from <= ?)
+          AND (q.available_until IS NULL OR q.available_until >= ?)
+          AND NOT EXISTS (SELECT 1 FROM quiz_attempts qa
+                           WHERE qa.quiz_id = q.quiz_id AND qa.student_id = ?
+                             AND qa.status IN ('submitted', 'graded'))
+    ");
+    $stmt->execute([$activeOfferingId, $nowSql, $nowSql, $studentId]);
+    $quizTodoCount = (int) $stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("
+        SELECT qa.attempt_id, qa.score
+        FROM quiz_attempts qa
+        JOIN quizzes q ON q.quiz_id = qa.quiz_id
+        WHERE q.offering_id = ? AND q.status = 'published'
+          AND qa.student_id = ? AND qa.status = 'graded'
+          AND qa.attempt_number = (SELECT MAX(y.attempt_number) FROM quiz_attempts y
+                                    WHERE y.quiz_id = qa.quiz_id AND y.student_id = qa.student_id)
+    ");
+    $stmt->execute([$activeOfferingId, $studentId]);
+    foreach ($stmt->fetchAll() as $r) {
+        $quizGradedKeys[] = 'q' . $r['attempt_id'] . '-' . ($r['score'] ?? '');
+    }
+}
+
 $materialsCount    = count($materials);
 $assignmentsCount  = count($assignments);
 $quizzesCount      = count($quizzes);

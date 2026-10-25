@@ -58,12 +58,47 @@ include 'assets/api/course_view_functions.php';
             <a class="class-nav-item <?= $activeView === 'assignments' ? 'active' : '' ?>"
                 href="<?= assignmentsUrlStudent($classInfo['subject_id'], $activeTerm) ?>">
                 <i class="fas fa-marker"></i> Assignments
+                <span class="nav-badge" data-nav-badge="assignments" data-todo="<?= (int) $assignmentTodoCount ?>"
+                    data-graded="<?= htmlspecialchars(implode('|', $assignmentGradedKeys)) ?>"
+                    <?= $assignmentTodoCount > 0 ? '' : 'hidden' ?>><?= (int) $assignmentTodoCount ?></span>
             </a>
             <a class="class-nav-item <?= $activeView === 'quizzes' ? 'active' : '' ?>"
                 href="<?= quizzesUrlStudent($classInfo['subject_id'], $activeTerm) ?>">
                 <i class="fas fa-file-circle-question"></i> Quizzes
+                <span class="nav-badge" data-nav-badge="quizzes" data-todo="<?= (int) $quizTodoCount ?>"
+                    data-graded="<?= htmlspecialchars(implode('|', $quizGradedKeys)) ?>"
+                    <?= $quizTodoCount > 0 ? '' : 'hidden' ?>><?= (int) $quizTodoCount ?></span>
             </a>
         </nav>
+        <script>
+            // Tab badges: to-do items (from the server) + teacher-graded items not seen yet.
+            (function () {
+                var KEY = 'sua_course_seen_<?= (int) $userId ?>';
+                var activeView = <?= json_encode($activeView) ?>;
+                var seen = [];
+                try { seen = JSON.parse(localStorage.getItem(KEY) || '[]') || []; } catch (e) { seen = []; }
+                var changed = false;
+                document.querySelectorAll('.nav-badge[data-nav-badge]').forEach(function (badge) {
+                    var ids = (badge.dataset.graded || '').split('|').filter(Boolean);
+                    // Opening a tab counts as seeing its graded items.
+                    if (badge.dataset.navBadge === activeView) {
+                        ids.forEach(function (id) { if (seen.indexOf(id) === -1) { seen.push(id); changed = true; } });
+                    }
+                    var unseen = ids.filter(function (id) { return seen.indexOf(id) === -1; }).length;
+                    var todo = parseInt(badge.dataset.todo, 10) || 0;
+                    var total = todo + unseen;
+                    var parts = [];
+                    if (todo) parts.push(todo + ' to do');
+                    if (unseen) parts.push(unseen + ' newly graded');
+                    badge.textContent = total;
+                    badge.title = parts.join(' · ');
+                    badge.hidden = total === 0;
+                });
+                if (changed) {
+                    try { localStorage.setItem(KEY, JSON.stringify(seen.slice(-400))); } catch (e) {}
+                }
+            })();
+        </script>
 
         <!-- Term Tabs -->
         <div class="term-tabs">
