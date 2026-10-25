@@ -359,7 +359,6 @@ include 'assests/api/access_permissions_modal.php';
             <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
             <option value="name_asc" <?= $sort === 'name_asc' ? 'selected' : '' ?>>Name A–Z</option>
             <option value="name_desc" <?= $sort === 'name_desc' ? 'selected' : '' ?>>Name Z–A</option>
-            <option value="last_active" <?= $sort === 'last_active' ? 'selected' : '' ?>>Last Active</option>
         </select>
         <?php if (!empty($search) || $status_filter !== 'all' || $department_filter !== 'all' || $grade_level_filter !== 'all' || $gender_filter !== 'all'): ?>
         <a href="?role=<?= clean($role_filter) ?>" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
@@ -397,7 +396,6 @@ include 'assests/api/access_permissions_modal.php';
                         default   => 'Position',
                     } ?></th>
                     <th>Status</th>
-                    <th>Last Active</th>
                     <th class="th-actions">Actions</th>
                 </tr>
             </thead>
@@ -474,9 +472,6 @@ include 'assests/api/access_permissions_modal.php';
                     </td>
                     <td data-label="Status">
                         <span class="badge <?= $status_class ?>"><?= $status_label ?></span>
-                    </td>
-                    <td data-label="Last Active">
-                        <span class="t-muted"><i class="fas fa-clock"></i> <?= timeAgo($user['updated_at']) ?></span>
                     </td>
                     <td class="td-actions" data-label="Actions">
                         <div class="t-actions">

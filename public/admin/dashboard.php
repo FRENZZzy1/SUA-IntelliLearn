@@ -69,55 +69,57 @@ $usageStats = get_system_usage_stats($pdo);
         <?php include 'assests/api/add_class_modal.php'; ?>
         
 
-        <div class="content-wrapper">
+        <div class="content-wrapper dash-page">
 
             <!-- ================= WELCOME MODULE ================= -->
+            <?php
+                $dashHour     = (int) date('G');
+                $dashGreeting = $dashHour < 12 ? 'Good morning' : ($dashHour < 18 ? 'Good afternoon' : 'Good evening');
+            ?>
             <div class="welcome-banner fade-in">
-                <h1>Good morning, Administrator! 👋</h1>
-                <p>System overview for St. Uriel Academy — Monday, June 21, 2026</p>
+                <div class="welcome-text">
+                    <span class="welcome-eyebrow"><i class="fas fa-shield-halved" aria-hidden="true"></i> Admin Portal</span>
+                    <h1><span id="dashGreeting"><?php echo $dashGreeting; ?></span>, Administrator! 👋</h1>
+                    <p>System overview for St. Uriel Academy &mdash; <span id="dashDate"><?php echo date('l, F j, Y'); ?></span></p>
+                </div>
             </div>
+            <script>
+                // Greet using the admin's own clock rather than the server's timezone.
+                (function () {
+                    var d = new Date(), h = d.getHours();
+                    var g = document.getElementById('dashGreeting');
+                    var dt = document.getElementById('dashDate');
+                    if (g) g.textContent = h < 12 ? 'Good morning' : (h < 18 ? 'Good afternoon' : 'Good evening');
+                    if (dt) dt.textContent = d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                })();
+            </script>
 
             <!-- ================= STATS MODULE ================= -->
             <div class="stats-grid stats-grid--three fade-in">
-                <div class="stat-card">
+                <a class="stat-card" href="user_management.php?role=student">
+                    <div class="stat-icon students"><i class="fas fa-user-graduate" aria-hidden="true"></i></div>
                     <div class="stat-info">
                         <h3><?php echo number_format($totalStudents); ?></h3>
                         <p>Total Students</p>
-                        <div class="stat-trend up">
-                            <i class="fas fa-user-check"></i>
-                            <span>Live count</span>
-                        </div>
                     </div>
-                    <div class="stat-icon students">
-                        <i class="fas fa-user-graduate"></i>
-                    </div>
-                </div>
-                <div class="stat-card">
+                    <span class="stat-link">Manage <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                </a>
+                <a class="stat-card" href="user_management.php?role=teacher">
+                    <div class="stat-icon teachers"><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i></div>
                     <div class="stat-info">
                         <h3><?php echo number_format($totalTeachers); ?></h3>
                         <p>Total Teachers</p>
-                        <div class="stat-trend up">
-                            <i class="fas fa-user-check"></i>
-                            <span>Live count</span>
-                        </div>
                     </div>
-                    <div class="stat-icon teachers">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                    </div>
-                </div>
-                <div class="stat-card">
+                    <span class="stat-link">Manage <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                </a>
+                <a class="stat-card" href="courses.php">
+                    <div class="stat-icon courses"><i class="fas fa-book-open" aria-hidden="true"></i></div>
                     <div class="stat-info">
                         <h3><?php echo number_format($totalCourses); ?></h3>
                         <p>Active Courses</p>
-                        <div class="stat-trend up">
-                            <i class="fas fa-info-circle"></i>
-                            <span>live count</span>
-                        </div>
                     </div>
-                    <div class="stat-icon courses">
-                        <i class="fas fa-book-open"></i>
-                    </div>
-                </div>
+                    <span class="stat-link">View all <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+                </a>
             </div>
 
             <!-- ================= ROW 1: ANNOUNCEMENTS + QUICK ACTIONS ================= -->
@@ -128,17 +130,18 @@ $usageStats = get_system_usage_stats($pdo);
                     <div class="card-header">
                         <h2><i class="fas fa-bullhorn"></i> Announcements</h2>
                         <div class="card-actions">
+                            <a class="card-link" href="announcement.php">View all <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="announcement-list" id="announcementList">
-                             <p style="text-align:center; color: var(--text-muted); padding: 20px 0;">Loading announcements...</p>
+                             <p class="field-note">Loading announcements...</p>
                         </div>
                     </div>
                 </div>
 
                 <!-- Quick Actions + System Analytics Module -->
-                <div style="display: flex; flex-direction: column; gap: 20px;">
+                <div class="dash-side-col">
                     <div class="card">
                         <div class="card-header">
                             <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
@@ -176,20 +179,32 @@ $usageStats = get_system_usage_stats($pdo);
                         <div class="card-body">
                             <div class="analytics-grid">
                                 <div class="analytics-card">
-                                    <h4><?php echo number_format($usageStats['active_today']); ?></h4>
-                                    <p>Active Today</p>
+                                    <span class="analytics-icon"><i class="fas fa-user-clock" aria-hidden="true"></i></span>
+                                    <div class="analytics-body">
+                                        <h4><?php echo number_format($usageStats['active_today']); ?></h4>
+                                        <p>Active Today</p>
+                                    </div>
                                 </div>
                                 <div class="analytics-card">
-                                    <h4><?php echo number_format($usageStats['active_week']); ?></h4>
-                                    <p>Active This Week</p>
+                                    <span class="analytics-icon"><i class="fas fa-calendar-week" aria-hidden="true"></i></span>
+                                    <div class="analytics-body">
+                                        <h4><?php echo number_format($usageStats['active_week']); ?></h4>
+                                        <p>Active This Week</p>
+                                    </div>
                                 </div>
                                 <div class="analytics-card">
-                                    <h4><?php echo number_format($usageStats['quizzes_week']); ?></h4>
-                                    <p>Quizzes Taken (7 days)</p>
+                                    <span class="analytics-icon"><i class="fas fa-clipboard-check" aria-hidden="true"></i></span>
+                                    <div class="analytics-body">
+                                        <h4><?php echo number_format($usageStats['quizzes_week']); ?></h4>
+                                        <p>Quizzes Taken (7 days)</p>
+                                    </div>
                                 </div>
                                 <div class="analytics-card">
-                                    <h4><?php echo number_format($usageStats['ai_week']); ?></h4>
-                                    <p>AI Generations (7 days)</p>
+                                    <span class="analytics-icon"><i class="fas fa-wand-magic-sparkles" aria-hidden="true"></i></span>
+                                    <div class="analytics-body">
+                                        <h4><?php echo number_format($usageStats['ai_week']); ?></h4>
+                                        <p>AI Generations (7 days)</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -198,18 +213,17 @@ $usageStats = get_system_usage_stats($pdo);
             </div>
 
             <!-- ================= ROW 2: USER MANAGEMENT ================= -->
-            <div class="dashboard-grid-2 dashboard-grid-2--single fade-in" style="margin-bottom: 20px;">
+            <div class="dashboard-grid-2 dashboard-grid-2--single fade-in dash-row-gap">
 
                 <!-- User Management Module -->
                 <div class="card">
                     <div class="card-header">
-                        <h2><i class="fas fa-users-cog"></i> User Management</h2>
+                        <h2><i class="fas fa-users-cog"></i> Recent Users</h2>
                         <div class="card-actions">
-                        
-                            
+                            <a class="card-link" href="user_management.php">Manage users <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
                         </div>
                     </div>
-                    <div class="card-body" style="padding: 0;">
+                    <div class="card-body card-body--flush">
                         <table class="data-table">
                             <thead>
                                 <tr>
@@ -233,33 +247,34 @@ $usageStats = get_system_usage_stats($pdo);
                                             $statusLabel = $isActive ? 'Active' : 'Inactive';
                                             $joined = date('M j, Y', strtotime($row['created_at']));
                                             $jsName = addslashes($displayName);
+                                            $avClass = 'av-' . (abs(crc32((string) $row['username'])) % 5);
+                                            $roleKey = preg_replace('/[^a-z]/', '', strtolower((string) $row['Role']));
                                         ?>
                                         <tr>
                                             <td>
                                                 <div class="user-cell">
-                                                    <div class="avatar" style="background: <?php echo $avatarColor; ?>;"><?php echo $initials; ?></div>
+                                                    <div class="avatar <?php echo $avClass; ?>"><?php echo $initials; ?></div>
                                                     <div>
                                                         <div class="name"><?php echo $displayName; ?></div>
                                                         <div class="email"><?php echo $email; ?></div>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td><span class="status-badge status-active"><span class="status-dot"></span> <?php echo htmlspecialchars($row['Role']); ?></span></td>
+                                            <td><span class="role-chip role-<?php echo $roleKey; ?>"><?php echo htmlspecialchars($row['Role']); ?></span></td>
                                             <td><span class="status-badge <?php echo $statusClass; ?>"><span class="status-dot"></span> <?php echo $statusLabel; ?></span></td>
-                                            <td style="color: var(--text-muted); font-size: 0.8rem;"><?php echo $joined; ?></td>
+                                            <td class="cell-muted"><?php echo $joined; ?></td>
                                             
                                         </tr>
                                     <?php endforeach; ?>
                                 <?php else: ?>
                                     <tr>
-                                        <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No users found.</td>
+                                        <td colspan="4" class="cell-empty">No users found.</td>
                                     </tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
                         <div class="table-footer">
                             <span>Showing <?php echo min(4, $totalUsersCount); ?> of <?php echo number_format($totalUsersCount); ?> accounts</span>
-                            <a href="#" onclick="window.location.href='user_management.php'">View All Users →</a>
                         </div>
                     </div>
                 </div>
@@ -273,19 +288,17 @@ $usageStats = get_system_usage_stats($pdo);
             </script>
 
             <!-- ================= ROW 3: COURSES + PROGRESS ================= -->
-            <div class="dashboard-grid-2 fade-in">
+            <div class="dashboard-grid-2 dashboard-grid-2--courses fade-in">
 
                 <!-- Courses & Subjects Module -->
                 <div class="card">
                     <div class="card-header">
-                        <h2><i class="fas fa-book"></i> Courses & Subjects</h2>
+                        <h2><i class="fas fa-book"></i> Courses &amp; Subjects</h2>
                         <div class="card-actions">
-                            <button class="btn-sm btn-primary" onclick="openAddCourseModal()">
-                                <i class="fas fa-plus"></i> New Class
-                            </button>
+                            <a class="card-link" href="courses.php">View All Courses <i class="fas fa-arrow-right" aria-hidden="true"></i></a>
                         </div>
                     </div>
-                    <div class="card-body" style="padding: 0;">
+                    <div class="card-body card-body--flush">
                         <table class="data-table">
                             <thead>
                                 <tr>
@@ -293,42 +306,42 @@ $usageStats = get_system_usage_stats($pdo);
                                     <th>Grade Level/Strand</th>
                                     <th>Teacher Assigned</th>
                                     <th>Status</th>
-                                    <th>Actions</th>
+                                    <th class="th-actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if (empty($recentCourseOfferings)): ?>
                                 <tr>
-                                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">No class offerings found.</td>
+                                    <td colspan="5" class="cell-empty">No class offerings found.</td>
                                 </tr>
                                 <?php else: ?>
                                 <?php foreach ($recentCourseOfferings as $c):
                                     $subjectInitial = strtoupper(substr($c['subject_name'], 0, 1));
-                                    $avatarColor    = get_avatar_color($c['subject_name']);
+                                    $avClass        = 'av-' . (abs(crc32((string) $c['subject_name'])) % 5);
                                     $isActive       = $c['status'] === 'active';
                                     $gradeStrand    = 'Grade ' . $c['grade_level'] . ($c['strands'] ? ' &middot; ' . htmlspecialchars($c['strands']) : '');
                                 ?>
                                 <tr>
                                     <td>
                                         <div class="user-cell">
-                                            <div class="avatar" style="background: <?php echo $avatarColor; ?>; width: 28px; height: 28px; font-size: 0.7rem;">
+                                            <div class="avatar avatar-sm <?php echo $avClass; ?>">
                                                 <?php echo htmlspecialchars($subjectInitial); ?>
                                             </div>
                                             <div class="name"><?php echo htmlspecialchars($c['subject_name']); ?></div>
                                         </div>
                                     </td>
                                     <td><?php echo $gradeStrand; ?></td>
-                                    <td><?php echo $c['teacher_name'] ? htmlspecialchars($c['teacher_name']) : '— Unassigned —'; ?></td>
+                                    <td><?php echo $c['teacher_name'] ? htmlspecialchars($c['teacher_name']) : '<span class="chip-muted">Unassigned</span>'; ?></td>
                                     <td><span class="status-badge <?php echo $isActive ? 'status-active' : 'status-inactive'; ?>"><span class="status-dot"></span> <?php echo $isActive ? 'Active' : 'Inactive'; ?></span></td>
                                     <td>
                                         <div class="table-actions">
-                                            <button class="btn-view" onclick="openViewStudentsModal(<?php echo (int) $c['offering_id']; ?>)">View Students</button>
-                                            <button class="btn-edit" onclick="editCourseOffering(<?php echo (int) $c['offering_id']; ?>)">Update</button>
+                                            <button type="button" class="ra-btn" data-tip="View students" aria-label="View students" onclick="openViewStudentsModal(<?php echo (int) $c['offering_id']; ?>)"><i class="fas fa-users" aria-hidden="true"></i></button>
+                                            <button type="button" class="ra-btn" data-tip="Update class" aria-label="Update class" onclick="editCourseOffering(<?php echo (int) $c['offering_id']; ?>)"><i class="fas fa-pen" aria-hidden="true"></i></button>
                                             <?php $archiveLockedTerm = $archiveLockedTerm ?? getActiveTerm($pdo); ?>
                                             <?php if ($archiveLockedTerm !== null): ?>
-                                            <button class="btn-deactivate" disabled style="opacity:.5;cursor:not-allowed;" title="Archiving is disabled while <?php echo htmlspecialchars((string) $archiveLockedTerm); ?> is active"><i class="fas fa-lock"></i> Archive</button>
+                                            <span class="ra-btn archive archive-disabled" data-tip="Archiving is disabled while <?php echo htmlspecialchars((string) $archiveLockedTerm); ?> is active" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i></span>
                                             <?php else: ?>
-                                            <button class="btn-deactivate" onclick="deleteCourseOffering(<?php echo (int) $c['offering_id']; ?>, this)">Archive</button>
+                                            <button type="button" class="ra-btn archive" data-tip="Archive class" aria-label="Archive class" onclick="deleteCourseOffering(<?php echo (int) $c['offering_id']; ?>, this)"><i class="fas fa-box-archive" aria-hidden="true"></i></button>
                                             <?php endif; ?>
                                         </div>
                                     </td>
@@ -339,7 +352,6 @@ $usageStats = get_system_usage_stats($pdo);
                         </table>
                         <div class="table-footer">
                             <span>Showing <?php echo count($recentCourseOfferings); ?> of <?php echo number_format($totalCourses); ?> courses</span>
-                            <a href="courses.php">View All Courses →</a>
                         </div>
                     </div>
                 </div>
@@ -352,16 +364,20 @@ $usageStats = get_system_usage_stats($pdo);
                     <div class="card-body">
                         <div class="course-progress-list">
                             <?php if (empty($courseEnrollmentProgress)): ?>
-                            <p style="text-align:center; color: var(--text-muted); padding: 20px 0;">No active class offerings yet.</p>
+                            <p class="field-note">No active class offerings yet.</p>
                             <?php else: ?>
-                            <?php foreach ($courseEnrollmentProgress as $cp): ?>
+                            <?php foreach ($courseEnrollmentProgress as $cp):
+                                // Bars follow the system palette: red when under 75%, brand green otherwise.
+                                $lowFill  = (int) $cp['percent'] < 75;
+                                $barClass = $lowFill ? 'is-low' : ((int) $cp['percent'] >= 100 ? 'is-full' : 'is-good');
+                            ?>
                             <div class="course-progress-item">
                                 <div class="course-progress-header">
                                     <span><?php echo htmlspecialchars($cp['label']); ?></span>
-                                    <small><?php echo (int) $cp['enrolled']; ?> / <?php echo (int) $cp['capacity']; ?> enrolled</small>
+                                    <small><strong><?php echo (int) $cp['enrolled']; ?></strong> / <?php echo (int) $cp['capacity']; ?> &middot; <?php echo (int) $cp['percent']; ?>%</small>
                                 </div>
-                                <div class="progress-bar-bg">
-                                    <div class="progress-bar-fill" style="width: <?php echo (int) $cp['percent']; ?>%; background: <?php echo $cp['color']; ?>;"></div>
+                                <div class="progress-bar-bg" role="progressbar" aria-valuenow="<?php echo (int) $cp['percent']; ?>" aria-valuemin="0" aria-valuemax="100">
+                                    <div class="progress-bar-fill <?php echo $barClass; ?>" style="width: <?php echo min(100, (int) $cp['percent']); ?>%;"></div>
                                 </div>
                             </div>
                             <?php endforeach; ?>

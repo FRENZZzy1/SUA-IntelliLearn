@@ -1410,9 +1410,9 @@ textarea.form-control {
 /* ---------- Category tabs (Admins / Teachers / Students) ---------- */
 .um-tabs {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     margin-bottom: 18px;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid #e6ebe8;
     flex-wrap: wrap;
 }
 
@@ -1422,36 +1422,48 @@ textarea.form-control {
     gap: 8px;
     background: none;
     border: none;
-    padding: 10px 16px;
+    padding: 12px 14px;
     font: inherit;
     font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--text-muted);
+    font-size: 0.88rem;
+    color: #7b8982;
     text-decoration: none;
     cursor: pointer;
-    border-bottom: 3px solid transparent;
+    border-bottom: 2px solid transparent;
+    border-radius: 8px 8px 0 0;
     margin-bottom: -1px;
-    transition: color 0.2s;
+    transition: color 0.15s, background 0.15s, border-color 0.15s;
 }
 
 .um-tab:hover {
-    color: var(--primary-dark);
+    color: #14231c;
+    background: #eef6f1;
+}
+
+.um-tab:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(45, 122, 82, 0.22);
 }
 
 .um-tab.active {
-    color: var(--primary-dark);
-    border-bottom-color: var(--accent);
+    color: #1a5c3a;
+    border-bottom-color: #1a5c3a;
 }
 
 .um-tab .count {
     display: inline-block;
     margin-left: 2px;
-    padding: 1px 8px;
+    min-width: 22px;
+    padding: 2px 7px;
     border-radius: 999px;
-    background: var(--bg-page);
-    font-size: 0.75rem;
+    background: #eef1ef;
+    color: #4b5a52;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-align: center;
 }
 
 .um-tab.active .count {
-    background: rgba(244, 162, 97, 0.2);
+    background: #dcece3;
+    color: #1a5c3a;
 }
