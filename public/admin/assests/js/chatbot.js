@@ -14,6 +14,11 @@
     // Set the path to your custom FAB PNG icon here:
     const FAB_ICON_PNG = 'assests/images/icon_chat.png';
 
+    // Mascot head PNG used for the header avatar and every bot message.
+    // Replace assests/images/mascot_head.png with your own file (same name) to swap it.
+    const MASCOT_HEAD_PNG = 'assests/images/mascot_head.png';
+    const MASCOT_IMG = `<img src="${MASCOT_HEAD_PNG}" alt="" class="mascot-head" draggable="false">`;
+
     const SUGGESTIONS = [
         'How many students are enrolled?',
         'List teachers in the Science department',
@@ -716,6 +721,62 @@
             .chat-model-settings-actions .primary { background: #1b4332; border-color: #1b4332; }
             .chat-model-settings-actions .primary:hover:not(:disabled) { background: #2d6a4f; }
 
+            /* ---- IntelliLearn system theme + mascot head ---- */
+            .chat-panel {
+                --il-green-900: #124029;
+                --il-green-800: #1a5c3a;
+                --il-green-700: #2d7a52;
+                --il-green-50:  #eef5f0;
+                --il-gold:      #f4a261;
+                --il-cream:     #fbf3dc;
+            }
+            .chat-panel-header {
+                background: linear-gradient(135deg, var(--il-green-900), var(--il-green-800) 60%, var(--il-green-700));
+                border-bottom: 3px solid var(--il-gold);
+            }
+            .chat-panel-avatar, .chat-row-avatar { overflow: hidden; padding: 0; }
+            .chat-panel-avatar {
+                width: 42px; height: 42px;
+                background: var(--il-cream);
+                border: 2px solid var(--il-gold);
+            }
+            .chat-panel-avatar .status-dot { border-color: var(--il-green-900); right: -3px; bottom: -3px; }
+            .chat-row-avatar {
+                width: 30px; height: 30px;
+                background: var(--il-cream);
+                border: 1.5px solid var(--il-green-800);
+            }
+            .chat-row.user .chat-row-avatar { background: #d1d5db; border: 0; color: #374151; }
+            img.mascot-head {
+                width: 100%; height: 100%;
+                object-fit: cover; object-position: center 35%;
+                display: block; pointer-events: none; user-select: none;
+            }
+            .chat-panel-avatar .status-dot { z-index: 2; }
+            .chat-panel-avatar { overflow: visible; }
+            .chat-panel-avatar img.mascot-head { border-radius: 50%; }
+
+            .chat-msg-user { background: linear-gradient(135deg, var(--il-green-800), var(--il-green-700)); }
+            .chat-msg-bot { border-left: 3px solid var(--il-gold); }
+            .chat-msg h4, .chat-msg h5, .chat-msg h6 { color: var(--il-green-800); }
+            .chat-msg code { background: var(--il-green-50); color: var(--il-green-800); }
+            .chat-msg blockquote { border-left-color: var(--il-green-700); background: var(--il-green-50); }
+            .chat-msg a { color: var(--il-green-700); }
+            .chat-msg-user a, .chat-msg-user code { color: #fff; }
+
+            .chat-suggestion-chip { border-color: #cfe0d5; color: var(--il-green-800); background: #fff; }
+            .chat-suggestion-chip:hover { background: var(--il-green-50); border-color: var(--il-green-700); }
+            .chat-typing-dots span { background: var(--il-green-700); }
+            .chat-panel-messages { background: #f0f4f1; }
+            .chat-panel-input-row:focus-within { border-color: var(--il-green-700); box-shadow: 0 0 0 4px rgba(45,122,82,.15); }
+            .chat-panel-input-row button { background: var(--il-green-800); }
+            .chat-panel-input-row button:hover:not(:disabled) { background: var(--il-green-700); }
+            .chat-scroll-btn { background: var(--il-green-800); }
+            .chat-fab { border: 3px solid var(--il-green-800); background: var(--il-cream); }
+            .chat-fab-badge { background: var(--il-gold); color: var(--il-green-900); }
+            .chat-model-settings-actions .primary { background: var(--il-green-800); border-color: var(--il-green-800); }
+            .chat-model-settings-actions .primary:hover:not(:disabled) { background: var(--il-green-700); }
+
             @media (max-width: 700px) {
                 .chat-fab { right: 14px; bottom: 14px; width: 56px; height: 56px; }
                 .chat-panel:not(.expanded) {
@@ -752,7 +813,7 @@
         panel.className = 'chat-panel';
         panel.innerHTML = `
             <div class="chat-panel-header">
-                <div class="chat-panel-avatar"><i class="fas fa-robot"></i><span class="status-dot"></span></div>
+                <div class="chat-panel-avatar">${MASCOT_IMG}<span class="status-dot"></span></div>
                 <div class="chat-panel-title-block">
                     <div class="chat-panel-title">IntelliLearn Admin Assistant</div>
                     <div class="chat-panel-subtitle">Students, teachers &amp; courses data</div>
@@ -1006,7 +1067,7 @@
 
         const avatar = document.createElement('div');
         avatar.className = 'chat-row-avatar';
-        avatar.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+        avatar.innerHTML = role === 'user' ? '<i class="fas fa-user"></i>' : MASCOT_IMG;
 
         const group = document.createElement('div');
         group.className = 'chat-msg-group';
@@ -1061,7 +1122,7 @@
         row.className = 'chat-row';
         row.id = 'chatTypingRow';
         row.innerHTML = `
-            <div class="chat-row-avatar"><i class="fas fa-robot"></i></div>
+            <div class="chat-row-avatar">${MASCOT_IMG}</div>
             <div class="chat-msg-group">
                 <div class="chat-msg chat-msg-bot">
                     <div class="chat-typing-dots"><span></span><span></span><span></span></div>
