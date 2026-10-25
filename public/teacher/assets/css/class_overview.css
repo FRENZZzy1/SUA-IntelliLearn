@@ -1821,3 +1821,207 @@
 }
 
 .panel-header .btn-secondary.js-edit-assignment { margin-left: 10px; white-space: nowrap; }
+
+/* ===================== New assignment form (modern) ===================== */
+.asg-form {
+    margin: 0 0 24px;
+    background: var(--card, #fff);
+    border: 1px solid var(--border, #e5e7eb);
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.07);
+    overflow: hidden;
+    animation: fadeSlideUp 0.3s ease both;
+}
+.asg-form[hidden] { display: none; }
+.asg-form *, .asg-form *::before, .asg-form *::after { box-sizing: border-box; }
+
+.asg-form__head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 22px;
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.07), rgba(16, 185, 129, 0));
+    border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.asg-form__icon {
+    width: 42px; height: 42px; flex-shrink: 0;
+    display: grid; place-items: center;
+    border-radius: 12px;
+    background: var(--primary, #1a5c3a);
+    color: #fff;
+    font-size: 1rem;
+}
+.asg-form__heading { min-width: 0; flex: 1; }
+.asg-form__heading h3 { margin: 0; font-size: 1.05rem; color: var(--text, #111827); }
+.asg-form__heading p { margin: 2px 0 0; font-size: 0.82rem; color: var(--text-muted, #6b7280); }
+.asg-form__close {
+    width: 34px; height: 34px; flex-shrink: 0;
+    border: 0; border-radius: 50%;
+    background: transparent; color: var(--text-muted, #6b7280);
+    cursor: pointer; font-size: 0.95rem;
+    transition: background 0.15s, color 0.15s;
+}
+.asg-form__close:hover { background: var(--bg, #f3f4f6); color: var(--text, #111827); }
+
+.asg-section { padding: 20px 22px; border-bottom: 1px solid var(--border, #eef0f2); }
+.asg-section__title {
+    margin: 0 0 14px;
+    font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-muted, #6b7280);
+}
+
+.asg-field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.asg-field + .asg-field { margin-top: 16px; }
+.asg-grid .asg-field + .asg-field { margin-top: 0; }
+.asg-field label, .asg-label { font-size: 0.82rem; font-weight: 600; color: var(--text, #1f2937); }
+.asg-req { color: #ef4444; }
+.asg-opt {
+    margin-left: 6px; font-size: 0.68rem; font-weight: 600;
+    letter-spacing: 0.02em; text-transform: none;
+    color: #94a3b8; background: var(--bg, #f3f4f6);
+    padding: 2px 8px; border-radius: 999px;
+}
+.asg-section__title .asg-opt { margin-left: 8px; }
+.asg-hint { font-size: 0.75rem; color: #94a3b8; }
+
+.asg-form input[type="text"],
+.asg-form input[type="number"],
+.asg-form input[type="datetime-local"],
+.asg-form textarea {
+    width: 100%;
+    padding: 11px 13px;
+    border: 1px solid var(--border, #d1d5db);
+    border-radius: 11px;
+    background: var(--card, #fff);
+    color: var(--text, #1f2937);
+    font: inherit; font-size: 0.92rem;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.asg-form textarea { resize: vertical; min-height: 96px; line-height: 1.5; }
+.asg-form input::placeholder, .asg-form textarea::placeholder { color: #a8b0bb; }
+.asg-form input:focus, .asg-form textarea:focus,
+.asg-affix:focus-within, .asg-stepper:focus-within {
+    border-color: var(--primary, #1a5c3a);
+    box-shadow: 0 0 0 4px rgba(26, 92, 58, 0.12);
+}
+#asgDrop:focus-within { border-color: var(--primary, #1a5c3a); box-shadow: 0 0 0 4px rgba(26, 92, 58, 0.12); }
+#assignmentTitle { font-size: 1rem; font-weight: 600; }
+
+.asg-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.asg-grid > :first-child { grid-column: span 1; }
+.asg-field--wide { grid-column: 1 / -1; }
+
+/* quick due-date chips */
+.asg-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.asg-quick button {
+    border: 1px solid var(--border, #e5e7eb); background: var(--bg, #f8fafc);
+    color: var(--text, #374151); font-size: 0.74rem; font-weight: 600;
+    padding: 4px 10px; border-radius: 999px; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+.asg-quick button:hover { background: #eef6f1; border-color: var(--primary, #1a5c3a); }
+.asg-quick .asg-quick__clear { background: transparent; color: var(--text-muted, #6b7280); }
+
+/* points suffix */
+.asg-affix, .asg-stepper {
+    display: flex; align-items: center;
+    border: 1px solid var(--border, #d1d5db);
+    border-radius: 11px; background: var(--card, #fff);
+    overflow: hidden;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.asg-affix input, .asg-stepper input {
+    border: 0 !important; box-shadow: none !important; border-radius: 0 !important;
+    min-width: 0; flex: 1;
+}
+.asg-affix span { padding: 0 14px; font-size: 0.8rem; font-weight: 600; color: var(--text-muted, #6b7280); }
+
+/* attempts stepper */
+.asg-stepper button {
+    width: 42px; align-self: stretch; flex-shrink: 0;
+    border: 0; background: var(--bg, #f3f4f6); color: var(--text, #374151);
+    cursor: pointer; font-size: 0.78rem;
+    transition: background 0.15s;
+}
+.asg-stepper button:hover { background: #e5ece8; }
+.asg-stepper button:disabled { opacity: 0.4; cursor: not-allowed; }
+.asg-stepper input { text-align: center; font-weight: 700; -moz-appearance: textfield; appearance: textfield; }
+.asg-form input[type="number"]::-webkit-outer-spin-button,
+.asg-form input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+/* grading category segmented control */
+.asg-segment {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    padding: 5px; background: var(--bg, #f3f4f6); border-radius: 13px;
+}
+.asg-segment label { margin: 0; cursor: pointer; }
+.asg-segment input { position: absolute; opacity: 0; pointer-events: none; }
+.asg-segment span {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 10px 8px; border-radius: 9px;
+    font-size: 0.84rem; font-weight: 600; color: var(--text-muted, #6b7280);
+    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.asg-segment label:hover span { color: var(--text, #111827); }
+.asg-segment input:checked + span {
+    background: var(--card, #fff); color: var(--primary, #1a5c3a);
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+.asg-segment input:focus-visible + span { box-shadow: 0 0 0 3px rgba(26, 92, 58, 0.25); }
+
+/* attachment dropzone */
+.asg-drop {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 26px 16px; text-align: center; cursor: pointer;
+    border: 2px dashed var(--border, #cfd6dd); border-radius: 14px;
+    background: var(--bg, #fafbfc);
+    transition: border-color 0.15s, background 0.15s;
+}
+.asg-drop:hover, .asg-drop.is-over { border-color: var(--primary, #1a5c3a); background: #f0f7f3; }
+.asg-drop input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.asg-drop__icon {
+    width: 44px; height: 44px; display: grid; place-items: center;
+    border-radius: 50%; background: #e4f1ea; color: var(--primary, #1a5c3a); font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+.asg-drop__text { font-size: 0.9rem; color: var(--text, #374151); }
+.asg-drop__text strong { color: var(--primary, #1a5c3a); }
+.asg-drop__sub { font-size: 0.75rem; color: #94a3b8; }
+.asg-drop.has-file { display: none; }
+
+.asg-file {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: 12px;
+    background: #f0f7f3; border: 1px solid #cfe5d8; color: var(--primary, #1a5c3a);
+}
+.asg-file[hidden] { display: none; }
+.asg-file__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.88rem; font-weight: 600; color: var(--text, #1f2937); }
+.asg-file__size { font-size: 0.76rem; color: var(--text-muted, #6b7280); flex-shrink: 0; }
+.asg-file button {
+    width: 28px; height: 28px; border: 0; border-radius: 50%;
+    background: transparent; color: var(--text-muted, #6b7280); cursor: pointer;
+}
+.asg-file button:hover { background: rgba(0, 0, 0, 0.06); color: #dc2626; }
+.asg-error { display: block; margin-top: 8px; font-size: 0.78rem; color: #dc2626; }
+.asg-error[hidden] { display: none; }
+
+.asg-form__foot {
+    display: flex; justify-content: flex-end; gap: 10px;
+    padding: 16px 22px; background: var(--bg, #fafbfc);
+}
+
+@media (max-width: 760px) {
+    .asg-form__head, .asg-section, .asg-form__foot { padding-left: 16px; padding-right: 16px; }
+    .asg-grid { grid-template-columns: 1fr; gap: 16px; }
+    .asg-segment { grid-template-columns: 1fr; }
+    .asg-form__foot { flex-direction: column-reverse; }
+    .asg-form__foot button { width: 100%; justify-content: center; }
+    .asg-form input[type="text"], .asg-form input[type="number"],
+    .asg-form input[type="datetime-local"], .asg-form textarea { font-size: 16px; }
+}
+
+/* The "New Assignment" button is hidden while its form is open (class sets display, so [hidden] needs help). */
+#btnShowAssignmentForm[hidden] { display: none; }

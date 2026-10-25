@@ -486,7 +486,7 @@ if (!empty($submissionRows)) {
                 </div>
 
                 <!-- New assignment form -->
-                <form class="material-upload-form" id="assignmentCreateForm"
+                <form class="asg-form" id="assignmentCreateForm"
                       action="assets/api/assignment_create.php" method="POST" enctype="multipart/form-data" hidden>
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                     <input type="hidden" name="offering_id" value="<?= (int) $activeOfferingId ?>">
@@ -494,52 +494,106 @@ if (!empty($submissionRows)) {
                     <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
                     <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
 
-                    <div class="form-row">
-                        <label for="assignmentTitle">Title</label>
-                        <input type="text" id="assignmentTitle" name="title" maxlength="255" required
-                               placeholder="e.g. Problem Set 3: Quadratic Equations">
-                    </div>
-
-                    <div class="form-row">
-                        <label for="assignmentDescription">Instructions (optional)</label>
-                        <textarea id="assignmentDescription" name="description" rows="3"
-                                  placeholder="What should students do for this assignment?"></textarea>
-                    </div>
-
-                    <div class="form-row form-row-inline">
-                        <div>
-                            <label for="assignmentDueDate">Due date (optional)</label>
-                            <input type="datetime-local" id="assignmentDueDate" name="due_date">
+                    <header class="asg-form__head">
+                        <span class="asg-form__icon"><i class="fas fa-marker"></i></span>
+                        <div class="asg-form__heading">
+                            <h3>New assignment</h3>
+                            <p>Post work for <?= htmlspecialchars($terms[$activeTerm]['label']) ?>. Students are notified right away.</p>
                         </div>
-                        <div>
-                            <label for="assignmentPoints">Points</label>
-                            <input type="number" id="assignmentPoints" name="points" min="1" step="0.01" value="100">
-                        </div>
-                        <div>
-                            <label for="assignmentMaxAttempts">Attempts allowed</label>
-                            <input type="number" id="assignmentMaxAttempts" name="max_attempts" min="1" step="1" value="1">
-                        </div>
-                        <div>
-                            <label for="assignmentType">Grading category</label>
-                            <select id="assignmentType" name="type">
-                                <option value="Written Work">Written Works</option>
-                                <option value="Activity">Activity (Performance Task)</option>
-                                <option value="Exam">Exam</option>
-                            </select>
-                        </div>
-                    </div>
+                        <button type="button" class="asg-form__close" id="btnCloseAssignmentForm" aria-label="Close form">
+                            <i class="fas fa-xmark"></i>
+                        </button>
+                    </header>
 
-                    <div class="form-row">
-                        <label for="assignmentFile">Attachment (optional)</label>
-                        <input type="file" id="assignmentFile" name="instructions_file"
-                               accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip">
-                        <span class="field-hint">Max 25MB.</span>
-                    </div>
+                    <section class="asg-section">
+                        <div class="asg-field">
+                            <label for="assignmentTitle">Title <span class="asg-req">*</span></label>
+                            <input type="text" id="assignmentTitle" name="title" maxlength="255" required
+                                   placeholder="e.g. Problem Set 3: Quadratic Equations">
+                        </div>
 
-                    <div class="form-actions">
+                        <div class="asg-field">
+                            <label for="assignmentDescription">Instructions <span class="asg-opt">Optional</span></label>
+                            <textarea id="assignmentDescription" name="description" rows="4"
+                                      placeholder="What should students do for this assignment?"></textarea>
+                        </div>
+                    </section>
+
+                    <section class="asg-section">
+                        <h4 class="asg-section__title">Settings</h4>
+
+                        <div class="asg-grid">
+                            <div class="asg-field">
+                                <label for="assignmentDueDate">Due date <span class="asg-opt">Optional</span></label>
+                                <input type="datetime-local" id="assignmentDueDate" name="due_date">
+                                <div class="asg-quick" id="asgDueQuick">
+                                    <button type="button" data-days="1">Tomorrow</button>
+                                    <button type="button" data-days="7">In 1 week</button>
+                                    <button type="button" data-days="14">In 2 weeks</button>
+                                    <button type="button" data-days="0" class="asg-quick__clear">Clear</button>
+                                </div>
+                            </div>
+
+                            <div class="asg-field">
+                                <label for="assignmentPoints">Points</label>
+                                <div class="asg-affix">
+                                    <input type="number" id="assignmentPoints" name="points" min="1" step="0.01" value="100">
+                                    <span>pts</span>
+                                </div>
+                            </div>
+
+                            <div class="asg-field">
+                                <label for="assignmentMaxAttempts">Attempts allowed</label>
+                                <div class="asg-stepper">
+                                    <button type="button" data-step="-1" aria-label="Fewer attempts"><i class="fas fa-minus"></i></button>
+                                    <input type="number" id="assignmentMaxAttempts" name="max_attempts" min="1" max="10" step="1" value="1">
+                                    <button type="button" data-step="1" aria-label="More attempts"><i class="fas fa-plus"></i></button>
+                                </div>
+                                <small class="asg-hint">Up to 10 attempts per student.</small>
+                            </div>
+
+                            <div class="asg-field asg-field--wide">
+                                <span class="asg-label">Grading category</span>
+                                <div class="asg-segment" role="radiogroup" aria-label="Grading category">
+                                    <label>
+                                        <input type="radio" name="type" value="Written Work" checked>
+                                        <span><i class="fas fa-pen-nib"></i> Written Work</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="type" value="Activity">
+                                        <span><i class="fas fa-person-running"></i> Performance Task</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="type" value="Exam">
+                                        <span><i class="fas fa-file-pen"></i> Exam</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="asg-section">
+                        <h4 class="asg-section__title">Attachment <span class="asg-opt">Optional</span></h4>
+                        <label class="asg-drop" id="asgDrop" for="assignmentFile">
+                            <input type="file" id="assignmentFile" name="instructions_file"
+                                   accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.zip">
+                            <span class="asg-drop__icon"><i class="fas fa-cloud-arrow-up"></i></span>
+                            <span class="asg-drop__text"><strong>Click to upload</strong> or drag and drop</span>
+                            <span class="asg-drop__sub">PDF, Word, PowerPoint, Excel, images or ZIP · up to 25 MB</span>
+                        </label>
+                        <div class="asg-file" id="asgFile" hidden>
+                            <i class="fas fa-paperclip"></i>
+                            <span class="asg-file__name" id="asgFileName"></span>
+                            <span class="asg-file__size" id="asgFileSize"></span>
+                            <button type="button" id="asgFileRemove" aria-label="Remove attachment"><i class="fas fa-xmark"></i></button>
+                        </div>
+                        <small class="asg-error" id="asgFileError" hidden></small>
+                    </section>
+
+                    <footer class="asg-form__foot">
                         <button type="button" class="btn-secondary" id="btnCancelAssignmentForm">Cancel</button>
-                        <button type="submit" class="btn-primary"><i class="fas fa-upload"></i> Post Assignment</button>
-                    </div>
+                        <button type="submit" class="btn-primary"><i class="fas fa-paper-plane"></i> Post assignment</button>
+                    </footer>
                 </form>
 
                 <?php if (empty($assignments)): ?>
@@ -1172,7 +1226,7 @@ if (!empty($submissionRows)) {
                 <div class="form-row">
                     <label for="aeAttempts">Attempts allowed</label>
                     <div class="ae-stepper">
-                        <input type="number" id="aeAttempts" name="max_attempts" min="1" step="1" required>
+                        <input type="number" id="aeAttempts" name="max_attempts" min="1" max="10" step="1" required>
                         <button type="button" class="ae-chip" id="aeAddAttempt"><i class="fas fa-plus"></i> Add 1 attempt</button>
                     </div>
                     <span class="field-hint" id="aeAttemptsHint"></span>
