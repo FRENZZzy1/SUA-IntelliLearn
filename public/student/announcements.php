@@ -189,7 +189,7 @@ $totalCount = array_sum($sourceCounts);
                                 ? $a['class_subject']
                                 : ($a['audience'] === 'all' ? 'All School' : 'Students');
                         ?>
-                        <div class="announcement-item">
+                        <div class="announcement-item<?= $a['is_pinned'] ? ' pinned' : '' ?>">
                             <div class="announcement-item-head">
                                 <h4>
                                     <?php if ($a['is_pinned']): ?><i class="fas fa-thumbtack pin-icon" title="Pinned"></i><?php endif; ?>

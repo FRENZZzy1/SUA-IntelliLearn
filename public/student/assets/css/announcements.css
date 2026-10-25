@@ -107,20 +107,54 @@
 }
 
 /* ---------- Full-page announcement list ---------- */
-.announcements-panel {
-    padding: 8px 24px 12px;
+/* The wrapper panel is flattened so each announcement renders as its own
+   card, spaced the same way as the admin / teacher announcement pages. */
+.announcements-panel:not(:has(.panel-empty)) {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+}
+
+.announcement-list--full {
+    gap: 14px;
 }
 
 .announcement-list--full .announcement-item {
-    padding: 18px 0;
+    background: var(--card);
+    border: none;
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    box-shadow: 0 2px 8px rgba(15, 31, 61, 0.06);
+    transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.announcement-list--full .announcement-item:last-child {
+    border-bottom: none;
+}
+
+.announcement-list--full .announcement-item:hover {
+    box-shadow: 0 6px 18px rgba(15, 31, 61, 0.1);
+    transform: translateY(-1px);
+}
+
+.announcement-list--full .announcement-item.pinned {
+    border-left: 4px solid var(--accent);
+}
+
+.announcement-list--full .announcement-item-head {
+    margin-bottom: 0;
 }
 
 .announcement-list--full .announcement-item-head h4 {
-    font-size: 1rem;
+    font-size: 1.05rem;
 }
 
 .announcement-list--full .announcement-item p {
+    margin: 8px 0 12px;
     font-size: 0.88rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
 }
 
 .pin-icon {

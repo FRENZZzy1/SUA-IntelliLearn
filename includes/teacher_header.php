@@ -438,11 +438,163 @@ if (function_exists('get_initials')) {
             font-size: 0.8rem;
         }
     }
+
+    /* =====================================================================
+       MODERN TEACHER HEADER
+       Scoped to .teacher-top-header so the shared header.css (also used by the
+       admin and student headers) is left untouched.
+    ===================================================================== */
+    .top-header.teacher-top-header {
+        isolation: isolate;
+        gap: 16px;
+        padding: 0 28px;
+        background: transparent;
+        border-bottom: 1px solid rgba(20, 35, 28, 0.07);
+        box-shadow: 0 8px 24px -18px rgba(16, 24, 20, 0.35);
+    }
+    /* The frosted-glass layer lives on a pseudo-element: a backdrop-filter on the
+       header itself would trap the position:fixed mobile notification panel. */
+    .top-header.teacher-top-header::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background: rgba(255, 255, 255, 0.82);
+        -webkit-backdrop-filter: saturate(1.6) blur(14px);
+        backdrop-filter: saturate(1.6) blur(14px);
+    }
+
+    /* ---- Search ---- */
+    .top-header.teacher-top-header .header-search { flex: 0 1 440px; width: 100%; max-width: 440px; }
+    .top-header.teacher-top-header .header-search > i {
+        left: 15px; font-size: 0.85rem; color: #8a9791; transition: color 0.15s ease; pointer-events: none;
+    }
+    .top-header.teacher-top-header .header-search:focus-within > i { color: #1a5c3a; }
+    .top-header.teacher-top-header .header-search input {
+        width: 100%; height: 42px; padding: 0 56px 0 42px;
+        border: 1px solid transparent; border-radius: 12px;
+        background: #f1f5f3; color: #14231c; box-shadow: none;
+        font-family: inherit; font-size: 0.875rem; font-weight: 500;
+        transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .top-header.teacher-top-header .header-search input::placeholder { color: #8a9791; font-weight: 400; }
+    .top-header.teacher-top-header .header-search input:hover { background: #eaf0ed; }
+    .top-header.teacher-top-header .header-search input:focus {
+        background: #fff; border-color: #2d7a52; box-shadow: 0 0 0 4px rgba(45, 122, 82, 0.14);
+    }
+    .hs-kbd {
+        position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+        min-width: 22px; height: 22px; padding: 0 6px; border-radius: 6px;
+        border: 1px solid #d9e1dd; border-bottom-width: 2px; background: #fff; color: #7b8982;
+        font: 600 0.7rem/19px ui-monospace, SFMono-Regular, Consolas, Menlo, monospace;
+        text-align: center; pointer-events: none; transition: opacity 0.15s ease;
+    }
+    .header-search:focus-within .hs-kbd { opacity: 0; }
+
+    /* ---- Right-hand actions ---- */
+    .top-header.teacher-top-header .header-actions { display: flex; align-items: center; gap: 6px; margin: 0; }
+    .top-header.teacher-top-header .header-btn {
+        width: 40px; height: 40px; border-radius: 12px; font-size: 1rem; color: #5b6a63;
+        transition: background 0.15s ease, color 0.15s ease, transform 0.1s ease;
+    }
+    .top-header.teacher-top-header .header-btn:hover { background: #eef3f0; color: #14231c; }
+    .top-header.teacher-top-header .header-btn:active { transform: scale(0.95); }
+    .top-header.teacher-top-header .header-btn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(45, 122, 82, 0.28); }
+    .top-header.teacher-top-header .shn.open > .header-btn { background: #e3efe8; color: #1a5c3a; }
+    .top-header.teacher-top-header .shn-badge {
+        top: 3px; left: auto; right: 1px; min-width: 18px; height: 18px; padding: 0 5px;
+        border-radius: 999px; border: 2px solid #fff; font-size: 0.6rem; font-weight: 700;
+        background: #ef4444; box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+    }
+    .header-divider { width: 1px; height: 26px; margin: 0 8px; background: #e3e9e6; flex-shrink: 0; }
+
+    /* ---- Profile chip ---- */
+    .top-header.teacher-top-header .thp-profile-trigger {
+        width: auto; height: 46px; gap: 10px; padding: 4px 10px 4px 5px;
+        border-radius: 14px; border: 1px solid transparent; font-family: inherit; text-align: left;
+    }
+    .top-header.teacher-top-header .thp-profile-trigger:hover,
+    .top-header.teacher-top-header .thp-profile.open .thp-profile-trigger { background: #eef3f0; }
+    .thp-avatar {
+        width: 36px; height: 36px; border-radius: 12px; font-size: 0.78rem; letter-spacing: 0.02em;
+        background: linear-gradient(135deg, #2d7a52 0%, #124029 100%);
+        box-shadow: 0 2px 6px rgba(26, 92, 58, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    }
+    .thp-avatar.thp-avatar-lg { width: 40px; height: 40px; font-size: 0.85rem; }
+    .thp-user { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; line-height: 1.15; }
+    .thp-user-name {
+        max-width: 160px; font-size: 0.82rem; font-weight: 600; color: #14231c;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .thp-user-role { font-size: 0.7rem; font-weight: 500; color: #7b8982; text-transform: capitalize; }
+
+    /* ---- Dropdown surfaces (search, notifications, profile) ---- */
+    .teacher-top-header .search-results-dropdown,
+    .teacher-top-header .shn-panel,
+    .teacher-top-header .thp-profile-menu {
+        border: 1px solid rgba(20, 35, 28, 0.08);
+        border-radius: 16px;
+        box-shadow: 0 24px 48px -16px rgba(16, 24, 20, 0.28), 0 4px 14px rgba(16, 24, 20, 0.06);
+        top: calc(100% + 10px);
+    }
+    .teacher-top-header .search-results-dropdown { width: 100%; min-width: 380px; padding: 6px; }
+    .teacher-top-header .search-group-label { padding: 10px 12px 4px; color: #8a9791; }
+    .teacher-top-header .search-result-item { padding: 8px 10px; border-radius: 10px; transition: background 0.12s ease; }
+    .teacher-top-header .search-result-item:hover { background: #eef6f1; }
+    .teacher-top-header .search-result-icon { width: 32px; height: 32px; border-radius: 10px; }
+    .teacher-top-header .search-result-sub { color: #7b8982; }
+
+    .teacher-top-header .thp-profile-menu { width: 252px; padding: 8px; }
+    .teacher-top-header .thp-profile-header {
+        gap: 12px; padding: 12px; margin-bottom: 6px; border-bottom: 0; border-radius: 12px; background: #f4f8f6;
+    }
+    .teacher-top-header .thp-profile-header-name { font-size: 0.88rem; color: #14231c; }
+    .teacher-top-header .thp-profile-header-role { color: #7b8982; }
+    .teacher-top-header .thp-profile-item { padding: 10px 12px; border-radius: 10px; font-weight: 500; color: #2b3a33; transition: background 0.12s ease, color 0.12s ease; }
+    .teacher-top-header .thp-profile-item i { color: #7b8982; }
+    .teacher-top-header .thp-profile-item:hover { background: #eef6f1; color: #1a5c3a; }
+    .teacher-top-header .thp-profile-item:hover i { color: #1a5c3a; }
+    .teacher-top-header .thp-profile-item.thp-logout { margin-top: 6px; border-top: 1px solid #f0f2f1; border-radius: 0 0 10px 10px; padding-top: 12px; }
+    .teacher-top-header .thp-profile-item.thp-logout:hover { background: #fef2f2; color: #b91c1c; }
+    .teacher-top-header .thp-profile-item.thp-logout:hover i { color: #b91c1c; }
+
+    .teacher-top-header .shn-head { padding: 16px 18px 10px; }
+    .teacher-top-header .shn-title { font-size: 1rem; letter-spacing: -0.01em; }
+    .teacher-top-header .shn-tabs { padding: 0 18px 12px; }
+    .teacher-top-header .shn-tab { padding: 5px 14px; border-color: transparent; background: #f1f5f3; }
+    .teacher-top-header .shn-tab:hover { background: #e6eeea; }
+    .teacher-top-header .shn-tab.active { background: #1a5c3a; color: #fff; }
+    .teacher-top-header .shn-icon { border-radius: 12px; }
+    .teacher-top-header .shn-item { padding: 12px 18px; }
+    .teacher-top-header .shn-item:hover { background: #f4f8f6; }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .teacher-top-header .thp-profile.open .thp-profile-menu,
+        .teacher-top-header .search-results-dropdown.open { animation: thpIn 0.14s ease-out; }
+        @keyframes thpIn { from { opacity: 0; transform: translateY(-4px) scale(0.98); } to { opacity: 1; transform: none; } }
+    }
+
+    @media (max-width: 1024px) {
+        .top-header.teacher-top-header .thp-user,
+        .top-header.teacher-top-header .thp-profile-trigger .fa-chevron-down { display: none; }
+        .top-header.teacher-top-header .thp-profile-trigger { padding: 4px; }
+    }
+    @media (max-width: 768px) {
+        /* Left padding keeps the header content clear of the fixed hamburger button. */
+        .top-header.teacher-top-header { padding: 0 14px 0 64px; gap: 8px; }
+        .top-header.teacher-top-header .header-search { flex: 1 1 auto; width: auto; max-width: none; }
+        .hs-kbd, .header-divider { display: none; }
+        .teacher-top-header .search-results-dropdown { min-width: 0; }
+    }
+    @media (max-width: 480px) {
+        .top-header.teacher-top-header .sua-help-trigger { display: none; }
+    }
 </style>
-<header class="top-header">
+<header class="top-header teacher-top-header">
     <div class="header-search">
         <i class="fas fa-search"></i>
-        <input type="text" id="studentSearchInput" placeholder="Search your students…" autocomplete="off">
+        <input type="text" id="studentSearchInput" placeholder="Search your students…" autocomplete="off" aria-label="Search your students" aria-keyshortcuts="/ Control+K Meta+K">
+        <kbd class="hs-kbd" aria-hidden="true">/</kbd>
         <div id="searchResultsDropdown" class="search-results-dropdown"></div>
     </div>
     <div class="header-actions">
@@ -472,21 +624,27 @@ if (function_exists('get_initials')) {
             <i class="fas fa-question-circle"></i>
         </button>
         <?php include __DIR__ . '/help_center.php'; ?>
+        <span class="header-divider" aria-hidden="true"></span>
         <div class="thp-profile" id="thpProfile">
             <button type="button"
                     class="header-btn thp-profile-trigger"
-                    style="width: auto; gap: 8px; padding: 0 12px; border-radius: 20px;"
                     title="<?php echo htmlspecialchars($userRole); ?>"
                     onclick="thpToggleMenu()"
                     aria-haspopup="true"
-                    aria-expanded="false">
-                <div class="header-avatar" style="width: 28px; height: 28px; font-size: 0.7rem;"><?php echo htmlspecialchars($initials); ?></div>
-                <span style="font-size: 0.8rem; font-weight: 500;"><?php echo htmlspecialchars($displayName); ?></span>
+                    aria-expanded="false"
+                    aria-label="Account menu for <?php echo htmlspecialchars($displayName); ?>">
+                <div class="header-avatar thp-avatar"><?php echo htmlspecialchars($initials); ?></div>
+                <span class="thp-user">
+                    <span class="thp-user-name"><?php echo htmlspecialchars($displayName); ?></span>
+                    <?php if ($userRole !== ''): ?>
+                    <span class="thp-user-role"><?php echo htmlspecialchars($userRole); ?></span>
+                    <?php endif; ?>
+                </span>
                 <i class="fas fa-chevron-down"></i>
             </button>
             <div class="thp-profile-menu" id="thpProfileMenu">
                 <div class="thp-profile-header">
-                    <div class="header-avatar" style="width: 34px; height: 34px; font-size: 0.75rem;"><?php echo htmlspecialchars($initials); ?></div>
+                    <div class="header-avatar thp-avatar thp-avatar-lg"><?php echo htmlspecialchars($initials); ?></div>
                     <div class="thp-profile-header-text">
                         <div class="thp-profile-header-name"><?php echo htmlspecialchars($displayName); ?></div>
                         <div class="thp-profile-header-role"><?php echo htmlspecialchars($userRole); ?></div>
@@ -627,6 +785,19 @@ if (function_exists('get_initials')) {
             closeDropdown();
             thpClose();
             closeModal();
+        }
+    });
+
+    // "/" or Ctrl/Cmd + K focuses the student search box.
+    document.addEventListener('keydown', function (e) {
+        if (!input) return;
+        var tag = (e.target && e.target.tagName || '').toLowerCase();
+        var typing = tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable);
+        var combo = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k';
+        if (combo || (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+            e.preventDefault();
+            input.focus();
+            input.select();
         }
     });
 
