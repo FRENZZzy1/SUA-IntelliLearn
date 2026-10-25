@@ -585,6 +585,150 @@
                 min-height: 14px;
             }
             .chat-model-settings-status.error { color: #b91c1c; }
+
+            /* ---- modern composer + fullscreen (overrides) ---- */
+            .chat-panel {
+                transition: transform .2s cubic-bezier(.34,1.2,.64,1), opacity .18s ease,
+                            width .25s ease, height .25s ease, max-width .25s ease, max-height .25s ease,
+                            right .25s ease, bottom .25s ease, border-radius .25s ease;
+            }
+            .chat-panel.expanded {
+                right: 0; bottom: 0;
+                width: 100vw; max-width: 100vw;
+                height: 100vh; height: 100dvh;
+                max-height: 100vh; max-height: 100dvh;
+                border-radius: 0;
+            }
+            .chat-panel.expanded #chatPanelExpand { display: none; }
+            .chat-panel-icon-btn { width: 32px; height: 32px; font-size: 13px; }
+            .chat-panel-messages { overscroll-behavior: contain; }
+            .chat-panel.expanded .chat-panel-header { padding: 14px max(20px, calc((100% - 900px) / 2)); }
+            .chat-panel.expanded .chat-panel-messages { padding: 28px max(20px, calc((100% - 820px) / 2)); }
+            .chat-panel.expanded .chat-msg { font-size: 15px; }
+            .chat-panel.expanded .chat-msg-group { max-width: 75%; }
+            .chat-panel.expanded .chat-suggestions { padding-left: 34px; }
+
+            .chat-panel-input-row {
+                align-items: flex-end;
+                gap: 8px;
+                margin: 4px 14px 2px;
+                padding: 6px 6px 6px 18px;
+                border: 1px solid #dfe3ea;
+                border-top: 1px solid #dfe3ea;
+                border-radius: 26px;
+                background: #fff;
+                box-shadow: 0 1px 2px rgba(15,23,42,.04);
+                transition: border-color .15s ease, box-shadow .15s ease;
+            }
+            .chat-panel-input-row:focus-within {
+                border-color: var(--primary, #4f46e5);
+                box-shadow: 0 0 0 4px rgba(79,70,229,.12);
+            }
+            .chat-panel-input-row textarea {
+                border: 0;
+                border-radius: 0;
+                background: transparent;
+                padding: 9px 0;
+                font-size: 14.5px;
+                line-height: 1.45;
+                max-height: 160px;
+                min-height: 22px;
+                color: var(--text-dark, #1f2937);
+            }
+            .chat-panel-input-row textarea:focus { border: 0; }
+            .chat-panel-input-row button { width: 38px; height: 38px; }
+            .chat-panel-input-row:not(.has-text) #chatSendBtn:not(:disabled) { background: #cfd4de; cursor: default; }
+            .chat-panel-input-row:not(.has-text) #chatSendBtn:not(:disabled):hover { background: #cfd4de; }
+            .chat-disclaimer {
+                text-align: center;
+                font-size: 11px;
+                color: #94a3b8;
+                padding: 6px 14px 10px;
+                flex-shrink: 0;
+                background: var(--card-bg, #fff);
+            }
+            .chat-panel.expanded .chat-panel-input-row {
+                width: min(820px, calc(100% - 40px));
+                margin: 4px auto 2px;
+            }
+            .chat-scroll-btn {
+                bottom: 14px;
+                right: auto;
+                left: 50%;
+                transform: translate(-50%, 6px);
+            }
+            .chat-scroll-btn.visible { transform: translate(-50%, 0); }
+            @media (max-width: 480px) {
+                .chat-panel:not(.expanded) { right: 12px; bottom: 12px; }
+                .chat-panel-input-row textarea { font-size: 16px; }
+                #chatPanelExpand { display: none; }
+                .chat-panel { width: calc(100vw - 24px); }
+            }
+
+            /* ---- match the teacher assistant's design ---- */
+            .chat-fab { right: 22px; bottom: 22px; }
+            .chat-panel {
+                right: 22px; bottom: 22px;
+                width: min(400px, calc(100vw - 28px)); max-width: none;
+                height: min(600px, 78vh); max-height: none; min-height: 420px;
+                background: #fff;
+                border-radius: 20px;
+                box-shadow: 0 24px 65px rgba(15,23,42,.28);
+            }
+            .chat-panel-header { padding: 14px 15px; background: linear-gradient(135deg, #1b4332, #2d6a4f); }
+            .chat-panel-avatar { width: 36px; height: 36px; background: rgba(255,255,255,.18); }
+            .chat-panel-avatar .status-dot { border-color: #1b4332; }
+            .chat-panel-title { font-size: 14px; font-weight: 700; }
+            .chat-panel-subtitle { font-size: 11px; opacity: .82; margin-top: 2px; }
+            .chat-panel-actions { gap: 5px; }
+            .chat-panel-icon-btn { background: rgba(255,255,255,.14); }
+            .chat-panel-icon-btn:hover { background: rgba(255,255,255,.28); }
+
+            .chat-panel-messages { background: #f6f8f7; padding: 14px 12px; }
+            .chat-row { gap: 7px; margin: 7px 0; }
+            .chat-row-avatar { width: 27px; height: 27px; background: #1b4332; font-size: 11px; }
+            .chat-row.user .chat-row-avatar { background: #d1d5db; color: #374151; }
+            .chat-msg-group { max-width: 88%; }
+            .chat-msg { padding: 9px 12px; }
+            .chat-msg-bot { background: #fff; border: 1px solid #e5e7eb; color: #1f2937; }
+            .chat-msg-user { background: #1b4332; color: #fff; }
+            .chat-msg h4, .chat-msg h5, .chat-msg h6 { color: #1b4332; }
+            .chat-msg code { background: #eef2ef; color: #1b4332; }
+            .chat-msg-user code { background: rgba(255,255,255,.22); color: #fff; }
+            .chat-msg blockquote { border-left-color: #2d6a4f; background: #eef5f0; }
+            .chat-msg a { color: #2d6a4f; }
+            .chat-msg-user a { color: #fff; }
+            .chat-msg-time { font-size: 10px; color: #94a3b8; }
+
+            .chat-suggestions { padding: 3px 3px 10px 34px; }
+            .chat-suggestion-chip { border: 1px solid #dbe5df; color: #1b4332; font-size: 11.5px; font-weight: 400; padding: 6px 10px; border-radius: 15px; }
+            .chat-suggestion-chip:hover { background: #eef5f0; }
+
+            .chat-panel-input-row { border-color: #dfe5e1; }
+            .chat-panel-input-row:focus-within { border-color: #2d6a4f; box-shadow: 0 0 0 4px rgba(45,106,79,.14); }
+            .chat-panel-input-row button { background: #1b4332; }
+            .chat-panel-input-row button:hover:not(:disabled) { background: #2d6a4f; }
+            .chat-panel-input-row:not(.has-text) #chatSendBtn:not(:disabled),
+            .chat-panel-input-row:not(.has-text) #chatSendBtn:not(:disabled):hover { background: #cbd5d0; }
+            .chat-disclaimer { padding: 7px 12px 10px; }
+            .chat-scroll-btn { background: #1b4332; }
+            .chat-model-settings select:focus { border-color: #2d6a4f; }
+            .chat-model-settings-actions .primary { background: #1b4332; border-color: #1b4332; }
+            .chat-model-settings-actions .primary:hover:not(:disabled) { background: #2d6a4f; }
+
+            @media (max-width: 700px) {
+                .chat-fab { right: 14px; bottom: 14px; width: 56px; height: 56px; }
+                .chat-panel:not(.expanded) {
+                    right: 0; bottom: 0; width: 100%; max-width: 100%;
+                    height: 100vh; height: 100dvh; max-height: 100dvh; min-height: 0;
+                    border-radius: 0;
+                }
+                #chatPanelExpand { display: none; }
+                .chat-panel-messages { padding: 10px 8px; }
+                .chat-msg-group { max-width: 86%; }
+                .chat-panel-input-row { margin: 6px 10px 0; }
+                .chat-disclaimer { padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+            }
         `;
         document.head.appendChild(style);
     }
@@ -610,13 +754,14 @@
             <div class="chat-panel-header">
                 <div class="chat-panel-avatar"><i class="fas fa-robot"></i><span class="status-dot"></span></div>
                 <div class="chat-panel-title-block">
-                    <div class="chat-panel-title">IntelliLearn Assistant</div>
-                    <div class="chat-panel-subtitle">Online · answers about students &amp; courses</div>
+                    <div class="chat-panel-title">IntelliLearn Admin Assistant</div>
+                    <div class="chat-panel-subtitle">Students, teachers &amp; courses data</div>
                 </div>
                 <div class="chat-panel-actions">
                     <button type="button" class="chat-panel-icon-btn" id="chatPanelModelToggle" title="Chatbot model (admin)" aria-label="Chatbot model settings"><i class="fas fa-microchip"></i></button>
                     <button type="button" class="chat-panel-icon-btn" id="chatPanelClear" title="Clear conversation" aria-label="Clear conversation"><i class="fas fa-broom"></i></button>
-                    <button type="button" class="chat-panel-icon-btn" id="chatPanelClose" aria-label="Close chat"><i class="fas fa-times"></i></button>
+                    <button type="button" class="chat-panel-icon-btn" id="chatPanelExpand" title="Full screen" aria-label="Enter full screen"><i class="fas fa-expand"></i></button>
+                    <button type="button" class="chat-panel-icon-btn" id="chatPanelClose" title="Minimize" aria-label="Minimize chat"><i class="fas fa-minus"></i></button>
                 </div>
             </div>
             <div class="chat-model-settings" id="chatModelSettings">
@@ -637,16 +782,18 @@
                 <button type="button" class="chat-scroll-btn" id="chatScrollBtn"><i class="fas fa-arrow-down"></i> New messages</button>
             </div>
             <form class="chat-panel-input-row" id="chatForm">
-                <textarea id="chatInput" placeholder="Ask about students, courses, teachers..." rows="1" maxlength="1000"></textarea>
+                <textarea id="chatInput" aria-label="Message" rows="1" maxlength="1000"></textarea>
                 <button type="submit" id="chatSendBtn" aria-label="Send"><i class="fas fa-paper-plane"></i></button>
             </form>
+            <div class="chat-disclaimer">Answers use your IntelliLearn school data. AI can make mistakes.</div>
         `;
         document.body.appendChild(panel);
 
         renderWelcome();
 
         fab.addEventListener('click', openPanel);
-        panel.querySelector('#chatPanelClose').addEventListener('click', closePanel);
+        panel.querySelector('#chatPanelClose').addEventListener('click', minimizePanel);
+        panel.querySelector('#chatPanelExpand').addEventListener('click', toggleExpand);
         panel.querySelector('#chatPanelClear').addEventListener('click', clearConversation);
         panel.querySelector('#chatForm').addEventListener('submit', onSubmit);
         panel.querySelector('#chatPanelModelToggle').addEventListener('click', toggleModelSettings);
@@ -683,13 +830,15 @@
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && panel.classList.contains('open')) closePanel();
+            if (e.key !== 'Escape' || !panel.classList.contains('open')) return;
+            minimizePanel();
         });
     }
 
     function autoGrow(el) {
         el.style.height = 'auto';
-        el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+        el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+        el.closest('form')?.classList.toggle('has-text', el.value.trim().length > 0);
     }
 
     function renderWelcome() {
@@ -730,6 +879,19 @@
         updateBadge();
         setTimeout(() => document.getElementById('chatInput')?.focus(), 150);
         scrollToBottom(false);
+    }
+
+    function toggleExpand() {
+        const panel = document.getElementById('chatPanel');
+        panel.classList.toggle('expanded');
+        scrollToBottom(false);
+        document.getElementById('chatInput')?.focus();
+    }
+
+    // Minimize: from fullscreen go back to the small panel; from the small panel collapse to the floating icon.
+    function minimizePanel() {
+        if (document.getElementById('chatPanel').classList.contains('expanded')) toggleExpand();
+        else closePanel();
     }
 
     function closePanel() {

@@ -924,7 +924,10 @@ function animateBars() {
 
 // Keyboard shortcuts
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
+  // Never hijack keys while the user is typing (inputs, textareas such as the AI chat, selects, editable areas)
+  const t = e.target;
+  if (t && (['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable || t.closest('#teacherChatAssistant'))) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === 'ArrowLeft') changeDate(-1);
   if (e.key === 'ArrowRight') changeDate(1);
   if (e.key === 't' || e.key === 'T') goToDate(new Date().toISOString().split('T')[0]);

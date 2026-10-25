@@ -106,7 +106,22 @@
         '.tca-typing{display:flex;gap:3px;padding:6px 3px}.tca-typing span{width:6px;height:6px;border-radius:50%;background:#94a3b8;animation:tcaBounce 1.1s infinite}.tca-typing span:nth-child(2){animation-delay:.15s}.tca-typing span:nth-child(3){animation-delay:.3s}@keyframes tcaBounce{0%,60%,100%{transform:translateY(0);opacity:.45}30%{transform:translateY(-4px);opacity:1}}',
         '.tca-disclaimer{font-size:9.5px;color:#94a3b8;padding:0 12px 7px;text-align:center;background:#fff}',
         '@media(max-width:700px){.tca-fab{right:14px;bottom:14px;width:56px;height:56px}.tca-panel{right:0;bottom:0;width:100%;height:100dvh;max-height:100dvh;min-height:0;border-radius:0}.tca-head{padding:12px 13px}.tca-title{font-size:13.5px}.tca-subtitle{font-size:10.5px}.tca-messages{padding:10px 8px}.tca-group{max-width:86%}.tca-msg{font-size:13px;padding:8px 10px}.tca-suggestions{padding-left:32px;padding-right:2px}.tca-chip{font-size:11px;padding:6px 9px}.tca-input{padding:8px;padding-bottom:max(8px,env(safe-area-inset-bottom))}.tca-input textarea{font-size:16px;max-height:96px}.tca-send{width:40px;height:40px;flex-basis:40px}}',
-        '@media(max-width:380px){.tca-actions{gap:3px}.tca-icon{width:28px;height:28px}.tca-row-avatar{width:25px;height:25px;flex-basis:25px}.tca-group{max-width:88%}}'
+        '@media(max-width:380px){.tca-actions{gap:3px}.tca-icon{width:28px;height:28px}.tca-row-avatar{width:25px;height:25px;flex-basis:25px}.tca-group{max-width:88%}}',
+        '.tca-panel{transition:transform .2s ease,opacity .2s ease,width .25s ease,height .25s ease,right .25s ease,bottom .25s ease,border-radius .25s ease}',
+        '.tca-expanded #tcaExpand{display:none}',
+        '.tca-panel.tca-expanded{right:0;bottom:0;width:100vw;height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;border-radius:0}',
+        '.tca-icon{width:32px;height:32px;display:grid;place-items:center;transition:background .15s}.tca-icon:hover{background:rgba(255,255,255,.28)}',
+        '.tca-messages{overscroll-behavior:contain}',
+        '.tca-expanded .tca-head{padding:14px max(20px,calc((100% - 900px)/2))}.tca-expanded .tca-messages{padding:28px max(20px,calc((100% - 820px)/2))}.tca-expanded .tca-msg{font-size:15px}.tca-expanded .tca-group{max-width:75%}',
+        '.tca-input{align-items:flex-end;gap:8px;margin:6px 14px 0;padding:6px 6px 6px 18px;border:1px solid #dfe5e1;border-radius:26px;box-shadow:0 1px 2px rgba(15,23,42,.04);transition:border-color .15s,box-shadow .15s}',
+        '.tca-input:focus-within{border-color:#2d6a4f;box-shadow:0 0 0 4px rgba(45,106,79,.14)}',
+        '.tca-input textarea{border:0;border-radius:0;background:transparent;padding:9px 0;min-height:22px;max-height:160px;font-family:inherit;font-size:14.5px;line-height:1.45;color:#1f2937}',
+        '.tca-input textarea:focus{border:0}',
+        '.tca-send{display:grid;place-items:center;transition:background .15s,transform .1s}.tca-send:active:not(:disabled){transform:scale(.94)}',
+        '.tca-input:not(.has-text) .tca-send:not(:disabled){background:#cbd5d0;cursor:default}',
+        '.tca-disclaimer{padding:7px 12px 10px;font-size:11px}',
+        '.tca-expanded .tca-input{width:min(820px,calc(100% - 40px));margin:6px auto 0}',
+        '@media(max-width:700px){.tca-icon[data-expand]{display:none}.tca-input{margin:6px 10px 0}.tca-input textarea{font-size:16px}}'
     ].join('');
     document.head.appendChild(style);
 
@@ -117,9 +132,9 @@
         '<section class="tca-panel" id="tcaPanel" role="dialog" aria-label="Teacher Assistant">' +
         '<header class="tca-head"><div class="tca-avatar"><i class="fas fa-robot"></i></div>' +
         '<div><div class="tca-title">IntelliLearn Teacher Assistant</div><div class="tca-subtitle">Your classes, students & learning data</div></div>' +
-        '<div class="tca-actions"><button class="tca-icon" id="tcaClear" title="Clear conversation"><i class="fas fa-broom"></i></button><button class="tca-icon" id="tcaClose" title="Close"><i class="fas fa-times"></i></button></div></header>' +
+        '<div class="tca-actions"><button class="tca-icon" id="tcaClear" title="Clear conversation"><i class="fas fa-broom"></i></button><button class="tca-icon" id="tcaExpand" data-expand title="Full screen" aria-label="Enter full screen"><i class="fas fa-expand"></i></button><button class="tca-icon" id="tcaClose" title="Minimize" aria-label="Minimize"><i class="fas fa-minus"></i></button></div></header>' +
         '<div class="tca-messages" id="tcaMessages"></div>' +
-        '<div class="tca-input"><textarea id="tcaInput" rows="1" placeholder="Ask about your classes, or how to use IntelliLearn..."></textarea><button class="tca-send" id="tcaSend" aria-label="Send"><i class="fas fa-paper-plane"></i></button></div>' +
+        '<div class="tca-input"><textarea id="tcaInput" rows="1" aria-label="Message"></textarea><button class="tca-send" id="tcaSend" aria-label="Send"><i class="fas fa-paper-plane"></i></button></div>' +
         '<div class="tca-disclaimer">Answers use your IntelliLearn class data. AI can make mistakes.</div></section>';
     document.body.appendChild(root);
 
@@ -180,10 +195,25 @@
     }
     function closeChat() { panel.classList.remove('open'); fab.classList.remove('open'); }
 
+    // Minimize: from fullscreen go back to the small panel; from the small panel collapse to the floating icon.
+    function minimizeChat() {
+        if (panel.classList.contains('tca-expanded')) toggleExpand(); else closeChat();
+    }
+
+    function syncComposer() {
+        input.parentNode.classList.toggle('has-text', input.value.trim().length > 0);
+    }
+
+    function toggleExpand() {
+        panel.classList.toggle('tca-expanded');
+        scrollBottom();
+        input.focus();
+    }
+
     async function sendMessage() {
         var message = input.value.trim();
         if (!message || sending) return;
-        input.value = ''; input.style.height = 'auto';
+        input.value = ''; input.style.height = 'auto'; syncComposer();
         addMessage('user', message);
         history.push({role:'user',content:message});
         history = history.slice(-MAX_HISTORY);
@@ -213,13 +243,19 @@
     }
 
     fab.addEventListener('click', openChat);
-    document.getElementById('tcaClose').addEventListener('click', closeChat);
+    document.getElementById('tcaClose').addEventListener('click', minimizeChat);
+    document.getElementById('tcaExpand').addEventListener('click', toggleExpand);
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape' || !panel.classList.contains('open')) return;
+        minimizeChat();
+    });
     document.getElementById('tcaClear').addEventListener('click', reset);
     send.addEventListener('click', sendMessage);
 
     input.addEventListener('input', function () {
         input.style.height = 'auto';
-        input.style.height = Math.min(input.scrollHeight,105) + 'px';
+        input.style.height = Math.min(input.scrollHeight,160) + 'px';
+        syncComposer();
     });
     input.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }
