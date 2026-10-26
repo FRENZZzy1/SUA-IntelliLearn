@@ -441,3 +441,11 @@
         min-width: 100%;
     }
 }
+
+/* ---------- Clickable class schedule weekdays ---------- */
+.schedule-day-picker { display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:12px; border:1px solid var(--border,#e2e8f0); border-radius:12px; min-width:0; }
+.schedule-day-picker legend { padding:0 6px; font-size:.75rem; color:var(--text-muted,#64748b); font-weight:600; }
+.schedule-day-option { display:inline-flex !important; align-items:center; gap:6px !important; cursor:pointer; border:1px solid #d1d5db; border-radius:9px; padding:8px 10px; background:#fff; transition:border-color .15s ease,background .15s ease; }
+.schedule-day-option:has(input:checked) { border-color:var(--primary,#1a5c3a); background:rgba(26,92,58,.09); color:var(--primary-dark,#124029); }
+.schedule-day-option input[type="checkbox"] { width:16px !important; min-height:16px !important; height:16px; padding:0; margin:0; accent-color:var(--primary,#1a5c3a); }
+.schedule-day-option span { font-size:.8rem; font-weight:700; }

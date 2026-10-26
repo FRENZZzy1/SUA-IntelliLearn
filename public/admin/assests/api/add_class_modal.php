@@ -99,11 +99,21 @@ try {
                 </div>
 
                 <div class="form-row-split">
-                    <div class="form-row">
-                        <label for="m_schedule_days"><i class="fas fa-calendar-week" aria-hidden="true"></i> Schedule Days</label>
-                        <input type="text" id="m_schedule_days" name="schedule_days" maxlength="20" placeholder="e.g. M - W">
-                        <span class="field-note">Optional</span>
-                    </div>
+                        <div class="form-row">
+                            <label for="m_schedule_days"><i class="fas fa-calendar-week" aria-hidden="true"></i> Schedule Days</label>
+                            <input type="hidden" id="m_schedule_days" name="schedule_days" value="">
+                            <fieldset class="schedule-day-picker" aria-label="Choose schedule days">
+                                <legend>Select one or more days</legend>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Monday"><span>Mon</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Tuesday"><span>Tue</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Wednesday"><span>Wed</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Thursday"><span>Thu</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Friday"><span>Fri</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Saturday"><span>Sat</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Sunday"><span>Sun</span></label>
+                            </fieldset>
+                            <span class="field-note">Click every day this class meets.</span>
+                        </div>
 
                     <div class="form-row">
                         <label for="m_start_time"><i class="fas fa-clock" aria-hidden="true"></i> Start Time</label>
@@ -132,7 +142,14 @@ try {
         </form>
 
         <script>
+            function syncScheduleDays(form) {
+                const selected = Array.from(form.querySelectorAll('input[name="schedule_day_options[]"]:checked')).map(input => input.value);
+                const hidden = form.querySelector('input[name="schedule_days"]');
+                if (hidden) hidden.value = selected.join(', ');
+            }
+
             function submitModalForm(form, url, submitBtn, errorBox, idleLabel, openPanel) {
+                syncScheduleDays(form);
                 errorBox.hidden = true;
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
