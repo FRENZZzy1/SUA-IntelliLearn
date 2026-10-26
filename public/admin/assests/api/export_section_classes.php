@@ -67,7 +67,18 @@ $classes = $stmt->fetchAll();
 // ================= PARSE "M - W" / "MWF" / "TTh" INTO DAY NAMES =================
 function parseScheduleDayNames(?string $raw): array
 {
-    $clean = preg_replace('/[^A-Za-z]/', '', (string) $raw);
+    $raw = trim((string) $raw);
+    if ($raw === '') return [];
+    if (strpos($raw, ',') !== false) {
+        $map = ['monday' => 'Monday', 'tuesday' => 'Tuesday', 'wednesday' => 'Wednesday', 'thursday' => 'Thursday', 'friday' => 'Friday', 'saturday' => 'Saturday', 'sunday' => 'Sunday'];
+        $days = [];
+        foreach (explode(',', $raw) as $token) {
+            $key = strtolower(trim($token));
+            if (isset($map[$key])) $days[] = $map[$key];
+        }
+        return array_values(array_unique($days));
+    }
+    $clean = preg_replace('/[^A-Za-z]/', '', $raw);
     $days = [];
     $i = 0;
     $len = strlen($clean);
