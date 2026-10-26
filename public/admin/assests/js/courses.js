@@ -99,7 +99,39 @@ function legacyCopy(text) {
 // ---- Generic modal submit helper ----
 // Posts a form to an endpoint, shows validation errors inline, and
 // reloads on success so the flash message + updated list/stats appear.
+function syncScheduleDays(form) {
+    const selected = Array.from(form.querySelectorAll('input[name="schedule_day_options[]"]:checked')).map(input => input.value);
+    const hidden = form.querySelector('input[name="schedule_days"]');
+    if (hidden) hidden.value = selected.join(', ');
+}
+
+function setScheduleDayCheckboxes(form, rawValue) {
+    const boxes = Array.from(form.querySelectorAll('input[name="schedule_day_options[]"]'));
+    const names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const selected = new Set();
+    const raw = String(rawValue || '').trim();
+    if (raw.includes(',')) {
+        raw.split(',').map(v => v.trim().toLowerCase()).forEach(token => {
+            const match = names.find(day => day.toLowerCase() === token);
+            if (match) selected.add(match);
+        });
+    } else {
+        const compact = raw.replace(/[^a-z]/gi, '');
+        let i = 0;
+        while (i < compact.length) {
+            if (compact.slice(i, i + 2).toLowerCase() === 'th') { selected.add('Thursday'); i += 2; continue; }
+            const map = { M: 'Monday', T: 'Tuesday', W: 'Wednesday', F: 'Friday', S: 'Saturday' };
+            if (map[compact[i].toUpperCase()]) selected.add(map[compact[i].toUpperCase()]);
+            i++;
+        }
+    }
+    boxes.forEach(box => { box.checked = selected.has(box.value); });
+    const hidden = form.querySelector('input[name="schedule_days"]');
+    if (hidden) hidden.value = Array.from(selected).join(', ');
+}
+
 function submitModalForm(form, url, submitBtn, errorBox, idleLabel, openPanel) {
+    syncScheduleDays(form);
     errorBox.hidden = true;
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
@@ -358,7 +390,7 @@ function openEditCourseModal(triggerElOrData) {
     document.getElementById('e_school_year_id').value = course.school_year_id;
     document.getElementById('e_capacity').value = course.capacity;
     document.getElementById('e_status').value = course.status;
-    document.getElementById('e_schedule_days').value = course.schedule_days || '';
+    setScheduleDayCheckboxes(document.getElementById('editCourseForm'), course.schedule_days || '');
     document.getElementById('e_start_time').value = course.start_time || '';
     document.getElementById('e_end_time').value = course.end_time || '';
 

@@ -31,7 +31,7 @@ $teacher_id    = $_POST['teacher_id'] ?? '';
 $school_year_id = $_POST['school_year_id'] ?? '';
 $capacity      = $_POST['capacity'] ?? 50;
 $status        = $_POST['status'] ?? 'active';
-$schedule_days  = trim($_POST['schedule_days'] ?? '');
+$schedule_days_raw = $_POST['schedule_days'] ?? ''; 
 $start_time_raw = trim($_POST['start_time'] ?? '');
 $end_time_raw   = trim($_POST['end_time'] ?? '');
 
@@ -42,7 +42,18 @@ if (!ctype_digit((string) $teacher_id)) $errors[] = 'Please choose a teacher.';
 if (!ctype_digit((string) $school_year_id)) $errors[] = 'Please choose a school year.';
 if (!ctype_digit((string) $capacity) || (int) $capacity < 1) $errors[] = 'Capacity must be a positive number.';
 if (!in_array($status, ['active', 'inactive'], true)) $errors[] = 'Invalid status.';
-if ($schedule_days !== '' && mb_strlen($schedule_days) > 20) $errors[] = 'Schedule days must be 20 characters or fewer.';
+$schedule_days_raw = $_POST['schedule_days'] ?? '';
+$schedule_days_raw = is_string($schedule_days_raw) ? trim($schedule_days_raw) : '';
+$allowedScheduleDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+$schedule_days = null;
+if ($schedule_days_raw !== '') {
+    $requestedDays = array_values(array_unique(array_map('trim', explode(',', $schedule_days_raw))));
+    if (count(array_diff($requestedDays, $allowedScheduleDays)) > 0) {
+        $errors[] = 'Choose schedule days using the provided weekday buttons.';
+    } else {
+        $schedule_days = implode(', ', array_values(array_intersect($allowedScheduleDays, $requestedDays)));
+    }
+}
 
 // Accept freely typed times like "7:00 AM", "07:00", "7am" and normalize
 // them to HH:MM:SS for storage in the TIME column.
@@ -117,7 +128,7 @@ try {
         (int) $teacher_id,
         (int) $section_id,
         (int) $school_year_id,
-        $schedule_days !== '' ? $schedule_days : null,
+        $schedule_days,
         $start_time,
         $end_time,
         (int) $capacity,

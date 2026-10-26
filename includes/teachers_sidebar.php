@@ -2,7 +2,10 @@
 $current = basename($_SERVER['PHP_SELF']);
 
 // ================= CUSTOM SIDEBAR ICON CONFIG =================
-$customSidebarIcon = 'assests/images/logo.jpg';
+$scriptPath = str_replace('\\\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+$appBasePath = preg_replace('#/public/(?:admin|teacher|student)/.*$#i', '', $scriptPath);
+$customSidebarIcon = rtrim((string) $appBasePath, '/') . '/public/assests/images/logo.jpg';
+$customSidebarIconFile = __DIR__ . '/../public/assests/images/logo.jpg';
 // ==============================================================
 
 // ================= DYNAMIC USER INFO (sidebar footer) =================
@@ -49,7 +52,7 @@ $atRiskCount = $atRiskCount ?? null;
 
     <div class="sidebar-header">
         <div class="sidebar-logo">
-            <?php if (!empty($customSidebarIcon) && file_exists($customSidebarIcon)): ?>
+            <?php if (!empty($customSidebarIcon) && file_exists($customSidebarIconFile)): ?>
                 <img src="<?= htmlspecialchars($customSidebarIcon) ?>" alt="SUA Logo">
             <?php else: ?>
                 <i class="fas fa-graduation-cap" style="color: var(--primary); font-size: 1.2rem;"></i>
