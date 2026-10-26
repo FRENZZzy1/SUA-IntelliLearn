@@ -34,10 +34,18 @@ if (function_exists('get_initials')) {
 <link rel="stylesheet" href="/SUA-INTELLILEARN/includes/css/admin_sidebar.css">
 
 
+<!-- Mobile hamburger (visible only on small screens) -->
+<button type="button" class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()" aria-label="Open menu" aria-controls="sidebar" aria-expanded="false">
+    <i class="fas fa-bars"></i>
+</button>
+
+<!-- Backdrop overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeMobileSidebar()"></div>
+
 <aside class="sidebar" id="sidebar">
-    <div class="toggle-btn" onclick="suaToggleSidebar()" title="Toggle Sidebar" role="button" tabindex="0" aria-label="Toggle sidebar" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();suaToggleSidebar();}">
-        <i class="fas fa-chevron-left"></i>
-    </div>
+    <button type="button" class="toggle-btn" id="sidebarToggle" aria-label="Collapse sidebar" title="Collapse sidebar" aria-controls="sidebar" aria-expanded="true">
+        <i class="fas fa-chevron-left" aria-hidden="true"></i>
+    </button>
 
     <div class="sidebar-header">
         <div class="sidebar-logo">
@@ -87,7 +95,7 @@ if (function_exists('get_initials')) {
                 <div class="nav-icon-wrap"><i class="fas fa-chart-line"></i></div>
                 <span class="nav-label">System Analytics</span>
             </a><?php endif; ?>
-            <?php if (adminCanRead('settings')): ?><a href="../../public/admin/settings.php" class="nav-item <?= $current === 'settings.php' ? 'active' : '' ?>" onclick="setActive(this)">
+            <?php if (adminCanRead('settings')): ?><a href="../../public/admin/settings.php" class="nav-item <?= $current === 'settings.php' ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-cog"></i></div>
                 <span class="nav-label">Settings</span>
             </a><?php endif; ?>
@@ -105,28 +113,53 @@ if (function_exists('get_initials')) {
     </div>
 </aside>
 <script>
-/* Remember the sidebar's collapsed/expanded state across pages.
-   The state is stored in this browser and only changes when the toggle
-   button is clicked, so moving to another module keeps it as it was. */
+/* Sidebar behaviour: desktop collapse (remembered across pages) + mobile drawer. */
 (function () {
-    var KEY = 'sua_admin_sidebar_collapsed';
-    var sidebar = document.getElementById('sidebar');
+    'use strict';
+    var KEY = 'sua_sidebar_collapsed';
+    var BREAKPOINT = 768;
+
+    var sidebar   = document.getElementById('sidebar');
     if (!sidebar) return;
+    var overlay   = document.getElementById('sidebarOverlay');
+    var mobileBtn = document.getElementById('mobileMenuBtn');
+    var toggleBtn = document.getElementById('sidebarToggle');
+    var root      = document.documentElement;
 
-    function read() {
-        try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; }
-    }
-    function write(collapsed) {
-        try { localStorage.setItem(KEY, collapsed ? '1' : '0'); } catch (e) {}
+    function isMobile() { return window.innerWidth <= BREAKPOINT; }
+    function readSaved() { try { return localStorage.getItem(KEY) === '1'; } catch (e) { return false; } }
+    function save(v) { try { localStorage.setItem(KEY, v ? '1' : '0'); } catch (e) {} }
+
+    /* Native tooltips on the icons while the rail is collapsed */
+    function syncTooltips() {
+        var collapsed = sidebar.classList.contains('collapsed') && !isMobile();
+        sidebar.querySelectorAll('.nav-item').forEach(function (a) {
+            var label = a.querySelector('.nav-label');
+            if (!label) return;
+            if (collapsed) a.setAttribute('title', label.textContent.trim());
+            else a.removeAttribute('title');
+        });
     }
 
-    // Apply the saved state immediately, without animating on page load.
-    if (read()) {
+    function applyCollapsed(collapsed) {
+        sidebar.classList.toggle('collapsed', collapsed);
+        root.classList.toggle('sidebar-collapsed', collapsed);   /* hook for page CSS */
+        if (toggleBtn) {
+            var text = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+            toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+            toggleBtn.setAttribute('aria-label', text);
+            toggleBtn.setAttribute('title', text);
+        }
+        syncTooltips();
+    }
+
+    /* Restore the saved state without animating on page load */
+    var saved = readSaved();
+    if (saved) {
         var guard = document.createElement('style');
         guard.id = 'suaSidebarNoAnim';
         guard.textContent = '.sidebar, .sidebar *, .main-content, .top-header { transition: none !important; }';
         document.head.appendChild(guard);
-        sidebar.classList.add('collapsed');
         window.addEventListener('load', function () {
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {
@@ -136,10 +169,56 @@ if (function_exists('get_initials')) {
             });
         });
     }
+    applyCollapsed(saved);
 
-    window.suaToggleSidebar = function () {
-        var collapsed = sidebar.classList.toggle('collapsed');
-        write(collapsed);
+    /* ---------- Mobile drawer ---------- */
+    function setMobileOpen(open) {
+        sidebar.classList.toggle('mobile-open', open);
+        if (overlay) overlay.classList.toggle('active', open);
+        document.body.classList.toggle('sidebar-locked', open);
+        if (mobileBtn) {
+            mobileBtn.innerHTML = open ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+            mobileBtn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+            mobileBtn.setAttribute('aria-expanded', String(open));
+        }
+    }
+    window.closeMobileSidebar  = function () { setMobileOpen(false); };
+    window.toggleMobileSidebar = function () { setMobileOpen(!sidebar.classList.contains('mobile-open')); };
+
+    /* Desktop collapse / mobile drawer dispatcher */
+    window.toggleSidebar = window.suaToggleSidebar = function () {
+        if (isMobile()) { window.toggleMobileSidebar(); return; }
+        var collapsed = !sidebar.classList.contains('collapsed');
+        applyCollapsed(collapsed);
+        save(collapsed);
     };
+
+    if (toggleBtn) toggleBtn.addEventListener('click', window.toggleSidebar);
+
+    /* Close drawer when a link is tapped */
+    sidebar.querySelectorAll('.nav-item').forEach(function (link) {
+        link.addEventListener('click', function () { if (isMobile()) setMobileOpen(false); });
+    });
+
+    /* ESC closes the drawer */
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') setMobileOpen(false);
+    });
+
+    /* Swipe left to close */
+    var touchStartX = 0;
+    sidebar.addEventListener('touchstart', function (e) {
+        touchStartX = e.touches[0].clientX;
+    }, { passive: true });
+    sidebar.addEventListener('touchend', function (e) {
+        if (!sidebar.classList.contains('mobile-open')) return;
+        if (touchStartX - e.changedTouches[0].clientX > 60) setMobileOpen(false);
+    }, { passive: true });
+
+    /* Leaving mobile width: close the drawer and refresh tooltips */
+    window.addEventListener('resize', function () {
+        if (!isMobile()) setMobileOpen(false);
+        syncTooltips();
+    });
 })();
 </script>
