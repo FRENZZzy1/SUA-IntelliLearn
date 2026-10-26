@@ -62,8 +62,12 @@ if ($role === 'student') {
     if (!in_array($year_level, ['7','8','9','10','11','12'], true)) $errors[] = "Please select a valid year level (Grade 7 to Grade 12).";
     if ($strand !== '' && !in_array($strand, ['GAS', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = "Please select a valid strand.";
     if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email address is invalid.";
-    $bday_obj = DateTime::createFromFormat('Y-m-d', $birthdate);
-    if (empty($birthdate) || !$bday_obj) $errors[] = "A valid birthdate is required.";
+    $bday_obj = DateTime::createFromFormat('!Y-m-d', $birthdate);
+    if (empty($birthdate) || !$bday_obj || $bday_obj->format('Y-m-d') !== $birthdate) {
+        $errors[] = "A valid birthdate is required.";
+    } elseif ($bday_obj > new DateTime('today')) {
+        $errors[] = "Birthdate cannot be in the future.";
+    }
     if (!in_array($status, ['active', 'suspended'])) $errors[] = "Invalid status selected.";
 
     if (!empty($errors)) {
