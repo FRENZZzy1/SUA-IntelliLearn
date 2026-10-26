@@ -92,7 +92,7 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                         </div>
                         <div class="aum-group">
                             <label>Birthdate <span class="aum-req">*</span></label>
-                            <div class="aum-input-wrap"><i class="fas fa-calendar-alt aum-input-icon"></i><input type="date" name="birthdate" class="aum-control" data-student-required></div>
+                            <div class="aum-input-wrap"><i class="fas fa-calendar-alt aum-input-icon"></i><input type="date" name="birthdate" class="aum-control" max="<?= date('Y-m-d') ?>" data-student-required></div>
                         </div>
                     </div>
                     <div class="aum-row">
