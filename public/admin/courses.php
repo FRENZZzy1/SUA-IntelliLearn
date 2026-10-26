@@ -1060,8 +1060,18 @@ $subjectsList = $pdo->query("
                     <div class="form-row-split">
                         <div class="form-row">
                             <label for="e_schedule_days">Schedule Days</label>
-                            <input type="text" id="e_schedule_days" name="schedule_days" maxlength="20" placeholder="e.g. M - W">
-                            <span class="field-note">Optional</span>
+                            <input type="hidden" id="e_schedule_days" name="schedule_days" value="">
+                            <fieldset class="schedule-day-picker" aria-label="Choose schedule days">
+                                <legend>Select one or more days</legend>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Monday"><span>Mon</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Tuesday"><span>Tue</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Wednesday"><span>Wed</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Thursday"><span>Thu</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Friday"><span>Fri</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Saturday"><span>Sat</span></label>
+                                <label class="schedule-day-option"><input type="checkbox" name="schedule_day_options[]" value="Sunday"><span>Sun</span></label>
+                            </fieldset>
+                            <span class="field-note">Click every day this class meets.</span>
                         </div>
 
                         <div class="form-row">
