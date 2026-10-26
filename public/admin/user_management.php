@@ -215,7 +215,7 @@ include 'assests/api/access_permissions_modal.php';
                         </div>
                         <div class="form-group">
                             <label>Birthdate</label>
-                            <input type="date" name="birthdate" id="editBirthdate" class="form-control">
+                            <input type="date" name="birthdate" id="editBirthdate" class="form-control" max="<?= date('Y-m-d') ?>">
                         </div>
                     </div>
                     <div class="form-row">
