@@ -47,7 +47,7 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
 
             <!-- Stats Summary Bar -->
             <section class="stats-bar">
-                <div class="stat-card">
+                <button type="button" class="stat-card stat-card--link" data-open="sectionsDialog" aria-haspopup="dialog">
                     <div class="stat-card__icon stat-card__icon--green">
                         <i class="fas fa-chalkboard"></i>
                     </div>
@@ -55,8 +55,8 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
                         <span class="stat-card__value"><?= count($mySections) ?></span>
                         <span class="stat-card__label">Active Sections</span>
                     </div>
-                </div>
-                <div class="stat-card">
+                </button>
+                <button type="button" class="stat-card stat-card--link" data-open="subjectsDialog" aria-haspopup="dialog">
                     <div class="stat-card__icon stat-card__icon--blue">
                         <i class="fas fa-book"></i>
                     </div>
@@ -64,8 +64,8 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
                         <span class="stat-card__value"><?= (int) $totalSubjects ?></span>
                         <span class="stat-card__label">Total Subjects</span>
                     </div>
-                </div>
-                <div class="stat-card">
+                </button>
+                <button type="button" class="stat-card stat-card--link" data-open="studentsDialog" aria-haspopup="dialog">
                     <div class="stat-card__icon stat-card__icon--amber">
                         <i class="fas fa-users"></i>
                     </div>
@@ -73,8 +73,76 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
                         <span class="stat-card__value"><?= (int) $totalStudents ?></span>
                         <span class="stat-card__label">Total Students</span>
                     </div>
-                </div>
+                </button>
             </section>
+
+            <!-- Detail dialogs opened by the three summary cards -->
+            <dialog class="stat-dialog" id="sectionsDialog" aria-labelledby="sectionsDialogTitle">
+                <div class="stat-dialog__head">
+                    <h3 id="sectionsDialogTitle">Active Sections</h3>
+                    <button type="button" class="stat-dialog__close" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>
+                </div>
+                <ul class="stat-dialog__list">
+                    <?php foreach ($mySections as $sec): ?>
+                        <li>
+                            <a href="course_section.php?section_id=<?= (int) $sec['section_id'] ?>">
+                                <span class="stat-dialog__info">
+                                    <strong><?= htmlspecialchars($sec['section_name']) ?></strong>
+                                    <small>Grade <?= (int) $sec['grade_level'] ?> · <?= (int) $sec['subject_count'] ?> <?= $sec['subject_count'] == 1 ? 'subject' : 'subjects' ?> · <?= (int) $sec['student_count'] ?> <?= $sec['student_count'] == 1 ? 'student' : 'students' ?></small>
+                                </span>
+                                <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </dialog>
+
+            <dialog class="stat-dialog" id="subjectsDialog" aria-labelledby="subjectsDialogTitle">
+                <div class="stat-dialog__head">
+                    <h3 id="subjectsDialogTitle">Total Subjects</h3>
+                    <button type="button" class="stat-dialog__close" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>
+                </div>
+                <ul class="stat-dialog__list">
+                    <?php foreach ($subjectList as $o): ?>
+                        <li>
+                            <a href="class_overview.php?<?= htmlspecialchars(http_build_query(['subject_id' => (int) $o['subject_id'], 'section_id' => (int) $o['section_id'], 'term' => $o['quarter']])) ?>">
+                                <span class="stat-dialog__info">
+                                    <strong><?= htmlspecialchars($o['subject_name']) ?></strong>
+                                    <small>Grade <?= (int) $o['grade_level'] ?> · <?= htmlspecialchars($o['section_name']) ?></small>
+                                </span>
+                                <i class="fas fa-arrow-right"></i>
+                            </a>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </dialog>
+
+            <dialog class="stat-dialog stat-dialog--wide" id="studentsDialog" aria-labelledby="studentsDialogTitle">
+                <div class="stat-dialog__head">
+                    <h3 id="studentsDialogTitle">Total Students</h3>
+                    <button type="button" class="stat-dialog__close" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>
+                </div>
+                <input type="search" class="stat-dialog__search" id="studentsDialogSearch" placeholder="Search students…" autocomplete="off">
+                <ul class="stat-dialog__list" id="studentsDialogList">
+                    <?php foreach ($studentList as $st): ?>
+                        <li class="stat-dialog__student<?= count($st['subjects']) === 1 ? ' stat-dialog__student--single' : '' ?>" data-search="<?= htmlspecialchars(strtolower($st['name'] . ' ' . $st['section'])) ?>">
+                            <div class="stat-dialog__info">
+                                <strong><?= htmlspecialchars($st['name']) ?></strong>
+                                <small>Grade <?= (int) $st['grade'] ?> · <?= htmlspecialchars($st['section']) ?></small>
+                            </div>
+                            <div class="stat-dialog__chips">
+                                <?php foreach ($st['subjects'] as $sj): ?>
+                                    <a class="stat-dialog__chip" href="<?= htmlspecialchars($sj['url']) ?>" title="View grades in <?= htmlspecialchars($sj['name']) ?>"><?= htmlspecialchars($sj['name']) ?></a>
+                                <?php endforeach; ?>
+                                <?php if (count($st['subjects']) === 1): ?>
+                                    <i class="fas fa-arrow-right stat-dialog__arrow"></i>
+                                <?php endif; ?>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+                <p class="stat-dialog__empty" id="studentsDialogEmpty" hidden>No students match your search.</p>
+            </dialog>
 
             <!-- Section Cards Grid -->
             <section class="section-grid" id="sectionGrid">
@@ -143,6 +211,38 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
 
     </main>
 
+
+    <script>
+        /* Summary cards open their detail dialogs */
+        (function () {
+            document.querySelectorAll('[data-open]').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    var dlg = document.getElementById(btn.dataset.open);
+                    if (!dlg) return;
+                    if (typeof dlg.showModal === 'function') { dlg.showModal(); } else { dlg.setAttribute('open', ''); }
+                });
+            });
+            document.querySelectorAll('.stat-dialog').forEach(function (dlg) {
+                dlg.addEventListener('click', function (e) {
+                    if (e.target === dlg || e.target.closest('[data-close]')) dlg.close();
+                });
+            });
+            var search = document.getElementById('studentsDialogSearch');
+            if (search) {
+                var rows = document.querySelectorAll('#studentsDialogList .stat-dialog__student');
+                var empty = document.getElementById('studentsDialogEmpty');
+                search.addEventListener('input', function () {
+                    var q = search.value.toLowerCase().trim(), shown = 0;
+                    rows.forEach(function (r) {
+                        var ok = !q || r.dataset.search.indexOf(q) !== -1;
+                        r.style.display = ok ? '' : 'none';
+                        if (ok) shown++;
+                    });
+                    empty.hidden = shown !== 0;
+                });
+            }
+        })();
+    </script>
 
     <script>
         /* Simple client-side search & filter */
