@@ -10,6 +10,9 @@
  * Event types:
  *   submission   submissions.submitted_at       a student turned in an assignment
  *   quiz_taken   quiz_attempts.submitted_at     a student answered a quiz
+ *   enrollment_request enrollments.enrolled_at  a student joined with a class
+ *                                               code and is waiting for approval
+ *                                               (status = 'pending')
  *   announcement announcements.published_at     posted by an admin (higher-up),
  *                                               audience = all/teachers
  *
@@ -208,7 +211,42 @@ if ($offeringIds) {
     }
 }
 
-// ---- 3. Announcements posted by an admin (higher-up) ----------------------
+// ---- 3. Enrollment requests (student joined with a class code) --------------
+// A request is an `enrollments` row with status 'pending'. Only pending ones
+// are listed: once the teacher approves/denies it, it is no longer actionable.
+if ($offeringIds) {
+    $in = implode(',', array_fill(0, count($offeringIds), '?'));
+    $stmt = $pdo->prepare("
+        SELECT e.enrollment_id, e.enrolled_at, co.quarter, co.section_id,
+               sub.subject_id, sub.subject_name, sec.section_name,
+               st.firstname, st.lastname
+        FROM enrollments e
+        JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+        JOIN sections sec      ON sec.section_id = co.section_id
+        JOIN subjects sub      ON sub.subject_id = co.subject_id
+        JOIN students st       ON st.student_id = e.student_id
+        WHERE e.offering_id IN ($in)
+          AND e.status = 'pending'
+          AND e.enrolled_at >= ?
+        ORDER BY e.enrolled_at DESC
+        LIMIT 25
+    ");
+    $stmt->execute(array_merge($offeringIds, [$sinceSql]));
+    foreach ($stmt->fetchAll() as $r) {
+        $ts = strtotime($r['enrolled_at']);
+        $add(
+            // Timestamp in the id so a re-request (dropped -> pending) shows up as new again.
+            "er-{$r['enrollment_id']}-{$ts}", 'enrollment_request',
+            notif_person($r['firstname'], $r['lastname'], 'A student'),
+            'Requested to join your class',
+            $r['subject_name'] . ' · ' . $r['section_name'],
+            notif_time_label($ts, $now), $ts,
+            notif_overview_url($base, $r, 'requests')
+        );
+    }
+}
+
+// ---- 4. Announcements posted by an admin (higher-up) ----------------------
 // Audience 'all' or 'teachers'. Posts tied to an offering are only shown if
 // it's one of this teacher's classes. The teacher's own posts are excluded.
 $annSql = "

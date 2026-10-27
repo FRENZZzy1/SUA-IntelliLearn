@@ -915,6 +915,7 @@ if (function_exists('get_initials')) {
     var TYPES = {
         submission:   { icon: 'fa-file-circle-check', tone: 'ok' },
         quiz_taken:   { icon: 'fa-circle-question',   tone: 'info' },
+        enrollment_request: { icon: 'fa-user-plus',   tone: 'warn' },
         announcement: { icon: 'fa-bullhorn',          tone: 'notice' }
     };
 
@@ -967,7 +968,7 @@ if (function_exists('get_initials')) {
         if (!shown.length) {
             list.innerHTML = state.tab === 'unread' && state.items.length
                 ? '<div class="shn-state"><i class="fas fa-check-double"></i><strong>You\'re all caught up</strong>No unread notifications.</div>'
-                : '<div class="shn-state"><i class="fas fa-bell-slash"></i><strong>No notifications yet</strong>Student submissions, quiz answers and announcements will show up here.</div>';
+                : '<div class="shn-state"><i class="fas fa-bell-slash"></i><strong>No notifications yet</strong>Enrollment requests, student submissions, quiz answers and announcements will show up here.</div>';
             return;
         }
 

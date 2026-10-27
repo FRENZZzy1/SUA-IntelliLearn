@@ -240,3 +240,34 @@
         .ar-term-panel-head .ar-term-pill { margin-left: 0; }
         .ar-term-panel-count { font-size: 0.76rem; color: var(--text-muted); }
         .ar-term-panel-head .ar-class-chips { margin-left: auto; }
+
+        /* ---------- Section groups (section -> courses -> students) ---------- */
+        .ar-section-group { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+        .ar-section-head {
+            width: 100%; border: none; background: #f1f7f3; cursor: pointer;
+            display: flex; align-items: center; justify-content: space-between; gap: 14px;
+            padding: 16px 18px; text-align: left; border-bottom: 1px solid var(--border);
+            transition: background 0.15s ease;
+        }
+        .ar-section-head:hover { background: #e8f3ec; }
+        .ar-section-title { display: flex; align-items: center; gap: 12px; }
+        .ar-section-title h2 { margin: 0; font-size: 1.05rem; color: #1f2937; }
+        .ar-section-title .ar-class-sub { font-weight: 400; color: var(--text-muted); font-size: 0.85rem; }
+        .ar-section-title p { margin: 2px 0 0; font-size: 0.78rem; color: var(--text-muted); }
+        .ar-section-chevron { transition: transform 0.2s ease; color: var(--primary); font-size: 0.9rem; }
+        .ar-section-group.collapsed .ar-section-chevron { transform: rotate(-90deg); }
+        .ar-section-group.collapsed .ar-section-head { border-bottom-color: transparent; }
+        .ar-section-group.collapsed .ar-section-body { display: none; }
+        .ar-section-body { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; background: #fafafa; }
+        .ar-section-body .ar-class-card { background: #fff; }
+        .ar-section-body .ar-class-head { background: #fff; }
+        .ar-section-body .ar-class-head:hover { background: #f9fafb; }
+        .ar-section-body .ar-class-card.collapsed .ar-class-head { border-bottom-color: transparent; }
+        .ar-course-icon { color: var(--primary); font-size: 0.85rem; margin-right: 2px; }
+
+        @media (max-width: 720px) {
+            .ar-section-head { padding: 12px 14px; align-items: flex-start; }
+            .ar-section-title { gap: 8px; }
+            .ar-section-title h2 { font-size: 0.95rem; }
+            .ar-section-body { padding: 10px; }
+        }

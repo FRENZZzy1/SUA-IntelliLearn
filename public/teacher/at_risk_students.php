@@ -36,6 +36,7 @@ foreach ($roster as $r) {
     if (!isset($classes[$ckey])) {
         $classes[$ckey] = [
             'key'         => 'class-' . $ckey,
+            'section_id'  => $r['section_id'],
             'subject'     => $r['subject'],
             'section'     => $r['section'],
             'grade_level' => $r['grade_level'],
@@ -99,6 +100,54 @@ uasort($classes, function ($a, $b) {
         return $cb['High'] <=> $ca['High'];
     }
     return $cb['Medium'] <=> $ca['Medium'];
+});
+
+// ---- Group the classes by SECTION --------------------------------------
+// Top level = section. Click a section to drop down the courses (classes)
+// that belong to it; click a course to see its student roster.
+$sections = [];
+$sectionRiskRank = ['High' => 3, 'Medium' => 2, 'Low' => 1, 'Insufficient Data' => 0];
+foreach ($classes as $c) {
+    $sk = 'sec-' . $c['section_id'];
+    if (!isset($sections[$sk])) {
+        $sections[$sk] = [
+            'key'         => $sk,
+            'name'        => $c['section'],
+            'grade_level' => $c['grade_level'],
+            'classes'     => [],
+            'counts'      => ['High' => 0, 'Medium' => 0, 'Low' => 0, 'Insufficient Data' => 0],
+            'students'    => 0,
+            'worst'       => [], // student_id => worst risk label across this section's courses
+        ];
+    }
+    $sections[$sk]['classes'][] = $c;
+    // A student enrolled in several courses of the same section is ONE
+    // student for the section: count them once, at their worst risk level.
+    foreach ($c['primary']['students'] as $st) {
+        $sid  = $st['student_id'];
+        $prev = $sections[$sk]['worst'][$sid] ?? null;
+        if ($prev === null || $sectionRiskRank[$st['risk_label']] > $sectionRiskRank[$prev]) {
+            $sections[$sk]['worst'][$sid] = $st['risk_label'];
+        }
+    }
+}
+foreach ($sections as &$sec) {
+    foreach ($sec['worst'] as $label) {
+        $sec['counts'][$label]++;
+    }
+    $sec['students'] = count($sec['worst']);
+    unset($sec['worst']);
+}
+unset($sec);
+// Sections with the most/highest risk students first.
+uasort($sections, function ($a, $b) {
+    if ($a['counts']['High'] !== $b['counts']['High']) {
+        return $b['counts']['High'] <=> $a['counts']['High'];
+    }
+    if ($a['counts']['Medium'] !== $b['counts']['Medium']) {
+        return $b['counts']['Medium'] <=> $a['counts']['Medium'];
+    }
+    return strnatcasecmp($a['name'], $b['name']);
 });
 
 $aiEnabled = gemini_is_configured();
@@ -276,85 +325,116 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
             </div>
 
             <div class="ar-class-tabs" id="arClassTabs">
-                <button class="ar-class-tab active" data-class="all">
-                    <i class="fas fa-layer-group"></i> <span data-i18n="all_classes">All Classes</span> <span class="ar-tab-count"><?= count($classes) ?></span>
+                <button class="ar-class-tab active" data-section="all">
+                    <i class="fas fa-layer-group"></i> <span data-i18n="all_sections">All Sections</span> <span class="ar-tab-count"><?= count($sections) ?></span>
                 </button>
-                <?php foreach ($classes as $c): ?>
-                    <button class="ar-class-tab" data-class="<?= $c['key'] ?>">
-                        <?= htmlspecialchars($c['subject']) ?> · <?= htmlspecialchars($c['section']) ?>
-                        <?php if ($c['primary']['counts']['High'] > 0): ?>
-                            <span class="ar-tab-badge high"><?= $c['primary']['counts']['High'] ?></span>
+                <?php foreach ($sections as $sec): ?>
+                    <button class="ar-class-tab" data-section="<?= $sec['key'] ?>">
+                        <i class="fas fa-users"></i>
+                        <?php if ($sec['grade_level'] !== null && $sec['grade_level'] !== ''): ?><span><span data-i18n="grade_short">Gr.</span> <?= htmlspecialchars($sec['grade_level']) ?> ·</span><?php endif; ?>
+                        <?= htmlspecialchars($sec['name']) ?>
+                        <?php if ($sec['counts']['High'] > 0): ?>
+                            <span class="ar-tab-badge high"><?= $sec['counts']['High'] ?></span>
                         <?php endif; ?>
                     </button>
                 <?php endforeach; ?>
             </div>
 
             <div class="ar-classes" id="arClasses">
-                <?php foreach ($classes as $c):
-                    $p = $c['primary'];
-                    $classTotal = count($p['students']);
-                    $pTermLabel = 'Term ' . $p['term_no'];
+                <?php foreach ($sections as $sec):
+                    $courseCount = count($sec['classes']);
                 ?>
-                <section class="ar-class-card" data-class="<?= $c['key'] ?>">
-                    <button class="ar-class-head" type="button" aria-expanded="true">
-                        <div class="ar-class-title">
-                            <i class="fas fa-chevron-down ar-class-chevron"></i>
+                <div class="ar-section-group collapsed" data-section="<?= $sec['key'] ?>">
+                    <button class="ar-section-head" type="button" aria-expanded="false">
+                        <div class="ar-section-title">
+                            <i class="fas fa-chevron-down ar-section-chevron"></i>
                             <div>
-                                <h3><?= htmlspecialchars($c['subject']) ?> <span class="ar-class-sub">· <?= htmlspecialchars($c['section']) ?> · <span data-i18n="grade">Grade</span> <?= $c['grade_level'] ?></span>
-                                    <span class="ar-term-pill"><span data-i18n="term">Term</span> <?= $p['term_no'] ?><?= (!$p['sy_current'] && $p['sy_label']) ? ' · SY ' . htmlspecialchars($p['sy_label']) : '' ?></span>
-                                </h3>
-                                <p><span class="ar-student-count" data-count="<?= $classTotal ?>"><?= $classTotal ?> <span data-i18n="<?= $classTotal === 1 ? 'student_singular' : 'student_plural' ?>"><?= $classTotal === 1 ? 'student' : 'students' ?></span></span></p>
+                                <h2><span data-i18n="section">Section</span> <?= htmlspecialchars($sec['name']) ?>
+                                    <?php if ($sec['grade_level'] !== null && $sec['grade_level'] !== ''): ?><span class="ar-class-sub">· <span data-i18n="grade">Grade</span> <?= htmlspecialchars($sec['grade_level']) ?></span><?php endif; ?>
+                                </h2>
+                                <p>
+                                    <?= $courseCount ?> <span data-i18n="<?= $courseCount === 1 ? 'course_singular' : 'course_plural' ?>"><?= $courseCount === 1 ? 'course' : 'courses' ?></span>
+                                    · <?= $sec['students'] ?> <span data-i18n="<?= $sec['students'] === 1 ? 'student_singular' : 'student_plural' ?>"><?= $sec['students'] === 1 ? 'student' : 'students' ?></span>
+                                </p>
                             </div>
                         </div>
                         <div class="ar-class-chips">
-                            <?php if ($p['counts']['High'] > 0): ?><span class="ar-chip high"><?= $p['counts']['High'] ?> <span data-i18n="chip_high">High</span></span><?php endif; ?>
-                            <?php if ($p['counts']['Medium'] > 0): ?><span class="ar-chip medium"><?= $p['counts']['Medium'] ?> <span data-i18n="chip_medium">Medium</span></span><?php endif; ?>
-                            <?php if ($p['counts']['Low'] > 0): ?><span class="ar-chip low"><?= $p['counts']['Low'] ?> <span data-i18n="chip_low">Low</span></span><?php endif; ?>
-                            <?php if ($p['counts']['Insufficient Data'] > 0): ?><span class="ar-chip na"><?= $p['counts']['Insufficient Data'] ?> <span data-i18n="chip_na">N/A</span></span><?php endif; ?>
+                            <?php if ($sec['counts']['High'] > 0): ?><span class="ar-chip high"><?= $sec['counts']['High'] ?> <span data-i18n="chip_high">High</span></span><?php endif; ?>
+                            <?php if ($sec['counts']['Medium'] > 0): ?><span class="ar-chip medium"><?= $sec['counts']['Medium'] ?> <span data-i18n="chip_medium">Medium</span></span><?php endif; ?>
+                            <?php if ($sec['counts']['Low'] > 0): ?><span class="ar-chip low"><?= $sec['counts']['Low'] ?> <span data-i18n="chip_low">Low</span></span><?php endif; ?>
+                            <?php if ($sec['counts']['Insufficient Data'] > 0): ?><span class="ar-chip na"><?= $sec['counts']['Insufficient Data'] ?> <span data-i18n="chip_na">N/A</span></span><?php endif; ?>
                         </div>
                     </button>
 
-                    <div class="ar-class-body">
-                        <div class="ar-term-panel">
-                            <div class="ar-table-wrap">
-                                <?= render_roster_table($p['students'], $aiEnabled, $pTermLabel) ?>
-                            </div>
-                            <p class="ar-class-empty" data-i18n="no_match_class" style="display:none;">No students match the current filter/search in this class.</p>
-                        </div>
-
-                        <?php if (!empty($c['others'])): ?>
-                            <button class="ar-terms-toggle" type="button" aria-expanded="false">
-                                <i class="fas fa-clock-rotate-left"></i>
-                                <span data-i18n="other_terms">Other terms</span>
-                                <span class="ar-tab-count"><?= count($c['others']) ?></span>
-                                <i class="fas fa-chevron-down ar-terms-chevron"></i>
-                            </button>
-                            <div class="ar-other-terms">
-                                <?php foreach ($c['others'] as $o):
-                                    $oTotal = count($o['students']);
-                                    $oTermLabel = 'Term ' . $o['term_no'];
-                                ?>
-                                <div class="ar-term-panel ar-term-panel-other">
-                                    <div class="ar-term-panel-head">
-                                        <span class="ar-term-pill"><span data-i18n="term">Term</span> <?= $o['term_no'] ?><?= (!$o['sy_current'] && $o['sy_label']) ? ' · SY ' . htmlspecialchars($o['sy_label']) : '' ?></span>
-                                        <span class="ar-term-panel-count"><?= $oTotal ?> <span data-i18n="<?= $oTotal === 1 ? 'student_singular' : 'student_plural' ?>"><?= $oTotal === 1 ? 'student' : 'students' ?></span></span>
-                                        <span class="ar-class-chips">
-                                            <?php if ($o['counts']['High'] > 0): ?><span class="ar-chip high"><?= $o['counts']['High'] ?> <span data-i18n="chip_high">High</span></span><?php endif; ?>
-                                            <?php if ($o['counts']['Medium'] > 0): ?><span class="ar-chip medium"><?= $o['counts']['Medium'] ?> <span data-i18n="chip_medium">Medium</span></span><?php endif; ?>
-                                            <?php if ($o['counts']['Low'] > 0): ?><span class="ar-chip low"><?= $o['counts']['Low'] ?> <span data-i18n="chip_low">Low</span></span><?php endif; ?>
-                                            <?php if ($o['counts']['Insufficient Data'] > 0): ?><span class="ar-chip na"><?= $o['counts']['Insufficient Data'] ?> <span data-i18n="chip_na">N/A</span></span><?php endif; ?>
-                                        </span>
-                                    </div>
-                                    <div class="ar-table-wrap">
-                                        <?= render_roster_table($o['students'], $aiEnabled, $oTermLabel) ?>
-                                    </div>
-                                    <p class="ar-class-empty" data-i18n="no_match_class" style="display:none;">No students match the current filter/search in this class.</p>
+                    <div class="ar-section-body">
+                    <?php foreach ($sec['classes'] as $c):
+                        $p = $c['primary'];
+                        $classTotal = count($p['students']);
+                        $pTermLabel = 'Term ' . $p['term_no'];
+                    ?>
+                    <section class="ar-class-card collapsed" data-class="<?= $c['key'] ?>">
+                        <button class="ar-class-head" type="button" aria-expanded="false">
+                            <div class="ar-class-title">
+                                <i class="fas fa-chevron-down ar-class-chevron"></i>
+                                <div>
+                                    <h3><i class="fas fa-book-open ar-course-icon"></i> <?= htmlspecialchars($c['subject']) ?>
+                                        <span class="ar-term-pill"><span data-i18n="term">Term</span> <?= $p['term_no'] ?><?= (!$p['sy_current'] && $p['sy_label']) ? ' · SY ' . htmlspecialchars($p['sy_label']) : '' ?></span>
+                                    </h3>
+                                    <p><span class="ar-student-count" data-count="<?= $classTotal ?>"><?= $classTotal ?> <span data-i18n="<?= $classTotal === 1 ? 'student_singular' : 'student_plural' ?>"><?= $classTotal === 1 ? 'student' : 'students' ?></span></span></p>
                                 </div>
-                                <?php endforeach; ?>
                             </div>
-                        <?php endif; ?>
+                            <div class="ar-class-chips">
+                                <?php if ($p['counts']['High'] > 0): ?><span class="ar-chip high"><?= $p['counts']['High'] ?> <span data-i18n="chip_high">High</span></span><?php endif; ?>
+                                <?php if ($p['counts']['Medium'] > 0): ?><span class="ar-chip medium"><?= $p['counts']['Medium'] ?> <span data-i18n="chip_medium">Medium</span></span><?php endif; ?>
+                                <?php if ($p['counts']['Low'] > 0): ?><span class="ar-chip low"><?= $p['counts']['Low'] ?> <span data-i18n="chip_low">Low</span></span><?php endif; ?>
+                                <?php if ($p['counts']['Insufficient Data'] > 0): ?><span class="ar-chip na"><?= $p['counts']['Insufficient Data'] ?> <span data-i18n="chip_na">N/A</span></span><?php endif; ?>
+                            </div>
+                        </button>
+
+                        <div class="ar-class-body">
+                            <div class="ar-term-panel">
+                                <div class="ar-table-wrap">
+                                    <?= render_roster_table($p['students'], $aiEnabled, $pTermLabel) ?>
+                                </div>
+                                <p class="ar-class-empty" data-i18n="no_match_class" style="display:none;">No students match the current filter/search in this class.</p>
+                            </div>
+
+                            <?php if (!empty($c['others'])): ?>
+                                <button class="ar-terms-toggle" type="button" aria-expanded="false">
+                                    <i class="fas fa-clock-rotate-left"></i>
+                                    <span data-i18n="other_terms">Other terms</span>
+                                    <span class="ar-tab-count"><?= count($c['others']) ?></span>
+                                    <i class="fas fa-chevron-down ar-terms-chevron"></i>
+                                </button>
+                                <div class="ar-other-terms">
+                                    <?php foreach ($c['others'] as $o):
+                                        $oTotal = count($o['students']);
+                                        $oTermLabel = 'Term ' . $o['term_no'];
+                                    ?>
+                                    <div class="ar-term-panel ar-term-panel-other">
+                                        <div class="ar-term-panel-head">
+                                            <span class="ar-term-pill"><span data-i18n="term">Term</span> <?= $o['term_no'] ?><?= (!$o['sy_current'] && $o['sy_label']) ? ' · SY ' . htmlspecialchars($o['sy_label']) : '' ?></span>
+                                            <span class="ar-term-panel-count"><?= $oTotal ?> <span data-i18n="<?= $oTotal === 1 ? 'student_singular' : 'student_plural' ?>"><?= $oTotal === 1 ? 'student' : 'students' ?></span></span>
+                                            <span class="ar-class-chips">
+                                                <?php if ($o['counts']['High'] > 0): ?><span class="ar-chip high"><?= $o['counts']['High'] ?> <span data-i18n="chip_high">High</span></span><?php endif; ?>
+                                                <?php if ($o['counts']['Medium'] > 0): ?><span class="ar-chip medium"><?= $o['counts']['Medium'] ?> <span data-i18n="chip_medium">Medium</span></span><?php endif; ?>
+                                                <?php if ($o['counts']['Low'] > 0): ?><span class="ar-chip low"><?= $o['counts']['Low'] ?> <span data-i18n="chip_low">Low</span></span><?php endif; ?>
+                                                <?php if ($o['counts']['Insufficient Data'] > 0): ?><span class="ar-chip na"><?= $o['counts']['Insufficient Data'] ?> <span data-i18n="chip_na">N/A</span></span><?php endif; ?>
+                                            </span>
+                                        </div>
+                                        <div class="ar-table-wrap">
+                                            <?= render_roster_table($o['students'], $aiEnabled, $oTermLabel) ?>
+                                        </div>
+                                        <p class="ar-class-empty" data-i18n="no_match_class" style="display:none;">No students match the current filter/search in this class.</p>
+                                    </div>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </section>
+                    <?php endforeach; ?>
                     </div>
-                </section>
+                </div>
                 <?php endforeach; ?>
                 <p class="ar-no-results" id="arNoResults" style="display:none;">
                     <i class="fas fa-magnifying-glass"></i> <span data-i18n="no_match_search">No students match your search/filter.</span>
@@ -400,7 +480,10 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
             empty_state: 'No active students found in your classes yet.',
             search_placeholder: 'Search student name…',
             filter_all: 'All', filter_high: 'High', filter_medium: 'Medium', filter_low: 'Low', filter_na: 'Insufficient Data',
-            all_classes: 'All Classes',
+            all_sections: 'All Sections',
+            section: 'Section',
+            grade_short: 'Gr.',
+            course_singular: 'course', course_plural: 'courses',
             grade: 'Grade',
             term: 'Term', other_terms: 'Other terms',
             student_singular: 'student', student_plural: 'students',
@@ -438,7 +521,10 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
             empty_state: 'Wala pang aktibong estudyante sa iyong mga klase.',
             search_placeholder: 'Maghanap ng pangalan ng estudyante…',
             filter_all: 'Lahat', filter_high: 'Mataas', filter_medium: 'Katamtaman', filter_low: 'Mababa', filter_na: 'Kulang ang Datos',
-            all_classes: 'Lahat ng Klase',
+            all_sections: 'Lahat ng Seksyon',
+            section: 'Seksyon',
+            grade_short: 'Bait.',
+            course_singular: 'kurso', course_plural: 'kurso',
             grade: 'Baitang',
             term: 'Termino', other_terms: 'Iba pang termino',
             student_singular: 'estudyante', student_plural: 'estudyante',
@@ -537,49 +623,86 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
     applyStaticTranslations();
 
     // =====================================================================
-    // Combined filtering: risk level + class tab + name search
+    // Combined filtering: risk level + section tab + name search
+    // Hierarchy: Section (group)  ->  Course (class card)  ->  student table
     // =====================================================================
     const filterBtns   = document.querySelectorAll('.ar-filter-btn');
-    const classTabs    = document.querySelectorAll('.ar-class-tab');
-    const classCards   = document.querySelectorAll('.ar-class-card');
+    const sectionTabs  = document.querySelectorAll('.ar-class-tab');
+    const sectionGroups = document.querySelectorAll('.ar-section-group');
     const searchInput  = document.getElementById('arSearchInput');
     const noResultsMsg = document.getElementById('arNoResults');
 
     let activeRisk = 'all';
-    let activeClass = 'all';
+    let activeSection = 'all';
+
+    function setOpen(el, open, headSelector) {
+        el.classList.toggle('collapsed', !open);
+        const head = el.querySelector(headSelector);
+        if (head) head.setAttribute('aria-expanded', String(open));
+    }
+
+    // Default open/closed state: picking a section (or having only one)
+    // drops down its list of courses; a section with a single course
+    // opens that course straight away so there is no pointless extra click.
+    function applyDefaultExpansion() {
+        sectionGroups.forEach(group => {
+            const cards = group.querySelectorAll('.ar-class-card');
+            setOpen(group, activeSection !== 'all' || sectionGroups.length === 1, '.ar-section-head');
+            cards.forEach(card => setOpen(card, cards.length === 1, '.ar-class-head'));
+        });
+    }
 
     function applyFilters() {
         const query = ((searchInput && searchInput.value) || '').trim().toLowerCase();
-        let anyClassVisible = false;
+        const filtering = activeRisk !== 'all' || !!query;
+        let anyVisible = false;
 
-        classCards.forEach(card => {
-            const isTargetClass = activeClass === 'all' || card.dataset.class === activeClass;
-            const filtering = activeRisk !== 'all' || !!query;
+        sectionGroups.forEach(group => {
+            const isTargetSection = activeSection === 'all' || group.dataset.section === activeSection;
+            let visibleCards = 0;
 
-            // Each term (the visible one + any in the "Other terms" expander)
-            // is its own panel with its own table / empty message.
-            card.querySelectorAll('.ar-term-panel').forEach(panel => {
-                let visibleInPanel = 0;
-                panel.querySelectorAll('tbody tr').forEach(row => {
-                    const matchesRisk = activeRisk === 'all' || row.dataset.filter === activeRisk;
-                    const matchesSearch = !query || row.dataset.name.includes(query);
-                    const show = isTargetClass && matchesRisk && matchesSearch;
-                    row.style.display = show ? '' : 'none';
-                    if (show) visibleInPanel++;
+            group.querySelectorAll('.ar-class-card').forEach(card => {
+                let visibleInCard = 0;
+
+                // Each term (the visible one + any in the "Other terms" expander)
+                // is its own panel with its own table / empty message.
+                card.querySelectorAll('.ar-term-panel').forEach(panel => {
+                    let visibleInPanel = 0;
+                    panel.querySelectorAll('tbody tr').forEach(row => {
+                        const matchesRisk = activeRisk === 'all' || row.dataset.filter === activeRisk;
+                        const matchesSearch = !query || row.dataset.name.includes(query);
+                        const show = matchesRisk && matchesSearch;
+                        row.style.display = show ? '' : 'none';
+                        if (show) visibleInPanel++;
+                    });
+                    visibleInCard += visibleInPanel;
+                    const emptyMsg = panel.querySelector('.ar-class-empty');
+                    const tableWrap = panel.querySelector('.ar-table-wrap');
+                    const noneVisible = visibleInPanel === 0 && filtering;
+                    if (emptyMsg) emptyMsg.style.display = noneVisible ? '' : 'none';
+                    if (tableWrap) tableWrap.style.display = noneVisible ? 'none' : '';
                 });
-                const emptyMsg = panel.querySelector('.ar-class-empty');
-                const tableWrap = panel.querySelector('.ar-table-wrap');
-                const noneVisible = visibleInPanel === 0 && filtering;
-                if (emptyMsg) emptyMsg.style.display = noneVisible ? '' : 'none';
-                if (tableWrap) tableWrap.style.display = noneVisible ? 'none' : '';
+
+                // While filtering, hide courses with no matching students and
+                // open the ones that do match so results are visible right away.
+                const cardVisible = !filtering || visibleInCard > 0;
+                card.style.display = cardVisible ? '' : 'none';
+                if (cardVisible) {
+                    visibleCards++;
+                    if (filtering) setOpen(card, true, '.ar-class-head');
+                }
             });
 
-            card.style.display = isTargetClass ? '' : 'none';
-            if (isTargetClass) anyClassVisible = true;
+            const groupVisible = isTargetSection && visibleCards > 0;
+            group.style.display = groupVisible ? '' : 'none';
+            if (groupVisible) {
+                anyVisible = true;
+                if (filtering) setOpen(group, true, '.ar-section-head');
+            }
         });
 
         if (noResultsMsg) {
-            noResultsMsg.style.display = anyClassVisible ? 'none' : '';
+            noResultsMsg.style.display = anyVisible ? 'none' : '';
         }
     }
 
@@ -592,11 +715,12 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
         });
     });
 
-    classTabs.forEach(tab => {
+    sectionTabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            classTabs.forEach(t => t.classList.remove('active'));
+            sectionTabs.forEach(other => other.classList.remove('active'));
             tab.classList.add('active');
-            activeClass = tab.dataset.class;
+            activeSection = tab.dataset.section;
+            applyDefaultExpansion();
             applyFilters();
             // On small screens, scroll the picked tab into view.
             if (window.innerWidth <= 720) {
@@ -609,27 +733,25 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
         searchInput.addEventListener('input', applyFilters);
     }
 
-    // ---- Class card accordion (expand/collapse) ----
-    // On mobile, collapse every class by default except the first, so the
-    // page isn't one giant scroll of tables.
-    if (window.innerWidth <= 720) {
-        document.querySelectorAll('.ar-class-card').forEach((card, idx) => {
-            if (idx > 0) {
-                card.classList.add('collapsed');
-                const head = card.querySelector('.ar-class-head');
-                if (head) head.setAttribute('aria-expanded', 'false');
-            }
+    // ---- Section + course accordions (expand/collapse) ----
+    document.querySelectorAll('.ar-section-head').forEach(head => {
+        head.addEventListener('click', () => {
+            const group = head.closest('.ar-section-group');
+            const expanded = head.getAttribute('aria-expanded') === 'true';
+            setOpen(group, !expanded, '.ar-section-head');
         });
-    }
+    });
 
     document.querySelectorAll('.ar-class-head').forEach(head => {
         head.addEventListener('click', () => {
             const card = head.closest('.ar-class-card');
             const expanded = head.getAttribute('aria-expanded') === 'true';
-            head.setAttribute('aria-expanded', String(!expanded));
-            card.classList.toggle('collapsed', expanded);
+            setOpen(card, !expanded, '.ar-class-head');
         });
     });
+
+    applyDefaultExpansion();
+    applyFilters();
 
     // ---- "Other terms" expander inside each class card ----
     document.querySelectorAll('.ar-terms-toggle').forEach(btn => {
