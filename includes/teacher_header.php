@@ -568,6 +568,13 @@ if (function_exists('get_initials')) {
     .teacher-top-header .shn-item { padding: 12px 18px; }
     .teacher-top-header .shn-item:hover { background: #f4f8f6; }
 
+    @media (max-width: 600px) {
+        /* On phones the panel is position:fixed, so the desktop "top: 100% + 10px"
+           above would resolve against the screen height and push it off-screen.
+           Same specificity as that rule, so this one wins. */
+        .teacher-top-header .shn-panel { top: calc(var(--header-height, 64px) + 6px); }
+    }
+
     @media (prefers-reduced-motion: no-preference) {
         .teacher-top-header .thp-profile.open .thp-profile-menu,
         .teacher-top-header .search-results-dropdown.open { animation: thpIn 0.14s ease-out; }
@@ -915,6 +922,7 @@ if (function_exists('get_initials')) {
     var TYPES = {
         submission:   { icon: 'fa-file-circle-check', tone: 'ok' },
         quiz_taken:   { icon: 'fa-circle-question',   tone: 'info' },
+        enrollment_request: { icon: 'fa-user-plus',   tone: 'warn' },
         announcement: { icon: 'fa-bullhorn',          tone: 'notice' }
     };
 
@@ -967,7 +975,7 @@ if (function_exists('get_initials')) {
         if (!shown.length) {
             list.innerHTML = state.tab === 'unread' && state.items.length
                 ? '<div class="shn-state"><i class="fas fa-check-double"></i><strong>You\'re all caught up</strong>No unread notifications.</div>'
-                : '<div class="shn-state"><i class="fas fa-bell-slash"></i><strong>No notifications yet</strong>Student submissions, quiz answers and announcements will show up here.</div>';
+                : '<div class="shn-state"><i class="fas fa-bell-slash"></i><strong>No notifications yet</strong>Enrollment requests, student submissions, quiz answers and announcements will show up here.</div>';
             return;
         }
 

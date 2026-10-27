@@ -55,13 +55,19 @@ if ($role === 'student') {
     } catch (InvalidArgumentException $e) {
         $errors[] = $e->getMessage();
     }
-    if (empty($firstname)) $errors[] = "First name is required.";
-    if (empty($lastname)) $errors[] = "Last name is required.";
-    if (empty($lrn) || !preg_match('/^\d{12}$/', $lrn)) $errors[] = "A valid 12-digit LRN is required.";
+    foreach ([
+        validatePersonName($firstname, 'First name'),
+        validatePersonName($lastname, 'Last name'),
+        validatePersonName($middlename, 'Middle name', false),
+        validatePersonName($guardian_name, 'Guardian name', false),
+        validateLrnValue($lrn),
+    ] as $nameErr) {
+        if ($nameErr !== null) $errors[] = $nameErr;
+    }
     if (!in_array($gender, ['Male', 'Female'])) $errors[] = "Please select a valid gender.";
     if (!in_array($year_level, ['7','8','9','10','11','12'], true)) $errors[] = "Please select a valid year level (Grade 7 to Grade 12).";
     if ($strand !== '' && !in_array($strand, ['GAS', 'ABM', 'HUMSS', 'TVL'], true)) $errors[] = "Please select a valid strand.";
-    if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email address is invalid.";
+    if (($emailErr = validateEmailAddress($email, false)) !== null) $errors[] = $emailErr;
     $bday_obj = DateTime::createFromFormat('!Y-m-d', $birthdate);
     if (empty($birthdate) || !$bday_obj || $bday_obj->format('Y-m-d') !== $birthdate) {
         $errors[] = "A valid birthdate is required.";
@@ -156,10 +162,15 @@ $fullname = $role === 'admin'
 
 $errors = [];
 if ($role !== 'admin') {
-    if (empty($firstname)) $errors[] = "First name is required.";
-    if (empty($lastname)) $errors[] = "Last name is required.";
+    foreach ([
+        validatePersonName($firstname, 'First name'),
+        validatePersonName($lastname, 'Last name'),
+        validatePersonName($middlename, 'Middle name', false),
+    ] as $nameErr) {
+        if ($nameErr !== null) $errors[] = $nameErr;
+    }
 }
-if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Valid email is required.";
+if (($emailErr = validateEmailAddress($email)) !== null) $errors[] = $emailErr;
 if ($role === 'admin') {
     if (empty($password)) {
         $errors[] = "Password is required.";

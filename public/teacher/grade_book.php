@@ -45,13 +45,55 @@ foreach ($groups as &$g) {
     $g['multi_year'] = count(array_unique(array_column($g['terms'], 'school_year_id'))) > 1;
 }
 unset($g);
-if (!$selectedClass && $groups) {
-    $selectedClass = reset($groups)['primary'];
-    $offeringId = (int) $selectedClass['offering_id'];
-}
+// Nothing is selected until the teacher picks a class (no offering_id in the URL,
+// or one that isn't theirs): show the class list only, and load no gradebook data.
+if (!$selectedClass)
+    $offeringId = 0;
 $selectedGroup = null;
 if ($selectedClass)
     $selectedGroup = $groups[$selectedClass['subject_id'] . '-' . $selectedClass['section_id']] ?? null;
+
+// ---- Group the classes by SECTION for the "Your Classes" dropdown. -----------
+// Each section lists the classes (subjects) taught in it. The section that
+// holds the currently selected class starts open.
+$sections = [];
+foreach ($groups as $gk => $g) {
+    $secId = (int) $g['info']['section_id'];
+    $isSel = $selectedClass && $selectedClass['subject_id'] == $g['info']['subject_id'] && $selectedClass['section_id'] == $g['info']['section_id'];
+    $target = $isSel ? $selectedClass : $g['primary'];
+    if (!isset($sections[$secId])) {
+        $sections[$secId] = [
+            'name'     => $g['info']['section_name'],
+            'grade'    => $g['info']['grade_level'],
+            'items'    => [],
+            'has_sel'  => false,
+            'students' => 0,
+        ];
+    }
+    $sections[$secId]['items'][] = ['group' => $g, 'target' => $target, 'is_sel' => $isSel];
+    if ($isSel)
+        $sections[$secId]['has_sel'] = true;
+}
+// A student enrolled in several classes of one section is counted once.
+$sectionOfferings = [];
+foreach ($sections as $secId => $sec)
+    foreach ($sec['items'] as $it)
+        $sectionOfferings[(int) $it['target']['offering_id']] = $secId;
+if ($sectionOfferings) {
+    $in = implode(',', array_fill(0, count($sectionOfferings), '?'));
+    $stmt = $pdo->prepare("SELECT offering_id, student_id FROM enrollments WHERE status='enrolled' AND offering_id IN ($in)");
+    $stmt->execute(array_keys($sectionOfferings));
+    $uniq = [];
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $er)
+        $uniq[$sectionOfferings[(int) $er['offering_id']]][$er['student_id']] = true;
+    foreach ($sections as $secId => &$sec)
+        $sec['students'] = isset($uniq[$secId]) ? count($uniq[$secId]) : 0;
+    unset($sec);
+}
+uasort($sections, function ($a, $b) {
+    $byGrade = (int) $a['grade'] <=> (int) $b['grade'];
+    return $byGrade !== 0 ? $byGrade : strnatcasecmp($a['name'], $b['name']);
+});
 $students = [];
 $items = ['ww' => [], 'pt' => [], 'exam' => []];
 $done = [];
@@ -110,24 +152,45 @@ $flash = getFlashMessage();
                 <section class="classes-section">
                     <div class="section-title-row">
                         <div>
-                            <h2>Your Classes</h2><span><?= count($groups) ?> active
-                                class<?= count($groups) == 1 ? '' : 'es' ?></span>
+                            <h2>Your Classes</h2><span><?= count($sections) ?> section<?= count($sections) == 1 ? '' : 's' ?>
+                                · <?= count($groups) ?> active class<?= count($groups) == 1 ? '' : 'es' ?></span>
                         </div>
                     </div>
-                    <div class="class-grid"><?php foreach ($groups as $gk => $g):
-                        $isSel = $selectedGroup && $selectedClass['subject_id'] == $g['info']['subject_id'] && $selectedClass['section_id'] == $g['info']['section_id'];
-                        $target = $isSel ? $selectedClass : $g['primary'];
-                    ?><a class="class-card <?= $isSel ? 'selected' : '' ?>"
-                                href="?offering_id=<?= $target['offering_id'] ?>" <?= $isSel ? 'aria-current="true"' : '' ?>>
-                                <div class="class-icon"><i class="fas fa-book-open"></i></div>
-                                <div class="class-info">
-                                    <strong><?= htmlspecialchars($g['info']['subject_name']) ?></strong><span><?= htmlspecialchars($g['info']['section_name']) ?></span><small>Grade
-                                        <?= htmlspecialchars($g['info']['grade_level']) ?>
-                                        · <?= count($g['terms']) ?> term<?= count($g['terms']) == 1 ? '' : 's' ?></small>
+                    <div class="gb-section-list">
+                        <?php foreach ($sections as $sec):
+                            $open = $sec['has_sel'];
+                            $nClasses = count($sec['items']);
+                        ?>
+                        <div class="gb-section<?= $open ? '' : ' collapsed' ?>">
+                            <button type="button" class="gb-section-head" aria-expanded="<?= $open ? 'true' : 'false' ?>">
+                                <i class="fas fa-chevron-down gb-section-chevron"></i>
+                                <div class="gb-section-icon"><i class="fas fa-users"></i></div>
+                                <div class="gb-section-info">
+                                    <strong>Section <?= htmlspecialchars($sec['name']) ?> <span>· Grade <?= htmlspecialchars($sec['grade']) ?></span></strong>
+                                    <small><?= $nClasses ?> class<?= $nClasses == 1 ? '' : 'es' ?> · <?= $sec['students'] ?> student<?= $sec['students'] == 1 ? '' : 's' ?></small>
                                 </div>
-                                <div class="class-count"><strong><?= $target['student_count'] ?></strong><span>students</span></div>
-                            </a><?php endforeach; ?></div>
+                            </button>
+                            <div class="gb-section-body">
+                                <div class="class-grid"><?php foreach ($sec['items'] as $it):
+                                    $g = $it['group'];
+                                    $target = $it['target'];
+                                    $isSel = $it['is_sel'];
+                                ?><a class="class-card <?= $isSel ? 'selected' : '' ?>"
+                                        href="?offering_id=<?= $target['offering_id'] ?>" <?= $isSel ? 'aria-current="true"' : '' ?>>
+                                        <div class="class-icon"><i class="fas fa-book-open"></i></div>
+                                        <div class="class-info">
+                                            <strong><?= htmlspecialchars($g['info']['subject_name']) ?></strong><small><?= count($g['terms']) ?> term<?= count($g['terms']) == 1 ? '' : 's' ?></small>
+                                        </div>
+                                        <div class="class-count"><strong><?= $target['student_count'] ?></strong><span>students</span></div>
+                                    </a><?php endforeach; ?></div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
                 </section>
+                <?php $hasSel = $selectedClass && $selectedGroup; ?>
+                <div id="gbSelectedArea"<?= $hasSel ? '' : ' style="display:none"' ?>>
+                <?php if ($hasSel): ?>
                 <section class="selected-class-head">
                     <div><span class="eyebrow">SELECTED CLASS</span>
                         <h2><?= htmlspecialchars($selectedClass['subject_name']) ?> <span>·
@@ -147,12 +210,12 @@ $flash = getFlashMessage();
                         </div>
                         <a class="btn-export<?= $rows ? '' : ' disabled' ?>" href="assets/api/export_gradebook.php?offering_id=<?= (int) $offeringId ?>" <?= $rows ? '' : 'aria-disabled="true" tabindex="-1"' ?>><i class="fas fa-file-excel"></i> Export Gradebook</a>
                         <div class="mobile-class-select"><label>Switch class</label><select
-                                onchange="if(this.value)location='?offering_id='+this.value"><?php foreach ($groups as $g):
-                                    $isSel = $selectedClass['subject_id'] == $g['info']['subject_id'] && $selectedClass['section_id'] == $g['info']['section_id'];
-                                    $target = $isSel ? $selectedClass : $g['primary']; ?>
-                                    <option value="<?= $target['offering_id'] ?>" <?= $isSel ? 'selected' : '' ?>>
-                                        <?= htmlspecialchars($g['info']['subject_name'] . ' · ' . $g['info']['section_name']) ?>
-                                    </option><?php endforeach; ?>
+                                onchange="if(this.value)location='?offering_id='+this.value"><?php foreach ($sections as $sec): ?>
+                                    <optgroup label="Section <?= htmlspecialchars($sec['name']) ?> · Grade <?= htmlspecialchars($sec['grade']) ?>"><?php foreach ($sec['items'] as $it): ?>
+                                        <option value="<?= $it['target']['offering_id'] ?>" <?= $it['is_sel'] ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($it['group']['info']['subject_name']) ?>
+                                        </option><?php endforeach; ?>
+                                    </optgroup><?php endforeach; ?>
                             </select></div>
                     </div>
                 </section>
@@ -202,9 +265,41 @@ $flash = getFlashMessage();
                             </tbody>
                         </table>
                     </div>
-                </section><?php endif; ?>
+                </section>
+                <?php endif; ?>
+                </div>
+                <section class="gb-no-selection" id="gbNoSelection"<?= $hasSel ? ' style="display:none"' : '' ?>>
+                    <i class="fas fa-hand-pointer"></i>
+                    <h3>No class selected</h3>
+                    <p>Open a section above and pick a class to view its gradebook.</p>
+                </section>
+                <?php endif; ?>
         </div>
     </main>
+    <script>
+    // Section dropdowns: click a section to show / hide the classes inside it.
+    // Collapsing the section that holds the selected class also clears the
+    // selection: the gradebook hides again until another class is picked.
+    function gbClearSelection(box) {
+        box.querySelectorAll('.class-card.selected').forEach(function (card) {
+            card.classList.remove('selected');
+            card.removeAttribute('aria-current');
+        });
+        var area = document.getElementById('gbSelectedArea');
+        var none = document.getElementById('gbNoSelection');
+        if (area) area.style.display = 'none';
+        if (none) none.style.display = '';
+        try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    }
+    document.querySelectorAll('.gb-section-head').forEach(function (head) {
+        head.addEventListener('click', function () {
+            var box = head.closest('.gb-section');
+            var open = box.classList.toggle('collapsed') === false;
+            head.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (!open && box.querySelector('.class-card.selected')) gbClearSelection(box);
+        });
+    });
+    </script>
 </body>
 
 </html>

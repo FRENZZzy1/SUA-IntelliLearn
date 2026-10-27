@@ -687,3 +687,112 @@ body {
 .status-pill.status-incomplete,
 .status-pill.status-not-submitted { background: #fef2f2; color: #dc2626; }
 .status-pill.status-none { background: #f1f5f9; color: #94a3b8; }
+
+/* ---------- Section dropdowns (section -> classes) ---------- */
+.gb-section-list { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+
+.gb-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.gb-section-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 14px 17px;
+    border: none;
+    background: #f2f8f4;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    transition: background .2s ease;
+}
+
+.gb-section-head:hover { background: #e9f3ed; }
+
+.gb-section-chevron {
+    color: var(--primary);
+    font-size: 13px;
+    transition: transform .2s ease;
+}
+
+.gb-section.collapsed .gb-section-chevron { transform: rotate(-90deg); }
+.gb-section.collapsed .gb-section-body { display: none; }
+
+.gb-section-icon {
+    width: 38px;
+    height: 38px;
+    flex: none;
+    border-radius: 11px;
+    display: grid;
+    place-items: center;
+    background: #dcece3;
+    color: var(--primary);
+}
+
+.gb-section-info { min-width: 0; flex: 1; }
+
+.gb-section-info strong {
+    display: block;
+    font-size: 15px;
+    color: var(--primary-dark);
+}
+
+.gb-section-info strong span {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 13px;
+}
+
+.gb-section-info small {
+    display: block;
+    margin-top: 3px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.gb-section-body {
+    padding: 14px 16px 16px;
+    border-top: 1px solid var(--border);
+    background: #fafcfb;
+}
+
+.gb-section-body .class-grid { margin-top: 0; }
+
+@media (max-width: 768px) {
+    .gb-section-head { padding: 12px 14px; }
+    .gb-section-body { padding: 12px; }
+}
+
+/* ---------- Empty state: no class picked yet ---------- */
+.gb-no-selection {
+    margin: 30px 0 15px;
+    padding: 40px 20px;
+    text-align: center;
+    background: var(--card);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+}
+
+.gb-no-selection i {
+    display: block;
+    font-size: 28px;
+    margin-bottom: 12px;
+    color: var(--primary-light);
+    opacity: .6;
+}
+
+.gb-no-selection h3 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    color: var(--primary-dark);
+}
+
+.gb-no-selection p { margin: 0; font-size: 13px; }

@@ -243,9 +243,9 @@
     display: flex;
     flex-wrap: wrap;
     gap: 14px;
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
 }
 
 .legend-item {

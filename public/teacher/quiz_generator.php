@@ -33,8 +33,13 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
             <div class="qg-panel">
                 <div class="panel-empty">
                     <i class="fas fa-chalkboard"></i>
-                    <p>No active classes assigned yet.</p>
-                    <span>You'll be able to generate quizzes once the admin assigns you a class.</span>
+                    <?php if ($currentTerm === null): ?>
+                        <p>No term is running right now.</p>
+                        <span>Quizzes can be generated for the ongoing term's classes once a term starts.</span>
+                    <?php else: ?>
+                        <p>No classes assigned for <?= htmlspecialchars($currentTermLabel) ?> yet.</p>
+                        <span>You'll be able to generate quizzes once the admin assigns you a class this term.</span>
+                    <?php endif; ?>
                 </div>
             </div>
         <?php else: ?>
@@ -52,17 +57,32 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
                             <div class="qg-form-grid">
 
                                 <div class="qg-field span-2">
-                                    <label for="qgOffering">Subject / Class</label>
-                                    <select id="qgOffering" name="offering_id" required>
-                                        <option value="">Select a class…</option>
-                                        <?php foreach ($teacherOfferings as $o): ?>
-                                            <option value="<?= (int) $o['offering_id'] ?>">
-                                                <?= htmlspecialchars($o['subject_name']) ?> — Grade
-                                                <?= (int) $o['grade_level'] ?>         <?= htmlspecialchars($o['section_name']) ?>
-                                                (<?= htmlspecialchars($o['quarter']) ?>)
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <label for="qgOfferingSearch">Subject / Class <span class="hint">— <?= htmlspecialchars($currentTermLabel) ?> (ongoing term)</span></label>
+                                    <div class="qg-combo" id="qgCombo">
+                                        <!-- Native select stays as the source of truth (value + options); the
+                                             searchable picker below is built from it by quiz_class_picker.js -->
+                                        <select id="qgOffering" name="offering_id" class="qg-combo__native" tabindex="-1" aria-hidden="true">
+                                            <option value="">Select a class…</option>
+                                            <?php foreach ($teacherOfferings as $o): ?>
+                                                <option value="<?= (int) $o['offering_id'] ?>"
+                                                    data-subject="<?= htmlspecialchars($o['subject_name']) ?>"
+                                                    data-meta="Grade <?= (int) $o['grade_level'] ?> · <?= htmlspecialchars($o['section_name']) ?>"
+                                                    <?= (int) $o['offering_id'] === $preselectOfferingId ? 'selected' : '' ?>>
+                                                    <?= htmlspecialchars($o['subject_name']) ?> — Grade <?= (int) $o['grade_level'] ?> <?= htmlspecialchars($o['section_name']) ?>
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <div class="qg-combo__control">
+                                            <i class="fas fa-magnifying-glass qg-combo__icon"></i>
+                                            <input type="text" id="qgOfferingSearch" class="qg-combo__input"
+                                                placeholder="Search or select a class…" autocomplete="off" required
+                                                role="combobox" aria-expanded="false" aria-controls="qgComboList" aria-autocomplete="list">
+                                            <button type="button" class="qg-combo__toggle" id="qgComboToggle" tabindex="-1" aria-label="Show classes">
+                                                <i class="fas fa-chevron-down"></i>
+                                            </button>
+                                        </div>
+                                        <ul class="qg-combo__list" id="qgComboList" role="listbox" hidden></ul>
+                                    </div>
                                 </div>
 
                                 <div class="qg-field">
@@ -231,8 +251,54 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
 
                 </div>
 
-                <!-- ==================== Sidebar column ==================== -->
-                <div>
+                <!-- ==================== Sidebar column (sticky) ==================== -->
+                <div class="qg-side">
+
+                    <!-- Quiz summary for the ongoing term -->
+                    <section class="qg-panel">
+                        <h3><i class="fas fa-chart-simple"></i> Quiz Summary <span class="qg-side-term"><?= htmlspecialchars($currentTermLabel) ?></span></h3>
+                        <div class="qg-stats">
+                            <div class="qg-stat qg-stat--draft">
+                                <span class="qg-stat__num"><?= (int) $quizCounts['draft'] ?></span>
+                                <span class="qg-stat__lbl">Drafts</span>
+                            </div>
+                            <div class="qg-stat qg-stat--published">
+                                <span class="qg-stat__num"><?= (int) $quizCounts['published'] ?></span>
+                                <span class="qg-stat__lbl">Published</span>
+                            </div>
+                            <div class="qg-stat qg-stat--closed">
+                                <span class="qg-stat__num"><?= (int) $quizCounts['closed'] ?></span>
+                                <span class="qg-stat__lbl">Closed</span>
+                            </div>
+                            <div class="qg-stat qg-stat--grade">
+                                <span class="qg-stat__num"><?= (int) $quizToGrade ?></span>
+                                <span class="qg-stat__lbl">To grade</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Needs attention -->
+                    <section class="qg-panel">
+                        <h3><i class="fas fa-bell"></i> Needs Attention</h3>
+                        <?php if (empty($attentionItems)): ?>
+                            <p class="qg-attn-empty"><i class="fas fa-circle-check"></i> You're all caught up — nothing to grade, no deadlines this week, no unfinished drafts.</p>
+                        <?php else: ?>
+                            <ul class="qg-recent-list">
+                                <?php foreach ($attentionItems as $it): ?>
+                                    <li>
+                                        <a class="qg-recent-item" href="<?= htmlspecialchars($it['url']) ?>">
+                                            <span class="qg-recent-icon qg-attn-icon--<?= htmlspecialchars($it['kind']) ?>"><i class="fas <?= htmlspecialchars($it['icon']) ?>"></i></span>
+                                            <span class="qg-recent-body">
+                                                <span class="qg-recent-title"><?= htmlspecialchars($it['title']) ?></span>
+                                                <span class="qg-recent-sub"><?= htmlspecialchars($it['subject']) ?> · <strong class="qg-attn-label qg-attn-label--<?= htmlspecialchars($it['kind']) ?>"><?= htmlspecialchars($it['label']) ?></strong></span>
+                                            </span>
+                                        </a>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </section>
+
                     <section class="qg-panel">
                         <h3><i class="fas fa-clock-rotate-left"></i> Recent Quizzes</h3>
 
@@ -243,17 +309,34 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
                                 <span>Quizzes you generate or create will show up here.</span>
                             </div>
                         <?php else: ?>
-                            <?php foreach ($recentQuizzes as $rq): ?>
-                                <div class="qg-recent-item">
-                                    <span class="qg-recent-title"><?= htmlspecialchars($rq['title']) ?></span>
-                                    <span class="qg-recent-meta">
-                                        <?= htmlspecialchars($rq['subject_name']) ?> · <?= htmlspecialchars($rq['section_name']) ?>
-                                        · <?= (int) $rq['question_count'] ?> items
-                                        <span
-                                            class="qg-status-tag <?= htmlspecialchars($rq['status']) ?>"><?= htmlspecialchars($rq['status']) ?></span>
-                                    </span>
-                                </div>
-                            <?php endforeach; ?>
+                            <ul class="qg-recent-list">
+                                <?php foreach ($recentQuizzes as $rq): ?>
+                                    <?php
+                                    $rqUrl = 'class_overview.php?' . http_build_query([
+                                        'subject_id' => (int) $rq['subject_id'],
+                                        'section_id' => (int) $rq['section_id'],
+                                        'view'       => 'quizzes',
+                                        'term'       => $rq['quarter'],
+                                        'quiz_id'    => (int) $rq['quiz_id'],
+                                    ]);
+                                    $rqStatus = $rq['status'];
+                                    $rqIcon = $rqStatus === 'published' ? 'fa-circle-check' : ($rqStatus === 'closed' ? 'fa-lock' : 'fa-pen-ruler');
+                                    $rqTerm = $termLabelMap[$rq['quarter']] ?? $rq['quarter'];
+                                    ?>
+                                    <li>
+                                        <a class="qg-recent-item" href="<?= htmlspecialchars($rqUrl) ?>"
+                                           title="Created <?= date('M j, Y', strtotime($rq['created_at'])) ?> · open in Class Overview">
+                                            <span class="qg-recent-icon qg-recent-icon--<?= htmlspecialchars($rqStatus) ?>"><i class="fas <?= $rqIcon ?>"></i></span>
+                                            <span class="qg-recent-body">
+                                                <span class="qg-recent-title"><?= htmlspecialchars($rq['title']) ?></span>
+                                                <span class="qg-recent-sub">
+                                                    <?= htmlspecialchars($rq['subject_name']) ?> · Grade <?= (int) $rq['grade_level'] ?> <?= htmlspecialchars($rq['section_name']) ?> · <?= htmlspecialchars($rqTerm) ?>
+                                                </span>
+                                            </span>
+                                        </a>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
                         <?php endif; ?>
                     </section>
                 </div>
@@ -266,6 +349,7 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
 
     <script type="application/json" id="qgPdfData"><?= json_encode($pdfMaterialsByOffering ?: new stdClass(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
     <script src="assets/js/quiz_generator.js"></script>
+    <script src="assets/js/quiz_class_picker.js"></script>
 </body>
 
 </html>
