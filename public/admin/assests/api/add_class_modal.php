@@ -117,12 +117,14 @@ try {
 
                     <div class="form-row">
                         <label for="m_start_time"><i class="fas fa-clock" aria-hidden="true"></i> Start Time</label>
-                        <input type="text" id="m_start_time" name="start_time" maxlength="20" placeholder="e.g. 7:00 AM">
+                        <input type="time" id="m_start_time" name="start_time" step="900" aria-describedby="m_start_time_hint">
+                        <span class="field-note" id="m_start_time_hint">Choose a time using the time picker.</span>
                     </div>
 
                     <div class="form-row">
                         <label for="m_end_time"><i class="fas fa-hourglass-end" aria-hidden="true"></i> End Time</label>
-                        <input type="text" id="m_end_time" name="end_time" maxlength="20" placeholder="e.g. 10:00 AM">
+                        <input type="time" id="m_end_time" name="end_time" step="900" aria-describedby="m_end_time_hint">
+                        <span class="field-note" id="m_end_time_hint">Choose a time using the time picker.</span>
                     </div>
                 </div>
 
