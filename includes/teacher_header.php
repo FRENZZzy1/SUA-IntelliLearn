@@ -568,6 +568,13 @@ if (function_exists('get_initials')) {
     .teacher-top-header .shn-item { padding: 12px 18px; }
     .teacher-top-header .shn-item:hover { background: #f4f8f6; }
 
+    @media (max-width: 600px) {
+        /* On phones the panel is position:fixed, so the desktop "top: 100% + 10px"
+           above would resolve against the screen height and push it off-screen.
+           Same specificity as that rule, so this one wins. */
+        .teacher-top-header .shn-panel { top: calc(var(--header-height, 64px) + 6px); }
+    }
+
     @media (prefers-reduced-motion: no-preference) {
         .teacher-top-header .thp-profile.open .thp-profile-menu,
         .teacher-top-header .search-results-dropdown.open { animation: thpIn 0.14s ease-out; }
