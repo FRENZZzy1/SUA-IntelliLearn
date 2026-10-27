@@ -26,9 +26,13 @@ $stmt = $pdo->query("SELECT school_year_id, label FROM schoolyears WHERE is_curr
 $schoolYear   = $stmt->fetch();
 $schoolYearId = $schoolYear['school_year_id'] ?? null;
 
+// ---- Ongoing term (e.g. 'TRM 2'), or null when no term is running today ----
+$currentTerm = resolveCurrentTerm(getTermIntervals($pdo));
+
 // ---- Active classes / subjects for this teacher -----------------------
 $stmt = $pdo->prepare("
-    SELECT co.offering_id, co.schedule_days, co.start_time, co.end_time,
+    SELECT co.offering_id, co.quarter, co.subject_id, co.section_id,
+           co.schedule_days, co.start_time, co.end_time,
            sub.subject_name, sec.section_name, sec.grade_level
     FROM classofferings co
     JOIN subjects sub  ON sub.subject_id = co.subject_id
@@ -42,6 +46,25 @@ $stmt->execute([$teacherId, $schoolYearId, $schoolYearId]);
 $activeOfferings = $stmt->fetchAll();
 $offeringIds     = array_column($activeOfferings, 'offering_id');
 $totalSubjects   = count($activeOfferings);
+
+/** Link to a class's page (class_overview.php) for a given offering row. */
+function dash_class_url(array $c, string $view = 'overview'): string
+{
+    return 'class_overview.php?' . http_build_query([
+        'subject_id' => (int) $c['subject_id'],
+        'section_id' => (int) $c['section_id'],
+        'view'       => $view,
+        'term'       => $c['quarter'],
+    ]);
+}
+
+// ---- "My Classes" card list: only offerings of the ONGOING term ----------
+$termLabelMap = ['TRM 1' => 'Term 1', 'TRM 2' => 'Term 2', 'TRM 3' => 'Term 3'];
+$currentTermLabel = $currentTerm !== null ? ($termLabelMap[$currentTerm] ?? $currentTerm) : null;
+$ongoingOfferings = $currentTerm === null ? [] : array_values(array_filter(
+    $activeOfferings,
+    fn($c) => $c['quarter'] === $currentTerm
+));
 
 // ---- Total students enrolled across this teacher's active classes -----
 $totalStudents = 0;
@@ -82,10 +105,11 @@ foreach ($atRiskRoster as $row) {
 // form lands on) that was turned in but has no score yet. Drafts and
 // students who are no longer actively enrolled are excluded.
 $assignmentsToGrade = 0;
+$gradeTargets = []; // classes that have work waiting, biggest backlog first (feeds the clickable card)
 if ($offeringIds) {
     $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
     $stmt = $pdo->prepare("
-        SELECT COUNT(*)
+        SELECT a.offering_id, COUNT(*) AS pending
         FROM submissions sub
         JOIN (
             SELECT s2.assignment_id, s2.student_id, MAX(s2.attempt_number) AS latest_attempt
@@ -105,9 +129,30 @@ if ($offeringIds) {
           AND a.status <> 'draft'
           AND sub.status IN ('submitted', 'late')
           AND sub.score IS NULL
+        GROUP BY a.offering_id
     ");
     $stmt->execute(array_merge($offeringIds, $offeringIds));
-    $assignmentsToGrade = (int) $stmt->fetchColumn();
+
+    $offeringById = [];
+    foreach ($activeOfferings as $c) {
+        $offeringById[(int) $c['offering_id']] = $c;
+    }
+    foreach ($stmt->fetchAll() as $row) {
+        $pending = (int) $row['pending'];
+        $assignmentsToGrade += $pending;
+        $c = $offeringById[(int) $row['offering_id']] ?? null;
+        if ($c) {
+            $gradeTargets[] = [
+                'subject' => $c['subject_name'],
+                'section' => $c['section_name'],
+                'grade'   => (int) $c['grade_level'],
+                'term'    => $termLabelMap[$c['quarter']] ?? $c['quarter'],
+                'pending' => $pending,
+                'url'     => dash_class_url($c, 'assignments'),
+            ];
+        }
+    }
+    usort($gradeTargets, fn($a, $b) => $b['pending'] <=> $a['pending']);
 }
 
 // ---- Attendance rate across this teacher's active classes -------------

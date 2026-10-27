@@ -41,29 +41,46 @@ include 'assets/api/dashboard_functions.php';
         </div>
     </section>
 
-    <!-- Metric cards -->
+    <!-- Metric cards (each one is clickable) -->
     <section class="metric-grid">
-        <article class="metric-card">
+        <a class="metric-card metric-card--link" href="courses.php">
             <div class="metric-head">
                 <span class="metric-label">Total Students Enrolled</span>
                 <i class="fas fa-users metric-icon"></i>
             </div>
             <div class="metric-value"><?= $totalStudents ?></div>
             <div class="metric-foot">Across <?= $totalSubjects ?> active <?= $totalSubjects === 1 ? 'class' : 'classes' ?></div>
-        </article>
+        </a>
 
-        <article class="metric-card">
+        <?php
+        $gradeCardInner = '
             <div class="metric-head">
                 <span class="metric-label">Assignments to Grade</span>
                 <i class="fas fa-clipboard-check metric-icon"></i>
             </div>
-            <div class="metric-value"><?= $assignmentsToGrade ?? '—' ?></div>
-            <div class="metric-foot muted">
-                <?= $assignmentsToGrade === null ? 'Unavailable' : ($assignmentsToGrade === 0 ? 'All caught up' : 'Pending review') ?>
-            </div>
-        </article>
+            <div class="metric-value">' . ($assignmentsToGrade ?? '—') . '</div>
+            <div class="metric-foot muted">'
+                . ($assignmentsToGrade === null ? 'Unavailable' : ($assignmentsToGrade === 0 ? 'All caught up' : 'Pending review'))
+            . '</div>';
+        ?>
+        <?php if (count($gradeTargets) === 1): ?>
+            <!-- Only one class has work waiting: go straight to its assignments -->
+            <a class="metric-card metric-card--link" href="<?= htmlspecialchars($gradeTargets[0]['url']) ?>">
+                <?= $gradeCardInner ?>
+            </a>
+        <?php elseif (count($gradeTargets) > 1): ?>
+            <!-- Several classes have work waiting: let the teacher pick one -->
+            <button type="button" class="metric-card metric-card--link" id="gradePickerBtn"
+                    aria-haspopup="dialog" aria-controls="gradePickerDialog">
+                <?= $gradeCardInner ?>
+            </button>
+        <?php else: ?>
+            <a class="metric-card metric-card--link" href="courses.php">
+                <?= $gradeCardInner ?>
+            </a>
+        <?php endif; ?>
 
-        <article class="metric-card metric-card--warn">
+        <a class="metric-card metric-card--warn metric-card--link" href="at_risk_students.php">
             <div class="metric-head">
                 <span class="metric-label">Students at Risk of Failing</span>
                 <i class="fas fa-triangle-exclamation metric-icon"></i>
@@ -72,9 +89,9 @@ include 'assets/api/dashboard_functions.php';
             <div class="metric-foot muted">
                 <?= $atRiskCount === null ? 'Coming soon' : 'Needs intervention' ?>
             </div>
-        </article>
+        </a>
 
-        <article class="metric-card">
+        <a class="metric-card metric-card--link" href="attendance.php">
             <div class="metric-head">
                 <span class="metric-label">Average Attendance Rate</span>
                 <i class="fas fa-clipboard-list metric-icon"></i>
@@ -83,8 +100,34 @@ include 'assets/api/dashboard_functions.php';
             <div class="metric-foot muted">
                 <?= $attendanceRate === null ? 'Coming soon' : 'This quarter' ?>
             </div>
-        </article>
+        </a>
     </section>
+
+    <?php if (count($gradeTargets) > 1): ?>
+    <!-- Class picker for the "Assignments to Grade" card -->
+    <dialog class="grade-picker" id="gradePickerDialog" aria-labelledby="gradePickerTitle">
+        <div class="grade-picker__head">
+            <h3 id="gradePickerTitle">Assignments to Grade</h3>
+            <button type="button" class="grade-picker__close" id="gradePickerClose" aria-label="Close">
+                <i class="fas fa-xmark"></i>
+            </button>
+        </div>
+        <p class="grade-picker__sub">Pick a class to start grading.</p>
+        <ul class="grade-picker__list">
+            <?php foreach ($gradeTargets as $t): ?>
+            <li>
+                <a href="<?= htmlspecialchars($t['url']) ?>">
+                    <span class="grade-picker__info">
+                        <strong><?= htmlspecialchars($t['subject']) ?></strong>
+                        <small>Grade <?= (int) $t['grade'] ?> · <?= htmlspecialchars($t['section']) ?> · <?= htmlspecialchars($t['term']) ?></small>
+                    </span>
+                    <span class="grade-picker__count"><?= (int) $t['pending'] ?> to grade</span>
+                </a>
+            </li>
+            <?php endforeach; ?>
+        </ul>
+    </dialog>
+    <?php endif; ?>
 
     <!-- Panels -->
     <section class="panel-grid">
@@ -153,10 +196,10 @@ include 'assets/api/dashboard_functions.php';
 
     </section>
 
-    <!-- My Classes -->
+    <!-- My Classes (ongoing term only; each card opens that class) -->
     <section class="panel">
         <div class="panel-head">
-            <h3>My Classes</h3>
+            <h3>My Classes<?php if ($currentTermLabel): ?> <span class="panel-term"><?= htmlspecialchars($currentTermLabel) ?> · Ongoing</span><?php endif; ?></h3>
             <a href="courses.php" class="panel-link">View All</a>
         </div>
 
@@ -166,10 +209,16 @@ include 'assets/api/dashboard_functions.php';
                 <p>No active classes assigned yet.</p>
                 <span>Once the admin assigns you a class, it will show up here.</span>
             </div>
+        <?php elseif (empty($ongoingOfferings)): ?>
+            <div class="panel-empty">
+                <i class="fas fa-calendar-xmark"></i>
+                <p><?= $currentTerm === null ? 'No term is running right now.' : 'No classes for the ongoing term.' ?></p>
+                <span>Classes for the ongoing term will show up here. Use <strong>View All</strong> to browse every class.</span>
+            </div>
         <?php else: ?>
             <div class="class-grid">
-                <?php foreach ($activeOfferings as $c): ?>
-                <div class="class-card">
+                <?php foreach ($ongoingOfferings as $c): ?>
+                <a class="class-card class-card--link" href="<?= htmlspecialchars(dash_class_url($c)) ?>">
                     <div class="class-card-top">
                         <span class="class-grade">Grade <?= (int) $c['grade_level'] ?></span>
                         <span class="class-section"><?= htmlspecialchars($c['section_name']) ?></span>
@@ -182,13 +231,30 @@ include 'assets/api/dashboard_functions.php';
                             · <?= date('g:i A', strtotime($c['start_time'])) ?>–<?= date('g:i A', strtotime($c['end_time'])) ?>
                         <?php endif; ?>
                     </p>
-                </div>
+                </a>
                 <?php endforeach; ?>
             </div>
         <?php endif; ?>
     </section>
 
 </main>
+
+<?php if (count($gradeTargets) > 1): ?>
+<script>
+(function () {
+    var btn = document.getElementById('gradePickerBtn');
+    var dlg = document.getElementById('gradePickerDialog');
+    var close = document.getElementById('gradePickerClose');
+    if (!btn || !dlg) return;
+    btn.addEventListener('click', function () {
+        if (typeof dlg.showModal === 'function') { dlg.showModal(); } else { dlg.setAttribute('open', ''); }
+    });
+    close.addEventListener('click', function () { dlg.close(); });
+    // click on the dark backdrop closes it
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+})();
+</script>
+<?php endif; ?>
 
 </body>
 </html>
