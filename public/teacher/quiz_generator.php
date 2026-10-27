@@ -11,6 +11,7 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/dashboard.css">
     <link rel="stylesheet" href="assets/css/quiz_generator.css">
+    <link rel="stylesheet" href="assets/css/quiz_generator_motion.css">
 </head>
 
 <body>
@@ -116,6 +117,11 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
                                         </label>
                                         <span class="qg-mix-total" id="qgMixTotal"></span>
                                     </div>
+                                    <div class="qg-mix-bar" id="qgMixBar" aria-hidden="true">
+                                        <span class="qg-mix-bar__seg qg-mix-bar__seg--easy"></span>
+                                        <span class="qg-mix-bar__seg qg-mix-bar__seg--average"></span>
+                                        <span class="qg-mix-bar__seg qg-mix-bar__seg--difficult"></span>
+                                    </div>
                                 </div>
 
                                 <div class="qg-field span-2">
@@ -155,6 +161,10 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
                                     <label>PDF Modules <span class="hint">— pick up to 3 text-based PDFs; questions
                                             are based only on their text</span></label>
                                     <div class="qg-pdf-list" id="qgPdfList"></div>
+                                    <div class="qg-pdf-count" id="qgPdfCount" aria-live="polite">
+                                        <span class="qg-pdf-count__dots"><i></i><i></i><i></i></span>
+                                        <span class="qg-pdf-count__txt">0 of 3 selected</span>
+                                    </div>
                                 </div>
 
                                 <div class="qg-field span-2">
@@ -179,11 +189,6 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
                                 </button>
                             </div>
                         </form>
-
-                        <div class="qg-loading" id="qgLoading">
-                            <div class="qg-spinner"></div>
-                            <span>Reading your module and talking to the AI model — this can take up to 30 seconds…</span>
-                        </div>
 
                         <div class="qg-alert" id="qgGenerateAlert"></div>
                     </section>
@@ -347,7 +352,60 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
 
     </main>
 
+    <?php if (!empty($teacherOfferings)): ?>
+    <!-- Custom loading screen shown while the AI drafts the quiz (driven by quiz_motion.js) -->
+    <div class="qg-overlay" id="qgLoading" role="dialog" aria-modal="true" aria-labelledby="qgLdrTitle" aria-hidden="true">
+        <div class="qg-ldr">
+            <div class="qg-ldr__bg" aria-hidden="true">
+                <span style="--x:8%;  --s:20px; --t:8s;  --d:0s">?</span>
+                <span style="--x:24%; --s:16px; --t:10s; --d:2s">✓</span>
+                <span style="--x:42%; --s:22px; --t:9s;  --d:4s">?</span>
+                <span style="--x:60%; --s:15px; --t:11s; --d:1s">✓</span>
+                <span style="--x:78%; --s:19px; --t:8.5s;--d:3s">?</span>
+                <span style="--x:92%; --s:17px; --t:10s; --d:5s">✓</span>
+            </div>
+
+            <div class="qg-ldr__stage" aria-hidden="true">
+                <span class="qg-ldr__ring"></span>
+                <span class="qg-ldr__ring qg-ldr__ring--2"></span>
+                <div class="qg-ldr__orbit">
+                    <span class="qg-ldr__path"></span>
+                    <span class="qg-ldr__sat" style="--a:0deg"><span><i class="fas fa-question"></i></span></span>
+                    <span class="qg-ldr__sat qg-ldr__sat--gold" style="--a:120deg"><span><i class="fas fa-lightbulb"></i></span></span>
+                    <span class="qg-ldr__sat" style="--a:240deg"><span><i class="fas fa-pen"></i></span></span>
+                </div>
+                <img class="qg-ldr__mascot" src="../admin/assests/images/mascot_head.png" alt="">
+                <div class="qg-ldr__check">
+                    <svg viewBox="0 0 52 52"><path d="M14 27 l8 8 l16 -17"></path></svg>
+                </div>
+                <div class="qg-ldr__confetti"></div>
+            </div>
+
+            <h4 class="qg-ldr__title" id="qgLdrTitle">Crafting your quiz…</h4>
+            <p class="qg-ldr__sub" aria-live="polite"></p>
+
+            <ul class="qg-ldr__steps">
+                <li class="qg-ldr__step"><span class="qg-ldr__dot"><i class="fas fa-check"></i></span><span class="qg-ldr__label"></span></li>
+                <li class="qg-ldr__step"><span class="qg-ldr__dot"><i class="fas fa-check"></i></span><span class="qg-ldr__label"></span></li>
+                <li class="qg-ldr__step"><span class="qg-ldr__dot"><i class="fas fa-check"></i></span><span class="qg-ldr__label"></span></li>
+                <li class="qg-ldr__step"><span class="qg-ldr__dot"><i class="fas fa-check"></i></span><span class="qg-ldr__label"></span></li>
+                <li class="qg-ldr__step"><span class="qg-ldr__dot"><i class="fas fa-check"></i></span><span class="qg-ldr__label"></span></li>
+            </ul>
+
+            <div class="qg-ldr__bar" role="progressbar" aria-label="Quiz generation progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="qg-ldr__fill"></div>
+            </div>
+            <div class="qg-ldr__meta"><span class="qg-ldr__pct">0%</span><span><i class="far fa-clock"></i> <span class="qg-ldr__time">0:00</span></span></div>
+
+            <div class="qg-ldr__tip"><i class="fas fa-lightbulb"></i><span></span></div>
+
+            <button type="button" class="qg-btn qg-btn--ghost qg-btn--sm qg-ldr__cancel"><i class="fas fa-xmark"></i> Cancel</button>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <script type="application/json" id="qgPdfData"><?= json_encode($pdfMaterialsByOffering ?: new stdClass(), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) ?></script>
+    <script src="assets/js/quiz_motion.js"></script>
     <script src="assets/js/quiz_generator.js"></script>
     <script src="assets/js/quiz_class_picker.js"></script>
 </body>

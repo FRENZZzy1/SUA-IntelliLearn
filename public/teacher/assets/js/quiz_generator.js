@@ -22,6 +22,12 @@
     const saveAlert = document.getElementById('qgSaveAlert');
     const generateBtn = document.getElementById('qgGenerateBtn');
 
+    // Optional motion layer (quiz_motion.js) — everything below still works without it
+    const Loader = window.QGLoader || null;
+    const Motion = window.QGMotion || null;
+    const reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    let activeAbort = null;
+
     let state = {
         offeringId: null,
         jobId: null,
@@ -73,15 +79,25 @@
                 + 'Class Overview → Materials, or switch to “From a topic I describe”.</div>';
             return;
         }
-        items.forEach((m) => {
+        items.forEach((m, i) => {
             const row = document.createElement('label');
             row.className = 'qg-pdf-item';
+            row.style.setProperty('--i', i);
             row.innerHTML = '<input type="checkbox" name="material_ids" value="' + Number(m.id) + '">'
                 + '<i class="fas fa-file-pdf"></i>'
                 + '<span class="qg-pdf-name">' + escapeHtml(m.title) + '</span>'
                 + '<span class="qg-pdf-size">' + formatSize(m.size) + '</span>';
             pdfList.appendChild(row);
         });
+        updatePdfCount();
+    }
+
+    function updatePdfCount() {
+        const box = document.getElementById('qgPdfCount');
+        if (!box) return;
+        const n = pdfList.querySelectorAll('input:checked').length;
+        box.querySelector('.qg-pdf-count__txt').textContent = n + ' of ' + MAX_PDFS + ' selected';
+        box.querySelectorAll('.qg-pdf-count__dots i').forEach((dot, i) => dot.classList.toggle('on', i < n));
     }
 
     function applySourceMode() {
@@ -108,6 +124,9 @@
             } else {
                 hideAlert(genAlert);
             }
+            const item = e.target.closest('.qg-pdf-item');
+            if (item) item.classList.toggle('is-checked', e.target.checked);
+            updatePdfCount();
         }
     });
 
@@ -116,6 +135,8 @@
 
     // ---------------- Helpers ----------------
     function showAlert(el, type, messages) {
+        el.className = 'qg-alert';
+        void el.offsetWidth; // reflow so the entrance / shake animation replays
         el.className = 'qg-alert active qg-alert--' + type;
         if (Array.isArray(messages)) {
             el.innerHTML = messages.length > 1
@@ -177,6 +198,15 @@
         mixTotal.textContent = `Total: ${total} / ${items}`;
         mixTotal.classList.toggle('ok', ok);
         mixTotal.classList.toggle('bad', !ok);
+
+        const bar = document.getElementById('qgMixBar');
+        if (bar) {
+            const base = Math.max(items, total, 1);
+            ['easy', 'average', 'difficult'].forEach((k) => {
+                const seg = bar.querySelector('.qg-mix-bar__seg--' + k);
+                if (seg) seg.style.width = (m[k] / base * 100) + '%';
+            });
+        }
     }
 
     function toggleMixField() {
@@ -239,8 +269,24 @@
         };
 
         generateBtn.disabled = true;
-        loadingBox.classList.add('active');
+        generateBtn.classList.add('is-busy');
         reviewSection.classList.remove('active');
+
+        const diffLabel = payload.difficulty === 'custom' ? 'Custom mix'
+            : String(payload.difficulty).charAt(0).toUpperCase() + String(payload.difficulty).slice(1);
+        const sourceLabel = sourceType === 'pdf'
+            ? 'from ' + materialIds.length + ' PDF module' + (materialIds.length === 1 ? '' : 's')
+            : 'from your topic';
+        activeAbort = new AbortController();
+        if (Loader) {
+            Loader.start({
+                sourceType: sourceType,
+                summary: payload.num_items + ' questions · ' + diffLabel + ' · ' + sourceLabel,
+                onCancel: () => { if (activeAbort) activeAbort.abort(); },
+            });
+        } else {
+            loadingBox.classList.add('active');
+        }
 
         try {
             const res = await fetch('assets/api/quiz_api/generate_quiz.php', {
@@ -251,6 +297,7 @@
                     'X-Requested-With': 'XMLHttpRequest',
                 },
                 body: JSON.stringify(payload),
+                signal: activeAbort.signal,
             });
 
             let data;
@@ -265,6 +312,9 @@
                 return;
             }
 
+            // Success: let the loading screen finish its celebration before revealing the editor
+            if (Loader) await Loader.complete();
+
             state.offeringId = payload.offering_id;
             state.jobId = data.job_id;
             state.questions = data.questions.map((q) => ({ ...q, ai_generated: true, teacher_edited: false }));
@@ -276,31 +326,46 @@
             document.getElementById('qgQuizDescription').value = data.quiz.description;
             modelBadge.innerHTML = `<i class="fas fa-robot"></i> Generated with ${escapeHtml(data.model_used)}`;
 
-            renderQuestions();
+            renderQuestions({ animate: 'all' });
             reviewSection.classList.add('active');
             hideAlert(saveAlert);
             if (data.notice) showAlert(genAlert, 'info', [data.notice]);
             reviewSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         } catch (err) {
-            showAlert(genAlert, 'error', [err.message || 'Network error. Please try again.']);
+            if (err && err.name === 'AbortError') {
+                showAlert(genAlert, 'info', ['Quiz generation was cancelled.']);
+            } else {
+                showAlert(genAlert, 'error', [err.message || 'Network error. Please try again.']);
+            }
         } finally {
             generateBtn.disabled = false;
-            loadingBox.classList.remove('active');
+            generateBtn.classList.remove('is-busy');
+            if (Loader) Loader.stop(); else loadingBox.classList.remove('active');
+            activeAbort = null;
         }
     });
 
     // ---------------- Render questions ----------------
-    function renderQuestions() {
+    // opts.animate: 'all' (stagger every card) | 'last' (only the newest card) | false (no entrance)
+    function renderQuestions(opts) {
+        const mode = (opts && opts.animate) || false;
         questionList.innerHTML = '';
         state.questions.forEach((q, index) => {
-            questionList.appendChild(buildQuestionCard(q, index));
+            const card = buildQuestionCard(q, index);
+            if (!reduceMotion && (mode === 'all' || (mode === 'last' && index === state.questions.length - 1))) {
+                card.classList.add('qg-qcard--enter');
+                card.style.setProperty('--i', mode === 'all' ? Math.min(index, 12) : 0);
+            }
+            questionList.appendChild(card);
         });
+        if (Motion) Motion.autoGrow(questionList);
     }
 
     function buildQuestionCard(q, index) {
         const card = document.createElement('div');
         card.className = 'qg-qcard';
         card.dataset.index = index;
+        card.dataset.type = q.question_type;
 
         card.innerHTML = `
             <div class="qg-qcard-head">
@@ -332,6 +397,7 @@
         card.querySelector('[data-field="question_type"]').addEventListener('change', (e) => {
             const newType = e.target.value;
             q.question_type = newType;
+            card.dataset.type = newType;
             if (newType === 'mcq' && q.choices.length < 2) {
                 q.choices = [
                     { text: '', is_correct: true },
@@ -352,8 +418,18 @@
         });
 
         card.querySelector('.qg-remove-q').addEventListener('click', () => {
-            state.questions.splice(index, 1);
-            renderQuestions();
+            if (card.classList.contains('qg-qcard--leave')) return;
+            let removed = false;
+            const doRemove = () => {
+                if (removed) return;
+                removed = true;
+                state.questions.splice(index, 1);
+                renderQuestions({ animate: false });
+            };
+            if (reduceMotion) { doRemove(); return; }
+            card.classList.add('qg-qcard--leave');
+            card.addEventListener('animationend', doRemove, { once: true });
+            setTimeout(doRemove, 450); // safety net if animationend never fires
         });
 
         return card;
@@ -390,7 +466,7 @@
 
         q.choices.forEach((choice, cIndex) => {
             const row = document.createElement('div');
-            row.className = 'qg-choice-row';
+            row.className = 'qg-choice-row' + (choice.is_correct ? ' is-correct' : '');
             const lockText = q.question_type === 'true_false'; // don't let teachers retype True/False
             row.innerHTML = `
                 <input type="radio" name="${groupName}" ${choice.is_correct ? 'checked' : ''}>
@@ -401,6 +477,7 @@
             row.querySelector('input[type="radio"]').addEventListener('change', () => {
                 q.choices.forEach((c) => (c.is_correct = false));
                 choice.is_correct = true;
+                choicesWrap.querySelectorAll('.qg-choice-row').forEach((r, i) => r.classList.toggle('is-correct', i === cIndex));
                 markEdited(card, q);
             });
 
@@ -446,7 +523,7 @@
     // ---------------- Add question manually ----------------
     document.getElementById('qgAddQuestion').addEventListener('click', () => {
         state.questions.push(blankMcq());
-        renderQuestions();
+        renderQuestions({ animate: 'last' });
         questionList.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
 
@@ -488,6 +565,8 @@
         const publishBtn = document.getElementById('qgPublishBtn');
         saveDraftBtn.disabled = true;
         publishBtn.disabled = true;
+        const busyBtn = status === 'published' ? publishBtn : saveDraftBtn;
+        busyBtn.classList.add('is-busy');
 
         try {
             const res = await fetch('assets/api/quiz_api/save_quiz.php', {
@@ -519,6 +598,7 @@
         } finally {
             saveDraftBtn.disabled = false;
             publishBtn.disabled = false;
+            busyBtn.classList.remove('is-busy');
         }
     }
 
