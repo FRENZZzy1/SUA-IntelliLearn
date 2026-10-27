@@ -521,3 +521,251 @@
 .qg-diff-easy      { background: #e6f6ec; color: #1e7a3f; }
 .qg-diff-average   { background: #fff4e0; color: #9a6200; }
 .qg-diff-difficult { background: #fdecec; color: #b3261e; }
+
+/* ---------- Searchable class picker ---------- */
+.qg-combo { position: relative; }
+.qg-combo__native { display: none; }
+.qg-combo__control { position: relative; display: flex; align-items: center; }
+.qg-field .qg-combo__input,
+.qg-combo__input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 40px 10px 36px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: var(--text);
+    background: #fff;
+}
+.qg-combo__icon {
+    position: absolute;
+    left: 13px;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    pointer-events: none;
+}
+.qg-combo__toggle {
+    position: absolute;
+    right: 4px;
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 8px;
+}
+.qg-combo__toggle i { transition: transform 0.15s ease; }
+.qg-combo.is-open .qg-combo__toggle i { transform: rotate(180deg); }
+.qg-combo__list {
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    right: 0;
+    top: calc(100% + 6px);
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    max-height: 240px;
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(16, 40, 30, 0.16);
+}
+.qg-combo__list[hidden] { display: none; }
+.qg-combo__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.qg-combo__option.is-active { background: var(--bg); }
+.qg-combo__option.is-selected .qg-combo__name { color: var(--primary-light); }
+.qg-combo__text { display: flex; flex-direction: column; min-width: 0; }
+.qg-combo__name { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+.qg-combo__meta { font-size: 0.74rem; color: var(--text-muted); }
+.qg-combo__check { color: var(--primary-light); font-size: 0.8rem; }
+.qg-combo__empty { padding: 12px; text-align: center; font-size: 0.84rem; color: var(--text-muted); }
+
+/* ---------- Recent Quizzes (clickable cards) ---------- */
+.qg-recent-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+a.qg-recent-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--bg);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+a.qg-recent-item:last-child { border-bottom: 1px solid var(--border); }
+a.qg-recent-item:hover,
+a.qg-recent-item:focus-visible {
+    border-color: var(--primary-light);
+    background: var(--card);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(16, 40, 30, 0.1);
+    outline: none;
+}
+.qg-recent-icon {
+    flex: 0 0 36px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+.qg-recent-icon--published { background: #e6f5ec; color: var(--ok); }
+.qg-recent-icon--closed    { background: #fbe6e6; color: var(--danger); }
+.qg-recent-body { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+a.qg-recent-item .qg-recent-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--primary-dark);
+}
+.qg-recent-date { margin-left: auto; }
+.qg-recent-arrow { color: var(--text-muted); font-size: 0.75rem; transition: transform 0.15s ease, color 0.15s ease; }
+a.qg-recent-item:hover .qg-recent-arrow { color: var(--primary-light); transform: translateX(2px); }
+
+/* ---------- Fixes: picker input spacing + tidier recent-quiz cards ---------- */
+.qg-field .qg-combo .qg-combo__input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 42px 11px 40px;
+}
+.qg-combo__icon { left: 15px; top: 50%; transform: translateY(-50%); }
+
+.qg-recent-body { gap: 6px; }
+.qg-recent-sub {
+    font-size: 0.76rem;
+    color: var(--text-muted);
+    line-height: 1.35;
+}
+.qg-recent-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.qg-recent-date { margin-left: 0; font-size: 0.72rem; color: var(--text-muted); }
+.qg-recent-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+    font-size: 0.74rem;
+    color: var(--text-muted);
+}
+.qg-recent-stat { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.qg-recent-stat i { font-size: 0.68rem; opacity: 0.8; }
+a.qg-recent-item { align-items: flex-start; padding: 14px; }
+.qg-recent-arrow { align-self: center; }
+.qg-recent-icon { margin-top: 2px; }
+
+/* ---------- Compact recent-quiz cards (fit the sidebar panel) ---------- */
+.qg-layout > div { min-width: 0; }          /* let grid columns shrink instead of overflowing */
+.qg-recent-list, .qg-recent-list > li { min-width: 0; }
+a.qg-recent-item {
+    box-sizing: border-box;
+    width: 100%;
+    gap: 10px;
+    padding: 10px 12px;
+    overflow: hidden;
+}
+.qg-recent-icon {
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    margin-top: 0;
+}
+.qg-recent-body { gap: 4px; }
+a.qg-recent-item .qg-recent-title { font-size: 0.85rem; }
+.qg-recent-sub {
+    font-size: 0.72rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.qg-recent-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    margin-top: 2px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+.qg-recent-foot .qg-status-tag { font-size: 0.62rem; padding: 2px 7px; }
+.qg-recent-stat i { margin-right: 4px; }
+.qg-recent-arrow, .qg-recent-row, .qg-recent-stats { display: none; }
+
+/* ---------- Sidebar: sticky + summary + needs-attention ---------- */
+@media (min-width: 1025px) {
+    .qg-side {
+        position: sticky;
+        top: calc(var(--header-height, 64px) + 16px);
+        max-height: calc(100vh - var(--header-height, 64px) - 32px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+}
+.qg-side .qg-panel:last-child { margin-bottom: 0; }
+
+.qg-side-term {
+    margin-left: 6px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: #e6f5ec;
+    color: var(--ok);
+    font-size: 0.68rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+.qg-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.qg-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+}
+.qg-stat__num { font-size: 1.4rem; font-weight: 700; line-height: 1.1; color: var(--primary-dark); }
+.qg-stat__lbl { font-size: 0.74rem; color: var(--text-muted); }
+.qg-stat--draft     { border-left-color: #b8c4bd; }
+.qg-stat--published { border-left-color: var(--ok); }
+.qg-stat--closed    { border-left-color: var(--danger); }
+.qg-stat--grade     { border-left-color: var(--warn); }
+
+.qg-attn-icon--grade   { background: #fdf0dd; color: var(--warn); }
+.qg-attn-icon--closing { background: #fbe6e6; color: var(--danger); }
+.qg-attn-icon--draft   { background: #fff; color: var(--text-muted); }
+.qg-attn-label { font-weight: 600; }
+.qg-attn-label--grade   { color: var(--warn); }
+.qg-attn-label--closing { color: var(--danger); }
+.qg-attn-label--draft   { color: var(--text-muted); }
+.qg-attn-empty {
+    margin: 12px 0 0;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--text-muted);
+}
+.qg-attn-empty i { color: var(--ok); margin-right: 4px; }
+.qg-panel h3 + .qg-recent-list { margin-top: 12px; }
