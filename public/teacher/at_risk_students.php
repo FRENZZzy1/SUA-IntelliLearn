@@ -641,13 +641,14 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
         if (head) head.setAttribute('aria-expanded', String(open));
     }
 
-    // Default open/closed state: picking a section (or having only one)
-    // drops down its list of courses; a section with a single course
-    // opens that course straight away so there is no pointless extra click.
+    // Default open/closed state: "All Sections" shows every section collapsed;
+    // picking a section drops down its list of courses. A section with a
+    // single course opens that course straight away so there is no pointless
+    // extra click.
     function applyDefaultExpansion() {
         sectionGroups.forEach(group => {
             const cards = group.querySelectorAll('.ar-class-card');
-            setOpen(group, activeSection !== 'all' || sectionGroups.length === 1, '.ar-section-head');
+            setOpen(group, activeSection !== 'all', '.ar-section-head');
             cards.forEach(card => setOpen(card, cards.length === 1, '.ar-class-head'));
         });
     }
