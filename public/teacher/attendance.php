@@ -105,6 +105,28 @@ foreach ($classes as $class) {
     ];
 }
 
+// ---- Group the classes by SECTION for the "My Classes" panel -------------
+// One expandable row per section; the classes (subjects) taught in it are
+// listed inside. The section rate combines every class's records.
+$classSections = [];
+foreach ($classes as $class) {
+    $secId = (int) $class['section_id'];
+    $cs = $classStats[$class['offering_id']];
+    if (!isset($classSections[$secId])) {
+        $classSections[$secId] = [
+            'name' => $class['section_name'], 'grade' => (int) $class['grade_level'],
+            'classes' => [], 'total' => 0, 'present' => 0, 'late' => 0, 'low' => 0,
+        ];
+    }
+    $classSections[$secId]['classes'][] = $class;
+    $classSections[$secId]['total']   += $cs['total'];
+    $classSections[$secId]['present'] += $cs['present'];
+    $classSections[$secId]['late']    += $cs['late'];
+    if ($cs['total'] > 0 && $cs['rate'] < 75) {
+        $classSections[$secId]['low']++;
+    }
+}
+
 // ---- Students needing attention (below 75%), scoped to the term filter ----
 $atRiskGroups = [];
 foreach ($attendanceRows as $r) {
@@ -406,6 +428,25 @@ $trend = array_reverse($trend);
 .btn:hover { background: var(--primary-light); transform: translateY(-1px); box-shadow: var(--shadow); }
 .btn:active { transform: translateY(0); }
 
+/* Section groups (section -> classes) */
+.sec-tools { display: flex; align-items: center; justify-content: space-between; margin: -2px 2px 10px; font-size: 0.78rem; color: var(--text-secondary); }
+.sec-toggle-all { background: none; border: none; color: var(--primary-light); font-weight: 600; font-size: 0.78rem; cursor: pointer; padding: 4px 6px; border-radius: 6px; }
+.sec-toggle-all:hover { background: #f0fdf4; }
+.sec-group { border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--surface); overflow: hidden; }
+.sec-head {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  border: none; background: #f6fbf8; cursor: pointer; text-align: left; font: inherit; color: inherit;
+  transition: var(--transition);
+}
+.sec-head:hover { background: #ecf7f0; }
+.sec-chevron { color: var(--primary-light); font-size: 0.8rem; transition: transform 0.2s ease; flex: none; }
+.sec-group.collapsed .sec-chevron { transform: rotate(-90deg); }
+.sec-group.collapsed .sec-body { display: none; }
+.sec-info { min-width: 0; flex: 1; }
+.sec-head .rate-pill { margin-left: auto; flex: none; }
+.sec-warn { display: inline-flex; align-items: center; gap: 4px; color: var(--danger); font-weight: 600; font-size: 0.75rem; }
+.sec-body { display: grid; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--border-light); background: #fcfdfd; }
+
 /* Trend Chart */
 .trend-wrap { position: relative; }
 .trend {
@@ -645,6 +686,8 @@ $trend = array_reverse($trend);
   .att-card { padding: 16px; }
   .att-card .num { font-size: 1.4rem; }
   .att-panel { padding: 16px; }
+  .sec-head { padding: 12px; gap: 10px; }
+  .sec-body { padding: 8px; }
   .class-row { flex-wrap: wrap; gap: 10px; padding: 12px; }
   .class-actions { width: 100%; justify-content: space-between; }
   .rate-pill { flex-direction: row; align-items: center; gap: 8px; }
@@ -744,6 +787,12 @@ $trend = array_reverse($trend);
         <i class="fas fa-search"></i>
         <input type="text" id="classSearch" placeholder="Search classes..." oninput="filterClasses(this.value)">
       </div>
+      <?php if (count($classSections) > 1): ?>
+      <div class="sec-tools">
+        <span class="sec-count"><?= count($classSections) ?> sections · <?= count($classes) ?> classes</span>
+        <button type="button" class="sec-toggle-all" id="secToggleAll" onclick="toggleAllSections()">Expand all</button>
+      </div>
+      <?php endif; ?>
       <div class="class-list" id="classList">
         <?php if (!$classes): ?>
           <div class="empty">
@@ -751,29 +800,64 @@ $trend = array_reverse($trend);
             <p>No active classes assigned.</p>
           </div>
         <?php endif; ?>
-        <?php foreach ($classes as $class):
-          $cs = $classStats[$class['offering_id']];
-          $barColor = $cs['rate'] >= 90 ? 'var(--success)' : ($cs['rate'] >= 75 ? 'var(--warning)' : 'var(--danger)');
+        <?php foreach ($classSections as $sec):
+          $n = count($sec['classes']);
+          $secRate = $sec['total'] ? round((($sec['present'] + $sec['late']) / $sec['total']) * 100, 1) : null;
+          $secColor = $secRate === null ? 'var(--text-secondary)' : ($secRate >= 90 ? 'var(--success)' : ($secRate >= 75 ? 'var(--warning)' : 'var(--danger)'));
         ?>
-        <div class="class-row" data-name="<?= strtolower(htmlspecialchars($class['subject_name'].' '.$class['section_name'].' '.$class['grade_level'])) ?>">
-          <div style="min-width:0">
-            <div class="class-name"><?= htmlspecialchars($class['subject_name']) ?></div>
-            <div class="class-meta">
-              <span class="badge">Grade <?= (int)$class['grade_level'] ?></span>
-              <span><?= htmlspecialchars($class['section_name']) ?></span>
+        <div class="sec-group collapsed" data-sec="<?= strtolower(htmlspecialchars('section ' . $sec['name'] . ' grade ' . $sec['grade'])) ?>">
+          <button type="button" class="sec-head" aria-expanded="false" onclick="toggleSection(this.parentElement)">
+            <i class="fas fa-chevron-down sec-chevron"></i>
+            <div class="sec-info">
+              <div class="class-name">Section <?= htmlspecialchars($sec['name']) ?></div>
+              <div class="class-meta">
+                <span class="badge">Grade <?= (int) $sec['grade'] ?></span>
+                <span><?= $n ?> class<?= $n === 1 ? '' : 'es' ?></span>
+                <?php if ($sec['low'] > 0): ?>
+                  <span class="sec-warn"><i class="fas fa-triangle-exclamation"></i> <?= (int) $sec['low'] ?> below 75%</span>
+                <?php endif; ?>
+              </div>
             </div>
-          </div>
-          <div class="class-actions">
             <div class="rate-pill">
-              <span class="rate" style="color:<?= $barColor ?>"><?= $cs['rate'] ?>%</span>
-              <div class="rate-bar"><div style="width:<?= $cs['rate'] ?>%;background:<?= $barColor ?>"></div></div>
+              <?php if ($secRate === null): ?>
+                <span class="rate" style="color:<?= $secColor ?>">&mdash;</span>
+                <div class="rate-bar"><div style="width:0"></div></div>
+              <?php else: ?>
+                <span class="rate" style="color:<?= $secColor ?>"><?= $secRate ?>%</span>
+                <div class="rate-bar"><div style="width:<?= $secRate ?>%;background:<?= $secColor ?>"></div></div>
+              <?php endif; ?>
             </div>
-            <a class="btn" href="class_overview.php?subject_id=<?= (int)$class['subject_id'] ?>&section_id=<?= (int)$class['section_id'] ?>&view=attendance&date=<?= htmlspecialchars($selectedDate) ?>">
-              <i class="fas fa-clipboard-check"></i> <span class="btn-text">Manage</span>
-            </a>
+          </button>
+          <div class="sec-body">
+            <?php foreach ($sec['classes'] as $class):
+              $cs = $classStats[$class['offering_id']];
+              $barColor = $cs['rate'] >= 90 ? 'var(--success)' : ($cs['rate'] >= 75 ? 'var(--warning)' : 'var(--danger)');
+            ?>
+            <div class="class-row" data-name="<?= strtolower(htmlspecialchars($class['subject_name'].' '.$class['section_name'].' '.$class['grade_level'])) ?>">
+              <div style="min-width:0">
+                <div class="class-name"><?= htmlspecialchars($class['subject_name']) ?></div>
+                <div class="class-meta">
+                  <span><?= $cs['total'] ? (int) $cs['total'] . ' record' . ($cs['total'] === 1 ? '' : 's') : 'No records yet' ?></span>
+                </div>
+              </div>
+              <div class="class-actions">
+                <div class="rate-pill">
+                  <span class="rate" style="color:<?= $barColor ?>"><?= $cs['rate'] ?>%</span>
+                  <div class="rate-bar"><div style="width:<?= $cs['rate'] ?>%;background:<?= $barColor ?>"></div></div>
+                </div>
+                <a class="btn" href="class_overview.php?subject_id=<?= (int)$class['subject_id'] ?>&section_id=<?= (int)$class['section_id'] ?>&view=attendance&date=<?= htmlspecialchars($selectedDate) ?>">
+                  <i class="fas fa-clipboard-check"></i> <span class="btn-text">Manage</span>
+                </a>
+              </div>
+            </div>
+            <?php endforeach; ?>
           </div>
         </div>
         <?php endforeach; ?>
+        <div class="empty" id="classNoMatch" style="display:none">
+          <i class="fas fa-search"></i>
+          <p>No classes match your search.</p>
+        </div>
       </div>
     </section>
 
@@ -876,13 +960,58 @@ function changeDate(days) {
   goToDate(`${yyyy}-${mm}-${dd}`);
 }
 
-// Class search/filter
+// Section dropdowns + class search/filter
+function setSection(group, open) {
+  group.classList.toggle('collapsed', !open);
+  const head = group.querySelector('.sec-head');
+  if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function syncToggleAll() {
+  const btn = document.getElementById('secToggleAll');
+  if (!btn) return;
+  const anyCollapsed = document.querySelector('.sec-group.collapsed');
+  btn.textContent = anyCollapsed ? 'Expand all' : 'Collapse all';
+}
+
+function toggleSection(group) {
+  setSection(group, group.classList.contains('collapsed'));
+  syncToggleAll();
+}
+
+function toggleAllSections() {
+  const open = !!document.querySelector('.sec-group.collapsed');
+  document.querySelectorAll('.sec-group').forEach(g => setSection(g, open));
+  syncToggleAll();
+}
+
 function filterClasses(query) {
   const q = query.toLowerCase().trim();
-  document.querySelectorAll('.class-row').forEach(row => {
-    const name = row.dataset.name || '';
-    row.style.display = name.includes(q) ? '' : 'none';
+  const groups = document.querySelectorAll('.sec-group');
+  // Remember which sections were open before searching so they can be restored.
+  if (q && !filterClasses._saved) {
+    filterClasses._saved = Array.from(groups, g => !g.classList.contains('collapsed'));
+  }
+  let anyVisible = false;
+  groups.forEach(g => {
+    const sectionMatches = q && (g.dataset.sec || '').includes(q);
+    let visible = 0;
+    g.querySelectorAll('.class-row').forEach(row => {
+      const show = !q || sectionMatches || (row.dataset.name || '').includes(q);
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    g.style.display = visible ? '' : 'none';
+    if (visible) anyVisible = true;
+    if (q && visible) setSection(g, true);
   });
+  if (!q && filterClasses._saved) {
+    groups.forEach((g, i) => setSection(g, filterClasses._saved[i]));
+    filterClasses._saved = null;
+  }
+  const none = document.getElementById('classNoMatch');
+  if (none) none.style.display = (q && !anyVisible) ? '' : 'none';
+  syncToggleAll();
 }
 
 // Animate numbers on load
