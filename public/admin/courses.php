@@ -700,8 +700,8 @@ $subjectsList = $pdo->query("
                                    'quarter'       => $course['quarter'],
                                    'school_year_id' => (int) $course['school_year_id'],
                                    'schedule_days' => $course['schedule_days'] ?? '',
-                                   'start_time'    => $course['start_time'] ? date('g:i A', strtotime($course['start_time'])) : '',
-                                   'end_time'      => $course['end_time'] ? date('g:i A', strtotime($course['end_time'])) : '',
+                                   'start_time'    => $course['start_time'] ? date('H:i', strtotime($course['start_time'])) : '',
+                                   'end_time'      => $course['end_time'] ? date('H:i', strtotime($course['end_time'])) : '',
                                    'capacity'      => (int) $course['capacity'],
                                    'status'        => $course['status'],
                                ]), ENT_QUOTES, 'UTF-8') ?>"
@@ -1076,12 +1076,12 @@ $subjectsList = $pdo->query("
 
                         <div class="form-row">
                             <label for="e_start_time">Start Time</label>
-                            <input type="text" id="e_start_time" name="start_time" maxlength="20" placeholder="e.g. 7:00 AM">
+                            <input type="time" id="e_start_time" name="start_time" step="900">
                         </div>
 
                         <div class="form-row">
                             <label for="e_end_time">End Time</label>
-                            <input type="text" id="e_end_time" name="end_time" maxlength="20" placeholder="e.g. 10:00 AM">
+                            <input type="time" id="e_end_time" name="end_time" step="900">
                         </div>
                     </div>
                 </div>
