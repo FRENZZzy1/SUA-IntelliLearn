@@ -199,7 +199,7 @@ include 'assests/api/access_permissions_modal.php';
                     <div class="form-row">
                         <div class="form-group">
                             <label>LRN <small>(12 digits)</small></label>
-                            <input type="text" name="lrn" id="editLrn" class="form-control" pattern="\d{12}" maxlength="12">
+                            <input type="text" name="lrn" id="editLrn" class="form-control" placeholder="e.g. 136090100234" inputmode="numeric" maxlength="12">
                         </div>
                         <div class="form-group">
                             <label>Year Level</label>
@@ -543,6 +543,7 @@ include 'assests/api/access_permissions_modal.php';
 
 </div>
 
+<script src="assests/js/input_guards.js"></script>
 <script src="assests/js/user_management.js"></script>
 <script src="assests/js/student_user_tools.js"></script>
    

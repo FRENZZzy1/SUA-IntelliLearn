@@ -102,6 +102,62 @@ function validatePhilippineMobileNumber(string $number, bool $allowEmpty = true)
     throw new InvalidArgumentException('Contact number must be a Philippine mobile number in 09XXXXXXXXX or +63 9XX XXX XXXX format.');
 }
 
+/**
+ * Validate a person's name (first / middle / last / guardian).
+ * Only letters (any language, e.g. "Ñ") and single spaces between words are allowed.
+ * Returns an error message, or null when the value is acceptable.
+ */
+function validatePersonName(string $value, string $label, bool $required = true): ?string {
+    $value = trim($value);
+    if ($value === '') {
+        return $required ? "$label is required." : null;
+    }
+    if (!preg_match('/^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u', $value)) {
+        return "$label can only contain letters (no numbers, symbols or extra spaces).";
+    }
+    if (mb_strlen($value) > 100) {
+        return "$label must not be longer than 100 characters.";
+    }
+    return null;
+}
+
+/**
+ * Validate an LRN: exactly 12 digits, numbers only.
+ * Returns an error message, or null when the value is acceptable.
+ */
+function validateLrnValue(string $value): ?string {
+    $value = trim($value);
+    if ($value === '') {
+        return "LRN is required.";
+    }
+    if (!preg_match('/^\d+$/', $value)) {
+        return "LRN can only contain numbers (0-9).";
+    }
+    if (strlen($value) !== 12) {
+        return "LRN must be exactly 12 digits (you entered " . strlen($value) . ").";
+    }
+    return null;
+}
+
+/**
+ * Validate an email using Gmail-style username rules for the part before the "@":
+ * letters (a-z), numbers (0-9) and periods only; 6-30 characters; a period cannot be
+ * the first or last character and cannot appear twice in a row. The domain must be a
+ * normal domain name. Returns an error message, or null when acceptable.
+ */
+function validateEmailAddress(string $email, bool $required = true): ?string {
+    $email = trim($email);
+    if ($email === '') return $required ? "Email address is required." : null;
+    if (substr_count($email, '@') !== 1) return "Email address must contain a single @ (e.g. name@example.com).";
+    [$local, $domain] = explode('@', $email);
+    if (!preg_match('/^[A-Za-z0-9.]+$/', $local)) return "Email username can only contain letters (a-z), numbers (0-9) and periods (.).";
+    if (strlen($local) < 6 || strlen($local) > 30) return "Email username (the part before @) must be between 6 and 30 characters.";
+    if ($local[0] === '.' || substr($local, -1) === '.') return "Email username cannot start or end with a period.";
+    if (strpos($local, '..') !== false) return "Email username cannot have more than one period in a row.";
+    if (!preg_match('/^(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}$/', $domain)) return "Email domain is invalid (e.g. gmail.com).";
+    return null;
+}
+
 function clean($data) {
     return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
 }

@@ -498,6 +498,7 @@ select.aum-control { padding-right: 36px; appearance: none; background-image: ur
 }
 </style>
 
+<script src="assests/js/input_guards.js"></script>
 <script>
 (function () {
     var aumLockedRole = null;

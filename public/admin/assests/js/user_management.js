@@ -116,6 +116,7 @@
         document.getElementById('editEmail').value = card.dataset.email;
         document.getElementById('editStatus').value = card.dataset.status;
         document.getElementById('editNewPassword').value = '';
+        if (window.inputGuardsReset) window.inputGuardsReset(document.getElementById('editUserForm'));
 
         if (role === 'student' || role === 'teacher') {
             document.getElementById('editFirstname').value = card.dataset.firstname || '';
