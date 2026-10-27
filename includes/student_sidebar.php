@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/loading_screen.php';
 $current = basename($_SERVER['PHP_SELF']);
 
 // ================= CUSTOM SIDEBAR ICON CONFIG =================
