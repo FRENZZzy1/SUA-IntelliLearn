@@ -304,6 +304,7 @@ if(isset($_POST['login'])){
 </style>
 </head>
 <body>
+<?php include_once __DIR__ . '/../includes/loading_screen.php'; ?>
 
 <div class="particles-container" id="particles"></div>
 
