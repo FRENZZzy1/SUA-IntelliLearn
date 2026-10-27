@@ -188,7 +188,9 @@ $flash = getFlashMessage();
                         <?php endforeach; ?>
                     </div>
                 </section>
-                <?php if ($selectedClass && $selectedGroup): ?>
+                <?php $hasSel = $selectedClass && $selectedGroup; ?>
+                <div id="gbSelectedArea"<?= $hasSel ? '' : ' style="display:none"' ?>>
+                <?php if ($hasSel): ?>
                 <section class="selected-class-head">
                     <div><span class="eyebrow">SELECTED CLASS</span>
                         <h2><?= htmlspecialchars($selectedClass['subject_name']) ?> <span>·
@@ -264,23 +266,37 @@ $flash = getFlashMessage();
                         </table>
                     </div>
                 </section>
-                <?php else: ?>
-                <section class="gb-no-selection">
+                <?php endif; ?>
+                </div>
+                <section class="gb-no-selection" id="gbNoSelection"<?= $hasSel ? ' style="display:none"' : '' ?>>
                     <i class="fas fa-hand-pointer"></i>
                     <h3>No class selected</h3>
                     <p>Open a section above and pick a class to view its gradebook.</p>
                 </section>
                 <?php endif; ?>
-                <?php endif; ?>
         </div>
     </main>
     <script>
     // Section dropdowns: click a section to show / hide the classes inside it.
+    // Collapsing the section that holds the selected class also clears the
+    // selection: the gradebook hides again until another class is picked.
+    function gbClearSelection(box) {
+        box.querySelectorAll('.class-card.selected').forEach(function (card) {
+            card.classList.remove('selected');
+            card.removeAttribute('aria-current');
+        });
+        var area = document.getElementById('gbSelectedArea');
+        var none = document.getElementById('gbNoSelection');
+        if (area) area.style.display = 'none';
+        if (none) none.style.display = '';
+        try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    }
     document.querySelectorAll('.gb-section-head').forEach(function (head) {
         head.addEventListener('click', function () {
             var box = head.closest('.gb-section');
             var open = box.classList.toggle('collapsed') === false;
             head.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (!open && box.querySelector('.class-card.selected')) gbClearSelection(box);
         });
     });
     </script>
