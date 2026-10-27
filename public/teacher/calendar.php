@@ -98,6 +98,13 @@ $itemsByDateJson = json_encode($itemsByDate, JSON_HEX_TAG | JSON_HEX_APOS | JSON
                 <h2><?= htmlspecialchars($monthLabel) ?></h2>
             </div>
 
+            <div class="calendar-legend">
+                <span class="legend-item"><span class="legend-dot dot--activity"></span> Activity</span>
+                <span class="legend-item"><span class="legend-dot dot--exam"></span> Exam</span>
+                <span class="legend-item"><span class="legend-dot dot--quiz"></span> Quiz</span>
+                <span class="legend-item"><span class="legend-dot dot--done"></span> All graded</span>
+            </div>
+
             <div class="calendar-weekdays">
                 <?php foreach ($weekdayLabels as $wd): ?>
                     <span><?= $wd ?></span>
@@ -130,13 +137,6 @@ $itemsByDateJson = json_encode($itemsByDate, JSON_HEX_TAG | JSON_HEX_APOS | JSON
                         <?php endif; ?>
                     </button>
                 <?php endforeach; ?>
-            </div>
-
-            <div class="calendar-legend">
-                <span class="legend-item"><span class="legend-dot dot--activity"></span> Activity</span>
-                <span class="legend-item"><span class="legend-dot dot--exam"></span> Exam</span>
-                <span class="legend-item"><span class="legend-dot dot--quiz"></span> Quiz</span>
-                <span class="legend-item"><span class="legend-dot dot--done"></span> All graded</span>
             </div>
         </section>
 
