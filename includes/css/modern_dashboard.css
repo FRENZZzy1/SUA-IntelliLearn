@@ -1,0 +1,278 @@
+/* =====================================================================
+   MODERN DASHBOARD — shared by Teacher and Student
+   Ports the Admin "UI update v2" look (welcome banner, stat cards,
+   card chrome, tables, chips) onto the class names the teacher and
+   student dashboards already use, so no page markup has to change.
+
+   Load AFTER the page's own assets/css/dashboard.css.
+   Scoped to #dashMain so other pages are unaffected.
+   Tokens match public/admin/assests/css/dashboard.css (.dash-page).
+===================================================================== */
+
+#dashMain {
+    --cs-surface: #ffffff;
+    --cs-surface-2: #f8faf9;
+    --cs-border: #e6ebe8;
+    --cs-border-strong: #d3dcd7;
+    --cs-ink: #14231c;
+    --cs-ink-2: #4b5a52;
+    --cs-ink-3: #7b8982;
+    --cs-brand: #1a5c3a;
+    --cs-brand-600: #2d7a52;
+    --cs-brand-700: #124029;
+    --cs-brand-50: #eef6f1;
+    --cs-brand-100: #dcece3;
+    --cs-ring: 0 0 0 3px rgba(45, 122, 82, 0.22);
+    --cs-shadow-sm: 0 1px 2px rgba(16, 24, 20, 0.05);
+    --cs-shadow-md: 0 10px 28px -10px rgba(16, 24, 20, 0.16);
+
+    /* Re-point the page's own variables at the admin palette so every
+       rule in dashboard.css that uses them picks up the new colours. */
+    --primary: var(--cs-brand);
+    --primary-light: var(--cs-brand-600);
+    --primary-dark: var(--cs-brand-700);
+    --border: var(--cs-border);
+    --text: var(--cs-ink);
+    --text-muted: var(--cs-ink-3);
+    --card: var(--cs-surface);
+    --bg: var(--cs-surface-2);
+    color: var(--cs-ink);
+}
+#dashMain :focus-visible { outline: none; box-shadow: var(--cs-ring); }
+
+/* ---------- Welcome banner ---------- */
+#dashMain .welcome-banner {
+    position: relative;
+    overflow: hidden;
+    gap: 24px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    border-radius: 18px;
+    background:
+        radial-gradient(circle at 92% 8%, rgba(244, 162, 97, 0.28) 0, rgba(244, 162, 97, 0) 38%),
+        linear-gradient(135deg, var(--cs-brand-700) 0%, var(--cs-brand) 55%, var(--cs-brand-600) 100%);
+    box-shadow: 0 18px 36px -20px rgba(18, 64, 41, 0.6);
+}
+#dashMain .welcome-banner::before,
+#dashMain .welcome-banner::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+}
+#dashMain .welcome-banner::before { right: -60px; bottom: -160px; width: 340px; height: 340px; background: rgba(255, 255, 255, 0.06); }
+#dashMain .welcome-banner::after  { left: 38%; top: -120px; width: 220px; height: 220px; background: rgba(255, 255, 255, 0.04); }
+#dashMain .welcome-text,
+#dashMain .welcome-stats { position: relative; z-index: 1; min-width: 0; }
+#dashMain .welcome-text h2 { font-size: 1.65rem; letter-spacing: -0.015em; margin-bottom: 4px; }
+#dashMain .welcome-text p { font-size: 0.9rem; opacity: 0.85; }
+#dashMain .welcome-stats { gap: 12px; }
+#dashMain .welcome-stat {
+    min-width: 88px;
+    padding: 12px 18px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+}
+#dashMain .welcome-stat .num { font-size: 1.5rem; letter-spacing: -0.02em; }
+#dashMain .welcome-stat .lbl { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; }
+
+/* ---------- Metric (stat) cards ---------- */
+#dashMain .metric-grid { gap: 16px; margin-bottom: 24px; }
+#dashMain .metric-card {
+    padding: 20px 22px;
+    background: var(--cs-surface);
+    border: 1px solid var(--cs-border);
+    border-radius: 14px;
+    box-shadow: var(--cs-shadow-sm);
+    transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+}
+#dashMain .metric-card--warn { border-left: 1px solid var(--cs-border); }
+#dashMain .metric-card--link:hover,
+#dashMain .metric-card--link:focus-visible {
+    transform: translateY(-2px);
+    box-shadow: var(--cs-shadow-md);
+    border-color: var(--cs-border-strong);
+}
+#dashMain .metric-head { align-items: center; justify-content: flex-start; margin-bottom: 14px; gap: 12px; }
+#dashMain .metric-label { font-size: 0.82rem; font-weight: 500; color: var(--cs-ink-3); }
+#dashMain .metric-icon {
+    order: -1;
+    flex-shrink: 0;
+    width: 44px; height: 44px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 12px;
+    font-size: 1.05rem;
+    opacity: 1;
+    background: var(--cs-brand-50);
+    color: var(--cs-brand);
+}
+#dashMain .metric-card:nth-child(2) .metric-icon { background: #eff6ff; color: #2563eb; }
+#dashMain .metric-card:nth-child(3) .metric-icon { background: #fff4ea; color: #c2703a; }
+#dashMain .metric-card--warn .metric-icon { background: #fef3f2; color: #b42318; }
+#dashMain .metric-value { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; color: var(--cs-ink); }
+#dashMain .metric-foot {
+    display: inline-flex; align-items: center;
+    margin-top: 10px; padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--cs-brand-50); color: var(--cs-brand);
+    font-size: 0.72rem; font-weight: 700;
+}
+#dashMain .metric-foot.muted { background: #f1f4f2; color: var(--cs-ink-3); font-weight: 600; }
+
+/* ---------- Panels (card chrome) ---------- */
+#dashMain .panel-grid { gap: 20px; margin-bottom: 24px; }
+#dashMain .panel {
+    padding: 0;
+    min-width: 0;
+    background: var(--cs-surface);
+    border: 1px solid var(--cs-border);
+    border-radius: 14px;
+    box-shadow: var(--cs-shadow-sm);
+}
+#dashMain .panel > :not(.panel-head) { margin-left: 22px; margin-right: 22px; }
+#dashMain .panel > :last-child { margin-bottom: 20px; }
+#dashMain .panel > .table-scroll,
+#dashMain .panel > .panel-table { margin-left: 0; margin-right: 0; }
+#dashMain .panel-head {
+    margin: 0 0 16px;
+    padding: 16px 22px;
+    gap: 12px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--cs-border);
+}
+#dashMain .panel-head h3 {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 0.98rem; font-weight: 700; letter-spacing: -0.01em; color: var(--cs-ink);
+}
+#dashMain .panel-head h3 i {
+    width: 30px; height: 30px; border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--cs-brand-50); color: var(--cs-brand); font-size: 0.82rem;
+}
+#dashMain .panel-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 10px; border-radius: 8px;
+    font-size: 0.8rem; font-weight: 600; color: var(--cs-brand);
+    transition: background 0.15s;
+}
+#dashMain .panel-link:hover { background: var(--cs-brand-50); text-decoration: none; }
+#dashMain .panel-empty { padding: 26px 10px; color: var(--cs-ink-3); }
+#dashMain .panel-empty i { color: #c4d0ca; }
+#dashMain .panel-empty p { color: var(--cs-ink); }
+
+/* ---------- Tables ---------- */
+#dashMain .panel-table { border-collapse: separate; border-spacing: 0; min-width: 480px; }
+#dashMain .panel-table th {
+    padding: 11px 18px;
+    background: var(--cs-surface-2);
+    border-bottom: 1px solid var(--cs-border);
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.07em; color: var(--cs-ink-3);
+    white-space: nowrap;
+}
+#dashMain .panel-table td { padding: 13px 18px; border-bottom: 1px solid var(--cs-border); font-size: 0.85rem; color: var(--cs-ink); }
+#dashMain .panel-table tbody tr { transition: background 0.12s; }
+#dashMain .panel-table tbody tr:hover td { background: var(--cs-brand-50); }
+#dashMain .panel-table tbody tr:last-child td { border-bottom: none; }
+
+/* ---------- Chips and badges ---------- */
+#dashMain .chip {
+    display: inline-flex; padding: 3px 10px;
+    background: #eef1ef; color: var(--cs-ink-2); font-weight: 600;
+}
+#dashMain .risk { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font-weight: 600; }
+#dashMain .risk::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+#dashMain .risk--high   { background: #fef3f2; color: #b42318; }
+#dashMain .risk--medium { background: #fffaeb; color: #b54708; }
+#dashMain .risk--low    { background: #ecfdf3; color: #067647; }
+
+/* ---------- Recent activity ---------- */
+#dashMain .activity-list { gap: 4px; }
+#dashMain .activity-list li { padding: 10px 12px; border-radius: 12px; align-items: center; transition: background 0.15s; }
+#dashMain .activity-list li:hover { background: var(--cs-brand-50); }
+#dashMain .activity-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--cs-brand-50); color: var(--cs-brand); }
+#dashMain .activity-text { color: var(--cs-ink); }
+#dashMain .activity-time { color: var(--cs-ink-3); font-weight: 600; }
+
+/* ---------- My Classes (teacher) ---------- */
+#dashMain .class-grid { gap: 12px; }
+#dashMain .class-card {
+    padding: 16px 18px;
+    background: var(--cs-surface-2);
+    border: 1px solid var(--cs-border);
+    border-radius: 12px;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+#dashMain .class-card--link:hover {
+    background: var(--cs-brand-50);
+    border-color: var(--cs-brand-100);
+    box-shadow: var(--cs-shadow-sm);
+    transform: translateY(-1px);
+}
+#dashMain .class-card h4 { color: var(--cs-ink); font-weight: 700; }
+
+/* ---------- Announcements (student) ---------- */
+#dashMain .announcement-list { gap: 10px; }
+#dashMain .announcement-item {
+    padding: 14px 16px 14px 18px;
+    border: 1px solid var(--cs-border);
+    border-left: 3px solid var(--cs-brand);
+    border-radius: 12px;
+    background: var(--cs-surface-2);
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+#dashMain .announcement-item:hover { background: var(--cs-brand-50); border-color: var(--cs-brand-100); border-left-color: var(--cs-brand); box-shadow: var(--cs-shadow-sm); }
+#dashMain .announcement-item-head h4 { font-size: 0.92rem; font-weight: 700; color: var(--cs-ink); }
+#dashMain .announcement-item p { font-size: 0.82rem; color: var(--cs-ink-2); line-height: 1.5; }
+#dashMain .announcement-meta { color: var(--cs-ink-3); font-weight: 600; }
+
+/* ---------- Due soon / To-do (student) ---------- */
+#dashMain .due-item,
+#dashMain .todo-link {
+    padding: 12px 14px;
+    border: 1px solid var(--cs-border);
+    border-radius: 12px;
+    background: var(--cs-surface);
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+#dashMain .due-item:hover,
+#dashMain .todo-link:hover {
+    background: var(--cs-brand-50);
+    border-color: var(--cs-brand-100);
+    box-shadow: var(--cs-shadow-sm);
+    transform: translateY(-1px);
+}
+#dashMain .due-icon { border-radius: 10px; background: var(--cs-brand-50); color: var(--cs-brand); }
+#dashMain .due-info h5 { color: var(--cs-ink); font-weight: 700; }
+#dashMain .due-info span,
+#dashMain .due-time,
+#dashMain .todo-due { color: var(--cs-ink-3); font-weight: 600; }
+#dashMain .todo-chip { border-radius: 999px; font-weight: 700; }
+
+/* ---------- Teacher-evaluation banner (student) ---------- */
+#dashMain .tev-banner { border-radius: 14px; box-shadow: var(--cs-shadow-sm); }
+
+/* ---------- Grade picker dialog (teacher) ---------- */
+#dashMain .grade-picker { border: 1px solid var(--cs-border); border-radius: 16px; box-shadow: 0 24px 48px -16px rgba(16, 24, 20, 0.28); }
+#dashMain .grade-picker__list a { border-radius: 12px; border: 1px solid var(--cs-border); }
+#dashMain .grade-picker__list a:hover { background: var(--cs-brand-50); border-color: var(--cs-brand-100); }
+#dashMain .grade-picker__count { background: var(--cs-brand-50); color: var(--cs-brand); border-radius: 999px; font-weight: 700; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 1024px) {
+    #dashMain .panel-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 768px) {
+    #dashMain .welcome-banner { padding: 22px 20px; border-radius: 16px; }
+    #dashMain .welcome-text h2 { font-size: 1.4rem; }
+    #dashMain .welcome-stat { min-width: 0; padding: 10px 8px; }
+    #dashMain .metric-card { padding: 16px; }
+    #dashMain .metric-icon { width: 38px; height: 38px; }
+    #dashMain .metric-value { font-size: 1.6rem; }
+    #dashMain .panel-head { padding: 14px 16px; }
+    #dashMain .panel > :not(.panel-head) { margin-left: 16px; margin-right: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #dashMain * { animation: none !important; transition: none !important; }
+}
