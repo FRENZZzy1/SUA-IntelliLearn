@@ -146,7 +146,9 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                         <div class="aum-hint-icon"><i class="fas fa-lightbulb"></i></div>
                         <div class="aum-hint-text">
                             <strong>Auto-generated credentials:</strong><br>
-                            <span class="aum-hint-detail"><strong>Username:</strong> STU-(7 random digits)<br><strong>Password:</strong> Last name (capitalized) + birthdate as MMDDYY + !</span>
+                            <span class="aum-hint-detail"><strong>Username:</strong> STU-(7 random digits)<br><strong>Password:</strong> Last name (capitalized) + birthdate as MMDDYY + !
+                            <br><strong>Example:</strong> Cruz091306! for a student named Cruz born on September 13, 2006</span>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -241,10 +243,6 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
                 </div>
 
                 <div class="aum-actions">
-                    <label class="aum-checkbox">
-                        <div class="aum-checkbox-box"><input type="checkbox" name="send_email" value="1"><span class="aum-checkmark"><i class="fas fa-check"></i></span></div>
-                        <span class="aum-checkbox-label"><i class="fas fa-envelope"></i> Send welcome email</span>
-                    </label>
                     <div class="aum-actions-right">
                         <button type="button" class="aum-btn-secondary" onclick="closeAddUserModal()"><i class="fas fa-times"></i> Cancel</button>
                         <button type="submit" class="aum-btn-primary" id="aumSubmitBtn"><i class="fas fa-save"></i> Save User</button>
