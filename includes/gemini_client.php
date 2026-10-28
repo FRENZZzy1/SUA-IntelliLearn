@@ -23,10 +23,9 @@
  */
 
 const GEMINI_MODEL_FALLBACKS = [
+    'gemini-3.8-flash',
     'gemini-3.5-flash-lite',
     'gemini-3.1-flash-lite',
-    'gemini-2.5-flash-lite',
-    'gemini-2.5-flash',
 ];
 
 if (!function_exists('gemini_is_configured')) {
