@@ -478,12 +478,12 @@ $usageStats = get_system_usage_stats($pdo);
 
                                 <div class="form-row">
                                     <label for="e_start_time">Start Time</label>
-                                    <input type="text" id="e_start_time" name="start_time" maxlength="20" placeholder="e.g. 7:00 AM">
+                                    <input type="time" id="e_start_time" name="start_time" step="900">
                                 </div>
 
                                 <div class="form-row">
                                     <label for="e_end_time">End Time</label>
-                                    <input type="text" id="e_end_time" name="end_time" maxlength="20" placeholder="e.g. 10:00 AM">
+                                    <input type="time" id="e_end_time" name="end_time" step="900">
                                 </div>
                             </div>
                         </div>
@@ -508,8 +508,8 @@ $usageStats = get_system_usage_stats($pdo);
                         'quarter'        => $c['quarter'],
                         'school_year_id' => (int) $c['school_year_id'],
                         'schedule_days'  => $c['schedule_days'] ?? '',
-                        'start_time'     => $c['start_time'] ? date('g:i A', strtotime($c['start_time'])) : '',
-                        'end_time'       => $c['end_time'] ? date('g:i A', strtotime($c['end_time'])) : '',
+                        'start_time'     => $c['start_time'] ? date('H:i', strtotime($c['start_time'])) : '',
+                        'end_time'       => $c['end_time'] ? date('H:i', strtotime($c['end_time'])) : '',
                         'capacity'       => (int) $c['capacity'],
                         'status'         => $c['status'],
                     ];
