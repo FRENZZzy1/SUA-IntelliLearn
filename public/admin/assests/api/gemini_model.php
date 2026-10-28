@@ -131,17 +131,20 @@ function get_free_gemini_models_detailed(): array {
 function get_gemini_model_candidates(): array {
     $candidates = [];
 
-    // Admin's explicit pick always goes first — that's the whole point
-    // of giving them a picker. Everything below is just fallback in
-    // case their pick is temporarily down or rate-limited.
+    // Ignore saved overrides/cache entries for models no longer supported
+    // by the current curated list. This prevents retired model IDs from
+    // being retried after a deployment.
+    $supportedModels = GEMINI_PREFERRED_FREE_MODELS;
+
     $selected = get_selected_gemini_model();
-    if ($selected) $candidates[] = $selected;
+    if ($selected && in_array($selected, $supportedModels, true)) {
+        $candidates[] = $selected;
+    }
 
     $cached = get_cached_gemini_model();
-    if ($cached) $candidates[] = $cached;
+    if ($cached && in_array($cached, $supportedModels, true)) {
+        $candidates[] = $cached;
+    }
 
-    $candidates = array_merge($candidates, GEMINI_PREFERRED_FREE_MODELS);
-    $candidates = array_values(array_unique($candidates));
-
-    return $candidates;
+    return array_values(array_unique(array_merge($candidates, $supportedModels)));
 }
