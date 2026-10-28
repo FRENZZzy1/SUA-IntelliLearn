@@ -32,15 +32,15 @@
 // Edit this list as Google's free-tier lineup changes. Order = preference.
 // Check https://ai.google.dev/gemini-api/docs/pricing for what's currently free.
 const GEMINI_PREFERRED_FREE_MODELS = [
+    'gemini-3.8-flash',
     'gemini-3.5-flash-lite',
     'gemini-3.1-flash-lite',
-    'gemini-2.5-flash-lite',
-    'gemini-2.5-flash',
 ];
 
 // Friendly display names for the admin picker dropdown (model_settings.php).
 // Falls back to the raw id if a model isn't listed here.
 const GEMINI_MODEL_DISPLAY_NAMES = [
+    'gemini-3.8-flash'      => 'Gemini 3.8 Flash',
     'gemini-3.5-flash-lite' => 'Gemini 3.5 Flash-Lite',
     'gemini-3.1-flash-lite' => 'Gemini 3.1 Flash-Lite',
     'gemini-2.5-flash-lite' => 'Gemini 2.5 Flash-Lite',
