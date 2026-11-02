@@ -127,6 +127,29 @@ foreach ($classes as $class) {
     }
 }
 
+// ---- Group the sections by GRADE LEVEL (Grade -> Sections -> Classes) ------
+$classGrades = [];
+foreach ($classSections as $secId => $sec) {
+    $gk = (string) $sec['grade'];
+    if (!isset($classGrades[$gk])) {
+        $classGrades[$gk] = [
+            'grade' => $sec['grade'], 'sections' => [], 'classes' => 0,
+            'total' => 0, 'present' => 0, 'late' => 0, 'low' => 0,
+        ];
+    }
+    $classGrades[$gk]['sections'][$secId] = $sec;
+    $classGrades[$gk]['classes'] += count($sec['classes']);
+    $classGrades[$gk]['total']   += $sec['total'];
+    $classGrades[$gk]['present'] += $sec['present'];
+    $classGrades[$gk]['late']    += $sec['late'];
+    $classGrades[$gk]['low']     += $sec['low'];
+}
+uksort($classGrades, 'strnatcasecmp');
+foreach ($classGrades as &$cg) {
+    uasort($cg['sections'], fn($a, $b) => strnatcasecmp($a['name'], $b['name']));
+}
+unset($cg);
+
 // ---- Students needing attention (below 75%), scoped to the term filter ----
 $atRiskGroups = [];
 foreach ($attendanceRows as $r) {
@@ -447,6 +470,22 @@ $trend = array_reverse($trend);
 .sec-warn { display: inline-flex; align-items: center; gap: 4px; color: var(--danger); font-weight: 600; font-size: 0.75rem; }
 .sec-body { display: grid; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--border-light); background: #fcfdfd; }
 
+/* Grade level groups (grade -> sections -> classes) */
+.grade-group { border: 1px solid var(--border-light); border-radius: var(--radius-sm); background: var(--surface); overflow: hidden; }
+.grade-head {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 16px 16px;
+  border: none; background: #e3f0e8; cursor: pointer; text-align: left; font: inherit; color: inherit;
+  transition: var(--transition);
+}
+.grade-head:hover { background: #d9eadf; }
+.grade-chevron { color: var(--primary-light); font-size: 0.85rem; transition: transform 0.2s ease; flex: none; }
+.grade-group.collapsed .grade-chevron { transform: rotate(-90deg); }
+.grade-group.collapsed .grade-body { display: none; }
+.grade-icon { width: 36px; height: 36px; flex: none; border-radius: 10px; display: grid; place-items: center; background: #c8e1d2; color: var(--primary); }
+.grade-head .class-name { font-size: 1.02rem; }
+.grade-head .rate-pill { margin-left: auto; flex: none; }
+.grade-body { display: grid; gap: 10px; padding: 12px; border-top: 1px solid var(--border-light); background: #f5f8f6; }
+
 /* Trend Chart */
 .trend-wrap { position: relative; }
 .trend {
@@ -686,6 +725,8 @@ $trend = array_reverse($trend);
   .att-card { padding: 16px; }
   .att-card .num { font-size: 1.4rem; }
   .att-panel { padding: 16px; }
+  .grade-head { padding: 12px; gap: 10px; }
+  .grade-body { padding: 8px; }
   .sec-head { padding: 12px; gap: 10px; }
   .sec-body { padding: 8px; }
   .class-row { flex-wrap: wrap; gap: 10px; padding: 12px; }
@@ -787,9 +828,9 @@ $trend = array_reverse($trend);
         <i class="fas fa-search"></i>
         <input type="text" id="classSearch" placeholder="Search classes..." oninput="filterClasses(this.value)">
       </div>
-      <?php if (count($classSections) > 1): ?>
+      <?php if (count($classGrades) > 0 && count($classes) > 0): ?>
       <div class="sec-tools">
-        <span class="sec-count"><?= count($classSections) ?> sections · <?= count($classes) ?> classes</span>
+        <span class="sec-count"><?= count($classGrades) ?> grade level<?= count($classGrades) === 1 ? '' : 's' ?> · <?= count($classSections) ?> section<?= count($classSections) === 1 ? '' : 's' ?> · <?= count($classes) ?> classes</span>
         <button type="button" class="sec-toggle-all" id="secToggleAll" onclick="toggleAllSections()">Expand all</button>
       </div>
       <?php endif; ?>
@@ -800,7 +841,37 @@ $trend = array_reverse($trend);
             <p>No active classes assigned.</p>
           </div>
         <?php endif; ?>
-        <?php foreach ($classSections as $sec):
+        <?php foreach ($classGrades as $gr):
+          $gSecs = count($gr['sections']);
+          $gRate = $gr['total'] ? round((($gr['present'] + $gr['late']) / $gr['total']) * 100, 1) : null;
+          $gColor = $gRate === null ? 'var(--text-secondary)' : ($gRate >= 90 ? 'var(--success)' : ($gRate >= 75 ? 'var(--warning)' : 'var(--danger)'));
+        ?>
+        <div class="grade-group collapsed" data-grade="<?= strtolower(htmlspecialchars('grade ' . $gr['grade'])) ?>">
+          <button type="button" class="grade-head" aria-expanded="false" onclick="toggleGrade(this.parentElement)">
+            <i class="fas fa-chevron-down grade-chevron"></i>
+            <div class="grade-icon"><i class="fas fa-graduation-cap"></i></div>
+            <div class="sec-info">
+              <div class="class-name">Grade <?= htmlspecialchars($gr['grade']) ?></div>
+              <div class="class-meta">
+                <span><?= $gSecs ?> section<?= $gSecs === 1 ? '' : 's' ?></span>
+                <span><?= (int) $gr['classes'] ?> class<?= $gr['classes'] === 1 ? '' : 'es' ?></span>
+                <?php if ($gr['low'] > 0): ?>
+                  <span class="sec-warn"><i class="fas fa-triangle-exclamation"></i> <?= (int) $gr['low'] ?> below 75%</span>
+                <?php endif; ?>
+              </div>
+            </div>
+            <div class="rate-pill">
+              <?php if ($gRate === null): ?>
+                <span class="rate" style="color:<?= $gColor ?>">&mdash;</span>
+                <div class="rate-bar"><div style="width:0"></div></div>
+              <?php else: ?>
+                <span class="rate" style="color:<?= $gColor ?>"><?= $gRate ?>%</span>
+                <div class="rate-bar"><div style="width:<?= $gRate ?>%;background:<?= $gColor ?>"></div></div>
+              <?php endif; ?>
+            </div>
+          </button>
+          <div class="grade-body">
+        <?php foreach ($gr['sections'] as $sec):
           $n = count($sec['classes']);
           $secRate = $sec['total'] ? round((($sec['present'] + $sec['late']) / $sec['total']) * 100, 1) : null;
           $secColor = $secRate === null ? 'var(--text-secondary)' : ($secRate >= 90 ? 'var(--success)' : ($secRate >= 75 ? 'var(--warning)' : 'var(--danger)'));
@@ -851,6 +922,9 @@ $trend = array_reverse($trend);
               </div>
             </div>
             <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endforeach; ?>
           </div>
         </div>
         <?php endforeach; ?>
@@ -960,18 +1034,23 @@ function changeDate(days) {
   goToDate(`${yyyy}-${mm}-${dd}`);
 }
 
-// Section dropdowns + class search/filter
+// Grade level + section dropdowns + class search/filter
 function setSection(group, open) {
   group.classList.toggle('collapsed', !open);
-  const head = group.querySelector('.sec-head');
+  const head = group.querySelector(':scope > .sec-head, :scope > .grade-head');
   if (head) head.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
 function syncToggleAll() {
   const btn = document.getElementById('secToggleAll');
   if (!btn) return;
-  const anyCollapsed = document.querySelector('.sec-group.collapsed');
+  const anyCollapsed = document.querySelector('.grade-group.collapsed, .sec-group.collapsed');
   btn.textContent = anyCollapsed ? 'Expand all' : 'Collapse all';
+}
+
+function toggleGrade(group) {
+  setSection(group, group.classList.contains('collapsed'));
+  syncToggleAll();
 }
 
 function toggleSection(group) {
@@ -980,33 +1059,40 @@ function toggleSection(group) {
 }
 
 function toggleAllSections() {
-  const open = !!document.querySelector('.sec-group.collapsed');
-  document.querySelectorAll('.sec-group').forEach(g => setSection(g, open));
+  const open = !!document.querySelector('.grade-group.collapsed, .sec-group.collapsed');
+  document.querySelectorAll('.grade-group, .sec-group').forEach(g => setSection(g, open));
   syncToggleAll();
 }
 
 function filterClasses(query) {
   const q = query.toLowerCase().trim();
-  const groups = document.querySelectorAll('.sec-group');
-  // Remember which sections were open before searching so they can be restored.
+  const all = document.querySelectorAll('.grade-group, .sec-group');
+  // Remember which groups were open before searching so they can be restored.
   if (q && !filterClasses._saved) {
-    filterClasses._saved = Array.from(groups, g => !g.classList.contains('collapsed'));
+    filterClasses._saved = Array.from(all, g => !g.classList.contains('collapsed'));
   }
   let anyVisible = false;
-  groups.forEach(g => {
-    const sectionMatches = q && (g.dataset.sec || '').includes(q);
-    let visible = 0;
-    g.querySelectorAll('.class-row').forEach(row => {
-      const show = !q || sectionMatches || (row.dataset.name || '').includes(q);
-      row.style.display = show ? '' : 'none';
-      if (show) visible++;
+  document.querySelectorAll('.grade-group').forEach(gg => {
+    const gradeMatches = q && (gg.dataset.grade || '').includes(q);
+    let gradeVisible = 0;
+    gg.querySelectorAll('.sec-group').forEach(g => {
+      const sectionMatches = gradeMatches || (q && (g.dataset.sec || '').includes(q));
+      let visible = 0;
+      g.querySelectorAll('.class-row').forEach(row => {
+        const show = !q || sectionMatches || (row.dataset.name || '').includes(q);
+        row.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      g.style.display = visible ? '' : 'none';
+      if (visible) gradeVisible++;
+      if (q && visible) setSection(g, true);
     });
-    g.style.display = visible ? '' : 'none';
-    if (visible) anyVisible = true;
-    if (q && visible) setSection(g, true);
+    gg.style.display = gradeVisible ? '' : 'none';
+    if (gradeVisible) anyVisible = true;
+    if (q && gradeVisible) setSection(gg, true);
   });
   if (!q && filterClasses._saved) {
-    groups.forEach((g, i) => setSection(g, filterClasses._saved[i]));
+    all.forEach((g, i) => setSection(g, filterClasses._saved[i]));
     filterClasses._saved = null;
   }
   const none = document.getElementById('classNoMatch');

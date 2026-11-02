@@ -94,6 +94,20 @@ uasort($sections, function ($a, $b) {
     $byGrade = (int) $a['grade'] <=> (int) $b['grade'];
     return $byGrade !== 0 ? $byGrade : strnatcasecmp($a['name'], $b['name']);
 });
+// ---- Group the sections by GRADE LEVEL (Grade -> Sections -> Classes). ------
+$gradeLevels = [];
+foreach ($sections as $secId => $sec) {
+    $gl = (string) $sec['grade'];
+    if (!isset($gradeLevels[$gl])) {
+        $gradeLevels[$gl] = ['grade' => $sec['grade'], 'sections' => [], 'has_sel' => false, 'students' => 0, 'classes' => 0];
+    }
+    $gradeLevels[$gl]['sections'][$secId] = $sec;
+    $gradeLevels[$gl]['students'] += $sec['students'];
+    $gradeLevels[$gl]['classes']  += count($sec['items']);
+    if ($sec['has_sel'])
+        $gradeLevels[$gl]['has_sel'] = true;
+}
+uksort($gradeLevels, 'strnatcasecmp');
 $students = [];
 $items = ['ww' => [], 'pt' => [], 'exam' => []];
 $done = [];
@@ -127,7 +141,7 @@ $flash = getFlashMessage();
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Grade Book · SUA IntelliLearn</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/grade_book.css">
+    <link rel="stylesheet" href="assets/css/grade_book.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/grade_book.css') ?>">
 </head>
 
 <body><?php include '../../includes/teachers_sidebar.php'; ?>
@@ -152,12 +166,27 @@ $flash = getFlashMessage();
                 <section class="classes-section">
                     <div class="section-title-row">
                         <div>
-                            <h2>Your Classes</h2><span><?= count($sections) ?> section<?= count($sections) == 1 ? '' : 's' ?>
+                            <h2>Your Classes</h2><span><?= count($gradeLevels) ?> grade level<?= count($gradeLevels) == 1 ? '' : 's' ?>
+                                · <?= count($sections) ?> section<?= count($sections) == 1 ? '' : 's' ?>
                                 · <?= count($groups) ?> active class<?= count($groups) == 1 ? '' : 'es' ?></span>
                         </div>
                     </div>
-                    <div class="gb-section-list">
-                        <?php foreach ($sections as $sec):
+                    <div class="gb-section-list gb-grade-list">
+                        <?php foreach ($gradeLevels as $gl):
+                            $gOpen = $gl['has_sel'];
+                            $nSecs = count($gl['sections']);
+                        ?>
+                        <div class="gb-grade<?= $gOpen ? '' : ' collapsed' ?>">
+                            <button type="button" class="gb-grade-head" aria-expanded="<?= $gOpen ? 'true' : 'false' ?>">
+                                <i class="fas fa-chevron-down gb-grade-chevron"></i>
+                                <div class="gb-grade-icon"><i class="fas fa-graduation-cap"></i></div>
+                                <div class="gb-section-info">
+                                    <strong>Grade <?= htmlspecialchars($gl['grade']) ?></strong>
+                                    <small><?= $nSecs ?> section<?= $nSecs == 1 ? '' : 's' ?> · <?= $gl['classes'] ?> class<?= $gl['classes'] == 1 ? '' : 'es' ?> · <?= $gl['students'] ?> student<?= $gl['students'] == 1 ? '' : 's' ?></small>
+                                </div>
+                            </button>
+                            <div class="gb-grade-body">
+                        <?php foreach ($gl['sections'] as $sec):
                             $open = $sec['has_sel'];
                             $nClasses = count($sec['items']);
                         ?>
@@ -183,6 +212,9 @@ $flash = getFlashMessage();
                                         </div>
                                         <div class="class-count"><strong><?= $target['student_count'] ?></strong><span>students</span></div>
                                     </a><?php endforeach; ?></div>
+                            </div>
+                        </div>
+                        <?php endforeach; ?>
                             </div>
                         </div>
                         <?php endforeach; ?>
@@ -291,6 +323,15 @@ $flash = getFlashMessage();
         if (none) none.style.display = '';
         try { history.replaceState(null, '', location.pathname); } catch (e) {}
     }
+    // Grade level dropdowns: click a grade to show / hide its sections.
+    document.querySelectorAll('.gb-grade-head').forEach(function (head) {
+        head.addEventListener('click', function () {
+            var box = head.closest('.gb-grade');
+            var open = box.classList.toggle('collapsed') === false;
+            head.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (!open && box.querySelector('.class-card.selected')) gbClearSelection(box);
+        });
+    });
     document.querySelectorAll('.gb-section-head').forEach(function (head) {
         head.addEventListener('click', function () {
             var box = head.closest('.gb-section');

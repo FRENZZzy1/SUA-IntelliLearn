@@ -150,6 +150,42 @@ uasort($sections, function ($a, $b) {
     return strnatcasecmp($a['name'], $b['name']);
 });
 
+// ---- Group the sections by GRADE LEVEL ----------------------------------
+// Top level = grade level. Expand a grade to see its sections, expand a
+// section to see its courses, expand a course to see the student roster.
+$grades = [];
+foreach ($sections as $sk => $sec) {
+    $gl = ($sec['grade_level'] === null || $sec['grade_level'] === '') ? 'x' : (string) $sec['grade_level'];
+    $gk = 'grade-' . preg_replace('/[^A-Za-z0-9_-]/', '', $gl);
+    if (!isset($grades[$gk])) {
+        $grades[$gk] = [
+            'key'      => $gk,
+            'level'    => $gl === 'x' ? null : $sec['grade_level'],
+            'sections' => [],
+            'counts'   => ['High' => 0, 'Medium' => 0, 'Low' => 0, 'Insufficient Data' => 0],
+            'students' => 0,
+            'courses'  => 0,
+        ];
+    }
+    $grades[$gk]['sections'][$sk] = $sec;
+    foreach ($sec['counts'] as $label => $n) {
+        $grades[$gk]['counts'][$label] += $n;
+    }
+    $grades[$gk]['students'] += $sec['students'];
+    $grades[$gk]['courses']  += count($sec['classes']);
+}
+// Lowest grade first (Grade 7, 8, 9...), unknown grades last.
+uasort($grades, function ($a, $b) {
+    if ($a['level'] === null) return 1;
+    if ($b['level'] === null) return -1;
+    return strnatcasecmp((string) $a['level'], (string) $b['level']);
+});
+// Inside a grade, sections run in name order.
+foreach ($grades as &$gr) {
+    uasort($gr['sections'], fn($a, $b) => strnatcasecmp($a['name'], $b['name']));
+}
+unset($gr);
+
 $aiEnabled = gemini_is_configured();
 
 /**
@@ -262,7 +298,7 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
     <title>At-Risk Students · SUA IntelliLearn</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/dashboard.css">
-    <link rel="stylesheet" href="assets/css/at_risk_students.css">
+    <link rel="stylesheet" href="assets/css/at_risk_students.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/at_risk_students.css') ?>">
 </head>
 <body>
 
@@ -325,26 +361,50 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
             </div>
 
             <div class="ar-class-tabs" id="arClassTabs">
-                <button class="ar-class-tab active" data-section="all">
-                    <i class="fas fa-layer-group"></i> <span data-i18n="all_sections">All Sections</span> <span class="ar-tab-count"><?= count($sections) ?></span>
+                <button class="ar-class-tab active" data-grade="all">
+                    <i class="fas fa-layer-group"></i> <span data-i18n="all_grades">All Grade Levels</span> <span class="ar-tab-count"><?= count($grades) ?></span>
                 </button>
-                <?php foreach ($sections as $sec): ?>
-                    <button class="ar-class-tab" data-section="<?= $sec['key'] ?>">
-                        <i class="fas fa-users"></i>
-                        <?php if ($sec['grade_level'] !== null && $sec['grade_level'] !== ''): ?><span><span data-i18n="grade_short">Gr.</span> <?= htmlspecialchars($sec['grade_level']) ?> ·</span><?php endif; ?>
-                        <?= htmlspecialchars($sec['name']) ?>
-                        <?php if ($sec['counts']['High'] > 0): ?>
-                            <span class="ar-tab-badge high"><?= $sec['counts']['High'] ?></span>
+                <?php foreach ($grades as $gr): ?>
+                    <button class="ar-class-tab" data-grade="<?= $gr['key'] ?>">
+                        <i class="fas fa-graduation-cap"></i>
+                        <?php if ($gr['level'] !== null): ?><span data-i18n="grade">Grade</span> <?= htmlspecialchars($gr['level']) ?><?php else: ?><span data-i18n="no_grade">No grade level</span><?php endif; ?>
+                        <?php if ($gr['counts']['High'] > 0): ?>
+                            <span class="ar-tab-badge high"><?= $gr['counts']['High'] ?></span>
                         <?php endif; ?>
                     </button>
                 <?php endforeach; ?>
             </div>
 
             <div class="ar-classes" id="arClasses">
-                <?php foreach ($sections as $sec):
+                <?php foreach ($grades as $gr):
+                    $gSecCount = count($gr['sections']);
+                ?>
+                <div class="ar-grade-group collapsed" data-grade="<?= $gr['key'] ?>">
+                    <button class="ar-grade-head" type="button" aria-expanded="false">
+                        <div class="ar-section-title">
+                            <i class="fas fa-chevron-down ar-grade-chevron"></i>
+                            <div class="ar-grade-icon"><i class="fas fa-graduation-cap"></i></div>
+                            <div>
+                                <h2><?php if ($gr['level'] !== null): ?><span data-i18n="grade">Grade</span> <?= htmlspecialchars($gr['level']) ?><?php else: ?><span data-i18n="no_grade">No grade level</span><?php endif; ?></h2>
+                                <p>
+                                    <?= $gSecCount ?> <span data-i18n="<?= $gSecCount === 1 ? 'section_singular' : 'section_plural' ?>"><?= $gSecCount === 1 ? 'section' : 'sections' ?></span>
+                                    · <?= $gr['courses'] ?> <span data-i18n="<?= $gr['courses'] === 1 ? 'course_singular' : 'course_plural' ?>"><?= $gr['courses'] === 1 ? 'course' : 'courses' ?></span>
+                                    · <?= $gr['students'] ?> <span data-i18n="<?= $gr['students'] === 1 ? 'student_singular' : 'student_plural' ?>"><?= $gr['students'] === 1 ? 'student' : 'students' ?></span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="ar-class-chips">
+                            <?php if ($gr['counts']['High'] > 0): ?><span class="ar-chip high"><?= $gr['counts']['High'] ?> <span data-i18n="chip_high">High</span></span><?php endif; ?>
+                            <?php if ($gr['counts']['Medium'] > 0): ?><span class="ar-chip medium"><?= $gr['counts']['Medium'] ?> <span data-i18n="chip_medium">Medium</span></span><?php endif; ?>
+                            <?php if ($gr['counts']['Low'] > 0): ?><span class="ar-chip low"><?= $gr['counts']['Low'] ?> <span data-i18n="chip_low">Low</span></span><?php endif; ?>
+                            <?php if ($gr['counts']['Insufficient Data'] > 0): ?><span class="ar-chip na"><?= $gr['counts']['Insufficient Data'] ?> <span data-i18n="chip_na">N/A</span></span><?php endif; ?>
+                        </div>
+                    </button>
+                    <div class="ar-grade-body">
+                <?php foreach ($gr['sections'] as $sec):
                     $courseCount = count($sec['classes']);
                 ?>
-                <div class="ar-section-group collapsed" data-section="<?= $sec['key'] ?>">
+                <div class="ar-section-group collapsed" data-section="<?= $sec['key'] ?>" data-grade="<?= $gr['key'] ?>">
                     <button class="ar-section-head" type="button" aria-expanded="false">
                         <div class="ar-section-title">
                             <i class="fas fa-chevron-down ar-section-chevron"></i>
@@ -436,6 +496,9 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
                     </div>
                 </div>
                 <?php endforeach; ?>
+                    </div>
+                </div>
+                <?php endforeach; ?>
                 <p class="ar-no-results" id="arNoResults" style="display:none;">
                     <i class="fas fa-magnifying-glass"></i> <span data-i18n="no_match_search">No students match your search/filter.</span>
                 </p>
@@ -481,6 +544,10 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
             search_placeholder: 'Search student name…',
             filter_all: 'All', filter_high: 'High', filter_medium: 'Medium', filter_low: 'Low', filter_na: 'Insufficient Data',
             all_sections: 'All Sections',
+            all_grades: 'All Grade Levels',
+            no_grade: 'No grade level',
+            section_singular: 'section',
+            section_plural: 'sections',
             section: 'Section',
             grade_short: 'Gr.',
             course_singular: 'course', course_plural: 'courses',
@@ -522,6 +589,10 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
             search_placeholder: 'Maghanap ng pangalan ng estudyante…',
             filter_all: 'Lahat', filter_high: 'Mataas', filter_medium: 'Katamtaman', filter_low: 'Mababa', filter_na: 'Kulang ang Datos',
             all_sections: 'Lahat ng Seksyon',
+            all_grades: 'Lahat ng Baitang',
+            no_grade: 'Walang baitang',
+            section_singular: 'seksyon',
+            section_plural: 'seksyon',
             section: 'Seksyon',
             grade_short: 'Bait.',
             course_singular: 'kurso', course_plural: 'kurso',
@@ -624,16 +695,17 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
 
     // =====================================================================
     // Combined filtering: risk level + section tab + name search
-    // Hierarchy: Section (group)  ->  Course (class card)  ->  student table
+    // Hierarchy: Grade level  ->  Section  ->  Course (class card)  ->  student table
     // =====================================================================
     const filterBtns   = document.querySelectorAll('.ar-filter-btn');
     const sectionTabs  = document.querySelectorAll('.ar-class-tab');
+    const gradeGroups = document.querySelectorAll('.ar-grade-group');
     const sectionGroups = document.querySelectorAll('.ar-section-group');
     const searchInput  = document.getElementById('arSearchInput');
     const noResultsMsg = document.getElementById('arNoResults');
 
     let activeRisk = 'all';
-    let activeSection = 'all';
+    let activeGrade = 'all';
 
     function setOpen(el, open, headSelector) {
         el.classList.toggle('collapsed', !open);
@@ -645,11 +717,16 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
     // picking a section drops down its list of courses. A section with a
     // single course opens that course straight away so there is no pointless
     // extra click.
+    // Nothing auto-expands: picking a grade tab only filters the list down to
+    // that grade. Every grade, section and course starts collapsed and is
+    // opened manually (search/risk filters still open matches so results show).
     function applyDefaultExpansion() {
-        sectionGroups.forEach(group => {
-            const cards = group.querySelectorAll('.ar-class-card');
-            setOpen(group, activeSection !== 'all', '.ar-section-head');
-            cards.forEach(card => setOpen(card, cards.length === 1, '.ar-class-head'));
+        gradeGroups.forEach(gg => {
+            setOpen(gg, false, '.ar-grade-head');
+            gg.querySelectorAll('.ar-section-group').forEach(group => {
+                setOpen(group, false, '.ar-section-head');
+                group.querySelectorAll('.ar-class-card').forEach(card => setOpen(card, false, '.ar-class-head'));
+            });
         });
     }
 
@@ -658,8 +735,11 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
         const filtering = activeRisk !== 'all' || !!query;
         let anyVisible = false;
 
-        sectionGroups.forEach(group => {
-            const isTargetSection = activeSection === 'all' || group.dataset.section === activeSection;
+        gradeGroups.forEach(gg => {
+            let visibleSections = 0;
+            const isTargetGrade = activeGrade === 'all' || gg.dataset.grade === activeGrade;
+
+        gg.querySelectorAll('.ar-section-group').forEach(group => {
             let visibleCards = 0;
 
             group.querySelectorAll('.ar-class-card').forEach(card => {
@@ -694,11 +774,19 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
                 }
             });
 
-            const groupVisible = isTargetSection && visibleCards > 0;
+            const groupVisible = isTargetGrade && visibleCards > 0;
             group.style.display = groupVisible ? '' : 'none';
             if (groupVisible) {
-                anyVisible = true;
+                visibleSections++;
                 if (filtering) setOpen(group, true, '.ar-section-head');
+            }
+        });
+
+            const gradeVisible = isTargetGrade && visibleSections > 0;
+            gg.style.display = gradeVisible ? '' : 'none';
+            if (gradeVisible) {
+                anyVisible = true;
+                if (filtering) setOpen(gg, true, '.ar-grade-head');
             }
         });
 
@@ -720,7 +808,7 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
         tab.addEventListener('click', () => {
             sectionTabs.forEach(other => other.classList.remove('active'));
             tab.classList.add('active');
-            activeSection = tab.dataset.section;
+            activeGrade = tab.dataset.grade;
             applyDefaultExpansion();
             applyFilters();
             // On small screens, scroll the picked tab into view.
@@ -734,7 +822,15 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
         searchInput.addEventListener('input', applyFilters);
     }
 
-    // ---- Section + course accordions (expand/collapse) ----
+    // ---- Grade + section + course accordions (expand/collapse) ----
+    document.querySelectorAll('.ar-grade-head').forEach(head => {
+        head.addEventListener('click', () => {
+            const group = head.closest('.ar-grade-group');
+            const expanded = head.getAttribute('aria-expanded') === 'true';
+            setOpen(group, !expanded, '.ar-grade-head');
+        });
+    });
+
     document.querySelectorAll('.ar-section-head').forEach(head => {
         head.addEventListener('click', () => {
             const group = head.closest('.ar-section-group');
