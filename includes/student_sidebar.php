@@ -106,8 +106,8 @@ if (isset($pdo) && $pdo instanceof PDO) {
             <div class="nav-section-title">Learning</div>
             <a href="../../public/student/grades.php"
                 class="nav-item <?= $current === 'grades.php' ? 'active' : '' ?>">
-                <div class="nav-icon-wrap"><i class="fas fa-chart-line"></i></div>
-                <span class="nav-label">My Grades</span>
+                <div class="nav-icon-wrap"><i class="fas fa-file-circle-check"></i></div>
+                <span class="nav-label">My Submissions</span>
             </a>
             <a href="../../public/student/attendance.php"
                 class="nav-item <?= $current === 'attendance.php' ? 'active' : '' ?>">

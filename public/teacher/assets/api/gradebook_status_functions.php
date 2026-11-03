@@ -27,22 +27,36 @@ function gb_category_key(?string $assignmentType): string
  * 'scores' holds, per student and item uid, the score of the latest counted
  * attempt: ['score' => ?float, 'max' => ?float].
  *
+ * Pass $onlyStudentId to load just that one student's submissions (used by the
+ * student-side "My Submissions" page). In that mode quizzes that are scheduled
+ * to open in the future are hidden unless the student already attempted them,
+ * matching what the student can actually see in the course view.
+ *
  * @return array{items: array<string, list<array>>, done: array<int, array<string,bool>>, scores: array<int, array<string,array>>}
  */
-function gb_load_items(PDO $pdo, int $offeringId): array
+function gb_load_items(PDO $pdo, int $offeringId, ?int $onlyStudentId = null): array
 {
     $items = ['ww' => [], 'pt' => [], 'exam' => []];
     $done  = [];
     $scores = [];
+    $subStudentSql  = $onlyStudentId !== null ? ' AND sb.student_id = ' . (int) $onlyStudentId : '';
+    $quizStudentSql = $onlyStudentId !== null ? ' AND qa.student_id = ' . (int) $onlyStudentId : '';
+    $quizOpenSql    = '';
+    $quizParams     = [$offeringId];
+    if ($onlyStudentId !== null) {
+        $quizOpenSql  = ' AND (q.available_from IS NULL OR q.available_from <= ? OR x.student_id IS NOT NULL)';
+        $quizParams[] = date('Y-m-d H:i:s');
+    }
 
     // Assignments: "submitted" = any submission row that isn't flagged 'missing'.
     $stmt = $pdo->prepare("
-        SELECT a.assignment_id, a.title, a.type, a.points, a.created_at, s.student_id, s.score
+        SELECT a.assignment_id, a.title, a.type, a.points, a.created_at, a.status AS item_status, s.student_id, s.score
         FROM assignments a
         LEFT JOIN (
             SELECT sb.assignment_id, sb.student_id, sb.score
             FROM submissions sb
             WHERE sb.status <> 'missing'
+              {$subStudentSql}
               AND sb.attempt_number = (
                   SELECT MAX(x.attempt_number) FROM submissions x
                   WHERE x.assignment_id = sb.assignment_id
@@ -61,7 +75,7 @@ function gb_load_items(PDO $pdo, int $offeringId): array
         $uid = 'a' . $id;
         if (!isset($seen[$uid])) {
             $seen[$uid] = true;
-            $items[$key][] = ['uid' => $uid, 'title' => $r['title'], 'kind' => 'Assignment', 'type' => $r['type'] ?: 'Activity', 'max' => (float) $r['points'], 'created_at' => $r['created_at']];
+            $items[$key][] = ['uid' => $uid, 'title' => $r['title'], 'kind' => 'Assignment', 'type' => $r['type'] ?: 'Activity', 'max' => (float) $r['points'], 'created_at' => $r['created_at'], 'id' => $id, 'status' => $r['item_status']];
         }
         if ($r['student_id'] !== null) {
             $done[(int) $r['student_id']][$uid] = true;
@@ -74,13 +88,14 @@ function gb_load_items(PDO $pdo, int $offeringId): array
 
     // Quizzes are always Written Works. "Submitted" = a finished attempt.
     $stmt = $pdo->prepare("
-        SELECT q.quiz_id, q.title, q.created_at, x.student_id, x.score, x.max_score,
+        SELECT q.quiz_id, q.title, q.created_at, q.status AS item_status, x.student_id, x.score, x.max_score,
                (SELECT COALESCE(SUM(qq.points), 0) FROM quiz_questions qq WHERE qq.quiz_id = q.quiz_id) AS total_points
         FROM quizzes q
         LEFT JOIN (
             SELECT qa.quiz_id, qa.student_id, qa.score, qa.max_score
             FROM quiz_attempts qa
             WHERE qa.status IN ('submitted','graded')
+              {$quizStudentSql}
               AND qa.attempt_number = (
                   SELECT MAX(y.attempt_number) FROM quiz_attempts y
                   WHERE y.quiz_id = qa.quiz_id
@@ -88,17 +103,17 @@ function gb_load_items(PDO $pdo, int $offeringId): array
                     AND y.status IN ('submitted','graded')
               )
         ) x ON x.quiz_id = q.quiz_id
-        WHERE q.offering_id = ? AND q.status <> 'draft'
+        WHERE q.offering_id = ? AND q.status <> 'draft'{$quizOpenSql}
         ORDER BY q.created_at, q.quiz_id
     ");
-    $stmt->execute([$offeringId]);
+    $stmt->execute($quizParams);
     $seen = [];
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
         $id  = (int) $r['quiz_id'];
         $uid = 'q' . $id;
         if (!isset($seen[$uid])) {
             $seen[$uid] = true;
-            $items['ww'][] = ['uid' => $uid, 'title' => $r['title'], 'kind' => 'Quiz', 'type' => 'Written Work', 'max' => (float) $r['total_points'], 'created_at' => $r['created_at']];
+            $items['ww'][] = ['uid' => $uid, 'title' => $r['title'], 'kind' => 'Quiz', 'type' => 'Written Work', 'max' => (float) $r['total_points'], 'created_at' => $r['created_at'], 'id' => $id, 'status' => $r['item_status']];
         }
         if ($r['student_id'] !== null) {
             $done[(int) $r['student_id']][$uid] = true;
