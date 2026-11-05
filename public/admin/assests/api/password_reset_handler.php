@@ -7,6 +7,12 @@
 require_once __DIR__ . '/../../../../config/config.php';
 require_once __DIR__ . '/../../../../config/teacher_account_setup.php';
 requireAdmin();
+if (!function_exists('adminCanWrite') || !adminCanWrite('users')) {
+    http_response_code(403);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['success' => false, 'message' => 'You do not have permission to reset user passwords.']);
+    exit;
+}
 
 header('Content-Type: application/json; charset=utf-8');
 
