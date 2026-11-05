@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Set Up Teacher Account | SUA IntelliLearn</title>
+<title>Teacher Password Reset | SUA IntelliLearn</title>
 <style>
 body{font-family:Arial,sans-serif;background:#f4f7f5;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;color:#1f2937}
 .card{width:min(460px,calc(100% - 32px));background:#fff;border-radius:16px;padding:32px;box-shadow:0 12px 35px rgba(0,0,0,.1)}
@@ -55,11 +55,11 @@ button{width:100%;margin-top:22px;padding:13px;border:0;border-radius:9px;backgr
 </head>
 <body>
 <div class="card">
-<h1>Set Up Your Teacher Account</h1>
-<p class="sub">Create your personal password for SUA IntelliLearn.</p>
+<h1>Set Your Teacher Password</h1>
+<p class="sub">Choose a new password for your SUA IntelliLearn account.</p>
 <?php if ($error): ?><div class="alert"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 <?php if ($success): ?>
-<div class="alert ok">Your password has been set successfully. You can now sign in using your teacher email and new password.</div>
+<div class="alert ok">Your password has been updated successfully. You can now sign in using your teacher email and new password.</div>
 <a href="../login.php" style="display:block;text-align:center;margin-top:18px;color:#124029;font-weight:700;">Go to Login</a>
 <?php else: ?>
 <form method="post">
@@ -70,7 +70,7 @@ button{width:100%;margin-top:22px;padding:13px;border:0;border-radius:9px;backgr
 <div class="hint">Minimum 8 characters, including at least one uppercase letter and one special character.</div>
 <label for="confirm_password">Confirm Password</label>
 <input id="confirm_password" name="confirm_password" type="password" minlength="8" required>
-<button type="submit">Set Password</button>
+<button type="submit">Save New Password</button>
 </form>
 <?php endif; ?>
 </div>

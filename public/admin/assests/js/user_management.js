@@ -493,4 +493,55 @@
                     }
 
                     document.getElementById('editTeacherEmailHint').style.display = isTeacher ? '' : 'none';
+                    document.getElementById('teacherPasswordResetAction').style.display = isTeacher ? '' : 'none';
+                    document.getElementById('studentPasswordResetAction').style.display = isStudent ? '' : 'none';
                 }
+    
+    // ---- Admin-assisted password reset actions ----
+    async function um_submitPasswordReset(action, confirmMessage) {
+        const userId = document.getElementById('editUserId')?.value;
+        const csrfToken = document.querySelector('#editUserForm [name="csrf_token"]')?.value;
+        if (!userId || !csrfToken) {
+            alert('Unable to identify this account. Close and reopen the edit window.');
+            return;
+        }
+        if (!window.confirm(confirmMessage)) return;
+
+        const formData = new FormData();
+        formData.append('csrf_token', csrfToken);
+        formData.append('action', action);
+        formData.append('user_id', userId);
+
+        try {
+            const response = await fetch('assests/api/password_reset_handler.php', {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'The password reset could not be completed.');
+            }
+            if (action === 'reset_student_password') {
+                alert(result.message + '\\n\\nTemporary default password: ' + result.temporary_password + '\\n\\nShare this with the student securely.');
+            } else {
+                alert(result.message);
+            }
+        } catch (error) {
+            alert(error.message || 'An unexpected error occurred.');
+        }
+    }
+
+    function um_sendTeacherPasswordReset() {
+        um_submitPasswordReset(
+            'send_teacher_password_reset',
+            'Send a one-time password-reset link to this teacher’s registered email? Their current password will stop working once the reset link is issued.'
+        );
+    }
+
+    function um_resetStudentPassword() {
+        um_submitPasswordReset(
+            'reset_student_password',
+            'Reset this student’s password to the original default password? Their current sessions will be invalidated.'
+        );
+    }

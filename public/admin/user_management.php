@@ -274,6 +274,16 @@ include 'assests/api/access_permissions_modal.php';
                     </div>
                 </div>
 
+                <div id="teacherPasswordResetAction" style="display:none; margin-top:16px; padding:14px; border:1px solid #dbe7df; border-radius:10px;">
+                    <strong style="display:block; margin-bottom:6px;">Teacher password assistance</strong>
+                    <small style="display:block; color:#64748b; margin-bottom:10px;">Send a one-time password-reset link to the teacher's registered email address.</small>
+                    <button type="button" class="btn-secondary" onclick="um_sendTeacherPasswordReset()"><i class="fas fa-envelope"></i> Send Password Reset Email</button>
+                </div>
+                <div id="studentPasswordResetAction" style="display:none; margin-top:16px; padding:14px; border:1px solid #fee2e2; border-radius:10px;">
+                    <strong style="display:block; margin-bottom:6px;">Student password assistance</strong>
+                    <small style="display:block; color:#64748b; margin-bottom:10px;">Reset to the account's original default password format: Lastname + birthdate (MMDDYY) + !. The student should change it after signing in.</small>
+                    <button type="button" class="btn-secondary" style="border-color:#dc2626; color:#dc2626;" onclick="um_resetStudentPassword()"><i class="fas fa-key"></i> Reset to Default Password</button>
+                </div>
                 <div class="compose-actions">
                     <div class="right-actions" style="margin-left:auto;">
                         <button type="button" class="btn-secondary" onclick="closeEditModal()">Cancel</button>
