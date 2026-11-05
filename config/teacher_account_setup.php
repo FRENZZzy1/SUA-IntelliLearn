@@ -145,3 +145,53 @@ HTML;
 
     $mail->send();
 }
+
+
+/**
+ * Send a password-reset link to an existing teacher.
+ * The same one-time token format is validated by setup_account.php.
+ */
+function send_teacher_password_reset_email(string $to, string $teacherName, string $username, string $resetUrl): void {
+    load_teacher_mailer();
+
+    $mail = new PHPMailer\\PHPMailer\\PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host = 'smtp.gmail.com';
+    $mail->SMTPAuth = true;
+    $mail->Username = teacher_env('SUA_SMTP_USERNAME', TEACHER_SETUP_FROM_EMAIL);
+    $mail->Password = teacher_env('SUA_SMTP_PASSWORD');
+    $mail->SMTPSecure = PHPMailer\\PHPMailer\\PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->Port = 587;
+    $mail->CharSet = 'UTF-8';
+
+    if ($mail->Password === '') {
+        throw new RuntimeException('SMTP password is not configured. Set SUA_SMTP_PASSWORD in the server environment.');
+    }
+
+    $mail->setFrom($mail->Username, 'SUA IntelliLearn');
+    $mail->addAddress($to, $teacherName);
+    $mail->isHTML(true);
+    $mail->Subject = 'SUA IntelliLearn Teacher Password Reset';
+
+    $safeName = htmlspecialchars($teacherName, ENT_QUOTES, 'UTF-8');
+    $safeUsername = htmlspecialchars($username, ENT_QUOTES, 'UTF-8');
+    $safeUrl = htmlspecialchars($resetUrl, ENT_QUOTES, 'UTF-8');
+
+    $mail->Body = <<<HTML
+<p>Hello {$safeName},</p>
+<p>An administrator requested a password reset for your SUA IntelliLearn teacher account.</p>
+<p><strong>Username:</strong> {$safeUsername}</p>
+<p>Use the secure link below to choose a new password:</p>
+<p><a href="{$safeUrl}" style="display:inline-block;padding:12px 18px;background:#124029;color:#fff;text-decoration:none;border-radius:6px;">Reset My Password</a></p>
+<p>This link expires in 24 hours and can only be used once. If you did not request this, contact your school administrator.</p>
+<p>SUA IntelliLearn</p>
+HTML;
+
+    $mail->AltBody = "Hello {$teacherName},\\n\\n"
+        . "An administrator requested a password reset for your SUA IntelliLearn teacher account.\\n"
+        . "Username: {$username}\\n\\n"
+        . "Reset your password here: {$resetUrl}\\n\\n"
+        . "This link expires in 24 hours and can only be used once.";
+
+    $mail->send();
+}
