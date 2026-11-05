@@ -51,10 +51,11 @@ $studentFullName = trim($student['firstname'] . ' ' . $student['lastname']);
 $stmt = $pdo->prepare("
     SELECT DISTINCT sy.school_year_id, sy.label, sy.is_current, sy.start_date
     FROM enrollments e
-    JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+    JOIN classofferings co ON co.offering_id = e.offering_id
     JOIN schoolyears sy    ON sy.school_year_id = co.school_year_id
     WHERE e.student_id = ?
       AND e.status IN ('enrolled','completed')
+      AND ((co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)) OR sy.is_archived = 1)
     ORDER BY sy.start_date DESC
 ");
 $stmt->execute([$studentId]);
@@ -100,12 +101,14 @@ if ($selectedYearId !== null) {
             sec.section_name, sec.grade_level,
             t.firstname AS teacher_first, t.lastname AS teacher_last
         FROM enrollments e
-        JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+        JOIN classofferings co ON co.offering_id = e.offering_id
+        JOIN schoolyears sy    ON sy.school_year_id = co.school_year_id
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN sections sec      ON sec.section_id = co.section_id
         JOIN teachers t        ON t.teacher_id = co.teacher_id
         WHERE e.student_id = ? AND co.school_year_id = ?
           AND e.status IN ('enrolled','completed')
+          AND ((co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)) OR sy.is_archived = 1)
         ORDER BY sub.subject_name, co.quarter
     ");
     $stmt->execute([$studentId, $selectedYearId]);

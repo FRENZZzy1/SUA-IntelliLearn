@@ -483,32 +483,6 @@ function escapeHtml(str) {
 // Course modal it opens), so the widget's edit stays on the dashboard instead
 // of navigating away.
 
-function deleteCourseOffering(offeringId, btnEl) {
-    if (!confirm('Archive this class? It will be hidden from its students (and can be restored later from Classes & Subjects).')) return;
-
-    fetch('assests/api/delete_course_offering.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json'
-        },
-        body: 'offering_id=' + encodeURIComponent(offeringId) + '&csrf=' + encodeURIComponent(PENDING_ENROLL_CSRF)
-    })
-        .then(res => res.json())
-        .then(data => {
-            if (!data.success) {
-                showToast((data.errors && data.errors[0]) || 'Failed to archive class.');
-                return;
-            }
-            showToast('Class archived.');
-            const row = btnEl.closest('tr');
-            if (row) row.remove();
-        })
-        .catch(() => {
-            showToast('Failed to archive class.');
-        });
-}
-
 // Quick Actions -> "Backup Data"
 // Streams a full .sql dump from assests/api/backup_data.php and saves it
 // as a file download. Errors come back as JSON; success comes back as the

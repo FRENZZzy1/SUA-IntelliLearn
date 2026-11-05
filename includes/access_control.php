@@ -345,6 +345,8 @@ function adminAccessRules(): array {
         'save_term_intervals.php'  => ['settings', 'write'],
         'set_current_school_year.php' => ['settings', 'write'],
         'add_school_year.php'      => ['settings', 'write'],
+        'update_school_year.php'   => ['settings', 'write'],
+        'archive_school_year.php'  => ['settings', 'write'],
         'teacher_evaluation_round.php' => ['settings', 'write'],
 
         // Not module-specific

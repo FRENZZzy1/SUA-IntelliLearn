@@ -54,23 +54,33 @@ try {
 
 /**
  * Archive support for the Classes & Subjects module.
- * Adds is_archived / archived_at to classofferings, sections and subjects the
- * first time it runs (so no manual SQL import is required). Safe to run on
- * every request: it only issues ALTER TABLE when a column is missing.
+ * Adds is_archived / archived_at to classofferings, sections, subjects and schoolyears the
+ * first time it runs (so no manual SQL import is required), plus
+ * schoolyears.auto_archive_paused (set when an admin restores a school year so
+ * the automatic year-end archive leaves it alone). Safe to run on every
+ * request: it only issues ALTER TABLE when a column is missing.
  */
 function ensureArchiveColumns(PDO $pdo): void {
     try {
-        $have = $pdo->query(
-            "SELECT TABLE_NAME FROM information_schema.COLUMNS
-             WHERE TABLE_SCHEMA = DATABASE() AND COLUMN_NAME = 'is_archived'
-               AND TABLE_NAME IN ('classofferings', 'sections', 'subjects')"
-        )->fetchAll(PDO::FETCH_COLUMN);
-        foreach (['classofferings', 'sections', 'subjects'] as $table) {
-            if (!in_array($table, $have, true)) {
+        $rows = $pdo->query(
+            "SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND ((COLUMN_NAME = 'is_archived' AND TABLE_NAME IN ('classofferings', 'sections', 'subjects', 'schoolyears'))
+                 OR (COLUMN_NAME = 'auto_archive_paused' AND TABLE_NAME = 'schoolyears'))"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        $have = [];
+        foreach ($rows as $r) {
+            $have[$r['TABLE_NAME'] . '.' . $r['COLUMN_NAME']] = true;
+        }
+        foreach (['classofferings', 'sections', 'subjects', 'schoolyears'] as $table) {
+            if (!isset($have[$table . '.is_archived'])) {
                 $pdo->exec("ALTER TABLE `$table`
                             ADD COLUMN `is_archived` TINYINT(1) NOT NULL DEFAULT 0,
                             ADD COLUMN `archived_at` DATETIME NULL DEFAULT NULL");
             }
+        }
+        if (!isset($have['schoolyears.auto_archive_paused'])) {
+            $pdo->exec("ALTER TABLE `schoolyears` ADD COLUMN `auto_archive_paused` TINYINT(1) NOT NULL DEFAULT 0");
         }
     } catch (PDOException $e) {
         // Never block the page load; the migration file archive_migration.sql can be run by hand.
@@ -326,19 +336,6 @@ function resolveCurrentTerm(array $intervals, ?DateTime $onDate = null) {
     return null;
 }
 
-/**
- * The term that is running today (e.g. 'TRM 2'), or null when today is not
- * inside any configured term interval. While a term is active, archiving
- * classes, sections and subjects is disabled (restoring is still allowed).
- */
-function getActiveTerm($pdo) {
-    return resolveCurrentTerm(getTermIntervals($pdo));
-}
-
-function archiveBlockedMessage($activeTerm) {
-    return 'Archiving is disabled while a term is active (' . $activeTerm . ' is currently running). You can archive classes, sections and subjects once the term has ended.';
-}
-
 function syncCourseTermsToCurrent($pdo) {
     $currentTerm = resolveCurrentTerm(getTermIntervals($pdo));
     if ($currentTerm === null) return;
@@ -401,6 +398,298 @@ function syncCourseTermsToCurrent($pdo) {
         }
     }
 }
+
+// ================= SCHOOL YEAR ROLLOVER & YEAR-END ARCHIVING =================
+// Closing out a school year is three steps, all driven from Settings > School Year:
+//   1. Add the new year with "Copy sections & classes from <old year>". The new
+//      year gets the same sections and classes (teacher, schedule, capacity) as
+//      TRM 1 offerings, with NO students - promotion is a separate, later step.
+//   2. Set the new year as current - students and teachers now see only its classes.
+//   3. The old year is archived - automatically once its end date has passed
+//      (autoArchiveEndedSchoolYears), or by hand with the Archive button. Its
+//      classes and sections get the existing is_archived flag (so every page
+//      that already hides archived rows keeps working) and the year itself is
+//      stamped. Nothing is ever deleted.
+// Restoring a year undoes exactly what archiving it hid, using the shared
+// archived_at stamp, so rows an admin archived by hand earlier stay archived.
+// A restored year is marked auto_archive_paused so the automatic archive does
+// not undo the restore; the Archive button archives it again.
+
+/**
+ * Copy the sections and classes of one school year into another. Students and
+ * enrollments are NOT copied. Each class is created as a TRM 1 offering using
+ * the teacher, schedule and capacity of its most recent term; the normal term
+ * rollover (syncCourseTermsToCurrent) then carries it into TRM 2 / TRM 3.
+ *
+ * Skipped: subjects that are archived, and sections/classes an admin archived by
+ * hand before the source year was archived (they were retired on purpose).
+ * Safe to run twice: sections and classes that already exist are not duplicated.
+ *
+ * Must run inside the caller's transaction.
+ *
+ * @return array{sections_created:int, sections_reused:int, classes_created:int, classes_skipped:int}
+ * @throws InvalidArgumentException when either year does not exist or both are the same.
+ */
+function copySchoolYearStructure(PDO $pdo, int $fromYearId, int $toYearId): array
+{
+    if ($fromYearId === $toYearId) {
+        throw new InvalidArgumentException('Pick a different school year to copy from.');
+    }
+
+    $yearStmt = $pdo->prepare("SELECT school_year_id, archived_at FROM schoolyears WHERE school_year_id = ?");
+    $yearStmt->execute([$fromYearId]);
+    $from = $yearStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$from) {
+        throw new InvalidArgumentException('The school year to copy from was not found.');
+    }
+    $yearStmt->execute([$toYearId]);
+    if (!$yearStmt->fetch(PDO::FETCH_ASSOC)) {
+        throw new InvalidArgumentException('The new school year was not found.');
+    }
+
+    // A row counts as "in use last year" when it is not archived, or when it was
+    // hidden by the year archive itself (same archived_at stamp as the year).
+    $yearBatch = $from['archived_at'];
+    $wasInUse = static function (array $row) use ($yearBatch): bool {
+        return (int) $row['is_archived'] === 0
+            || ($yearBatch !== null && $row['archived_at'] === $yearBatch);
+    };
+
+    $result = ['sections_created' => 0, 'sections_reused' => 0, 'classes_created' => 0, 'classes_skipped' => 0];
+
+    // ---- Sections ------------------------------------------------------
+    $secStmt = $pdo->prepare(
+        "SELECT section_id, section_name, grade_level, adviser_id, is_archived, archived_at
+         FROM sections WHERE school_year_id = ? ORDER BY grade_level, section_name"
+    );
+    $secStmt->execute([$fromYearId]);
+    $findSection = $pdo->prepare("SELECT section_id FROM sections WHERE section_name = ? AND grade_level = ? AND school_year_id = ?");
+    $addSection  = $pdo->prepare("INSERT INTO sections (section_name, grade_level, adviser_id, school_year_id) VALUES (?, ?, ?, ?)");
+
+    $sectionMap = []; // old section_id => new section_id
+    foreach ($secStmt->fetchAll(PDO::FETCH_ASSOC) as $sec) {
+        if (!$wasInUse($sec)) {
+            continue;
+        }
+        $findSection->execute([$sec['section_name'], $sec['grade_level'], $toYearId]);
+        $existingId = $findSection->fetchColumn();
+        if ($existingId) {
+            $sectionMap[(int) $sec['section_id']] = (int) $existingId;
+            $result['sections_reused']++;
+            continue;
+        }
+        $addSection->execute([$sec['section_name'], $sec['grade_level'], $sec['adviser_id'], $toYearId]);
+        $sectionMap[(int) $sec['section_id']] = (int) $pdo->lastInsertId();
+        $result['sections_created']++;
+    }
+
+    // ---- Classes (one TRM 1 offering per subject + section) ------------
+    $offStmt = $pdo->prepare(
+        "SELECT co.subject_id, co.section_id, co.teacher_id, co.schedule_days, co.start_time, co.end_time,
+                co.capacity, co.status, co.is_archived, co.archived_at
+         FROM classofferings co
+         JOIN subjects sub ON sub.subject_id = co.subject_id AND sub.is_archived = 0
+         WHERE co.school_year_id = ?
+         ORDER BY FIELD(co.quarter, 'TRM 1', 'TRM 2', 'TRM 3')"
+    );
+    $offStmt->execute([$fromYearId]);
+
+    $latest = []; // later terms overwrite earlier ones, so the most recent term's details win
+    foreach ($offStmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (!isset($sectionMap[(int) $row['section_id']]) || !$wasInUse($row)) {
+            continue;
+        }
+        $latest[$row['subject_id'] . ':' . $row['section_id']] = $row;
+    }
+
+    $findOffering = $pdo->prepare("SELECT 1 FROM classofferings WHERE subject_id = ? AND section_id = ? AND quarter = 'TRM 1' AND school_year_id = ?");
+    $addOffering  = $pdo->prepare(
+        "INSERT INTO classofferings (class_code, subject_id, teacher_id, section_id, quarter, school_year_id, schedule_days, start_time, end_time, capacity, status)
+         VALUES (?, ?, ?, ?, 'TRM 1', ?, ?, ?, ?, ?, ?)"
+    );
+    foreach ($latest as $row) {
+        $newSectionId = $sectionMap[(int) $row['section_id']];
+        $findOffering->execute([$row['subject_id'], $newSectionId, $toYearId]);
+        if ($findOffering->fetch()) {
+            $result['classes_skipped']++;
+            continue;
+        }
+        $addOffering->execute([
+            generateClassCode($pdo), $row['subject_id'], $row['teacher_id'], $newSectionId, $toYearId,
+            $row['schedule_days'], $row['start_time'], $row['end_time'], $row['capacity'], $row['status'],
+        ]);
+        $result['classes_created']++;
+    }
+
+    return $result;
+}
+
+/**
+ * Archive a finished school year: every class of that year, every section of
+ * that year that no live class still uses, and the year itself. Nothing is
+ * deleted; restoreSchoolYear() reverses it.
+ *
+ * A school year can be archived when it is not the current year, or when it is
+ * the current year but its end date has already passed (a year that is still
+ * running cannot be archived). Archiving is NOT held back by a running term:
+ * year-level archiving never touches the term schedule.
+ *
+ * The year row is locked first, so two requests arriving together (the
+ * automatic year-end archive can fire on any page load) cannot both archive it
+ * and leave classes with a different archived_at stamp than the year.
+ *
+ * @param string|null $today Y-m-d, for tests; defaults to today.
+ * @return array{classes:int, sections:int}
+ * @throws InvalidArgumentException when the year is missing, still running, or already archived.
+ */
+function archiveSchoolYear(PDO $pdo, int $yearId, ?string $today = null): array
+{
+    $today  = $today ?? date('Y-m-d');
+    $stamp  = date('Y-m-d H:i:s');
+    $counts = ['classes' => 0, 'sections' => 0];
+
+    try {
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare("SELECT school_year_id, end_date, is_current, is_archived FROM schoolyears WHERE school_year_id = ? FOR UPDATE");
+        $stmt->execute([$yearId]);
+        $year = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$year) {
+            throw new InvalidArgumentException('School year not found.');
+        }
+        if ((int) $year['is_archived'] === 1) {
+            throw new InvalidArgumentException('That school year is already archived.');
+        }
+        if ((int) $year['is_current'] === 1 && $year['end_date'] >= $today) {
+            throw new InvalidArgumentException(
+                'The current school year is still running (it ends on ' . date('M j, Y', strtotime($year['end_date']))
+                . '). It can be archived once it has ended, or after another school year is made current.'
+            );
+        }
+
+        $classes = $pdo->prepare("UPDATE classofferings SET is_archived = 1, archived_at = ? WHERE school_year_id = ? AND is_archived = 0");
+        $classes->execute([$stamp, $yearId]);
+        $counts['classes'] = $classes->rowCount();
+
+        // A section can host classes of another year (the Add Class form lets an
+        // admin pick any section + year), so only archive sections nothing live uses.
+        $sections = $pdo->prepare(
+            "UPDATE sections SET is_archived = 1, archived_at = ?
+             WHERE school_year_id = ? AND is_archived = 0
+               AND NOT EXISTS (SELECT 1 FROM classofferings co WHERE co.section_id = sections.section_id AND co.is_archived = 0)"
+        );
+        $sections->execute([$stamp, $yearId]);
+        $counts['sections'] = $sections->rowCount();
+
+        $pdo->prepare("UPDATE schoolyears SET is_archived = 1, archived_at = ?, auto_archive_paused = 0 WHERE school_year_id = ?")
+            ->execute([$stamp, $yearId]);
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+
+    return $counts;
+}
+
+/**
+ * Undo archiveSchoolYear(): bring back the classes and sections that archiving
+ * the year hid (matched by the shared archived_at stamp) and un-archive the year.
+ * Anything an admin archived by hand stays archived.
+ *
+ * The year is also marked auto_archive_paused, so the automatic year-end archive
+ * does not immediately undo the restore. The admin can archive it again with the
+ * Archive button, which switches automatic archiving back on for it.
+ *
+ * @return array{classes:int, sections:int}
+ * @throws InvalidArgumentException when the year is missing or not archived.
+ */
+function restoreSchoolYear(PDO $pdo, int $yearId): array
+{
+    $counts = ['classes' => 0, 'sections' => 0];
+
+    try {
+        $pdo->beginTransaction();
+
+        $stmt = $pdo->prepare("SELECT is_archived, archived_at FROM schoolyears WHERE school_year_id = ? FOR UPDATE");
+        $stmt->execute([$yearId]);
+        $year = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$year) {
+            throw new InvalidArgumentException('School year not found.');
+        }
+        if ((int) $year['is_archived'] !== 1) {
+            throw new InvalidArgumentException('That school year is not archived.');
+        }
+
+        $stamp = $year['archived_at'];
+        if ($stamp !== null) {
+            $classes = $pdo->prepare("UPDATE classofferings SET is_archived = 0, archived_at = NULL WHERE school_year_id = ? AND is_archived = 1 AND archived_at = ?");
+            $classes->execute([$yearId, $stamp]);
+            $counts['classes'] = $classes->rowCount();
+
+            $sections = $pdo->prepare("UPDATE sections SET is_archived = 0, archived_at = NULL WHERE school_year_id = ? AND is_archived = 1 AND archived_at = ?");
+            $sections->execute([$yearId, $stamp]);
+            $counts['sections'] = $sections->rowCount();
+        }
+
+        $pdo->prepare("UPDATE schoolyears SET is_archived = 0, archived_at = NULL, auto_archive_paused = 1 WHERE school_year_id = ?")
+            ->execute([$yearId]);
+
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
+    }
+
+    return $counts;
+}
+
+/**
+ * Automatic year-end archive. Archives every school year whose end date has
+ * passed (the day after its end date) that is not already archived and that an
+ * admin has not restored (auto_archive_paused). Classes and sections are
+ * archived exactly as the manual Archive button does it, so the same Restore
+ * undoes it.
+ *
+ * Runs from config.php on every request; when there is nothing to do it costs
+ * a single small SELECT. It never throws, so it can never break a page.
+ *
+ * @param string|null $today Y-m-d, for tests; defaults to today.
+ * @return list<array{school_year_id:int, classes:int, sections:int}> the years archived by this run.
+ */
+function autoArchiveEndedSchoolYears(PDO $pdo, ?string $today = null): array
+{
+    $today = $today ?? date('Y-m-d');
+    $done  = [];
+
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT school_year_id FROM schoolyears
+             WHERE end_date < ? AND is_archived = 0 AND auto_archive_paused = 0
+             ORDER BY end_date, school_year_id"
+        );
+        $stmt->execute([$today]);
+
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $yearId) {
+            try {
+                $counts = archiveSchoolYear($pdo, (int) $yearId, $today);
+                $done[] = ['school_year_id' => (int) $yearId] + $counts;
+            } catch (InvalidArgumentException $e) {
+                // Another request archived it first, or it changed meanwhile: nothing to do.
+            }
+        }
+    } catch (Throwable $e) {
+        // Missing columns or a database hiccup must never take a page down.
+    }
+
+    return $done;
+}
+autoArchiveEndedSchoolYears($pdo);
 
 // ---- Final grade weighting (DepEd-style: Written Work / Performance Task / Exam) ----
 // Written Work  = average of all quiz percentages for the offering.

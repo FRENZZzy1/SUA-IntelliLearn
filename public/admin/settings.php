@@ -111,26 +111,85 @@ foreach ($schoolYears as $sy) {
                 <div class="settings-card">
                     <div class="settings-card-header">
                         <h2><i class="fas fa-calendar-check"></i> School Years</h2>
-                        <p>Only one school year can be active at a time. New sections and enrollments are created under the active year.</p>
+                        <p>Only one school year can be active at a time. New sections and enrollments are created under the active year. Once a school year's end date has passed it is archived automatically: its classes and sections are hidden from teachers and from students' class lists, nothing is deleted, and students keep their grade history. Restore brings a year back and stops it from being archived automatically again; use Archive to archive it again. Use Edit to correct a year's label or dates.</p>
                     </div>
 
                     <div class="year-list">
                         <?php foreach ($schoolYears as $sy): ?>
-                        <div class="year-row <?= $sy['is_current'] ? 'is-current' : '' ?>">
+                        <?php
+                            $syArchived = (int) ($sy['is_archived'] ?? 0) === 1;
+                            $syEnded    = $sy['end_date'] < date('Y-m-d');
+                            $syPaused   = (int) ($sy['auto_archive_paused'] ?? 0) === 1;
+                        ?>
+                        <div class="year-row <?= $sy['is_current'] ? 'is-current' : '' ?> <?= $syArchived ? 'is-archived' : '' ?>">
                             <div class="year-row-info">
                                 <div class="year-icon"><i class="fas fa-calendar"></i></div>
                                 <div>
                                     <strong><?= clean($sy['label']) ?></strong>
                                     <span><?= clean(date('M j, Y', strtotime($sy['start_date']))) ?> &ndash; <?= clean(date('M j, Y', strtotime($sy['end_date']))) ?></span>
+                                    <?php if (!$syArchived): ?>
+                                    <span class="year-note"><?= $syPaused
+                                        ? 'Restored &mdash; won&rsquo;t archive automatically until you archive it again'
+                                        : 'Archives automatically after ' . clean(date('M j, Y', strtotime($sy['end_date']))) ?></span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
+                            <div class="year-row-actions">
+                            <?php if ($canWrite): ?>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="toggleYearEdit(<?= (int) $sy['school_year_id'] ?>, true)">
+                                    <i class="fas fa-pen"></i> Edit
+                                </button>
+                            <?php endif; ?>
                             <?php if ($sy['is_current']): ?>
                                 <span class="badge-current">Current</span>
+                            <?php endif; ?>
+                            <?php if ($syArchived): ?>
+                                <span class="badge-archived"><i class="fas fa-box-archive"></i> Archived<?= !empty($sy['archived_at']) ? ' ' . clean(date('M j, Y', strtotime($sy['archived_at']))) : '' ?></span>
+                                <?php if ($canWrite): ?>
+                                <button type="button" class="btn btn-outline btn-sm"
+                                    onclick="archiveYear(<?= (int) $sy['school_year_id'] ?>, 'restore', this)">
+                                    Restore
+                                </button>
+                                <?php endif; ?>
                             <?php elseif ($canWrite): ?>
+                                <?php if (!$sy['is_current']): ?>
                                 <button type="button" class="btn btn-outline btn-sm"
                                     onclick="setCurrentYear(<?= (int) $sy['school_year_id'] ?>, this)">
                                     Set as Current
                                 </button>
+                                <?php endif; ?>
+                                <?php if (!$sy['is_current'] || $syEnded): ?>
+                                <button type="button" class="btn btn-outline btn-sm"
+                                    onclick="archiveYear(<?= (int) $sy['school_year_id'] ?>, 'archive', this)">
+                                    Archive
+                                </button>
+                                <?php endif; ?>
+                            <?php endif; ?>
+                            </div>
+                            <?php if ($canWrite): ?>
+                            <form class="year-edit-form" id="editYearForm-<?= (int) $sy['school_year_id'] ?>" hidden>
+                                <input type="hidden" name="csrf" value="<?= clean($csrfToken) ?>">
+                                <input type="hidden" name="school_year_id" value="<?= (int) $sy['school_year_id'] ?>">
+                                <div class="form-alert" hidden></div>
+                                <div class="year-edit-fields">
+                                    <div class="form-group">
+                                        <label>Label</label>
+                                        <input type="text" name="label" value="<?= clean($sy['label']) ?>" maxlength="9" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Start Date</label>
+                                        <input type="date" name="start_date" value="<?= clean($sy['start_date']) ?>" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>End Date</label>
+                                        <input type="date" name="end_date" value="<?= clean($sy['end_date']) ?>" required>
+                                    </div>
+                                </div>
+                                <div class="year-edit-actions">
+                                    <button type="button" class="btn btn-outline btn-sm" onclick="toggleYearEdit(<?= (int) $sy['school_year_id'] ?>, false)">Cancel</button>
+                                    <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-check"></i> Save</button>
+                                </div>
+                            </form>
                             <?php endif; ?>
                         </div>
                         <?php endforeach; ?>
@@ -165,6 +224,18 @@ foreach ($schoolYears as $sy) {
                                 </label>
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label><i class="fas fa-copy"></i> Copy sections &amp; classes from</label>
+                                <select name="copy_from">
+                                    <option value="">Start empty</option>
+                                    <?php foreach ($schoolYears as $sy): ?>
+                                    <option value="<?= (int) $sy['school_year_id'] ?>"><?= clean($sy['label']) ?><?= $sy['is_current'] ? ' (current)' : '' ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <small>Recreates each section and class (teacher, schedule, capacity) as a TRM 1 class in the new year. Students are not carried over.</small>
+                            </div>
+                        </div>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary" id="addYearBtn">
                                 <i class="fas fa-plus"></i> Add School Year
@@ -176,7 +247,7 @@ foreach ($schoolYears as $sy) {
                 <div class="settings-card">
                     <div class="settings-card-header">
                         <h2><i class="fas fa-triangle-exclamation"></i> About Terms</h2>
-                        <p>Class offerings are created per term (TRM 1 / TRM 2 / TRM 3) from Classes & Subjects. Carrying enrolled students forward from one term to the next is not automatic yet — each term's offering and enrollments are separate records today.</p>
+                        <p>Class offerings are created per term (TRM 1 / TRM 2 / TRM 3). Within a school year, each class is copied into the next term with its enrolled students when the term changes. A new school year starts without students: use &ldquo;Copy sections &amp; classes from&rdquo; above to recreate the structure. The old year is archived automatically once its end date has passed. Term dates are not tied to a school year, so set them again under Classes &amp; Subjects &rarr; Set Term Interval for each new year.</p>
                     </div>
                 </div>
             </div>
@@ -527,6 +598,69 @@ foreach ($schoolYears as $sy) {
             .catch(() => {
                 errorBox.innerHTML = '<div>Something went wrong. Please try again.</div>';
                 errorBox.hidden = false;
+                btn.disabled = false;
+                btn.innerHTML = original;
+            });
+        }
+
+        function toggleYearEdit(id, show) {
+            const form = document.getElementById('editYearForm-' + id);
+            if (!form) return;
+            form.hidden = !show;
+            form.closest('.year-row').classList.toggle('is-editing', show);
+            if (show) {
+                form.querySelector('input[name="label"]').focus();
+            } else {
+                form.reset();
+                form.querySelector('.form-alert').hidden = true;
+            }
+        }
+
+        document.querySelectorAll('.year-edit-form').forEach(function (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const today = new Date().toISOString().slice(0, 10);
+                const end = form.querySelector('input[name="end_date"]').value;
+                if (end && end < today && !confirm('This end date has already passed. A school year whose end date has passed is archived automatically, which hides its classes and sections from teachers and students.\n\nSave anyway?')) {
+                    return;
+                }
+                const btn = form.querySelector('button[type="submit"]');
+                submitForm(form, 'update_school_year.php', btn, form.querySelector('.form-alert'), '<i class="fas fa-check"></i> Save');
+            });
+        });
+
+        function archiveYear(id, action, btn) {
+            const message = action === 'archive'
+                ? 'Archive this school year?\n\nAll of its classes and sections will be hidden from teachers and from students\' class lists. Students can still see their past grades. Nothing is deleted, and you can restore it any time.'
+                : 'Restore this school year?\n\nThe classes and sections that were hidden when it was archived will become visible again.\n\nIt will not be archived automatically again until you click Archive on it.';
+            if (!confirm(message)) return;
+
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+            const form = new FormData();
+            form.append('csrf', document.querySelector('input[name="csrf"]').value);
+            form.append('school_year_id', id);
+            form.append('action', action);
+
+            fetch('archive_school_year.php', {
+                method: 'POST',
+                headers: { 'Accept': 'application/json' },
+                body: form
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.errors.join('\n'));
+                    btn.disabled = false;
+                    btn.innerHTML = original;
+                }
+            })
+            .catch(() => {
+                alert('Something went wrong. Please try again.');
                 btn.disabled = false;
                 btn.innerHTML = original;
             });

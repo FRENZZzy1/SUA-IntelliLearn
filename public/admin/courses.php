@@ -84,16 +84,13 @@ function setClassArchived(PDO $pdo, int $offeringId, bool $archive): int
     return $stmt->rowCount();
 }
 
-// Archiving is locked while a term is running (restoring is always allowed).
-$archiveLockedTerm = getActiveTerm($pdo);
-
-// courses.php?archive=ID&csrf=...   |   courses.php?restore=ID&csrf=...   (Class List)
-foreach (['archive' => true, 'restore' => false] as $param => $doArchive) {
+// courses.php?restore=ID&csrf=...   (Class List)
+// Classes are no longer archived by hand: they are archived automatically when their
+// school year ends. Restore is kept so already-archived classes can be brought back.
+foreach (['restore' => false] as $param => $doArchive) {
     if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
         if (!validateCSRFToken($_GET['csrf'] ?? '')) {
             setFlashMessage('error', 'That link expired. Please try again.');
-        } elseif ($doArchive && $archiveLockedTerm !== null) {
-            setFlashMessage('error', archiveBlockedMessage($archiveLockedTerm));
         } else {
             try {
                 $changed = setClassArchived($pdo, (int) $_GET[$param], $doArchive);
@@ -131,8 +128,6 @@ foreach (['archive_section' => true, 'restore_section' => false] as $param => $d
     if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
         if (!validateCSRFToken($_GET['csrf'] ?? '')) {
             setFlashMessage('error', 'That link expired. Please try again.');
-        } elseif ($doArchive && $archiveLockedTerm !== null) {
-            setFlashMessage('error', archiveBlockedMessage($archiveLockedTerm));
         } else {
             try {
                 $stmt = $pdo->prepare($doArchive
@@ -157,8 +152,6 @@ foreach (['archive_subject' => true, 'restore_subject' => false] as $param => $d
     if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
         if (!validateCSRFToken($_GET['csrf'] ?? '')) {
             setFlashMessage('error', 'That link expired. Please try again.');
-        } elseif ($doArchive && $archiveLockedTerm !== null) {
-            setFlashMessage('error', archiveBlockedMessage($archiveLockedTerm));
         } else {
             try {
                 $stmt = $pdo->prepare($doArchive
@@ -706,12 +699,6 @@ $subjectsList = $pdo->query("
                                    'status'        => $course['status'],
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditCourseModal(this)"><i class="fas fa-pen" aria-hidden="true"></i></button>
-                            <?php if ($archiveLockedTerm !== null): ?>
-                            <span class="ra-btn archive archive-disabled" data-tip="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i></span>
-                            <?php else: ?>
-                            <a class="ra-btn archive" data-tip="Archive class" aria-label="Archive class" href="courses.php?archive=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
-                               onclick="return confirmArchive('course')"><i class="fas fa-box-archive" aria-hidden="true"></i></a>
-                            <?php endif; ?>
                             <?php elseif ($ownArchived): ?>
                             <a class="ra-btn restore" data-tip="Restore class" aria-label="Restore class" href="courses.php?restore=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
                                onclick="return confirmArchive('restore-course')"><i class="fas fa-rotate-left" aria-hidden="true"></i></a>
@@ -806,12 +793,8 @@ $subjectsList = $pdo->query("
                                    'adviser_id'   => $sec['adviser_id'] ? (int) $sec['adviser_id'] : '',
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditSectionModal(this)"><i class="fas fa-pen" aria-hidden="true"></i></button>
-                            <?php if ($archiveLockedTerm !== null): ?>
-                            <span class="ra-btn archive archive-disabled" data-tip="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i></span>
-                            <?php else: ?>
                             <a class="ra-btn archive" data-tip="Archive section" aria-label="Archive section" href="courses.php?archive_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
                                onclick="return confirmArchive('section')"><i class="fas fa-box-archive" aria-hidden="true"></i></a>
-                            <?php endif; ?>
                             <?php else: ?>
                             <a class="ra-btn restore" data-tip="Restore section" aria-label="Restore section" href="courses.php?restore_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
                                onclick="return confirmArchive('restore-section')"><i class="fas fa-rotate-left" aria-hidden="true"></i></a>
@@ -891,12 +874,8 @@ $subjectsList = $pdo->query("
                                    'description'  => $subj['description'] ?? '',
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditSubjectModal(this)"><i class="fas fa-pen" aria-hidden="true"></i></button>
-                            <?php if ($archiveLockedTerm !== null): ?>
-                            <span class="ra-btn archive archive-disabled" data-tip="Archiving is disabled while <?= htmlspecialchars((string) $archiveLockedTerm) ?> is active" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i></span>
-                            <?php else: ?>
                             <a class="ra-btn archive" data-tip="Archive subject" aria-label="Archive subject" href="courses.php?archive_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
                                onclick="return confirmArchive('subject')"><i class="fas fa-box-archive" aria-hidden="true"></i></a>
-                            <?php endif; ?>
                             <?php else: ?>
                             <a class="ra-btn restore" data-tip="Restore subject" aria-label="Restore subject" href="courses.php?restore_subject=<?= (int) $subj['subject_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
                                onclick="return confirmArchive('restore-subject')"><i class="fas fa-rotate-left" aria-hidden="true"></i></a>

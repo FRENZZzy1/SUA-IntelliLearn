@@ -337,12 +337,6 @@ $usageStats = get_system_usage_stats($pdo);
                                         <div class="table-actions">
                                             <button type="button" class="ra-btn" data-tip="View students" aria-label="View students" onclick="openViewStudentsModal(<?php echo (int) $c['offering_id']; ?>)"><i class="fas fa-users" aria-hidden="true"></i></button>
                                             <button type="button" class="ra-btn" data-tip="Update class" aria-label="Update class" onclick="editCourseOffering(<?php echo (int) $c['offering_id']; ?>)"><i class="fas fa-pen" aria-hidden="true"></i></button>
-                                            <?php $archiveLockedTerm = $archiveLockedTerm ?? getActiveTerm($pdo); ?>
-                                            <?php if ($archiveLockedTerm !== null): ?>
-                                            <span class="ra-btn archive archive-disabled" data-tip="Archiving is disabled while <?php echo htmlspecialchars((string) $archiveLockedTerm); ?> is active" aria-disabled="true"><i class="fas fa-lock" aria-hidden="true"></i></span>
-                                            <?php else: ?>
-                                            <button type="button" class="ra-btn archive" data-tip="Archive class" aria-label="Archive class" onclick="deleteCourseOffering(<?php echo (int) $c['offering_id']; ?>, this)"><i class="fas fa-box-archive" aria-hidden="true"></i></button>
-                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>

@@ -9,7 +9,7 @@ $modalSectionsAll = $pdo->query("SELECT section_id, section_name, grade_level, i
 $modalSubjects = array_values(array_filter($modalSubjectsAll, static fn($r) => (int) $r['is_archived'] === 0));
 $modalSections = array_values(array_filter($modalSectionsAll, static fn($r) => (int) $r['is_archived'] === 0));
 $modalTeachers = $pdo->query("SELECT teacher_id, firstname, lastname FROM teachers ORDER BY lastname, firstname")->fetchAll();
-$modalSchoolYears = $pdo->query("SELECT school_year_id, label, is_current FROM schoolyears ORDER BY start_date DESC")->fetchAll();
+$modalSchoolYears = $pdo->query("SELECT school_year_id, label, is_current FROM schoolyears WHERE is_archived = 0 ORDER BY start_date DESC")->fetchAll();
 $modalCurrentTerm = resolveCurrentTerm(getTermIntervals($pdo));
 $modalDefaultCapacity = 50;
 try {

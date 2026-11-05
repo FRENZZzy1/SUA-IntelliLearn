@@ -213,6 +213,9 @@ body:has(#sidebar.collapsed) .main-content {
     border-radius: var(--radius-sm);
 }
 .year-row.is-current { border-color: var(--primary); background: rgba(26, 92, 58, 0.04); }
+.year-row.is-archived { background: rgba(0, 0, 0, 0.025); }
+.year-row.is-archived .year-row-info { opacity: 0.7; }
+.year-row-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .year-row-info { display: flex; align-items: center; gap: 12px; }
 .year-row-info .year-icon {
     width: 38px; height: 38px;
@@ -224,12 +227,33 @@ body:has(#sidebar.collapsed) .main-content {
 }
 .year-row-info strong { display: block; font-size: 0.92rem; color: var(--text-dark); }
 .year-row-info span { font-size: 0.8rem; color: var(--text-muted); }
+.year-row-info .year-note { display: block; font-size: 0.74rem; margin-top: 2px; opacity: 0.85; }
+
+/* Inline edit form for a school year */
+.year-row { flex-wrap: wrap; }
+.year-edit-form { flex: 0 0 100%; margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.year-edit-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.year-edit-fields .form-group { margin-bottom: 0; }
+.year-edit-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.year-row.is-editing { border-color: var(--primary); }
+@media (max-width: 640px) { .year-edit-fields { grid-template-columns: 1fr; } }
 
 .badge-current {
     font-size: 0.72rem;
     font-weight: 700;
     color: var(--primary);
     background: rgba(26, 92, 58, 0.12);
+    padding: 4px 10px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.badge-archived {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: rgba(0, 0, 0, 0.06);
     padding: 4px 10px;
     border-radius: 999px;
     text-transform: uppercase;

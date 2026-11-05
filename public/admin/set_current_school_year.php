@@ -33,10 +33,15 @@ if (!ctype_digit((string) $schoolYearId)) {
 }
 $schoolYearId = (int) $schoolYearId;
 
-$stmt = $pdo->prepare("SELECT school_year_id FROM schoolyears WHERE school_year_id = ?");
+$stmt = $pdo->prepare("SELECT school_year_id, is_archived FROM schoolyears WHERE school_year_id = ?");
 $stmt->execute([$schoolYearId]);
-if (!$stmt->fetch()) {
+$yearRow = $stmt->fetch();
+if (!$yearRow) {
     echo json_encode(['success' => false, 'errors' => ['School year not found.']]);
+    exit();
+}
+if ((int) $yearRow['is_archived'] === 1) {
+    echo json_encode(['success' => false, 'errors' => ['That school year is archived. Restore it before making it the current year.']]);
     exit();
 }
 

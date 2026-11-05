@@ -19,14 +19,13 @@ function setActive(el) {
 // Nothing is deleted any more; archiving just hides the item (restorable).
 function confirmArchive(type) {
     const messages = {
-        'course':          'Archive this class? It will be hidden from its enrolled students. You can restore it later from the "Archived" filter.',
         'section':         'Archive this section? Every class in it will be hidden from students and teachers until the section is restored.',
         'subject':         'Archive this subject? It can no longer be used for new classes. Existing classes are not affected.',
         'restore-course':  'Restore this class? It will be visible to its students again.',
         'restore-section': 'Restore this section? Its classes will be visible again.',
         'restore-subject': 'Restore this subject?',
     };
-    return confirm(messages[type] || messages.course);
+    return confirm(messages[type] || messages['restore-course']);
 }
 
 // ---- View tabs: Classes / Subjects / Sections / Search & Export ----
