@@ -20,9 +20,10 @@
     const MASCOT_IMG = `<img src="${MASCOT_HEAD_PNG}" alt="" class="mascot-head" draggable="false">`;
 
     const SUGGESTIONS = [
-        'How many students are enrolled?',
-        'List teachers in the Science department',
-        'Show sections for Grade 10'
+        'What needs my attention today?',
+        'Which classes are full or almost full?',
+        'How do I set up a new school year?',
+        'Draft an announcement about enrollment'
     ];
 
     let history = []; // [{role: 'user'|'assistant', content: string}]
@@ -91,8 +92,32 @@
             }
         }
 
-        lines.forEach((line) => {
+        // GitHub-style table helpers (text is already HTML-escaped at this point).
+        const isTableRow = (l) => /^\|.*\|$/.test(l);
+        const isTableSep = (l) => /^\|(\s*:?-{2,}:?\s*\|)+$/.test(l);
+        const splitRow = (l) => l.replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
             const trimmed = line.trim();
+
+            // Table: a header row immediately followed by a |---|---| separator row.
+            if (isTableRow(trimmed) && i + 1 < lines.length && isTableSep(lines[i + 1].trim())) {
+                flushList();
+                flushPara();
+                const head = splitRow(trimmed);
+                let body = '';
+                i += 2;
+                while (i < lines.length && isTableRow(lines[i].trim())) {
+                    const cells = splitRow(lines[i].trim());
+                    body += '<tr>' + head.map((_, c) => `<td>${cells[c] ?? ''}</td>`).join('') + '</tr>';
+                    i++;
+                }
+                i--; // the for-loop increments again
+                html += `<div class="chat-table-wrap"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
+                continue;
+            }
+
             const headerMatch = trimmed.match(/^(#{1,3})\s+(.*)$/);
             const ulMatch = trimmed.match(/^[-*+]\s+(.*)$/);
             const olMatch = trimmed.match(/^\d+[.)]\s+(.*)$/);
@@ -122,7 +147,7 @@
                 flushList();
                 paraBuffer.push(trimmed);
             }
-        });
+        }
         flushList();
         flushPara();
 
@@ -370,6 +395,11 @@
                 background: rgba(79,70,229,0.06);
                 color: var(--text-muted, #475569);
             }
+            .chat-table-wrap { margin: 6px 0 8px; overflow-x: auto; max-width: 100%; border: 1px solid #e5e7eb; border-radius: 8px; }
+            .chat-msg table { border-collapse: collapse; width: 100%; font-size: 12px; line-height: 1.35; }
+            .chat-msg th, .chat-msg td { padding: 5px 8px; text-align: left; vertical-align: top; border-bottom: 1px solid #eef0f2; }
+            .chat-msg th { background: var(--il-green-50, #eef5f0); color: var(--il-green-800, #1b4332); font-weight: 700; white-space: nowrap; }
+            .chat-msg tbody tr:last-child td { border-bottom: none; }
             .chat-msg code {
                 background: rgba(79,70,229,0.1);
                 color: #4338ca;
@@ -905,7 +935,7 @@
     function renderWelcome() {
         const messages = document.getElementById('chatMessages');
         messages.innerHTML = '';
-        appendMessage('bot', 'Hi! I can answer questions about students, teachers, courses, sections, and enrollments in the system. What would you like to know?', { skipHistory: true });
+        appendMessage('bot', 'Hi! I can report live school data (students, teachers, sections, classes, enrollment, evaluations), walk you through any Admin Portal task, and give advice or draft announcements. What would you like to know?', { skipHistory: true });
         renderSuggestions();
     }
 

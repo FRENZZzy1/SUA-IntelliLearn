@@ -442,6 +442,13 @@ function chatbot_stopwords(): array {
         'where','why','can','could','do','does','did','has','have','had','will','would','should',
         'i','you','we','they','he','she','me','my','our','your','their','there','here',
         'please','show','list','tell','give','find','get','me','all','any','some',
+        // Structural words that name a *kind* of record, not a specific one. As search
+        // keywords they only add noise (e.g. LIKE '%class%' matching section names).
+        'student','students','teacher','teachers','class','classes','course','courses',
+        'section','sections','subject','subjects','grade','enrolled','enrollment',
+        'enrollments','currently','handle','handles','number','total','pending','requests',
+        'request','school','users','user','account','accounts','full','names','name',
+        'status','current','currently','right','now','today','need','want','know',
     ];
 }
 
@@ -813,7 +820,7 @@ function get_chatbot_context(PDO $pdo, string $question): string {
                 if (!empty($schedule)) {
                     $lines[] = "\n{$u['full_name']}'S CURRENT SCHEDULE (subject · section · grade · quarter · status):";
                     foreach ($schedule as $s) {
-                        $lines[] = "- {$s['subject_name']} · {$s['section_name']} · Grade {$s['grade_level']} · Q{$s['quarter']} · {$s['enrollment_status']}";
+                        $lines[] = "- {$s['subject_name']} · {$s['section_name']} · Grade {$s['grade_level']} · {$s['quarter']} · {$s['enrollment_status']}";
                     }
                 }
             } elseif ($u['role'] === 'teacher') {
@@ -821,7 +828,7 @@ function get_chatbot_context(PDO $pdo, string $question): string {
                 if (!empty($workload)) {
                     $lines[] = "\n{$u['full_name']}'S TEACHING LOAD (subject · section · grade · quarter · status):";
                     foreach ($workload as $w) {
-                        $lines[] = "- {$w['subject_name']} · {$w['section_name']} · Grade {$w['grade_level']} · Q{$w['quarter']} · {$w['status']}";
+                        $lines[] = "- {$w['subject_name']} · {$w['section_name']} · Grade {$w['grade_level']} · {$w['quarter']} · {$w['status']}";
                     }
                 }
             }
@@ -834,7 +841,7 @@ function get_chatbot_context(PDO $pdo, string $question): string {
         $lines[] = "\nMATCHING COURSES (subject — section · grade · teacher · quarter · enrolled/capacity · status):";
         foreach (array_slice($courseRows, 0, 8) as $c) {
             $enrolled = $counts[$c['offering_id']] ?? 0;
-            $lines[] = "- {$c['subject_name']} — {$c['section_name']} · Grade {$c['grade_level']} · {$c['teacher_name']} · Q{$c['quarter']} · {$enrolled}/{$c['capacity']} enrolled · {$c['status']}";
+            $lines[] = "- {$c['subject_name']} — {$c['section_name']} · Grade {$c['grade_level']} · {$c['teacher_name']} · {$c['quarter']} · {$enrolled}/{$c['capacity']} enrolled · {$c['status']}";
         }
     }
 
@@ -896,7 +903,7 @@ function get_chatbot_context(PDO $pdo, string $question): string {
     }
 
     if (!$foundAnything) {
-        $lines[] = "\n(No specific student/teacher/course/subject/section/request records matched this question — only school-wide stats above are available. If the question needs a record lookup, ask the admin to include a name, grade level, section, or subject to search for.)";
+        $lines[] = "\n(No specific student/teacher/course/subject/section/request record matched by keyword. Overall questions can still be answered from SCHOOL STATE and the stats above. Only if the question is about one particular record, ask the admin for a name, grade level, section, or subject.)";
     }
 
     return implode("\n", $lines);
