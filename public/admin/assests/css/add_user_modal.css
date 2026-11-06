@@ -1,0 +1,240 @@
+/* ── Overlay ───────────────────────────────────────────── */
+.aum-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(18, 64, 41, 0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 9999; padding: 24px;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    animation: aumFadeIn 0.25s ease;
+}
+@keyframes aumFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Modal Shell (no scroll here) ──────────────────────── */
+.aum-modal {
+    background: #ffffff; border-radius: 20px;
+    width: 100%; max-width: 680px; max-height: 92vh;
+    box-shadow: 0 25px 80px rgba(18, 64, 41, 0.25), 0 0 0 1px rgba(255,255,255,0.1);
+    animation: aumSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+    font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+}
+@keyframes aumSlideUp {
+    from { opacity: 0; transform: translateY(30px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Scrollable Inner Area ─────────────────────────────── */
+.aum-scroll-area {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+    /* Thin custom scrollbar so it never looks bulky at the edge */
+    scrollbar-width: thin;
+    scrollbar-color: #c5d5cb transparent;
+}
+.aum-scroll-area::-webkit-scrollbar { width: 6px; }
+.aum-scroll-area::-webkit-scrollbar-track { background: transparent; margin: 8px 0; }
+.aum-scroll-area::-webkit-scrollbar-thumb {
+    background: #c5d5cb; border-radius: 10px;
+}
+
+/* ── Accent Bar ────────────────────────────────────────── */
+.aum-accent-bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 5px;
+    background: linear-gradient(90deg, #124029 0%, #1a5c3a 40%, #f4a261 100%);
+    border-radius: 20px 20px 0 0; z-index: 2;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+.aum-header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 28px 28px 0 28px; flex-shrink: 0; position: relative; z-index: 1;
+}
+.aum-header-icon {
+    width: 48px; height: 48px; border-radius: 14px;
+    background: linear-gradient(135deg, #124029 0%, #1a5c3a 100%);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1.2rem;
+    box-shadow: 0 4px 12px rgba(18, 64, 41, 0.25);
+    flex-shrink: 0;
+}
+.aum-header-text { flex: 1; }
+.aum-header-text h2 { font-size: 1.3rem; font-weight: 700; color: #124029; margin: 0 0 4px 0; letter-spacing: -0.3px; }
+.aum-header-text p { font-size: 0.82rem; color: #6b7280; margin: 0; }
+.aum-close {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: #9ca3af; font-size: 1.1rem;
+    transition: all 0.2s ease; flex-shrink: 0;
+    background: #f8faf9; border: 1px solid transparent;
+}
+.aum-close:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; transform: rotate(90deg); }
+
+/* ── Alert ─────────────────────────────────────────────── */
+.aum-alert {
+    display: none; margin: 16px 28px 0 28px;
+    padding: 14px 16px; border-radius: 12px;
+    font-size: 0.88rem; line-height: 1.5;
+    align-items: center; gap: 10px; flex-shrink: 0;
+    animation: aumAlertPop 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes aumAlertPop {
+    from { opacity: 0; transform: scale(0.95) translateY(-5px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.aum-alert.show { display: flex; }
+.aum-alert.success {
+    background: linear-gradient(135deg, #ecfdf3 0%, #d1fae5 100%);
+    color: #166534; border: 1px solid #86efac;
+    box-shadow: 0 2px 8px rgba(22, 101, 52, 0.08);
+}
+.aum-alert.error {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    color: #991b1b; border: 1px solid #fca5a5;
+    box-shadow: 0 2px 8px rgba(153, 27, 27, 0.08);
+}
+.aum-alert i { font-size: 1.1rem; flex-shrink: 0; }
+
+/* ── Sections ──────────────────────────────────────────── */
+.aum-section { padding: 0 28px; margin-top: 20px; }
+.aum-section-pills {
+    background: linear-gradient(180deg, #f8faf9 0%, #ffffff 100%);
+    margin: 16px 28px 0 28px; padding: 20px 24px;
+    border-radius: 16px; border: 1px solid #e8f0eb;
+}
+.aum-fields-section { margin-top: 8px; }
+.aum-section-title {
+    display: flex; align-items: center; gap: 12px;
+    margin: 24px 0 16px 0; color: #124029;
+    font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+}
+.aum-section-line { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, #d1e0d6, transparent); }
+.aum-section-label { display: block; font-size: 0.8rem; font-weight: 700; color: #374151; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+.aum-section-label i { color: #1a5c3a; margin-right: 4px; }
+
+/* ── Form Layout ───────────────────────────────────────── */
+.aum-row { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.aum-group { flex: 1; min-width: 200px; }
+.aum-group label { display: block; font-size: 0.82rem; font-weight: 600; color: #374151; margin-bottom: 7px; }
+.aum-req { color: #dc2626; font-weight: 700; }
+.aum-help-text { display: block; margin-top: 6px; font-size: 0.78rem; color: #6b7280; }
+.aum-help-text i { color: #f4a261; }
+
+/* ── Inputs ────────────────────────────────────────────── */
+.aum-input-wrap { position: relative; }
+.aum-input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; font-size: 0.85rem; pointer-events: none; transition: color 0.2s ease; }
+.aum-control {
+    width: 100%; padding: 10px 12px 10px 38px;
+    border: 1.5px solid #e5e7eb; border-radius: 10px;
+    font-size: 0.9rem; font-family: inherit; color: #1f2937;
+    background: #fafbfc; transition: all 0.2s ease;
+}
+.aum-control::placeholder { color: #b0b8c4; }
+.aum-has-eye .aum-control { padding-right: 44px; }
+.aum-eye-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: none; background: none; border-radius: 8px; color: #9ca3af; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; transition: color 0.2s ease, background 0.2s ease; }
+.aum-eye-btn:hover { color: #1a5c3a; background: rgba(26,92,58,0.08); }
+.aum-eye-btn:focus-visible { outline: 2px solid #1a5c3a; outline-offset: 1px; }
+.aum-help-text.match-ok { color: #16a34a; }
+.aum-help-text.match-bad { color: #dc2626; }
+.aum-control:hover { border-color: #c5d5cb; background: #f8faf9; }
+.aum-control:focus { outline: none; border-color: #1a5c3a; background: #ffffff; box-shadow: 0 0 0 4px rgba(26,92,58,0.1); }
+.aum-control:focus + .aum-input-icon, .aum-input-wrap:focus-within .aum-input-icon { color: #1a5c3a; }
+select.aum-control { padding-right: 36px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+
+/* ── Pills ─────────────────────────────────────────────── */
+.aum-pills { display: flex; gap: 10px; flex-wrap: wrap; }
+.aum-pill {
+    flex: 1; min-width: 120px; padding: 10px 14px;
+    border: 2px solid #e5e7eb; border-radius: 12px; cursor: pointer;
+    background: #fff; color: #4b5563;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex; align-items: center; gap: 10px;
+}
+.aum-pill:hover { border-color: #1a5c3a; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(18, 64, 41, 0.1); }
+.aum-pill.active {
+    background: linear-gradient(135deg, #124029 0%, #1a5c3a 100%);
+    border-color: #124029; color: #fff;
+    box-shadow: 0 4px 16px rgba(18, 64, 41, 0.25);
+    transform: translateY(-1px);
+}
+.aum-pill-icon { width: 34px; height: 34px; border-radius: 10px; background: rgba(18, 64, 41, 0.08); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; color: #1a5c3a; transition: all 0.2s ease; }
+.aum-pill.active .aum-pill-icon { background: rgba(255,255,255,0.2); color: #fff; }
+.aum-pill-text { display: flex; flex-direction: column; }
+.aum-pill-text strong { font-size: 0.85rem; font-weight: 600; }
+.aum-pill-text small { font-size: 0.72rem; opacity: 0.8; font-weight: 400; }
+.aum-pills-compact .aum-pill { min-width: auto; padding: 8px 14px; font-size: 0.82rem; font-weight: 500; }
+.aum-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.aum-dot-green { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.2); }
+.aum-dot-gray { background: #9ca3af; box-shadow: 0 0 0 3px rgba(156,163,175,0.2); }
+.aum-dot-red { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.2); }
+
+/* ── Hint Box ──────────────────────────────────────────── */
+.aum-hint {
+    background: linear-gradient(135deg, #fef9f3 0%, #fdf4e8 100%);
+    border: 1px solid #fde8cd; border-radius: 12px;
+    padding: 16px; display: flex; gap: 14px;
+    margin-top: 8px; margin-bottom: 4px;
+}
+.aum-hint-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #f4a261 0%, #e8935a 100%); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 0.9rem; flex-shrink: 0; box-shadow: 0 2px 8px rgba(244, 162, 97, 0.3); }
+.aum-hint-text { font-size: 0.82rem; color: #7c5c3a; line-height: 1.6; }
+.aum-hint-text strong { color: #92400e; }
+.aum-hint-detail { color: #a16207; font-size: 0.8rem; }
+
+/* ── Actions ───────────────────────────────────────────── */
+.aum-actions {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 24px 28px 28px 28px; padding-top: 20px;
+    border-top: 1px solid #e8f0eb; flex-wrap: wrap; gap: 14px;
+}
+
+/* Custom Checkbox */
+.aum-checkbox { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.aum-checkbox-box { position: relative; width: 22px; height: 22px; }
+.aum-checkbox-box input { position: absolute; opacity: 0; width: 0; height: 0; }
+.aum-checkmark {
+    position: absolute; top: 0; left: 0; width: 22px; height: 22px; border-radius: 6px;
+    border: 2px solid #d1d5db; background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s ease; color: transparent; font-size: 0.65rem;
+}
+.aum-checkbox-box input:checked + .aum-checkmark {
+    background: linear-gradient(135deg, #124029 0%, #1a5c3a 100%);
+    border-color: #124029; color: #fff;
+    box-shadow: 0 2px 6px rgba(18, 64, 41, 0.25);
+}
+.aum-checkbox-label { font-size: 0.85rem; color: #4b5563; font-weight: 500; }
+.aum-checkbox-label i { color: #f4a261; margin-right: 2px; }
+.aum-actions-right { display: flex; gap: 10px; margin-left: auto; }
+
+/* Buttons */
+.aum-btn-primary, .aum-btn-secondary {
+    padding: 11px 20px; border-radius: 10px; font-size: 0.88rem; font-weight: 600;
+    cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 8px;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.aum-btn-primary {
+    background: linear-gradient(135deg, #f4a261 0%, #e8935a 100%);
+    color: #1f2937; box-shadow: 0 4px 14px rgba(244, 162, 97, 0.35);
+}
+.aum-btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(244, 162, 97, 0.45); }
+.aum-btn-primary:active { transform: translateY(0); }
+.aum-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+.aum-btn-secondary { background: #f0f4f1; color: #4b5563; border: 1px solid #e5e7eb; }
+.aum-btn-secondary:hover { background: #e4ebe6; border-color: #d1d5db; transform: translateY(-1px); }
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .aum-overlay { padding: 12px; }
+    .aum-modal { border-radius: 16px; max-height: 95vh; }
+    .aum-accent-bar { border-radius: 16px 16px 0 0; }
+    .aum-header { padding: 20px 20px 0 20px; }
+    .aum-alert { margin: 12px 20px 0 20px; }
+    .aum-section, .aum-actions { padding-left: 20px; padding-right: 20px; margin-left: 0; margin-right: 0; }
+    .aum-section-pills { margin: 12px 20px 0 20px; padding: 16px; }
+    .aum-row { flex-direction: column; gap: 12px; }
+    .aum-group { min-width: 100%; }
+    .aum-pill { min-width: 100%; }
+    .aum-actions { flex-direction: column; align-items: stretch; }
+    .aum-actions-right { margin-left: 0; justify-content: flex-end; }
+}

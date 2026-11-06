@@ -253,13 +253,6 @@ include 'assests/api/access_permissions_modal.php';
                     </div>
                 </div>
 
-                <script>
-               // Shows/hides the right block of fields for the role being edited, and
-                // keeps `required` in sync with visibility so hidden fields never block
-                //  native form validation.
-                
-                </script>
-
                 <div class="form-row">
                     <div class="form-group">
                         <label>Status</label>

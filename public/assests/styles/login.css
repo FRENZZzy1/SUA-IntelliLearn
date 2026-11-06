@@ -1,0 +1,128 @@
+.forgot-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(5px);
+}
+
+.forgot-modal-overlay.active {
+    display: flex;
+}
+
+.forgot-modal {
+    width: 100%;
+    max-width: 460px;
+    background: #fff;
+    border-radius: 20px;
+    padding: 30px;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: forgotModalIn 0.25s ease-out;
+}
+
+@keyframes forgotModalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.forgot-modal-close {
+    position: absolute;
+    top: 15px;
+    right: 17px;
+    border: 0;
+    background: transparent;
+    color: #6c757d;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.forgot-modal-icon {
+    width: 58px;
+    height: 58px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, #1B5E20, #2E7D32);
+    color: #fff;
+    font-size: 25px;
+}
+
+.forgot-modal h3 {
+    margin: 0 0 10px;
+    color: #1a1a2e;
+    font-size: 23px;
+}
+
+.forgot-modal p {
+    margin: 0 0 18px;
+    color: #6c757d;
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.forgot-contact-box {
+    background: #f8f9fa;
+    border-left: 4px solid #2E7D32;
+    border-radius: 10px;
+    padding: 15px 16px;
+    margin-bottom: 18px;
+}
+
+.forgot-contact-box strong {
+    display: block;
+    color: #1a1a2e;
+    margin-bottom: 4px;
+}
+
+.forgot-contact-box span {
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.forgot-details {
+    margin: 0 0 20px 20px;
+    padding: 0;
+    color: #495057;
+    font-size: 14px;
+    line-height: 1.9;
+}
+
+.forgot-fb-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    width: 100%;
+    padding: 13px 18px;
+    border-radius: 11px;
+    background: #1877F2;
+    color: #fff;
+    text-decoration: none;
+    font-weight: 600;
+    transition: 0.2s ease;
+}
+
+.forgot-fb-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.forgot-modal-note {
+    text-align: center;
+    margin-top: 14px !important;
+    margin-bottom: 0 !important;
+    font-size: 12px !important;
+}
+
+@media (max-width: 480px) {
+    .forgot-modal {
+        padding: 25px 20px;
+    }
+}
