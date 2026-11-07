@@ -3,6 +3,9 @@
 
     var ENDPOINT = '/SUA-INTELLILEARN/public/teacher/assets/api/teacher_chatbot.php';
     var FAB_ICON = '/SUA-INTELLILEARN/public/admin/assests/images/icon_chat.png';
+    // Mascot head PNG used for the header avatar and every bot message (same file as the admin assistant).
+    var MASCOT_HEAD = '/SUA-INTELLILEARN/public/admin/assests/images/mascot_head.png';
+    var MASCOT_IMG = '<img src="' + MASCOT_HEAD + '" alt="" class="tca-mascot" draggable="false">';
     var MAX_HISTORY = 8;
     var SUGGESTIONS = [
         'Who is at risk in my classes?',
@@ -121,7 +124,32 @@
         '.tca-input:not(.has-text) .tca-send:not(:disabled){background:#cbd5d0;cursor:default}',
         '.tca-disclaimer{padding:7px 12px 10px;font-size:11px}',
         '.tca-expanded .tca-input{width:min(820px,calc(100% - 40px));margin:6px auto 0}',
-        '@media(max-width:700px){.tca-icon[data-expand]{display:none}.tca-input{margin:6px 10px 0}.tca-input textarea{font-size:16px}}'
+        '@media(max-width:700px){.tca-icon[data-expand]{display:none}.tca-input{margin:6px 10px 0}.tca-input textarea{font-size:16px}}',
+        '#teacherChatAssistant{--il-green-900:#124029;--il-green-800:#1a5c3a;--il-green-700:#2d7a52;--il-green-50:#eef5f0;--il-gold:#f4a261;--il-cream:#fbf3dc}',
+        '.tca-fab{border:3px solid #1a5c3a;background:#fbf3dc}',
+        '.tca-head{background:linear-gradient(135deg,var(--il-green-900),var(--il-green-800) 60%,var(--il-green-700));border-bottom:3px solid var(--il-gold)}',
+        '.tca-avatar{width:42px;height:42px;background:var(--il-cream);border:2px solid var(--il-gold);overflow:visible}',
+        '.tca-avatar:after{z-index:2;right:-3px;bottom:-3px;border-color:var(--il-green-900)}',
+        '.tca-row-avatar{width:30px;height:30px;flex:0 0 30px;overflow:hidden;padding:0;background:var(--il-cream);border:1.5px solid var(--il-green-800)}',
+        '.tca-row.user .tca-row-avatar{background:#d1d5db;border:0;color:#374151}',
+        'img.tca-mascot{width:100%;height:100%;object-fit:cover;object-position:center 35%;display:block;border-radius:50%;pointer-events:none;user-select:none}',
+        '.tca-messages{background:#f0f4f1}',
+        '.tca-user{background:linear-gradient(135deg,var(--il-green-800),var(--il-green-700))}',
+        '.tca-bot{border-left:3px solid var(--il-gold)}',
+        '.tca-msg h4{color:var(--il-green-800)}',
+        '.tca-msg code{background:var(--il-green-50);color:var(--il-green-800)}',
+        '.tca-msg th{background:var(--il-green-50);color:var(--il-green-800)}',
+        '.tca-msg a{color:var(--il-green-700);font-weight:600;text-decoration:underline}',
+        '.tca-user a,.tca-user code{color:#fff}',
+        '.tca-user code{background:rgba(255,255,255,.22)}',
+        '.tca-chip{border-color:#cfe0d5;color:var(--il-green-800);background:#fff;transition:background .15s ease,transform .1s ease,border-color .15s ease}',
+        '.tca-chip:hover{background:var(--il-green-50);border-color:var(--il-green-700);transform:translateY(-1px)}',
+        '.tca-typing span{background:var(--il-green-700)}',
+        '.tca-input:focus-within{border-color:var(--il-green-700);box-shadow:0 0 0 4px rgba(45,122,82,.15)}',
+        '.tca-send{background:var(--il-green-800)}',
+        '.tca-send:hover:not(:disabled){background:var(--il-green-700)}',
+        '.tca-input:not(.has-text) .tca-send:not(:disabled),.tca-input:not(.has-text) .tca-send:not(:disabled):hover{background:#cbd5d0}',
+        '@media(max-width:700px){.tca-fab{right:14px;bottom:14px;width:56px;height:56px}.tca-row-avatar{width:30px;height:30px;flex-basis:30px}}'
     ].join('');
     document.head.appendChild(style);
 
@@ -130,7 +158,7 @@
     root.innerHTML =
         '<button class="tca-fab" id="tcaFab" aria-label="Open teacher assistant" title="Teacher Assistant"><img src="' + FAB_ICON + '" alt="Teacher Assistant"></button>' +
         '<section class="tca-panel" id="tcaPanel" role="dialog" aria-label="Teacher Assistant">' +
-        '<header class="tca-head"><div class="tca-avatar"><i class="fas fa-robot"></i></div>' +
+        '<header class="tca-head"><div class="tca-avatar">' + MASCOT_IMG + '</div>' +
         '<div><div class="tca-title">IntelliLearn Teacher Assistant</div><div class="tca-subtitle">Your classes, students & learning data</div></div>' +
         '<div class="tca-actions"><button class="tca-icon" id="tcaClear" title="Clear conversation"><i class="fas fa-broom"></i></button><button class="tca-icon" id="tcaExpand" data-expand title="Full screen" aria-label="Enter full screen"><i class="fas fa-expand"></i></button><button class="tca-icon" id="tcaClose" title="Minimize" aria-label="Minimize"><i class="fas fa-minus"></i></button></div></header>' +
         '<div class="tca-messages" id="tcaMessages"></div>' +
@@ -150,7 +178,7 @@
     function addMessage(role, content, error) {
         var row = document.createElement('div');
         row.className = 'tca-row ' + role;
-        var avatar = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+        var avatar = role === 'user' ? '<i class="fas fa-user"></i>' : MASCOT_IMG;
         var rendered = role === 'assistant' && !error ? renderMarkdown(content) : esc(content).replace(/\n/g,'<br>');
         row.innerHTML = '<div class="tca-row-avatar">' + avatar + '</div><div class="tca-group"><div class="tca-msg ' +
             (error ? 'tca-error' : (role === 'user' ? 'tca-user' : 'tca-bot')) + '">' + rendered +
@@ -165,7 +193,7 @@
             el = document.createElement('div');
             el.id = 'tcaTyping';
             el.className = 'tca-row';
-            el.innerHTML = '<div class="tca-row-avatar"><i class="fas fa-robot"></i></div><div class="tca-group"><div class="tca-msg tca-bot"><div class="tca-typing"><span></span><span></span><span></span></div></div></div>';
+            el.innerHTML = '<div class="tca-row-avatar">' + MASCOT_IMG + '</div><div class="tca-group"><div class="tca-msg tca-bot"><div class="tca-typing"><span></span><span></span><span></span></div></div></div>';
             messages.appendChild(el); scrollBottom();
         } else if (!show && el) el.remove();
     }
