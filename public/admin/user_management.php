@@ -17,6 +17,14 @@ require_once 'assests/api/user_management_logic.php';
 
 <!-- User Management Stylesheet -->
 <link rel="stylesheet" href="../../public/admin/assests/css/user_management.css">
+<style>
+/* Show/hide password eye (Edit User modal) */
+.pw-eye-wrap { position: relative; }
+.pw-eye-wrap .form-control { padding-right: 44px; }
+.pw-eye-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border: none; background: none; border-radius: 8px; color: #9ca3af; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; transition: color 0.2s ease, background 0.2s ease; }
+.pw-eye-btn:hover { color: #1a5c3a; background: rgba(26,92,58,0.08); }
+.pw-eye-btn:focus-visible { outline: 2px solid #1a5c3a; outline-offset: 1px; }
+</style>
 </head>
 <body>
 
@@ -263,7 +271,7 @@ include 'assests/api/access_permissions_modal.php';
                     </div>
                     <div class="form-group">
                         <label>New Password <small>(leave blank to keep current)</small></label>
-                        <input type="password" name="new_password" id="editNewPassword" class="form-control" placeholder="Min 8 characters, 1 uppercase, 1 special character" minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}">
+                        <div class="pw-eye-wrap"><input type="password" name="new_password" id="editNewPassword" class="form-control" placeholder="Min 8 characters, 1 uppercase, 1 special character" minlength="8" pattern="(?=.*[A-Z])(?=.*[^A-Za-z0-9]).{8,}"><button type="button" class="pw-eye-btn" id="editPasswordEye" data-eye-for="editNewPassword" title="Show password" aria-label="Show password"><i class="fas fa-eye"></i></button></div>
                     </div>
                 </div>
 
@@ -538,7 +546,33 @@ include 'assests/api/access_permissions_modal.php';
 
 <script src="assests/js/phone_guard.js?v=<?= (int) @filemtime(__DIR__ . '/assests/js/phone_guard.js') ?>"></script>
 <script src="assests/js/input_guards.js"></script>
-<script src="assests/js/user_management.js"></script>
+<script src="assests/js/user_management.js?v=<?= (int) @filemtime(__DIR__ . '/assests/js/user_management.js') ?>"></script>
+<script>
+/* Show/hide password eye for the Edit User modal (all roles). */
+(function () {
+    function setEye(btn, show) {
+        var input = document.getElementById(btn.getAttribute('data-eye-for'));
+        if (!input) return;
+        input.type = show ? 'text' : 'password';
+        btn.querySelector('i').className = 'fas ' + (show ? 'fa-eye-slash' : 'fa-eye');
+        var label = show ? 'Hide password' : 'Show password';
+        btn.setAttribute('title', label);
+        btn.setAttribute('aria-label', label);
+    }
+    document.querySelectorAll('.pw-eye-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var input = document.getElementById(btn.getAttribute('data-eye-for'));
+            setEye(btn, input && input.type === 'password');
+        });
+    });
+    // Always start hidden when the modal is (re)opened or the form is reset.
+    window.resetEditPasswordEye = function () {
+        document.querySelectorAll('.pw-eye-btn').forEach(function (b) { setEye(b, false); });
+    };
+    var form = document.getElementById('editUserForm');
+    if (form) form.addEventListener('reset', function () { setTimeout(window.resetEditPasswordEye, 0); });
+})();
+</script>
 <script src="assests/js/student_user_tools.js"></script>
    
 </body>

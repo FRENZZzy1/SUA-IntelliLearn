@@ -121,7 +121,7 @@
         document.getElementById('editRoleInput').value = role;
         document.getElementById('editEmail').value = card.dataset.email;
         document.getElementById('editStatus').value = card.dataset.status;
-        document.getElementById('editNewPassword').value = '';
+        document.getElementById('editNewPassword').value = ''; if (window.resetEditPasswordEye) window.resetEditPasswordEye();
         if (window.inputGuardsReset) window.inputGuardsReset(document.getElementById('editUserForm'));
 
         if (role === 'student' || role === 'teacher') {
