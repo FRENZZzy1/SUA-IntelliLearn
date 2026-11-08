@@ -27,7 +27,7 @@ $description  = trim($_POST['description'] ?? '');
 
 if ($subject_name === '') $errors[] = 'Please enter a subject name.';
 if (strlen($subject_name) > 255) $errors[] = 'Subject name is too long.';
-if ($subject_name !== '' && (!preg_match('/^[\p{L}\p{N} \-]+$/u', $subject_name) || !preg_match('/[\p{L}\p{N}]/u', $subject_name))) $errors[] = 'Subject name can only contain letters, numbers, spaces and dashes (-).';
+if ($subject_name !== '' && (!preg_match('/^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u', $subject_name))) $errors[] = 'Subject name can only contain letters (and single spaces between words).';
 
 if (!empty($errors)) {
     http_response_code(422);

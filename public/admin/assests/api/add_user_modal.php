@@ -255,5 +255,6 @@ $aum_csrf = function_exists('generateCSRFToken') ? generateCSRFToken() : '';
 
 <link rel="stylesheet" href="assests/css/add_user_modal.css">
 
+<script src="assests/js/phone_guard.js?v=<?= (int) @filemtime(__DIR__ . '/../js/phone_guard.js') ?>"></script>
 <script src="assests/js/input_guards.js"></script>
 <script src="assests/js/add_user_modal.js"></script>

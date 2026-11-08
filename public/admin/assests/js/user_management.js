@@ -93,11 +93,17 @@
         const editForm = document.getElementById('editUserForm');
         if (editForm) {
             editForm.addEventListener('submit', event => {
-                const contact = document.getElementById('editGuardianContact');
-                if (contact && !validatePhilippineMobileInput(contact)) {
-                    event.preventDefault();
-                    contact.reportValidity();
-                    contact.focus();
+                const contactInputs = [
+                    document.getElementById('editGuardianContact'),
+                    document.getElementById('editContact')
+                ];
+                for (const contact of contactInputs) {
+                    if (contact && !contact.disabled && !validatePhilippineMobileInput(contact)) {
+                        event.preventDefault();
+                        contact.reportValidity();
+                        contact.focus();
+                        break;
+                    }
                 }
             });
         }
@@ -126,9 +132,7 @@
 
         if (role === 'teacher') {
             document.getElementById('editDepartment').value = card.dataset.department || '';
-            // Contact isn't persisted in the Teachers table yet, so this always starts
-            // blank — fill in only if/when a contact column is added.
-            document.getElementById('editContact').value = '';
+            document.getElementById('editContact').value = card.dataset.contact || '';
             document.getElementById('editEmploymentStatus').value = card.dataset.employmentStatus || '';
             document.getElementById('editNotes').value = card.dataset.notes || '';
         }

@@ -464,7 +464,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($role === 'teacher') {
                 $stmt = $pdo->prepare("
                     UPDATE Teachers 
-                    SET firstname = ?, lastname = ?, middlename = ?, email = ?, department = ?, specialization = ?, employment_status = ?, updated_at = NOW()
+                    SET firstname = ?, lastname = ?, middlename = ?, email = ?, department = ?, contact = ?, specialization = ?, employment_status = ?, updated_at = NOW()
                     WHERE user_id = ?
                 ");
                 $stmt->execute([
@@ -642,6 +642,7 @@ $sql = "SELECT
     COALESCE(t.lastname, s.lastname, '') as lastname,
     COALESCE(t.email, s.email, a.email, '') as email,
     COALESCE(t.department, '') as department,
+    COALESCE(t.contact, '') as contact,
     COALESCE(t.teacher_id, s.student_id, a.admin_id, 0) as role_id,
     COALESCE(t.specialization, '') as notes,
     COALESCE(t.employment_status, '') as employment_status,

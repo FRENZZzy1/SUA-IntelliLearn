@@ -145,7 +145,7 @@ include 'assests/api/access_permissions_modal.php';
                     </div>
                     <div class="form-group">
                         <label>Contact Number</label>
-                        <input type="tel" name="contact" id="editContact" class="form-control">
+                        <input type="tel" name="contact" id="editContact" class="form-control" placeholder="+63 912 345 6789" data-ph-mobile="true" maxlength="16" inputmode="tel" pattern="(?:09\d{9}|\+63\s?9\d{2}\s?\d{3}\s?\d{4})" title="Use 09XXXXXXXXX or +63 9XX XXX XXXX format">
                     </div>
                 </div>
 
@@ -437,7 +437,7 @@ include 'assests/api/access_permissions_modal.php';
                     data-fullname="<?= clean($display_name) ?>" data-email="<?= clean($user['email']) ?>"
                     data-firstname="<?= clean($user['firstname']) ?>" data-lastname="<?= clean($user['lastname']) ?>"
                     data-role="<?= $user['role'] ?>" data-status="<?= $user['status'] ?>"
-                    data-department="<?= clean($user['department']) ?>" data-notes="<?= clean($user['notes']) ?>"
+                    data-department="<?= clean($user['department']) ?>" data-contact="<?= clean($user['contact'] ?? '') ?>" data-notes="<?= clean($user['notes']) ?>"
                     data-employment-status="<?= clean($user['employment_status'] ?? '') ?>"
                     data-position="<?= clean($user['admin_position'] ?? '') ?>" data-access-level="<?= clean($user['admin_access_level'] ?? '') ?>" data-admin-permissions="<?= clean($user['admin_permissions'] ?? '{}') ?>" data-full-expires="<?= clean($user['admin_full_expires'] ?? '') ?>" data-full-days-left="<?= clean($user['admin_full_days_left'] ?? '') ?>"
                     data-username="<?= clean($user['username']) ?>" data-created="<?= $user['created_at'] ?>"
@@ -536,6 +536,7 @@ include 'assests/api/access_permissions_modal.php';
 
 </div>
 
+<script src="assests/js/phone_guard.js?v=<?= (int) @filemtime(__DIR__ . '/assests/js/phone_guard.js') ?>"></script>
 <script src="assests/js/input_guards.js"></script>
 <script src="assests/js/user_management.js"></script>
 <script src="assests/js/student_user_tools.js"></script>

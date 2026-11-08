@@ -1,6 +1,15 @@
 <?php
 $current = basename($_SERVER['PHP_SELF']);
 
+// Pages reached from the Classes module keep the "Classes" item highlighted.
+$classesPages = ['courses.php', 'course_section.php', 'class_overview.php'];
+$isClassesPage = in_array($current, $classesPages, true);
+
+// Student score pages are opened from the Grade Book.
+if ($current === 'student_scores.php') {
+    $current = 'grade_book.php';
+}
+
 // ================= CUSTOM SIDEBAR ICON CONFIG =================
 $scriptPath = str_replace('\\\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
 $appBasePath = preg_replace('#/public/(?:admin|teacher|student)/.*$#i', '', $scriptPath);
@@ -73,7 +82,7 @@ $atRiskCount = $atRiskCount ?? null;
                 <span class="nav-label">Dashboard</span>
             </a>
             <a href="../../public/teacher/courses.php"
-                class="nav-item <?= $current === 'courses.php' ? 'active' : '' ?>">
+                class="nav-item <?= $isClassesPage ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-book"></i></div>
                 <span class="nav-label">Classes</span>
             </a>

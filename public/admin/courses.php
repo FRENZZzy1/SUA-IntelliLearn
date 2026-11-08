@@ -1205,7 +1205,7 @@ $subjectsList = $pdo->query("
                 <div class="modal-body">
                     <div class="form-row">
                         <label for="s_section_name">Section Name</label>
-                        <input type="text" id="s_section_name" name="section_name" placeholder="e.g. Rizal" pattern="[\p{L}\p{N} \-]+" title="Letters, numbers, spaces and dashes (-) only" maxlength="255" required>
+                        <input type="text" id="s_section_name" name="section_name" placeholder="e.g. Rizal" data-input-rule="section" pattern="[\p{L}\p{N}]+(?:[ \-][\p{L}\p{N}]+)*" title="Letters, numbers, spaces and dashes (-) only" maxlength="255" required>
                     </div>
 
                     <div class="form-row">
@@ -1259,7 +1259,7 @@ $subjectsList = $pdo->query("
                 <div class="modal-body">
                     <div class="form-row">
                         <label for="es_section_name">Section Name</label>
-                        <input type="text" id="es_section_name" name="section_name" placeholder="e.g. Rizal" pattern="[\p{L}\p{N} \-]+" title="Letters, numbers, spaces and dashes (-) only" maxlength="255" required>
+                        <input type="text" id="es_section_name" name="section_name" placeholder="e.g. Rizal" data-input-rule="section" pattern="[\p{L}\p{N}]+(?:[ \-][\p{L}\p{N}]+)*" title="Letters, numbers, spaces and dashes (-) only" maxlength="255" required>
                     </div>
 
                     <div class="form-row">
@@ -1308,7 +1308,7 @@ $subjectsList = $pdo->query("
                 <div class="modal-body">
                     <div class="form-row">
                         <label for="sub_subject_name">Subject Name</label>
-                        <input type="text" id="sub_subject_name" name="subject_name" placeholder="e.g. Research" pattern="[\p{L}\p{N} \-]+" title="Letters, numbers, spaces and dashes (-) only" maxlength="255" required>
+                        <input type="text" id="sub_subject_name" name="subject_name" placeholder="e.g. Research" data-input-rule="letters" pattern="[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*" title="Letters only (spaces allowed between words)" maxlength="255" required>
                     </div>
 
                     <div class="form-row">
@@ -1342,7 +1342,7 @@ $subjectsList = $pdo->query("
                 <div class="modal-body">
                     <div class="form-row">
                         <label for="esub_subject_name">Subject Name</label>
-                        <input type="text" id="esub_subject_name" name="subject_name" placeholder="e.g. Research" pattern="[\p{L}\p{N} \-]+" title="Letters, numbers, spaces and dashes (-) only" maxlength="255" required>
+                        <input type="text" id="esub_subject_name" name="subject_name" placeholder="e.g. Research" data-input-rule="letters" pattern="[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*" title="Letters only (spaces allowed between words)" maxlength="255" required>
                     </div>
 
                     <div class="form-row">
@@ -1361,7 +1361,7 @@ $subjectsList = $pdo->query("
 
 </div>
 
-<script src="assests/js/courses.js"></script>
+<script src="assests/js/courses.js?v=<?= (int) @filemtime(__DIR__ . '/assests/js/courses.js') ?>"></script>
 
 </body>
 </html>

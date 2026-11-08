@@ -825,3 +825,132 @@ document.addEventListener('keydown', function (e) {
     closeAddSubjectModal();
     closeEditSubjectModal();
 });
+
+/* ---------- Input guards: subject name = letters only, section name = letters/numbers/dash ---------- */
+/* Same look & behaviour as the user-management guards: bad characters are refused and a red
+   inline message explains why (it fades after a moment; invalid final values keep their message). */
+(function () {
+    var RULES = {
+        letters: {
+            label: 'Subject name',
+            bad: /[^\p{L}\p{M} ]/gu,
+            test: /[^\p{L}\p{M} ]/u,
+            final: /^[\p{L}\p{M}]+(?: [\p{L}\p{M}]+)*$/u,
+            blocked: 'Subject name accepts letters only. Numbers and symbols are not allowed.',
+            invalid: 'Subject name can only contain letters, with single spaces between words.'
+        },
+        section: {
+            label: 'Section name',
+            bad: /[^\p{L}\p{N} \-]/gu,
+            test: /[^\p{L}\p{N} \-]/u,
+            final: /^[\p{L}\p{N}]+(?:[ \-][\p{L}\p{N}]+)*$/u,
+            blocked: 'Section name accepts letters, numbers and dashes (-) only. Other symbols are not allowed.',
+            invalid: 'Section name can only contain letters, numbers, spaces and dashes (-), and must start and end with a letter or number.'
+        }
+    };
+
+    function ruleFor(el) {
+        return el && el.tagName === 'INPUT' ? RULES[el.getAttribute('data-input-rule')] : null;
+    }
+
+    // ----- inline message (same style as the user forms) -----
+    function msgEl(input) {
+        var el = input._fwMsg;
+        if (el && el.isConnected) return el;
+        el = document.createElement('small');
+        el.className = 'ig-error';
+        el.setAttribute('role', 'alert');
+        el.style.cssText = 'display:none;margin-top:6px;font-size:.78rem;line-height:1.35;color:#dc2626;';
+        input.insertAdjacentElement('afterend', el);
+        input._fwMsg = el;
+        return el;
+    }
+    function showError(input, text) {
+        var el = msgEl(input);
+        el.innerHTML = '<i class="fas fa-exclamation-circle"></i> ';
+        el.appendChild(document.createTextNode(text));
+        el.style.display = 'block';
+        input.setAttribute('aria-invalid', 'true');
+        input.style.borderColor = '#dc2626';
+    }
+    function clearError(input) {
+        if (input._fwMsg) input._fwMsg.style.display = 'none';
+        input.removeAttribute('aria-invalid');
+        input.style.borderColor = '';
+        clearTimeout(input._fwTimer);
+    }
+    // Message for a blocked character: disappears on its own unless the value is still invalid.
+    function flash(input, rule, text) {
+        showError(input, text);
+        clearTimeout(input._fwTimer);
+        input._fwTimer = setTimeout(function () { settle(input, rule, false); }, 2500);
+    }
+    // Show a persistent error only if the value really is invalid.
+    function settle(input, rule, finalCheck) {
+        var v = input.value.trim();
+        if (v === '') {
+            if (finalCheck && input.required) { showError(input, rule.label + ' is required.'); return false; }
+            clearError(input); return true;
+        }
+        if (finalCheck && !rule.final.test(v)) { showError(input, rule.invalid); return false; }
+        clearError(input); return true;
+    }
+
+    function clean(input, rule) {
+        var v = input.value;
+        var c = v.replace(rule.bad, '').replace(/^[ \-]+/, '').replace(/ {2,}/g, ' ');
+        if (rule === RULES.section) c = c.replace(/-{2,}/g, '-');
+        if (c === v) return null;
+        var pos = input.selectionStart, shift = v.length - c.length;
+        input.value = c;
+        try { input.setSelectionRange(Math.max(0, pos - shift), Math.max(0, pos - shift)); } catch (_) {}
+        return rule.test.test(v) ? rule.blocked : 'No leading or repeated spaces/dashes allowed in ' + rule.label.toLowerCase() + '.';
+    }
+
+    // Typing: refuse the character and explain why.
+    document.addEventListener('beforeinput', function (e) {
+        var input = e.target, rule = ruleFor(input);
+        if (!rule || e.isComposing || !e.data) return;
+        if (e.inputType === 'insertFromPaste' || e.inputType === 'insertFromDrop') return;
+        if (rule.test.test(e.data)) { e.preventDefault(); flash(input, rule, rule.blocked); return; }
+        // no leading space/dash, no doubled space/dash
+        var before = input.value.slice(0, input.selectionStart || 0);
+        if (/^[ \-]$/.test(e.data) && (before === '' || /[ \-]$/.test(before))) {
+            e.preventDefault();
+            flash(input, rule, before === ''
+                ? rule.label + ' cannot start with a space or dash.'
+                : 'Spaces and dashes cannot be repeated or placed next to each other.');
+        }
+    }, true);
+
+    // Paste / drop / autofill fallback.
+    document.addEventListener('input', function (e) {
+        var input = e.target, rule = ruleFor(input);
+        if (!rule || e.isComposing) return;
+        var why = clean(input, rule);
+        if (why) flash(input, rule, why);
+        else if (!input._fwTimer || input.getAttribute('aria-invalid') !== 'true') settle(input, rule, false);
+    }, true);
+
+    // On leaving the field, check the finished value.
+    document.addEventListener('focusout', function (e) {
+        var input = e.target, rule = ruleFor(input);
+        if (rule) settle(input, rule, input.value.trim() !== '');
+    });
+
+    // Block submit with a visible message when the value is invalid.
+    document.addEventListener('submit', function (e) {
+        var form = e.target, bad = null;
+        if (!form || !form.querySelectorAll) return;
+        form.querySelectorAll('input[data-input-rule]').forEach(function (input) {
+            if (!input.disabled && input.getClientRects().length && !settle(input, ruleFor(input), true) && !bad) bad = input;
+        });
+        if (bad) { e.preventDefault(); e.stopImmediatePropagation(); bad.focus(); }
+    }, true);
+
+    // Clear messages when a form is reset.
+    document.addEventListener('reset', function (e) {
+        var form = e.target;
+        if (form && form.querySelectorAll) form.querySelectorAll('input[data-input-rule]').forEach(clearError);
+    }, true);
+})();
