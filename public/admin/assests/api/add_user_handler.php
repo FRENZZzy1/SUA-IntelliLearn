@@ -76,6 +76,10 @@ if ($role === 'student') {
     }
     if (!in_array($status, ['active', 'suspended'])) $errors[] = "Invalid status selected.";
 
+    if (empty($errors) && $email !== '' && isEmailInUse($pdo, $email)) {
+        $errors[] = EMAIL_IN_USE_MESSAGE;
+    }
+
     if (!empty($errors)) {
         aum_json(false, ['errors' => $errors]);
     }
@@ -205,21 +209,9 @@ if ($role === 'admin') {
     $fullAccessDays = validateFullAccessDays($access_level, $position, $_POST['full_access_days'] ?? '', false, $errors);
 }
 
-if (empty($errors)) {
-    $table = $role === 'teacher' ? 'Teachers' : 'Admin';
-    $check = $pdo->prepare("SELECT 1 FROM $table WHERE email = ?");
-    $check->execute([$email]);
-    if ($check->fetch()) {
-        $errors[] = "A " . $role . " with this email already exists.";
-    }
-}
-
-if (empty($errors)) {
-    $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
-    $check->execute([$email]);
-    if ($check->fetch()) {
-        $errors[] = "This email is already in use as a login username.";
-    }
+// One-use email: reject if ANY account (student, teacher or admin) already has it.
+if (empty($errors) && isEmailInUse($pdo, $email)) {
+    $errors[] = EMAIL_IN_USE_MESSAGE;
 }
 
 if (!empty($errors)) {

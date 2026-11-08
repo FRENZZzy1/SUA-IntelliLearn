@@ -77,6 +77,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if (!in_array($status, ['active', 'suspended'])) $errors[] = "Invalid status selected.";
 
+            // One-use email: reject if ANY account already has it
+            if (empty($errors) && $email !== '' && isEmailInUse($pdo, $email)) {
+                $errors[] = EMAIL_IN_USE_MESSAGE;
+            }
+
             if (empty($errors)) {
                 try {
                     $pdo->beginTransaction();
@@ -202,24 +207,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $fullAccessDays = validateFullAccessDays($access_level, $position, $_POST['full_access_days'] ?? '', false, $errors);
         }
 
-        // Friendly duplicate-email check (teachers.email and admin.email are UNIQUE)
-        if (empty($errors)) {
-            $table = $role === 'teacher' ? 'Teachers' : 'Admin';
-            $check = $pdo->prepare("SELECT 1 FROM $table WHERE email = ?");
-            $check->execute([$email]);
-            if ($check->fetch()) {
-                $errors[] = "A " . $role . " with this email already exists.";
-            }
-        }
-
-        // Teachers and Admins both log in with their email as their username — make
-        // sure it's not already taken as someone else's username (e.g. a student).
-        if (empty($errors) && in_array($role, ['teacher', 'admin'])) {
-            $check = $pdo->prepare("SELECT id FROM Users WHERE username = ?");
-            $check->execute([$email]);
-            if ($check->fetch()) {
-                $errors[] = "This email is already in use as a login username.";
-            }
+        // One-use email: reject if ANY account (student, teacher or admin) already has it.
+        if (empty($errors) && isEmailInUse($pdo, $email)) {
+            $errors[] = EMAIL_IN_USE_MESSAGE;
         }
 
         if (empty($errors)) {
@@ -364,6 +354,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Email (all roles) must follow the Gmail-style username rules
         if (($emailErr = validateEmailAddress($email)) !== null) {
             setFlashMessage('error', $emailErr);
+            header("Location: " . $um_return);
+            exit();
+        }
+
+        // One-use email: it may not belong to any OTHER account, whatever its role
+        if (isEmailInUse($pdo, $email, (int) $user_id)) {
+            setFlashMessage('error', EMAIL_IN_USE_MESSAGE);
             header("Location: " . $um_return);
             exit();
         }

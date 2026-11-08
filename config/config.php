@@ -168,6 +168,35 @@ function validateEmailAddress(string $email, bool $required = true): ?string {
     return null;
 }
 
+/**
+ * Is this email already used by ANY account, regardless of role?
+ * An email is one-use only: once it belongs to a student, teacher or admin
+ * it cannot be used to create (or be changed onto) another account.
+ *
+ * Checks students.email, teachers.email, admin.email and users.username
+ * (teachers/admins log in with their email as their username).
+ * $excludeUserId lets an account keep/re-save its own email when editing.
+ */
+function isEmailInUse(PDO $pdo, string $email, ?int $excludeUserId = null): bool {
+    $email = trim($email);
+    if ($email === '') return false;
+    $ex = $excludeUserId ?? 0;
+    $queries = [
+        "SELECT 1 FROM students WHERE LOWER(email) = LOWER(?) AND user_id <> ? LIMIT 1",
+        "SELECT 1 FROM teachers WHERE LOWER(email) = LOWER(?) AND user_id <> ? LIMIT 1",
+        "SELECT 1 FROM admin    WHERE LOWER(email) = LOWER(?) AND user_id <> ? LIMIT 1",
+        "SELECT 1 FROM users    WHERE LOWER(username) = LOWER(?) AND id <> ? LIMIT 1",
+    ];
+    foreach ($queries as $sql) {
+        $st = $pdo->prepare($sql);
+        $st->execute([$email, $ex]);
+        if ($st->fetchColumn()) return true;
+    }
+    return false;
+}
+
+const EMAIL_IN_USE_MESSAGE = "This email address is already used by another account. Each email can only be used for one account, regardless of role.";
+
 function clean($data) {
     return htmlspecialchars(trim($data), ENT_QUOTES, 'UTF-8');
 }

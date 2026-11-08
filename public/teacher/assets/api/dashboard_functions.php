@@ -305,13 +305,12 @@ function update_teacher_profile(
         return ['success' => false, 'errors' => $errors];
     }
 
-    // Make sure the email isn't already used by another teacher.
-    $check = $pdo->prepare(
-        "SELECT teacher_id FROM teachers WHERE email = :email AND teacher_id != :teacher_id LIMIT 1"
-    );
-    $check->execute(['email' => $email, 'teacher_id' => $teacherId]);
-    if ($check->fetch()) {
-        return ['success' => false, 'errors' => ['That email address is already in use.']];
+    // One-use email: make sure it isn't used by any other account (student, teacher or admin).
+    $own = $pdo->prepare("SELECT user_id FROM teachers WHERE teacher_id = ? LIMIT 1");
+    $own->execute([$teacherId]);
+    $ownUserId = (int) $own->fetchColumn();
+    if (isEmailInUse($pdo, $email, $ownUserId)) {
+        return ['success' => false, 'errors' => [EMAIL_IN_USE_MESSAGE]];
     }
 
     $stmt = $pdo->prepare(

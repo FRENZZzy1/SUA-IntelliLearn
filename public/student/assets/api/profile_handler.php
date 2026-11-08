@@ -49,10 +49,8 @@ try {
         }
 
         if ($email !== '' && strcasecmp($email, (string) $student['email']) !== 0) {
-            $check = $pdo->prepare("SELECT 1 FROM students WHERE email = ? AND user_id <> ? LIMIT 1");
-            $check->execute([$email, $userId]);
-            if ($check->fetchColumn()) {
-                echo json_encode(['success' => false, 'errors' => ['That email address is already in use.']]);
+            if (isEmailInUse($pdo, $email, (int) $userId)) {
+                echo json_encode(['success' => false, 'errors' => [EMAIL_IN_USE_MESSAGE]]);
                 exit();
             }
         }

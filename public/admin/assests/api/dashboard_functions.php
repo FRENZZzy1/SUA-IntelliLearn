@@ -335,11 +335,12 @@ function update_admin_profile(PDO $pdo, int $adminId, string $email, string $pos
         return ['success' => false, 'errors' => $errors];
     }
  
-    // Make sure the email isn't already used by a different admin.
-    $check = $pdo->prepare("SELECT admin_id FROM admin WHERE email = ? AND admin_id != ?");
-    $check->execute([$email, $adminId]);
-    if ($check->fetch()) {
-        return ['success' => false, 'errors' => ['That email is already in use by another admin account.']];
+    // One-use email: make sure it isn't used by any other account (student, teacher or admin).
+    $own = $pdo->prepare("SELECT user_id FROM admin WHERE admin_id = ? LIMIT 1");
+    $own->execute([$adminId]);
+    $ownUserId = (int) $own->fetchColumn();
+    if (isEmailInUse($pdo, $email, $ownUserId)) {
+        return ['success' => false, 'errors' => [EMAIL_IN_USE_MESSAGE]];
     }
  
     $stmt = $pdo->prepare("UPDATE admin SET email = ?, position = ? WHERE admin_id = ?");

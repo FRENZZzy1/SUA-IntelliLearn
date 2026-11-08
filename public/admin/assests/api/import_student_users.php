@@ -73,6 +73,10 @@ try {
         $checkLrn->execute([$lrn]);
         if ($checkLrn->fetch()) { $errors[]="Row $excelRow: LRN already exists ($lrn)"; $skipped++; continue; }
 
+        // One-use email: skip rows whose email already belongs to any account
+        // (rows imported earlier in this same file count too, as they are already inserted).
+        if ($email!=='' && isEmailInUse($pdo,$email)) { $errors[]="Row $excelRow: email already used by another account ($email)"; $skipped++; continue; }
+
         do { $username=generateStudentUsername($pdo); $checkUsername->execute([$username]); } while ($checkUsername->fetch());
 
         $passwordPlain=ucfirst(strtolower($lastname)).$dateObj->format('mdy').'!';
