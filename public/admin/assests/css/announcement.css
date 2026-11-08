@@ -702,3 +702,17 @@ textarea.form-control {
     background: #dcece3;
     color: #1a5c3a;
 }
+
+/* Pin button - same look as the teacher announcements page.
+   Uses the teacher palette's border (#e3e9e6) and icon grey (#6b7d74). */
+.icon-btn.pin-btn { border-color: #e3e9e6; color: #6b7d74; background: #ffffff; }
+/* Pin button: the thumbtack only exists in Font Awesome's solid style, so the
+   pinned / unpinned states are shown with colour and tilt instead. */
+.pin-btn { transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s; }
+.pin-btn i { transform: rotate(45deg); transition: transform 0.2s ease; }
+.icon-btn.pin-btn:hover { transform: translateY(-1px); border-color: #e0483e; color: #e0483e; background: rgba(224, 72, 62, 0.08); }
+.pin-btn:hover i { transform: rotate(0deg) scale(1.15); }
+.pin-btn:active { transform: translateY(0) scale(0.95); }
+.icon-btn.pin-btn.is-pinned { color: #e0483e; border-color: #e0483e; background: rgba(224, 72, 62, 0.08); }
+.pin-btn.is-pinned i { transform: rotate(0deg); }
+.pin-btn.is-pinned:hover i { transform: rotate(-20deg) scale(1.15); }

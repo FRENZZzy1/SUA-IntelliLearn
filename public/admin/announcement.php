@@ -194,7 +194,7 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 <!-- Announcements Stylesheet -->
-<link rel="stylesheet" href="assests/css/announcement.css">
+<link rel="stylesheet" href="assests/css/announcement.css?v=<?= (int) @filemtime(__DIR__ . '/assests/css/announcement.css') ?>">
 <?php include '../../includes/admin_readonly_ui.php'; ?>
 </head>
 <body>
@@ -354,8 +354,8 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                         <i class="fas fa-paper-plane"></i>
                     </a>
                     <?php endif; ?>
-                    <a class="icon-btn" href="?action=toggle_pin&id=<?= $a['announcement_id'] ?>" title="<?= $a['is_pinned'] ? 'Unpin' : 'Pin' ?>">
-                        <i class="<?= $a['is_pinned'] ? 'fas' : 'far' ?> fa-thumbtack"></i>
+                    <a class="icon-btn pin-btn<?= $a['is_pinned'] ? ' is-pinned' : '' ?>" href="?action=toggle_pin&id=<?= $a['announcement_id'] ?>" title="<?= $a['is_pinned'] ? 'Unpin' : 'Pin' ?>">
+                        <i class="fas fa-thumbtack"></i>
                     </a>
                     <?php if ($isOwner): ?>
                     <a class="icon-btn delete" href="?action=delete&id=<?= $a['announcement_id'] ?>" title="Delete"

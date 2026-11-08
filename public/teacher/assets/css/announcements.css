@@ -675,11 +675,14 @@
     margin: 0;
 }
 
+/* Buttons keep the same bordered box as the admin page's <a> icon buttons. */
 .ann-page button.icon-btn {
-    border: none;
-    background: none;
+    padding: 0;
+    margin: 0;
     cursor: pointer;
-    font: inherit;
+    font-family: inherit;
+    font-size: 0.82rem;
+    line-height: 1;
 }
 
 .ann-page .empty-note {
@@ -949,3 +952,14 @@
         padding: 14px 12px;
     }
 }
+
+/* Pin button: the thumbtack only exists in Font Awesome's solid style, so the
+   pinned / unpinned states are shown with colour and tilt instead. */
+.ann-page .pin-btn { transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.15s; }
+.ann-page .pin-btn i { transform: rotate(45deg); transition: transform 0.2s ease; }
+.ann-page .pin-btn:hover { transform: translateY(-1px); border-color: #e0483e; color: #e0483e; background: rgba(224, 72, 62, 0.08); }
+.ann-page .pin-btn:hover i { transform: rotate(0deg) scale(1.15); }
+.ann-page .pin-btn:active { transform: translateY(0) scale(0.95); }
+.ann-page .pin-btn.is-pinned { color: #e0483e; border-color: #e0483e; background: rgba(224, 72, 62, 0.08); }
+.ann-page .pin-btn.is-pinned i { transform: rotate(0deg); }
+.ann-page .pin-btn.is-pinned:hover i { transform: rotate(-20deg) scale(1.15); }

@@ -220,7 +220,7 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/dashboard.css">
-<link rel="stylesheet" href="assets/css/announcements.css">
+<link rel="stylesheet" href="assets/css/announcements.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/announcements.css') ?>">
 </head>
 <body>
 
@@ -392,8 +392,8 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                             <input type="hidden" name="quick_action" value="toggle_pin">
                             <input type="hidden" name="id" value="<?= (int) $a['announcement_id'] ?>">
-                            <button type="submit" class="icon-btn" title="<?= $a['is_pinned'] ? 'Unpin' : 'Pin' ?>">
-                                <i class="<?= $a['is_pinned'] ? 'fas' : 'far' ?> fa-thumbtack"></i>
+                            <button type="submit" class="icon-btn pin-btn<?= $a['is_pinned'] ? ' is-pinned' : '' ?>" title="<?= $a['is_pinned'] ? 'Unpin' : 'Pin' ?>">
+                                <i class="fas fa-thumbtack"></i>
                             </button>
                         </form>
 
