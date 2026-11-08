@@ -233,7 +233,9 @@
 }
 
 /* ---------- Badge ---------- */
-.nav-badge {
+/* Scoped to .sidebar: --sb-danger only exists inside it, and page tab badges
+   (class-nav) use their own style. */
+.sidebar .nav-badge {
     margin-left: auto;
     background: linear-gradient(135deg, var(--sb-danger), #ff6b6b);
     color: #fff;

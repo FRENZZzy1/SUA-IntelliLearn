@@ -223,27 +223,16 @@ switch ($reportType) {
         break;
 
     case 'grades':
-        $sql = "SELECT $baseSelect,
-                    (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status IN ('enrolled','completed')) AS student_count,
-                    COALESCE(g.graded, 0) AS graded_count,
-                    g.prelim, g.midterm, g.prefinal, g.final_grade, g.overall
+        $sql = "SELECT $baseSelect, co.offering_id,
+                    (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = co.offering_id AND e.status IN ('enrolled','completed')) AS student_count
                 $baseFrom
-                LEFT JOIN (
-                    SELECT e.offering_id,
-                           COUNT(DISTINCT gr.enrollment_id) AS graded,
-                           AVG(CASE WHEN gr.quarter = 'Prelim'   THEN gr.grade END) AS prelim,
-                           AVG(CASE WHEN gr.quarter = 'Midterm'  THEN gr.grade END) AS midterm,
-                           AVG(CASE WHEN gr.quarter = 'Prefinal' THEN gr.grade END) AS prefinal,
-                           AVG(CASE WHEN gr.quarter = 'Final'    THEN gr.grade END) AS final_grade,
-                           AVG(gr.grade) AS overall
-                    FROM grades gr
-                    JOIN enrollments e ON e.enrollment_id = gr.enrollment_id
-                    GROUP BY e.offering_id
-                ) g ON g.offering_id = co.offering_id
                 WHERE co.school_year_id = ? $termSql $baseOrder";
         $stmt = $pdo->prepare($sql);
         $stmt->execute($params);
         $data = $stmt->fetchAll();
+
+        // Grades are calculated live from quiz and assignment scores (no stored grades table).
+        $gradeAvgs = computeOfferingGradeAverages($pdo, array_column($data, 'offering_id'));
 
         $title = 'Grades Summary Report';
         $sheetName = 'Grades Summary';
@@ -256,22 +245,21 @@ switch ($reportType) {
             ['label' => 'Teacher', 'width' => 24],
             ['label' => 'Students', 'width' => 11],
             ['label' => 'Graded', 'width' => 11],
-            ['label' => 'Prelim Avg', 'width' => 13],
-            ['label' => 'Midterm Avg', 'width' => 13],
-            ['label' => 'Prefinal Avg', 'width' => 13],
-            ['label' => 'Final Avg', 'width' => 12],
-            ['label' => 'Overall Avg', 'width' => 13],
+            ['label' => 'Written Work Avg', 'width' => 17],
+            ['label' => 'Perf. Task Avg', 'width' => 15],
+            ['label' => 'Exam Avg', 'width' => 12],
+            ['label' => 'Final Grade Avg', 'width' => 16],
         ];
-        $note = 'Averages use the official grades recorded per student (Prelim, Midterm, Prefinal, Final). "—" means no grades recorded yet.';
+        $note = 'Averages are computed from each student\'s quiz and assignment scores (Written Work 30%, Performance Task 50%, Exam 20%). "Graded" counts students with at least one graded item. "—" means no graded work yet.';
 
         foreach ($data as $r) {
+            $g = $gradeAvgs[(int) $r['offering_id']] ?? ['graded' => 0, 'ww' => null, 'pt' => null, 'exam' => null, 'final' => null];
             $rows[] = [
                 $r['class_code'], $r['subject_name'], $r['section_name'], report_grade($r),
                 $r['quarter'], report_teacher($r),
-                (int) $r['student_count'], (int) $r['graded_count'],
-                report_avg($r['prelim']), report_avg($r['midterm']),
-                report_avg($r['prefinal']), report_avg($r['final_grade']),
-                report_avg($r['overall']),
+                (int) $r['student_count'], (int) $g['graded'],
+                report_avg($g['ww']), report_avg($g['pt']),
+                report_avg($g['exam']), report_avg($g['final']),
             ];
         }
         $footer = 'Total classes: ' . count($rows);

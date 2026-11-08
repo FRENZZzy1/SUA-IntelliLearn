@@ -99,7 +99,7 @@ try {
                     <label class="grm-type">
                         <input type="radio" name="report_type" value="grades">
                         <i class="fas fa-chart-line"></i>
-                        <span><strong>Grades Summary</strong><small>Average Prelim to Final grades per class</small></span>
+                        <span><strong>Grades Summary</strong><small>Average Written Work, Performance Task, Exam and Final grades per class</small></span>
                     </label>
                 </div>
 

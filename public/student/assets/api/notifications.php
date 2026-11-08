@@ -13,7 +13,6 @@
  *   material     learning_materials.created_at new learning material
  *   announcement announcements.published_at    audience = all/students
  *   enrollment   enrollments.decided_at     enrolled / denied
- *   term_grade   grades.updated_at             a term grade was posted
  *
  * "Read" state is NOT stored in the database. The header keeps it in the
  * browser (localStorage, keyed by user id), so it is per-device.
@@ -368,33 +367,6 @@ foreach ($stmt->fetchAll() as $r) {
         null,
         notif_time_label($ts, $now), $ts,
         $base . 'courses.php'
-    );
-}
-
-// ---- 8. Term grades posted -------------------------------------------------
-$stmt = $pdo->prepare("
-    SELECT g.grade_id, g.quarter AS grade_term, g.grade, g.updated_at,
-           sub.subject_name, t.firstname, t.lastname
-    FROM grades g
-    JOIN enrollments e     ON e.enrollment_id = g.enrollment_id
-    JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
-    JOIN subjects sub      ON sub.subject_id = co.subject_id
-    JOIN teachers t        ON t.teacher_id = co.teacher_id
-    WHERE e.student_id = ?
-      AND g.updated_at >= ?
-    ORDER BY g.updated_at DESC
-    LIMIT 10
-");
-$stmt->execute([$studentId, $sinceSql]);
-foreach ($stmt->fetchAll() as $r) {
-    $ts = strtotime($r['updated_at']);
-    $add(
-        "t-{$r['grade_id']}-{$ts}", 'term_grade',
-        notif_person($r['firstname'], $r['lastname'], 'Your teacher'),
-        "{$r['grade_term']} grade posted",
-        $r['subject_name'] . ' · ' . rtrim(rtrim(number_format((float) $r['grade'], 2, '.', ''), '0'), '.'),
-        notif_time_label($ts, $now), $ts,
-        $base . 'grades.php'
     );
 }
 

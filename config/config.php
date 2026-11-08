@@ -755,6 +755,98 @@ function computeWeightedFinalGrade(?float $writtenWork, ?float $performanceTask,
     return round($scoreTotal / $weightTotal, 2);
 }
 
+/**
+ * Live class grade averages (replaces the old `grades` table).
+ *
+ * For each offering, works out every enrolled student's Written Work /
+ * Performance Task / Exam percentage from quiz_attempts and submissions (latest
+ * attempt of each item), turns them into the weighted final grade, then averages
+ * across students. Nothing is stored: the numbers always match the Grade Book.
+ *
+ * Returns [offering_id => ['graded' => int, 'ww' => ?float, 'pt' => ?float,
+ *                          'exam' => ?float, 'final' => ?float]]
+ * Offerings with no graded work simply have null averages and graded = 0.
+ */
+function computeOfferingGradeAverages(PDO $pdo, array $offeringIds): array {
+    $offeringIds = array_values(array_unique(array_map('intval', $offeringIds)));
+    $result = [];
+    foreach ($offeringIds as $oid) {
+        $result[$oid] = ['graded' => 0, 'ww' => null, 'pt' => null, 'exam' => null, 'final' => null];
+    }
+    if (!$offeringIds) {
+        return $result;
+    }
+    $in = implode(',', array_fill(0, count($offeringIds), '?'));
+
+    $per = []; // [offering][student]['ww'|'pt'|'exam'][] = percent
+
+    $stmt = $pdo->prepare("
+        SELECT q.offering_id, qa.student_id, qa.score, qa.max_score
+        FROM quizzes q
+        JOIN quiz_attempts qa ON qa.quiz_id = q.quiz_id
+            AND qa.attempt_number = (
+                SELECT MAX(x.attempt_number) FROM quiz_attempts x
+                WHERE x.quiz_id = q.quiz_id AND x.student_id = qa.student_id
+            )
+        JOIN enrollments e ON e.offering_id = q.offering_id AND e.student_id = qa.student_id
+            AND e.status IN ('enrolled','completed')
+        WHERE q.offering_id IN ($in)
+    ");
+    $stmt->execute($offeringIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $max = (float) ($r['max_score'] ?? 0);
+        if ($r['score'] !== null && $max > 0) {
+            $per[(int) $r['offering_id']][(int) $r['student_id']]['ww'][] = ((float) $r['score'] / $max) * 100;
+        }
+    }
+
+    $stmt = $pdo->prepare("
+        SELECT a.offering_id, a.type, a.points, sub.student_id, sub.score
+        FROM assignments a
+        JOIN submissions sub ON sub.assignment_id = a.assignment_id
+            AND sub.attempt_number = (
+                SELECT MAX(x.attempt_number) FROM submissions x
+                WHERE x.assignment_id = a.assignment_id AND x.student_id = sub.student_id
+            )
+        JOIN enrollments e ON e.offering_id = a.offering_id AND e.student_id = sub.student_id
+            AND e.status IN ('enrolled','completed')
+        WHERE a.offering_id IN ($in)
+    ");
+    $stmt->execute($offeringIds);
+    foreach ($stmt->fetchAll() as $r) {
+        $points = (float) $r['points'];
+        if ($r['score'] === null || $points <= 0) continue;
+        $key = (($r['type'] ?? 'Activity') === 'Exam') ? 'exam' : 'pt';
+        $per[(int) $r['offering_id']][(int) $r['student_id']][$key][] = ((float) $r['score'] / $points) * 100;
+    }
+
+    $avg = function (array $v): ?float {
+        return $v ? round(array_sum($v) / count($v), 1) : null;
+    };
+    foreach ($per as $oid => $students) {
+        $ww = $pt = $ex = $fin = [];
+        foreach ($students as $comp) {
+            $w = $avg($comp['ww'] ?? []);
+            $p = $avg($comp['pt'] ?? []);
+            $e = $avg($comp['exam'] ?? []);
+            $f = computeWeightedFinalGrade($w, $p, $e);
+            if ($f === null) continue;
+            $fin[] = $f;
+            if ($w !== null) $ww[] = $w;
+            if ($p !== null) $pt[] = $p;
+            if ($e !== null) $ex[] = $e;
+        }
+        $result[$oid] = [
+            'graded' => count($fin),
+            'ww'     => $ww  ? array_sum($ww)  / count($ww)  : null,
+            'pt'     => $pt  ? array_sum($pt)  / count($pt)  : null,
+            'exam'   => $ex  ? array_sum($ex)  / count($ex)  : null,
+            'final'  => $fin ? array_sum($fin) / count($fin) : null,
+        ];
+    }
+    return $result;
+}
+
 const ATTENDANCE_TERM_ORDER = ['TRM 1', 'TRM 2', 'TRM 3', 'Unscheduled'];
 
 function attendanceTermForDate(array $termIntervals, string $dateStr): string {

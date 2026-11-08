@@ -169,19 +169,6 @@ if ($role === 'teacher') {
                  ORDER BY sb.graded_at DESC LIMIT $fetch",
                 [$teacherId],
             ],
-            [
-                "SELECT 'Recorded grade' AS action,
-                        CONCAT(s.firstname, ' ', s.lastname) AS title,
-                        CONCAT(" . CLASS_LABEL . ", ' · ', g.quarter, ': ', " . num('g.grade') . ") AS detail,
-                        g.updated_at AS occurred_at
-                 FROM grades g
-                 JOIN enrollments e ON e.enrollment_id = g.enrollment_id
-                 JOIN students s ON s.student_id = e.student_id
-                 " . classJoin('e') . "
-                 WHERE g.graded_by = ?
-                 ORDER BY g.updated_at DESC LIMIT $fetch",
-                [$teacherId],
-            ],
         ];
 
         // One entry per class per day instead of one per student.
@@ -266,17 +253,6 @@ if ($role === 'teacher') {
                  " . classJoin('a') . "
                  WHERE sb.student_id = ? AND sb.graded_at IS NOT NULL
                  ORDER BY sb.graded_at DESC LIMIT $fetch",
-                [$studentId],
-            ],
-            [
-                "SELECT 'Grade posted' AS action, " . CLASS_LABEL . " AS title,
-                        CONCAT(g.quarter, ': ', " . num('g.grade') . ") AS detail,
-                        g.updated_at AS occurred_at
-                 FROM grades g
-                 JOIN enrollments e ON e.enrollment_id = g.enrollment_id
-                 " . classJoin('e') . "
-                 WHERE e.student_id = ?
-                 ORDER BY g.updated_at DESC LIMIT $fetch",
                 [$studentId],
             ],
         ];
