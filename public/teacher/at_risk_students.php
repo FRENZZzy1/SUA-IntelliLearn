@@ -299,6 +299,7 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/dashboard.css">
     <link rel="stylesheet" href="assets/css/at_risk_students.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/at_risk_students.css') ?>">
+    <link rel="stylesheet" href="assets/css/at_risk_enhance.css?v=<?= (int) @filemtime(__DIR__ . '/assets/css/at_risk_enhance.css') ?>">
 </head>
 <body>
 
@@ -307,7 +308,7 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
 <main class="main-content" id="dashMain">
     <?php if (file_exists('../../includes/teacher_header.php')) include '../../includes/teacher_header.php'; ?>
 
-    <div class="ar-wrap">
+    <div class="ar-wrap" id="arApp" data-mascot="../admin/assests/images/mascot_head.png" data-teacher="<?= htmlspecialchars($teacher['firstname'], ENT_QUOTES) ?>" data-min="<?= (int) RISK_MIN_DATA_POINTS ?>">
         <div class="ar-header">
             <div>
                 <h1 data-i18n="title">At-Risk Students</h1>
@@ -337,6 +338,9 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
             <div class="ar-stat low"><span class="n"><?= $counts['Low'] ?></span><span class="l" data-i18n="stat_low">Low Risk</span></div>
             <div class="ar-stat na"><span class="n"><?= $counts['Insufficient Data'] ?></span><span class="l" data-i18n="stat_na">Not Enough Data</span></div>
         </div>
+
+        <!-- Uriel insights header (filled by assets/js/at_risk_enhance.js) -->
+        <section class="ar-insight" id="arInsight" aria-live="polite"></section>
 
         <?php if (empty($roster)): ?>
             <div class="ar-table-wrap">
@@ -511,7 +515,8 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
 <div class="ai-modal-overlay" id="aiModalOverlay">
     <div class="ai-modal">
         <div class="ai-modal-head">
-            <div>
+            <img class="ai-modal-mascot" src="../admin/assests/images/mascot_head.png" alt="" draggable="false">
+            <div class="ai-modal-titles">
                 <h3 id="aiModalName">Student</h3>
                 <p id="aiModalSubject"></p>
             </div>
@@ -1001,5 +1006,6 @@ function render_roster_table(array $students, bool $aiEnabled, string $termLabel
 })();
 </script>
 
+<script src="assets/js/at_risk_enhance.js?v=<?= (int) @filemtime(__DIR__ . '/assets/js/at_risk_enhance.js') ?>"></script>
 </body>
 </html>
