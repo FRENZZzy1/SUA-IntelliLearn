@@ -720,6 +720,78 @@ function autoArchiveEndedSchoolYears(PDO $pdo, ?string $today = null): array
 }
 autoArchiveEndedSchoolYears($pdo);
 
+// ================= VIEWING ARCHIVED CLASSES (admin / teacher / student) =================
+// Archiving never deletes anything, so every role has an "Archived" section where
+// the classes of a past school year stay readable. These helpers are shared by
+// those three Archived sections.
+
+/**
+ * SQL condition for "this class is archived": the class itself was archived, its
+ * section was archived, or its whole school year was archived. Pass the table
+ * aliases used in the query (classofferings, sections, schoolyears).
+ */
+function archivedClassSql(string $co = 'co', string $sec = 'sec', string $sy = 'sy'): string
+{
+    return "({$co}.is_archived = 1 OR {$sec}.is_archived = 1 OR {$sy}.is_archived = 1)";
+}
+
+/**
+ * The school years that have at least one archived class, newest first - the
+ * options of the "School Year" filter in every Archived section.
+ *
+ * Pass $teacherId to list only the years that teacher taught archived classes in,
+ * or $studentId for the years the student was enrolled in archived classes.
+ * Pass neither (admin) to list every year that has archived classes.
+ *
+ * @return list<array{school_year_id:int,label:string,is_current:int,is_archived:int,class_count:int}>
+ */
+function getArchivedSchoolYears(PDO $pdo, ?int $teacherId = null, ?int $studentId = null): array
+{
+    $sql = "SELECT sy.school_year_id, sy.label, sy.is_current, sy.is_archived,
+                   COUNT(DISTINCT CONCAT(co.subject_id, '-', co.section_id)) AS class_count
+            FROM classofferings co
+            JOIN sections sec   ON sec.section_id = co.section_id
+            JOIN schoolyears sy ON sy.school_year_id = co.school_year_id";
+    $params = [];
+    if ($studentId !== null) {
+        $sql .= " JOIN enrollments e ON e.offering_id = co.offering_id AND e.student_id = ? AND e.status IN ('enrolled','completed')";
+        $params[] = $studentId;
+    }
+    $sql .= " WHERE " . archivedClassSql();
+    if ($teacherId !== null) {
+        $sql .= " AND co.teacher_id = ?";
+        $params[] = $teacherId;
+    }
+    $sql .= " GROUP BY sy.school_year_id, sy.label, sy.is_current, sy.is_archived, sy.start_date
+              ORDER BY sy.start_date DESC, sy.school_year_id DESC";
+    try {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+/**
+ * Chooses which school year an Archived section shows: the one asked for
+ * (?sy=) when it is in $years, otherwise the newest. Null when $years is empty.
+ */
+function pickArchivedSchoolYear(array $years, $requestedId): ?array
+{
+    if (!$years) {
+        return null;
+    }
+    if ($requestedId !== null && ctype_digit((string) $requestedId)) {
+        foreach ($years as $y) {
+            if ((int) $y['school_year_id'] === (int) $requestedId) {
+                return $y;
+            }
+        }
+    }
+    return $years[0];
+}
+
 // ---- Final grade weighting (DepEd-style: Written Work / Performance Task / Exam) ----
 // Written Work  = average of all quiz percentages for the offering.
 // Performance Task = average of all assignments tagged type='Activity'.

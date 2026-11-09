@@ -256,7 +256,9 @@ function filterCourseList(rawValue) {
     const noRow = getOrCreateNoResultsRow();
     noRow.style.display = (visible === 0 && rows.length > 0) ? '' : 'none';
 
-    const label = 'Showing ' + visible + ' of ' + window.TOTAL_COURSES + ' courses';
+    const label = window.COURSES_ARCHIVED_VIEW
+        ? 'Showing ' + visible + ' archived ' + (visible === 1 ? 'class' : 'classes')
+        : 'Showing ' + visible + ' of ' + window.TOTAL_COURSES + ' courses';
     const top = document.getElementById('courseCountTop');
     const bottom = document.getElementById('courseCountBottom');
     if (top) top.textContent = label;

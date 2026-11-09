@@ -211,6 +211,34 @@ if ($schoolYearFilter !== 'all' && !ctype_digit((string) $schoolYearFilter)) {
     $schoolYearFilter = 'all';
 }
 
+// ---- Archived view: School Year filter --------------------------------------
+// The Archived filter lists every school year that has archived classes (the
+// normal filter only lists years that are not archived) and opens on the newest
+// one until the admin picks another year or "All School Years".
+$archivedYears = getArchivedSchoolYears($pdo);
+if ($statusFilter === 'archived' && !isset($_GET['school_year']) && $archivedYears) {
+    $schoolYearFilter = (string) $archivedYears[0]['school_year_id'];
+}
+
+$schoolYearLabels = [];
+foreach ($pdo->query("SELECT school_year_id, label FROM schoolyears")->fetchAll() as $syRow) {
+    $schoolYearLabels[(int) $syRow['school_year_id']] = $syRow['label'];
+}
+$yearOptions = [];   // school_year_id => option text
+if ($statusFilter === 'archived') {
+    foreach ($archivedYears as $y) {
+        $n = (int) $y['class_count'];
+        $yearOptions[(int) $y['school_year_id']] = $y['label'] . ' (' . $n . ' ' . ($n === 1 ? 'class' : 'classes') . ')';
+    }
+} else {
+    foreach ($modalSchoolYears as $y) {
+        $yearOptions[(int) $y['school_year_id']] = $y['label'];
+    }
+}
+if ($schoolYearFilter !== 'all' && !isset($yearOptions[(int) $schoolYearFilter])) {
+    $yearOptions[(int) $schoolYearFilter] = ($schoolYearLabels[(int) $schoolYearFilter] ?? 'School year #' . (int) $schoolYearFilter);
+}
+
 // ================= BUILD MAIN QUERY =================
 $where  = [];
 $params = [];
@@ -331,6 +359,11 @@ $teachersAssigned = (int) $pdo->query("SELECT COUNT(DISTINCT teacher_id) FROM cl
 $totalTeachers    = (int) $pdo->query("SELECT COUNT(*) FROM teachers")->fetchColumn();
 
 $totalEnrollees = (int) $pdo->query("SELECT COUNT(DISTINCT student_id) FROM enrollments WHERE status = 'enrolled' AND offering_id IN (SELECT offering_id FROM classofferings WHERE {$notArchivedSql})")->fetchColumn();
+
+// Count line under the Class List title (the live search updates it from courses.js).
+$countNote = $statusFilter === 'archived'
+    ? 'Showing ' . $totalShown . ' archived ' . ($totalShown === 1 ? 'class' : 'classes')
+    : 'Showing ' . $totalShown . ' of ' . $totalCourses . ' courses';
 
 // ================= DATA FOR "NEW COURSE" / "UPDATE COURSE" MODALS =================
 
@@ -484,10 +517,12 @@ $subjectsList = $pdo->query("
 
     <?php
         $filtersActive = ($statusFilter !== 'all' || $gradeFilter !== 'all' || $quarterFilter !== 'all' || $schoolYearFilter !== 'all');
-        $pillQuery = static function (string $status) use ($gradeFilter, $quarterFilter, $schoolYearFilter, $searchQuery): string {
+        $pillQuery = static function (string $status) use ($statusFilter, $gradeFilter, $quarterFilter, $schoolYearFilter, $searchQuery): string {
+            // Switching to Archived from another view starts on the newest archived year.
+            $yearParam = ($status === 'archived' && $statusFilter !== 'archived' && $schoolYearFilter === 'all') ? null : $schoolYearFilter;
             return '?' . http_build_query(array_filter([
                 'status' => $status, 'grade' => $gradeFilter, 'quarter' => $quarterFilter,
-                'school_year' => $schoolYearFilter, 'q' => $searchQuery,
+                'school_year' => $yearParam, 'q' => $searchQuery,
             ]));
         };
     ?>
@@ -534,8 +569,8 @@ $subjectsList = $pdo->query("
 
             <select class="select-filter" name="school_year" aria-label="Filter by school year" onchange="this.form.submit()">
                 <option value="all" <?= $schoolYearFilter === 'all' ? 'selected' : '' ?>>All School Years</option>
-                <?php foreach ($modalSchoolYears as $sy): ?>
-                    <option value="<?= (int) $sy['school_year_id'] ?>" <?= $schoolYearFilter == $sy['school_year_id'] ? 'selected' : '' ?>><?= clean($sy['label']) ?></option>
+                <?php foreach ($yearOptions as $syId => $syText): ?>
+                    <option value="<?= (int) $syId ?>" <?= $schoolYearFilter == $syId ? 'selected' : '' ?>><?= clean($syText) ?></option>
                 <?php endforeach; ?>
             </select>
 
@@ -549,8 +584,8 @@ $subjectsList = $pdo->query("
     <div class="list-panel">
         <div class="list-panel-header">
             <div class="list-panel-title">
-                <h2>Class List</h2>
-                <span class="count-note" id="courseCountTop">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
+                <h2><?= $statusFilter === 'archived' ? 'Archived Classes' . ($schoolYearFilter !== 'all' && isset($schoolYearLabels[(int) $schoolYearFilter]) ? ' · ' . htmlspecialchars($schoolYearLabels[(int) $schoolYearFilter]) : '') : 'Class List' ?></h2>
+                <span class="count-note" id="courseCountTop"><?= htmlspecialchars($countNote) ?></span>
             </div>
         </div>
 
@@ -700,7 +735,7 @@ $subjectsList = $pdo->query("
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditCourseModal(this)"><i class="fas fa-pen" aria-hidden="true"></i></button>
                             <?php elseif ($ownArchived): ?>
-                            <a class="ra-btn restore" data-tip="Restore class" aria-label="Restore class" href="courses.php?restore=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&q=<?= urlencode($searchQuery) ?>"
+                            <a class="ra-btn restore" data-tip="Restore class" aria-label="Restore class" href="courses.php?restore=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&quarter=<?= urlencode($quarterFilter) ?>&school_year=<?= urlencode($schoolYearFilter) ?>&q=<?= urlencode($searchQuery) ?>"
                                onclick="return confirmArchive('restore-course')"><i class="fas fa-rotate-left" aria-hidden="true"></i></a>
                             <?php else: ?>
                             <span class="chip-muted" title="Restore the section from the Sections List to bring this class back">Restore its section</span>
@@ -714,7 +749,7 @@ $subjectsList = $pdo->query("
         </div>
 
         <div class="list-panel-footer">
-            <span class="count-note" id="courseCountBottom">Showing <?= htmlspecialchars($totalShown) ?> of <?= htmlspecialchars($totalCourses) ?> courses</span>
+            <span class="count-note" id="courseCountBottom"><?= htmlspecialchars($countNote) ?></span>
         </div>
     </div>
     <!-- /Course List -->
@@ -1361,6 +1396,11 @@ $subjectsList = $pdo->query("
 
 </div>
 
+<script>
+// Globals courses.js expects (the live search rewrites the "Showing ..." count line).
+window.TOTAL_COURSES = <?= (int) $totalCourses ?>;
+window.COURSES_ARCHIVED_VIEW = <?= $statusFilter === 'archived' ? 'true' : 'false' ?>;
+</script>
 <script src="assests/js/courses.js?v=<?= (int) @filemtime(__DIR__ . '/assests/js/courses.js') ?>"></script>
 
 </body>

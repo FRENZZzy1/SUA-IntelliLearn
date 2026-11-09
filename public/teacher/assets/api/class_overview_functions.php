@@ -35,6 +35,17 @@ $schoolYear      = $stmt->fetch();
 $schoolYearId    = $schoolYear['school_year_id'] ?? null;
 $schoolYearLabel = $schoolYear['label'] ?? null;
 
+// ---- Archived mode (?sy=<school_year_id>) ------------------------------
+// Opened from the Archived tab of the Sections page: the class is shown
+// read-only from the chosen archived school year instead of the current one.
+$archiveYearId  = null;
+$isArchivedView = false;
+$requestedYear  = filter_input(INPUT_GET, 'sy', FILTER_VALIDATE_INT);
+if ($requestedYear) {
+    $archiveYearId  = (int) $requestedYear;
+    $isArchivedView = true;
+}
+
 // ---- All term-offerings for this subject+section+school year -------------
 // A subject/section pair can have up to 3 rows here (classofferings is
 // unique on subject_id + section_id + quarter + school_year_id — one row
@@ -64,7 +75,38 @@ $stmt = $pdo->prepare("
 $stmt->execute([$teacherId, $subjectId, $sectionId, $schoolYearId, $schoolYearId]);
 $offeringRows = $stmt->fetchAll();
 
-if (empty($offeringRows)) {
+if ($isArchivedView) {
+    $stmt = $pdo->prepare("
+        SELECT
+            co.offering_id, co.class_code, co.quarter, co.schedule_days, co.start_time, co.end_time,
+            co.capacity, co.teacher_id,
+            sub.subject_id, sub.subject_name,
+            sec.section_id, sec.section_name, sec.grade_level,
+            sy.label AS school_year_label,
+            COUNT(e.student_id) AS enrolled_count
+        FROM classofferings co
+        JOIN subjects sub   ON sub.subject_id = co.subject_id
+        JOIN sections sec   ON sec.section_id = co.section_id
+        JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
+        LEFT JOIN enrollments e ON e.offering_id = co.offering_id AND e.status IN ('enrolled', 'completed')
+        WHERE co.teacher_id = ?
+          AND co.subject_id = ?
+          AND co.section_id = ?
+          AND co.school_year_id = ?
+          AND " . archivedClassSql() . "
+        GROUP BY co.offering_id, co.class_code, co.quarter, co.schedule_days, co.start_time, co.end_time,
+                 co.capacity, co.teacher_id, sub.subject_id, sub.subject_name,
+                 sec.section_id, sec.section_name, sec.grade_level, sy.label
+    ");
+    $stmt->execute([$teacherId, $subjectId, $sectionId, $archiveYearId]);
+    $offeringRows = $stmt->fetchAll();
+
+    if (empty($offeringRows)) {
+        header('Location: courses.php?view=archived');
+        exit();
+    }
+    $schoolYearLabel = $offeringRows[0]['school_year_label'];
+} elseif (empty($offeringRows)) {
     header('Location: courses.php');
     exit();
 }
@@ -133,7 +175,7 @@ if ($activeOfferingId && ($activeView === 'students' || $activeView === 'attenda
         SELECT s.student_id, s.student_lrn, s.firstname, s.lastname, s.middlename, s.email
         FROM enrollments e
         JOIN students s ON s.student_id = e.student_id
-        WHERE e.offering_id = ? AND e.status = 'enrolled'
+        WHERE e.offering_id = ? AND e.status IN ('enrolled', 'completed')
         ORDER BY s.lastname, s.firstname
     ");
     $stmt->execute([$activeOfferingId]);
@@ -482,7 +524,7 @@ if ($classOfferingIds) {
                    co.quarter, co.class_code
             FROM enrollments e
             JOIN students s ON s.student_id = e.student_id
-            JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+            JOIN classofferings co ON co.offering_id = e.offering_id" . ($isArchivedView ? '' : " AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)") . "
             WHERE e.offering_id IN ($offeringPlaceholders)
         ";
 
@@ -550,6 +592,9 @@ function classOverviewUrl(int $subjectId, int $sectionId, ?string $term = null, 
     if ($term) {
         $params['term'] = $term;
     }
+    if (!empty($GLOBALS['archiveYearId'])) {
+        $params['sy'] = (int) $GLOBALS['archiveYearId'];
+    }
     return 'class_overview.php?' . http_build_query($params);
 }
 
@@ -567,6 +612,9 @@ function attendanceUrl(int $subjectId, int $sectionId, ?string $term, string $da
     ];
     if ($term) {
         $params['term'] = $term;
+    }
+    if (!empty($GLOBALS['archiveYearId'])) {
+        $params['sy'] = (int) $GLOBALS['archiveYearId'];
     }
     return 'class_overview.php?' . http_build_query($params);
 }
@@ -619,6 +667,9 @@ function assignmentsUrl(int $subjectId, int $sectionId, ?string $term, ?int $ass
     }
     if ($assignmentId) {
         $params['assignment_id'] = $assignmentId;
+    }
+    if (!empty($GLOBALS['archiveYearId'])) {
+        $params['sy'] = (int) $GLOBALS['archiveYearId'];
     }
     return 'class_overview.php?' . http_build_query($params);
 }
@@ -675,6 +726,9 @@ function quizzesUrl(int $subjectId, int $sectionId, ?string $term, ?int $quizId 
     }
     if ($attemptId) {
         $params['attempt_id'] = $attemptId;
+    }
+    if (!empty($GLOBALS['archiveYearId'])) {
+        $params['sy'] = (int) $GLOBALS['archiveYearId'];
     }
     return 'class_overview.php?' . http_build_query($params);
 }

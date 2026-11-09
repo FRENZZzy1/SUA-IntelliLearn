@@ -22,9 +22,15 @@ include 'assets/api/course_view_functions.php';
 
         <?php include '../../includes/student_header.php'; ?>
 
+        <?php if ($isArchivedView): ?>
+        <a href="courses.php?view=archived&amp;sy=<?= (int) $archiveYearId ?>" class="breadcrumb-back">
+            <i class="fas fa-arrow-left"></i> Back to Archived Courses
+        </a>
+        <?php else: ?>
         <a href="courses.php" class="breadcrumb-back">
             <i class="fas fa-arrow-left"></i> Back to My Courses
         </a>
+        <?php endif; ?>
 
         <?php if ($flash): ?>
             <div class="class-flash class-flash-<?= htmlspecialchars($flash['type']) ?>">
@@ -41,9 +47,19 @@ include 'assets/api/course_view_functions.php';
                 </span>
             </h1>
             <?php if ($schoolYearLabel): ?>
-                <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
+                <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?><?php if ($isArchivedView): ?> <span class="archive-chip"><i class="fas fa-box-archive"></i> Archived</span><?php endif; ?></p>
             <?php endif; ?>
         </div>
+
+        <?php if ($isArchivedView): ?>
+            <div class="archive-banner" role="note">
+                <i class="fas fa-box-archive"></i>
+                <div>
+                    <strong>This class is archived.</strong>
+                    You can still review its materials, assignments, quizzes and your results, but nothing can be submitted or taken anymore.
+                </div>
+            </div>
+        <?php endif; ?>
 
         <!-- ===================== Course nav ===================== -->
         <nav class="class-nav">
@@ -427,7 +443,11 @@ include 'assets/api/course_view_functions.php';
                                         yet. <?= $maxAttempts ?> attempt<?= $maxAttempts === 1 ? '' : 's' ?> allowed.</p>
                                 <?php endif; ?>
 
-                                <?php if ($selectedAssignment['score'] === null && $attemptsLeft > 0): ?>
+                                <?php if ($isArchivedView && $selectedAssignment['score'] === null): ?>
+                                    <p class="field-hint" style="margin-top:14px; padding-top:14px; border-top:1px solid var(--border-color, #e5e7eb);">
+                                        <i class="fas fa-lock"></i> Submissions are closed because this class is archived.
+                                    </p>
+                                <?php elseif ($selectedAssignment['score'] === null && $attemptsLeft > 0): ?>
                                     <!-- Submit / next-attempt form -->
                                     <form class="material-upload-form" id="assignmentSubmitForm"
                                           action="assets/api/assignment_submit.php" method="POST"
@@ -553,7 +573,9 @@ include 'assets/api/course_view_functions.php';
                                             View
                                         </a>
 
-                                        <?php if ($qNotOpen): ?>
+                                        <?php if ($isArchivedView): ?>
+                                            <span class="btn-secondary" style="opacity:.6;cursor:not-allowed;"><i class="fas fa-lock"></i> Archived</span>
+                                        <?php elseif ($qNotOpen): ?>
                                             <span class="btn-secondary" style="opacity:.6;cursor:not-allowed;"><i class="fas fa-lock"></i> Not open yet</span>
                                         <?php elseif ($qClosed || $qNoAttempts): ?>
                                             <span class="btn-secondary" style="opacity:.6;cursor:not-allowed;"><i class="fas fa-lock"></i> Closed</span>

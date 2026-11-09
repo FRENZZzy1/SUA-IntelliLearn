@@ -25,9 +25,15 @@ $avgEnrollment   = $totalCapacity > 0 ? round(($totalEnrolled / $totalCapacity) 
 
     <?php include '../../includes/teacher_header.php'; ?>
 
+    <?php if ($isArchivedView): ?>
+    <a href="courses.php?view=archived&amp;sy=<?= (int) $archiveYearId ?>" class="breadcrumb-back">
+        <i class="fas fa-arrow-left"></i> Back to Archived Sections
+    </a>
+    <?php else: ?>
     <a href="courses.php" class="breadcrumb-back">
         <i class="fas fa-arrow-left"></i> Back to Courses
     </a>
+    <?php endif; ?>
 
     <div class="dash-page-title">
         <h1 class="dash-title">
@@ -37,7 +43,7 @@ $avgEnrollment   = $totalCapacity > 0 ? round(($totalEnrolled / $totalCapacity) 
             </span>
         </h1>
         <?php if ($schoolYearLabel): ?>
-            <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
+            <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?><?php if ($isArchivedView): ?> <span class="archive-chip"><i class="fas fa-box-archive"></i> Archived</span><?php endif; ?></p>
         <?php endif; ?>
     </div>
 
@@ -117,7 +123,7 @@ $avgEnrollment   = $totalCapacity > 0 ? round(($totalEnrolled / $totalCapacity) 
                 $enrolledPct = min(100, round(((int) $subj['enrolled_count'] / $cap) * 100));
             ?>
             <a class="subject-card"
-               href="class_overview.php?subject_id=<?= (int) $subj['subject_id'] ?>&section_id=<?= (int) $section['section_id'] ?>"
+               href="class_overview.php?subject_id=<?= (int) $subj['subject_id'] ?>&section_id=<?= (int) $section['section_id'] ?><?= $isArchivedView ? '&sy=' . (int) $archiveYearId : '' ?>"
                data-name="<?= htmlspecialchars(strtolower($subj['subject_name'])) ?>"
                data-quarter="<?= htmlspecialchars(strtolower($subj['quarter'])) ?>"
                data-schedule="<?= htmlspecialchars(strtolower($subj['schedule_days'] ?? '')) ?>"

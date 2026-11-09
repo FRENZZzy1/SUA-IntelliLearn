@@ -4,6 +4,11 @@ include 'assets/api/courses_functions.php';
 // Compute summary stats
 $totalSubjects = array_sum(array_column($mySections, 'subject_count'));
 $totalStudents = array_sum(array_column($mySections, 'student_count'));
+
+// Archived view: every link into a section / class carries the school year (?sy=).
+$syQuery    = ($view === 'archived' && $archiveYearId) ? '&sy=' . (int) $archiveYearId : '';
+$syParams   = ($view === 'archived' && $archiveYearId) ? ['sy' => (int) $archiveYearId] : [];
+$sectionsLabel = $view === 'archived' ? 'Archived Sections' : 'Active Sections';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -27,12 +32,50 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
 
         <div class="dash-page-title">
             <h1 class="dash-title">Sections</h1>
-            <?php if ($schoolYearLabel): ?>
+            <?php if ($view === 'archived'): ?>
+                <p class="dash-subtitle"><?= $archiveYear ? 'Archived · School Year ' . htmlspecialchars($archiveYear['label']) : 'Archived classes' ?></p>
+            <?php elseif ($schoolYearLabel): ?>
                 <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
             <?php endif; ?>
         </div>
 
-        <?php if (empty($mySections)): ?>
+        <!-- Current / Archived switch + School Year filter for the Archived view -->
+        <div class="archive-bar">
+            <nav class="archive-tabs" aria-label="Sections view">
+                <a class="archive-tab <?= $view === 'current' ? 'active' : '' ?>" href="courses.php">
+                    <i class="fas fa-chalkboard"></i> Current
+                </a>
+                <a class="archive-tab <?= $view === 'archived' ? 'active' : '' ?>" href="courses.php?view=archived">
+                    <i class="fas fa-box-archive"></i> Archived
+                    <?php if ($archivedClassTotal > 0): ?><span class="archive-tab__count"><?= (int) $archivedClassTotal ?></span><?php endif; ?>
+                </a>
+            </nav>
+            <?php if ($view === 'archived' && $archivedYears): ?>
+                <form class="archive-filter" method="get" action="courses.php">
+                    <input type="hidden" name="view" value="archived">
+                    <label for="archiveYearSelect"><i class="fas fa-calendar-days"></i> School Year</label>
+                    <select id="archiveYearSelect" name="sy" onchange="this.form.submit()">
+                        <?php foreach ($archivedYears as $y): ?>
+                            <option value="<?= (int) $y['school_year_id'] ?>" <?= $archiveYear && (int) $archiveYear['school_year_id'] === (int) $y['school_year_id'] ? 'selected' : '' ?>>
+                                <?= htmlspecialchars($y['label']) ?> (<?= (int) $y['class_count'] ?> <?= (int) $y['class_count'] === 1 ? 'class' : 'classes' ?>)
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </form>
+            <?php endif; ?>
+        </div>
+
+        <?php if (empty($mySections) && $view === 'archived'): ?>
+            <section class="panel">
+                <div class="panel-empty panel-empty--enhanced">
+                    <div class="panel-empty__icon">
+                        <i class="fas fa-box-archive"></i>
+                    </div>
+                    <h3>No archived classes yet</h3>
+                    <p>Your classes from past school years are kept here once they are archived.</p>
+                </div>
+            </section>
+        <?php elseif (empty($mySections)): ?>
             <section class="panel">
                 <div class="panel-empty panel-empty--enhanced">
                     <div class="panel-empty__icon">
@@ -53,7 +96,7 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
                     </div>
                     <div class="stat-card__info">
                         <span class="stat-card__value"><?= count($mySections) ?></span>
-                        <span class="stat-card__label">Active Sections</span>
+                        <span class="stat-card__label"><?= $sectionsLabel ?></span>
                     </div>
                 </button>
                 <button type="button" class="stat-card stat-card--link" data-open="subjectsDialog" aria-haspopup="dialog">
@@ -79,13 +122,13 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
             <!-- Detail dialogs opened by the three summary cards -->
             <dialog class="stat-dialog" id="sectionsDialog" aria-labelledby="sectionsDialogTitle">
                 <div class="stat-dialog__head">
-                    <h3 id="sectionsDialogTitle">Active Sections</h3>
+                    <h3 id="sectionsDialogTitle"><?= $sectionsLabel ?></h3>
                     <button type="button" class="stat-dialog__close" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>
                 </div>
                 <ul class="stat-dialog__list">
                     <?php foreach ($mySections as $sec): ?>
                         <li>
-                            <a href="course_section.php?section_id=<?= (int) $sec['section_id'] ?>">
+                            <a href="course_section.php?section_id=<?= (int) $sec['section_id'] . $syQuery ?>">
                                 <span class="stat-dialog__info">
                                     <strong><?= htmlspecialchars($sec['section_name']) ?></strong>
                                     <small>Grade <?= (int) $sec['grade_level'] ?> · <?= (int) $sec['subject_count'] ?> <?= $sec['subject_count'] == 1 ? 'subject' : 'subjects' ?> · <?= (int) $sec['student_count'] ?> <?= $sec['student_count'] == 1 ? 'student' : 'students' ?></small>
@@ -105,7 +148,7 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
                 <ul class="stat-dialog__list">
                     <?php foreach ($subjectList as $o): ?>
                         <li>
-                            <a href="class_overview.php?<?= htmlspecialchars(http_build_query(['subject_id' => (int) $o['subject_id'], 'section_id' => (int) $o['section_id'], 'term' => $o['quarter']])) ?>">
+                            <a href="class_overview.php?<?= htmlspecialchars(http_build_query(['subject_id' => (int) $o['subject_id'], 'section_id' => (int) $o['section_id'], 'term' => $o['quarter']] + $syParams)) ?>">
                                 <span class="stat-dialog__info">
                                     <strong><?= htmlspecialchars($o['subject_name']) ?></strong>
                                     <small>Grade <?= (int) $o['grade_level'] ?> · <?= htmlspecialchars($o['section_name']) ?></small>
@@ -172,7 +215,7 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
 
 
 
-                    <a class="section-card" href="course_section.php?section_id=<?= (int) $sec['section_id'] ?>"
+                    <a class="section-card" href="course_section.php?section_id=<?= (int) $sec['section_id'] . $syQuery ?>"
                         data-grade="grade-<?= (int) $sec['grade_level'] ?>"
                         data-name="<?= htmlspecialchars(strtolower($sec['section_name'])) ?>"
                         style="--card-accent: <?= $accent ?>; --card-accent-light: <?= $accentLight ?>;">
@@ -181,6 +224,7 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
 
                         <div class="section-card__top">
                             <span class="section-grade">Grade <?= (int) $sec['grade_level'] ?></span>
+                            <?php if ($view === 'archived'): ?><span class="archive-chip"><i class="fas fa-box-archive"></i> Archived</span><?php endif; ?>
                         </div>
 
                         <h3 class="section-name"><?= htmlspecialchars($sec['section_name']) ?></h3>
@@ -194,7 +238,7 @@ $totalStudents = array_sum(array_column($mySections, 'student_count'));
 
                         <div class="section-card__footer">
                             <span class="section-card__cta">
-                                View subjects <i class="fas fa-arrow-right"></i>
+                                <?= $view === 'archived' ? 'View archived subjects' : 'View subjects' ?> <i class="fas fa-arrow-right"></i>
                             </span>
                             <div class="section-card__quick-actions">
                                 <span class="qa-btn" title="Announcements"><i class="fas fa-bullhorn"></i></span>

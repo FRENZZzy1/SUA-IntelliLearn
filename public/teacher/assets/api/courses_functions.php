@@ -26,6 +26,18 @@ $schoolYear      = $stmt->fetch();
 $schoolYearId    = $schoolYear['school_year_id'] ?? null;
 $schoolYearLabel = $schoolYear['label'] ?? null;
 
+// ---- Current / Archived view -------------------------------------------
+// "Archived" lists this teacher's classes from past school years (class, section
+// or whole year archived). The School Year filter (?sy=) picks the year shown.
+$view               = (($_GET['view'] ?? '') === 'archived') ? 'archived' : 'current';
+$archivedYears      = getArchivedSchoolYears($pdo, $teacherId, null);
+$archivedClassTotal = (int) array_sum(array_column($archivedYears, 'class_count'));
+$archiveYear        = ($view === 'archived') ? pickArchivedSchoolYear($archivedYears, $_GET['sy'] ?? null) : null;
+$archiveYearId      = $archiveYear ? (int) $archiveYear['school_year_id'] : null;
+if ($archiveYear) {
+    $schoolYearLabel = $archiveYear['label'];
+}
+
 // ---- Sections this teacher has active classes in ----------------------
 // One row per section, with a rollup of how many subjects the teacher
 // teaches there and how many distinct students are enrolled across
@@ -50,6 +62,33 @@ $stmt = $pdo->prepare("
 $stmt->execute([$teacherId, $schoolYearId, $schoolYearId]);
 $mySections = $stmt->fetchAll();
 
+if ($view === 'archived') {
+    // Same rollup, but for the archived classes of the chosen school year.
+    $mySections = [];
+    if ($archiveYearId) {
+        $stmt = $pdo->prepare("
+            SELECT
+                sec.section_id,
+                sec.section_name,
+                sec.grade_level,
+                COUNT(DISTINCT co.subject_id) AS subject_count,
+                COUNT(DISTINCT e.student_id)  AS student_count
+            FROM classofferings co
+            JOIN sections sec   ON sec.section_id = co.section_id
+            JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
+            LEFT JOIN enrollments e
+                   ON e.offering_id = co.offering_id AND e.status IN ('enrolled', 'completed')
+            WHERE co.teacher_id = ?
+              AND co.school_year_id = ?
+              AND " . archivedClassSql() . "
+            GROUP BY sec.section_id, sec.section_name, sec.grade_level
+            ORDER BY sec.grade_level, sec.section_name
+        ");
+        $stmt->execute([$teacherId, $archiveYearId]);
+        $mySections = $stmt->fetchAll();
+    }
+}
+
 // ---- Detail lists behind the three summary cards -----------------------------
 // Subjects: one row per subject+section (the 3 term offerings collapse into one).
 // Students: one row per student per section, with the subjects they take.
@@ -67,6 +106,26 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$teacherId, $schoolYearId, $schoolYearId]);
 $allOfferings = $stmt->fetchAll();
+
+if ($view === 'archived') {
+    $allOfferings = [];
+    if ($archiveYearId) {
+        $stmt = $pdo->prepare("
+            SELECT co.offering_id, co.quarter, co.subject_id, co.section_id,
+                   sub.subject_name, sec.section_name, sec.grade_level
+            FROM classofferings co
+            JOIN subjects sub   ON sub.subject_id = co.subject_id
+            JOIN sections sec   ON sec.section_id = co.section_id
+            JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
+            WHERE co.teacher_id = ?
+              AND co.school_year_id = ?
+              AND " . archivedClassSql() . "
+            ORDER BY sec.grade_level, sec.section_name, sub.subject_name, co.quarter
+        ");
+        $stmt->execute([$teacherId, $archiveYearId]);
+        $allOfferings = $stmt->fetchAll();
+    }
+}
 
 // Preferred offering per subject+section: the ongoing term, else the earliest term.
 $subjectList = [];
@@ -95,7 +154,7 @@ if ($allOfferings) {
         SELECT e.offering_id, s.student_id, s.firstname, s.lastname
         FROM enrollments e
         JOIN students s ON s.student_id = e.student_id
-        WHERE e.status = 'enrolled' AND e.offering_id IN ($ph)
+        WHERE e.status IN ('enrolled', 'completed') AND e.offering_id IN ($ph)
         ORDER BY s.lastname, s.firstname
     ");
     $stmt->execute(array_keys($offeringMeta));

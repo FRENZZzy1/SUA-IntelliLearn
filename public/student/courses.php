@@ -29,13 +29,17 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
     <div class="dash-page-title dash-page-title--with-action">
         <div>
             <h1 class="dash-title">My Courses</h1>
-            <?php if ($schoolYearLabel): ?>
+            <?php if ($view === 'archived'): ?>
+                <p class="dash-subtitle"><?= $archiveYear ? 'Archived · School Year ' . htmlspecialchars($archiveYear['label']) : 'Archived classes' ?></p>
+            <?php elseif ($schoolYearLabel): ?>
                 <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
             <?php endif; ?>
         </div>
+        <?php if ($view !== 'archived'): ?>
         <button type="button" class="btn-enroll" onclick="openJoinClassModal()">
             <i class="fas fa-plus"></i> Enroll with Class Code
         </button>
+        <?php endif; ?>
     </div>
 
     <?php if ($flash = getFlashMessage()): ?>
@@ -44,7 +48,43 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
         </div>
     <?php endif; ?>
 
-    <?php if (empty($myCourses)): ?>
+    <!-- Current / Archived switch + School Year filter for the Archived view -->
+    <div class="archive-bar">
+        <nav class="archive-tabs" aria-label="Course view">
+            <a class="archive-tab <?= $view === 'current' ? 'active' : '' ?>" href="courses.php">
+                <i class="fas fa-book"></i> Current
+            </a>
+            <a class="archive-tab <?= $view === 'archived' ? 'active' : '' ?>" href="courses.php?view=archived">
+                <i class="fas fa-box-archive"></i> Archived
+                <?php if ($archivedClassTotal > 0): ?><span class="archive-tab__count"><?= (int) $archivedClassTotal ?></span><?php endif; ?>
+            </a>
+        </nav>
+        <?php if ($view === 'archived' && $archivedYears): ?>
+            <form class="archive-filter" method="get" action="courses.php">
+                <input type="hidden" name="view" value="archived">
+                <label for="archiveYearSelect"><i class="fas fa-calendar-days"></i> School Year</label>
+                <select id="archiveYearSelect" name="sy" onchange="this.form.submit()">
+                    <?php foreach ($archivedYears as $y): ?>
+                        <option value="<?= (int) $y['school_year_id'] ?>" <?= $archiveYear && (int) $archiveYear['school_year_id'] === (int) $y['school_year_id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($y['label']) ?> (<?= (int) $y['class_count'] ?> <?= (int) $y['class_count'] === 1 ? 'class' : 'classes' ?>)
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </form>
+        <?php endif; ?>
+    </div>
+
+    <?php if (empty($myCourses) && $view === 'archived'): ?>
+        <section class="panel">
+            <div class="panel-empty panel-empty--enhanced">
+                <div class="panel-empty__icon">
+                    <i class="fas fa-box-archive"></i>
+                </div>
+                <h3>No archived classes yet</h3>
+                <p>Your classes from past school years will be kept here once they are archived.</p>
+            </div>
+        </section>
+    <?php elseif (empty($myCourses)): ?>
         <section class="panel">
             <div class="panel-empty panel-empty--enhanced">
                 <div class="panel-empty__icon">
@@ -105,7 +145,7 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
                 $teacherName = trim($course['teacher_first'] . ' ' . $course['teacher_last']);
             ?>
             <a class="subject-card"
-               href="course_view.php?subject_id=<?= (int) $course['subject_id'] ?>"
+               href="course_view.php?subject_id=<?= (int) $course['subject_id'] ?><?= $view === 'archived' && $archiveYear ? '&sy=' . (int) $archiveYear['school_year_id'] : '' ?>"
                data-name="<?= htmlspecialchars(strtolower($course['subject_name'])) ?>"
                data-teacher="<?= htmlspecialchars(strtolower($teacherName)) ?>"
                style="--card-accent: <?= $accent ?>; --card-accent-light: <?= $accentLight ?>;">
@@ -135,7 +175,7 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
 
                 <div class="subject-card__footer">
                     <span class="subject-card__cta">
-                        Open course <i class="fas fa-arrow-right"></i>
+                        <?= $view === 'archived' ? 'View archived course' : 'Open course' ?> <i class="fas fa-arrow-right"></i>
                     </span>
                     <div class="subject-card__quick-actions">
                         <span class="qa-btn" title="<?= (int) $course['materials_count'] ?> materials"><i class="fas fa-book-open"></i></span>

@@ -651,3 +651,113 @@ body {
         font-size: 1.35rem;
     }
 }
+
+
+/* ===== Archived school years: Current/Archived tabs, School Year filter, read-only banner ===== */
+.archive-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 0 0 20px;
+}
+.archive-tabs {
+    display: inline-flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow: var(--shadow);
+}
+.archive-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+.archive-tab:hover { color: var(--primary); }
+.archive-tab.active,
+.archive-tab.active:hover {
+    background: var(--primary);
+    color: #fff;
+}
+.archive-tab__count {
+    min-width: 20px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.08);
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: center;
+}
+.archive-tab.active .archive-tab__count { background: rgba(255, 255, 255, 0.25); }
+.archive-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+}
+.archive-filter label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.archive-filter select {
+    min-width: 200px;
+    padding: 9px 36px 9px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--card);
+    color: var(--text);
+    font: inherit;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.archive-filter select:focus {
+    outline: none;
+    border-color: var(--primary-light);
+    box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.15);
+}
+.archive-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0 0 18px;
+    padding: 12px 16px;
+    border: 1px solid #fde68a;
+    border-radius: var(--radius);
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+.archive-banner i { margin-top: 3px; }
+.archive-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 0.75rem;
+    font-weight: 600;
+    vertical-align: middle;
+}
+@media (max-width: 640px) {
+    .archive-bar { flex-direction: column; align-items: stretch; }
+    .archive-filter { justify-content: space-between; }
+    .archive-filter select { flex: 1; min-width: 0; }
+}

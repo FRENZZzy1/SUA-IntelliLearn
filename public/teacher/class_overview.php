@@ -25,7 +25,7 @@ if (!empty($submissionRows)) {
     <link rel="stylesheet" href="assets/css/courses.css">
     <link rel="stylesheet" href="assets/css/class_overview.css">
 </head>
-<body>
+<body class="<?= $isArchivedView ? 'archive-readonly' : '' ?>">
 
 <?php include '../../includes/teachers_sidebar.php'; ?>
 
@@ -33,7 +33,7 @@ if (!empty($submissionRows)) {
 
     <?php include '../../includes/teacher_header.php'; ?>
 
-    <a href="course_section.php?section_id=<?= (int) $classInfo['section_id'] ?>" class="breadcrumb-back">
+    <a href="course_section.php?section_id=<?= (int) $classInfo['section_id'] ?><?= $isArchivedView ? '&amp;sy=' . (int) $archiveYearId : '' ?>" class="breadcrumb-back">
         <i class="fas fa-arrow-left"></i> Back to <?= htmlspecialchars($classInfo['section_name']) ?>
     </a>
 
@@ -48,9 +48,19 @@ if (!empty($submissionRows)) {
             <span class="class-code-badge"><?= htmlspecialchars($activeOffering['class_code']) ?></span>
         <?php endif; ?>
         <?php if ($schoolYearLabel): ?>
-            <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
+            <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?><?php if ($isArchivedView): ?> <span class="archive-chip"><i class="fas fa-box-archive"></i> Archived</span><?php endif; ?></p>
         <?php endif; ?>
     </div>
+
+    <?php if ($isArchivedView): ?>
+        <div class="archive-banner" role="note">
+            <i class="fas fa-box-archive"></i>
+            <div>
+                <strong>This class is archived.</strong>
+                You can review its materials, students, attendance, assignments, quizzes and grades, but it can no longer be edited.
+            </div>
+        </div>
+    <?php endif; ?>
 
     <?php if ($flash): ?>
         <div class="class-flash class-flash-<?= htmlspecialchars($flash['type']) ?>">
@@ -1089,6 +1099,7 @@ if (!empty($submissionRows)) {
                     <input type="hidden" name="subject_id" value="<?= (int) $classInfo['subject_id'] ?>">
                     <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
                     <input type="hidden" name="view" value="attendance">
+                    <?php if ($isArchivedView): ?><input type="hidden" name="sy" value="<?= (int) $archiveYearId ?>"><?php endif; ?>
                     <?php if ($activeTerm): ?><input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>"><?php endif; ?>
                     <input type="date" name="date" value="<?= htmlspecialchars($attendanceDate) ?>"
                            max="<?= date('Y-m-d') ?>" onchange="this.form.submit()">
@@ -1257,6 +1268,18 @@ if (!empty($submissionRows)) {
 </div>
 
 <script src="assets/js/class_overview.js"></script>
+
+<?php if ($isArchivedView): ?>
+<script>
+/* Archived class: the grading and attendance grids are view-only. */
+document.querySelectorAll('.grading-form, .attendance-form, #answerReviewForm').forEach(function (form) {
+    form.addEventListener('submit', function (e) { e.preventDefault(); });
+    form.querySelectorAll('input, select, textarea').forEach(function (el) {
+        if (el.type !== 'hidden') { el.disabled = true; }
+    });
+});
+</script>
+<?php endif; ?>
 
 </body>
 </html>

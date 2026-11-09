@@ -32,6 +32,17 @@ $schoolYear      = $stmt->fetch();
 $schoolYearId    = $schoolYear['school_year_id'] ?? null;
 $schoolYearLabel = $schoolYear['label'] ?? null;
 
+// ---- Archived mode (?sy=<school_year_id>) ------------------------------
+// Opened from the Archived tab of the Sections page: this section's classes
+// are listed from the chosen archived school year instead of the current one.
+$archiveYearId  = null;
+$isArchivedView = false;
+$requestedYear  = filter_input(INPUT_GET, 'sy', FILTER_VALIDATE_INT);
+if ($requestedYear) {
+    $archiveYearId  = (int) $requestedYear;
+    $isArchivedView = true;
+}
+
 // ---- Section info ------------------------------------------------------
 // Scoped to (teacher_id, section_id) together: this doubles as the
 // authorization check. If this teacher doesn't actually have an active
@@ -51,8 +62,27 @@ $stmt = $pdo->prepare("
 $stmt->execute([$teacherId, $sectionId, $schoolYearId, $schoolYearId]);
 $section = $stmt->fetch();
 
+if ($isArchivedView) {
+    $stmt = $pdo->prepare("
+        SELECT DISTINCT sec.section_id, sec.section_name, sec.grade_level, sy.label AS school_year_label
+        FROM classofferings co
+        JOIN sections sec   ON sec.section_id = co.section_id
+        JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
+        WHERE co.teacher_id = ?
+          AND co.section_id = ?
+          AND co.school_year_id = ?
+          AND " . archivedClassSql() . "
+        LIMIT 1
+    ");
+    $stmt->execute([$teacherId, $sectionId, $archiveYearId]);
+    $section = $stmt->fetch();
+    if ($section) {
+        $schoolYearLabel = $section['school_year_label'];
+    }
+}
+
 if (!$section) {
-    header('Location: courses.php');
+    header('Location: courses.php' . ($isArchivedView ? '?view=archived' : ''));
     exit();
 }
 
@@ -87,6 +117,37 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([$teacherId, $sectionId, $schoolYearId, $schoolYearId]);
 $sectionSubjectsRaw = $stmt->fetchAll();
+
+if ($isArchivedView) {
+    $stmt = $pdo->prepare("
+        SELECT
+            co.offering_id,
+            co.class_code,
+            sub.subject_id,
+            sub.subject_name,
+            co.quarter,
+            co.schedule_days,
+            co.start_time,
+            co.end_time,
+            co.capacity,
+            COUNT(e.student_id) AS enrolled_count
+        FROM classofferings co
+        JOIN subjects sub   ON sub.subject_id = co.subject_id
+        JOIN sections sec   ON sec.section_id = co.section_id
+        JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
+        LEFT JOIN enrollments e
+               ON e.offering_id = co.offering_id AND e.status IN ('enrolled', 'completed')
+        WHERE co.teacher_id = ?
+          AND co.section_id = ?
+          AND co.school_year_id = ?
+          AND " . archivedClassSql() . "
+        GROUP BY co.offering_id, co.class_code, sub.subject_id, sub.subject_name, co.quarter, co.schedule_days,
+                 co.start_time, co.end_time, co.capacity
+        ORDER BY sub.subject_name
+    ");
+    $stmt->execute([$teacherId, $sectionId, $archiveYearId]);
+    $sectionSubjectsRaw = $stmt->fetchAll();
+}
 
 // ---- Collapse the per-term rows into one card per subject ----------------
 // The card shown to the teacher represents the subject as a whole; the

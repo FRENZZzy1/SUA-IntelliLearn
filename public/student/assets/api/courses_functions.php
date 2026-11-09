@@ -44,27 +44,67 @@ $schoolYear      = $stmt->fetch();
 $schoolYearId    = $schoolYear['school_year_id'] ?? null;
 $schoolYearLabel = $schoolYear['label'] ?? null;
 
+// ---- Current / Archived view -------------------------------------------
+// "Archived" lists the classes of past school years (class, section or whole
+// year archived) so a student can still open them after the year ends. The
+// School Year filter (?sy=) picks which archived year is shown.
+$view               = (($_GET['view'] ?? '') === 'archived') ? 'archived' : 'current';
+$archivedYears      = getArchivedSchoolYears($pdo, null, $studentId);
+$archivedClassTotal = (int) array_sum(array_column($archivedYears, 'class_count'));
+$archiveYear        = ($view === 'archived') ? pickArchivedSchoolYear($archivedYears, $_GET['sy'] ?? null) : null;
+if ($archiveYear) {
+    $schoolYearLabel = $archiveYear['label'];
+}
+
 // ---- This student's active enrollments, one row per term-offering ------
-$stmt = $pdo->prepare("
-    SELECT
-        e.enrollment_id, co.offering_id, co.quarter, co.schedule_days,
-        co.start_time, co.end_time, co.capacity,
-        sub.subject_id, sub.subject_name,
-        sec.section_id, sec.section_name, sec.grade_level,
-        t.teacher_id, t.firstname AS teacher_first, t.lastname AS teacher_last
-    FROM enrollments e
-    JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
-    JOIN subjects sub      ON sub.subject_id = co.subject_id
-    JOIN sections sec      ON sec.section_id = co.section_id
-    JOIN teachers t        ON t.teacher_id = co.teacher_id
-    WHERE e.student_id = ?
-      AND e.status = 'enrolled'
-      AND co.status = 'active'
-      AND (co.school_year_id = ? OR ? IS NULL)
-    ORDER BY sub.subject_name, co.quarter
-");
-$stmt->execute([$studentId, $schoolYearId, $schoolYearId]);
-$enrollmentRows = $stmt->fetchAll();
+if ($view === 'archived') {
+    // Archived classes of the chosen school year (read-only on the course page).
+    $enrollmentRows = [];
+    if ($archiveYear) {
+        $stmt = $pdo->prepare("
+            SELECT
+                e.enrollment_id, co.offering_id, co.quarter, co.schedule_days,
+                co.start_time, co.end_time, co.capacity,
+                sub.subject_id, sub.subject_name,
+                sec.section_id, sec.section_name, sec.grade_level,
+                t.teacher_id, t.firstname AS teacher_first, t.lastname AS teacher_last
+            FROM enrollments e
+            JOIN classofferings co ON co.offering_id = e.offering_id
+            JOIN subjects sub      ON sub.subject_id = co.subject_id
+            JOIN sections sec      ON sec.section_id = co.section_id
+            JOIN schoolyears sy    ON sy.school_year_id = co.school_year_id
+            LEFT JOIN teachers t   ON t.teacher_id = co.teacher_id
+            WHERE e.student_id = ?
+              AND e.status IN ('enrolled', 'completed')
+              AND co.school_year_id = ?
+              AND " . archivedClassSql() . "
+            ORDER BY sub.subject_name, co.quarter
+        ");
+        $stmt->execute([$studentId, (int) $archiveYear['school_year_id']]);
+        $enrollmentRows = $stmt->fetchAll();
+    }
+} else {
+    $stmt = $pdo->prepare("
+        SELECT
+            e.enrollment_id, co.offering_id, co.quarter, co.schedule_days,
+            co.start_time, co.end_time, co.capacity,
+            sub.subject_id, sub.subject_name,
+            sec.section_id, sec.section_name, sec.grade_level,
+            t.teacher_id, t.firstname AS teacher_first, t.lastname AS teacher_last
+        FROM enrollments e
+        JOIN classofferings co ON co.offering_id = e.offering_id AND co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+        JOIN subjects sub      ON sub.subject_id = co.subject_id
+        JOIN sections sec      ON sec.section_id = co.section_id
+        JOIN teachers t        ON t.teacher_id = co.teacher_id
+        WHERE e.student_id = ?
+          AND e.status = 'enrolled'
+          AND co.status = 'active'
+          AND (co.school_year_id = ? OR ? IS NULL)
+        ORDER BY sub.subject_name, co.quarter
+    ");
+    $stmt->execute([$studentId, $schoolYearId, $schoolYearId]);
+    $enrollmentRows = $stmt->fetchAll();
+}
 
 // ---- Collapse per-term rows into one card per subject -------------------
 $myCourses = [];
