@@ -186,6 +186,8 @@ if ($activeOfferingId && ($activeView === 'students' || $activeView === 'attenda
 $attendanceDate = null;
 $attendanceByStudent = [];
 $attendanceSummary = ['Present' => 0, 'Absent' => 0, 'Late' => 0, 'Excused' => 0, 'Unmarked' => 0];
+$attendanceGridDates = [];
+$attendanceGridCells = [];
 if ($activeOfferingId && $activeView === 'attendance') {
     // Date defaults to today; validate anything passed in the query string
     // so a malformed ?date= can't cause a DB error.
@@ -214,6 +216,22 @@ if ($activeOfferingId && $activeView === 'attendance') {
             $attendanceSummary['Unmarked']++;
         }
     }
+
+    // Every record for this term's offering, for the Attendance Records table
+    // (students as rows, dates as columns).
+    $stmt = $pdo->prepare("
+        SELECT student_id, attendance_date, status
+        FROM attendance
+        WHERE offering_id = ?
+        ORDER BY attendance_date
+    ");
+    $stmt->execute([$activeOfferingId]);
+    foreach ($stmt->fetchAll() as $row) {
+        $attendanceGridDates[$row['attendance_date']] = true;
+        $attendanceGridCells[(int) $row['student_id']][$row['attendance_date']] = $row['status'];
+    }
+    $attendanceGridDates = array_keys($attendanceGridDates);
+    sort($attendanceGridDates);
 }
 
 // ---- Assignments for the active term's offering ---------------------------
