@@ -14,6 +14,14 @@
 $displayName = $_SESSION['username'] ?? 'Guest';
 $userRole    = $_SESSION['role'] ?? '';
 
+// Build an installation-aware URL so header search works whether the app is
+// installed at the domain root or inside a project subdirectory.
+$adminScriptPath = str_replace('\\\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+$adminPathMarker = '/public/admin/';
+$adminPathOffset = strpos($adminScriptPath, $adminPathMarker);
+$adminAppBase = ($adminPathOffset === false) ? '' : substr($adminScriptPath, 0, $adminPathOffset);
+$adminSearchEndpoint = $adminAppBase . '/public/admin/assests/api/search.php';
+
 // Reuse get_initials() from dashboard_functions.php if it's already loaded,
 // otherwise fall back to a simple inline version so this file also works
 // on pages that don't include the dashboard data layer.
@@ -35,7 +43,7 @@ if (function_exists('get_initials')) {
         <i class="fas fa-search"></i>
         <input type="text" id="globalSearchInput" placeholder="Search users, courses, subjects..." autocomplete="off" aria-label="Search users, courses, subjects" aria-keyshortcuts="/ Control+K Meta+K">
         <kbd class="hs-kbd" aria-hidden="true">/</kbd>
-        <div id="searchResultsDropdown" class="search-results-dropdown"></div>
+        <div id="searchResultsDropdown" class="search-results-dropdown" data-search-endpoint="<?php echo htmlspecialchars($adminSearchEndpoint, ENT_QUOTES, 'UTF-8'); ?>"></div>
     </div>
     <div class="header-actions">
         <div class="shn" id="shnRoot" data-user-id="<?php echo (int) ($_SESSION['user_id'] ?? 0); ?>">
@@ -101,5 +109,6 @@ if (function_exists('get_initials')) {
     </div>
 </header>
 <script src="/SUA-INTELLILEARN/includes/js/admin_header.js"></script>
+<script src="/SUA-INTELLILEARN/includes/js/admin_global_search.js?v=2"></script>
 
 
