@@ -303,16 +303,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        if ($contact !== '') {
-            try {
-                $contact = validatePhilippineMobileNumber($contact);
-            } catch (InvalidArgumentException $e) {
-                setFlashMessage('error', $e->getMessage());
-                header("Location: " . $um_return);
-                exit();
-            }
-        }
-
         if ($guardian_contact !== '') {
             try {
                 $guardian_contact = validatePhilippineMobileNumber($guardian_contact);
@@ -480,7 +470,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $middlename !== '' ? $middlename : null,
                     $email,
                     $department !== '' ? $department : null,
-                    $contact !== '' ? $contact : null,
                     $specialization !== '' ? $specialization : null,
                     $employment_status !== '' ? $employment_status : null,
                     $user_id,
