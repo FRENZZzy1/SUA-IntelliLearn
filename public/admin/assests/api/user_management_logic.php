@@ -634,7 +634,6 @@ $order_sql = match($sort) {
     'oldest' => 'u.created_at ASC',
     'name_asc' => 'COALESCE(t.firstname, s.firstname, a.email) ASC',
     'name_desc' => 'COALESCE(t.firstname, s.firstname, a.email) DESC',
-    'last_active' => 'u.updated_at DESC',
     default => 'u.created_at DESC',
 };
 
@@ -645,7 +644,6 @@ $sql = "SELECT
     u.role,
     u.status,
     u.created_at,
-    u.updated_at,
     COALESCE(t.firstname, s.firstname, '') as firstname,
     COALESCE(t.lastname, s.lastname, '') as lastname,
     COALESCE(t.email, s.email, a.email, '') as email,
@@ -759,17 +757,5 @@ function getRoleLabel(string $role): string {
     };
 }
 
-// Helper for relative time
-function timeAgo($datetime) {
-    $time = strtotime($datetime);
-    $now = time();
-    $diff = $now - $time;
-
-    if ($diff < 60) return 'Just now';
-    if ($diff < 3600) return floor($diff / 60) . ' min ago';
-    if ($diff < 86400) return floor($diff / 3600) . ' hours ago';
-    if ($diff < 604800) return floor($diff / 86400) . ' days ago';
-    return date('M j, Y', $time);
-}
 
 $csrf_token = generateCSRFToken();
