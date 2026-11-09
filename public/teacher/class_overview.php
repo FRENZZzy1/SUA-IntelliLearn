@@ -1186,6 +1186,84 @@ if (!empty($submissionRows)) {
             <?php endif; ?>
         </section>
 
+        <!-- Attendance records: students (rows) x dates (columns) -->
+        <?php
+            $gridDates = $attendanceGridDates ?? [];
+            $gridCells = $attendanceGridCells ?? [];
+            // Include students who have records but are no longer in the enrolled list.
+            $gridStudents = [];
+            foreach ($students as $s) {
+                $gridStudents[(int) $s['student_id']] = $s['lastname'] . ', ' . $s['firstname'];
+            }
+            if ($gridCells && count(array_diff_key($gridCells, $gridStudents))) {
+                $extraIds = array_keys(array_diff_key($gridCells, $gridStudents));
+                $ph = implode(',', array_fill(0, count($extraIds), '?'));
+                $xs = $pdo->prepare("SELECT student_id, firstname, lastname FROM students WHERE student_id IN ($ph) ORDER BY lastname, firstname");
+                $xs->execute($extraIds);
+                foreach ($xs->fetchAll() as $x) {
+                    $gridStudents[(int) $x['student_id']] = $x['lastname'] . ', ' . $x['firstname'];
+                }
+            }
+        ?>
+        <section class="panel panel--card attendance-records-panel">
+            <div class="panel-header">
+                <h2><i class="fas fa-table"></i> Attendance Records · <?= htmlspecialchars($terms[$activeTerm]['label']) ?></h2>
+                <div class="rec-legend">
+                    <span><i class="rec-key p"><i class="fas fa-check"></i></i> Present</span>
+                    <span><i class="rec-key a"><i class="fas fa-xmark"></i></i> Absent</span>
+                    <span><i class="rec-key l">L</i> Late</span>
+                    <span><i class="rec-key e">E</i> Excused</span>
+                </div>
+            </div>
+
+            <?php if (empty($gridStudents)): ?>
+                <div class="panel-empty"><p>No students enrolled yet.</p></div>
+            <?php elseif (empty($gridDates)): ?>
+                <div class="panel-empty"><p>No attendance has been recorded for this term yet.</p></div>
+            <?php else: ?>
+                <div class="rec-wrap">
+                    <table class="rec-table">
+                        <thead>
+                            <tr>
+                                <th class="rec-name">Student</th>
+                                <?php foreach ($gridDates as $d): $ts = strtotime($d); ?>
+                                    <th class="<?= $d === $attendanceDate ? 'rec-current' : '' ?>" title="<?= date('l, F j, Y', $ts) ?>">
+                                        <a href="<?= attendanceUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, $d) ?>">
+                                            <?= date('M j', $ts) ?><small><?= date('D', $ts) ?></small>
+                                        </a>
+                                    </th>
+                                <?php endforeach; ?>
+                                <th>Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($gridStudents as $sid => $name):
+                                $tot = 0; $good = 0;
+                            ?>
+                                <tr>
+                                    <td class="rec-name"><?= htmlspecialchars($name) ?></td>
+                                    <?php foreach ($gridDates as $d):
+                                        $st = $gridCells[$sid][$d] ?? null;
+                                        if ($st !== null) { $tot++; if ($st === 'Present' || $st === 'Late') $good++; }
+                                        switch ($st) {
+                                            case 'Present': $cls = 'p'; $inner = '<i class="fas fa-check"></i>'; break;
+                                            case 'Absent':  $cls = 'a'; $inner = '<i class="fas fa-xmark"></i>'; break;
+                                            case 'Late':    $cls = 'l'; $inner = 'L'; break;
+                                            case 'Excused': $cls = 'e'; $inner = 'E'; break;
+                                            default:        $cls = 'n'; $inner = '–';
+                                        }
+                                    ?>
+                                        <td class="rec-cell <?= $cls ?><?= $d === $attendanceDate ? ' rec-current' : '' ?>" title="<?= htmlspecialchars(($st ?? 'No record') . ' · ' . date('M j, Y', strtotime($d))) ?>"><?= $inner ?></td>
+                                    <?php endforeach; ?>
+                                    <td class="rec-rate"><?= $tot ? round($good / $tot * 100) . '%' : '–' ?></td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </section>
+
     <?php endif; ?>
 
 </main>
