@@ -1204,3 +1204,35 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .cs-page * { animation: none !important; transition: none !important; }
 }
+
+
+/* Keep long multi-day schedules from expanding the Class List table. */
+.cs-page #courseTable thead th:nth-child(3),
+.cs-page #courseTable tbody td:nth-child(3) {
+    width: 190px;
+    max-width: 190px;
+    white-space: normal;
+}
+
+.cs-page #courseTable .sched {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    max-width: 190px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.4;
+}
+
+.cs-page #courseTable .sched i {
+    flex: 0 0 auto;
+    margin-top: 2px;
+}
+
+@media (max-width: 820px) {
+    .cs-page #courseTable tbody td:nth-child(3),
+    .cs-page #courseTable .sched {
+        width: auto;
+        max-width: 100%;
+    }
+}
