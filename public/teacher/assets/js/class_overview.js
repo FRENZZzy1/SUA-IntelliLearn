@@ -1,28 +1,73 @@
-// Toggle the "Add Material" form open/closed
+// ===================== Add Material form (mirrors the New Assignment form) =====================
 const btnShowUpload = document.getElementById('btnShowUpload');
 const btnCancelUpload = document.getElementById('btnCancelUpload');
 const uploadForm = document.getElementById('materialUploadForm');
 
-if (btnShowUpload && uploadForm) {
-    btnShowUpload.addEventListener('click', () => {
-        uploadForm.hidden = !uploadForm.hidden;
-    });
-}
-if (btnCancelUpload && uploadForm) {
-    btnCancelUpload.addEventListener('click', () => {
-        uploadForm.hidden = true;
-        uploadForm.reset();
-    });
-}
+if (uploadForm) {
+    const $m = (id) => document.getElementById(id);
+    const srcFile = uploadForm.querySelector('.material-source-file');
+    const srcLink = uploadForm.querySelector('.material-source-link');
+    const urlInput = $m('materialUrl');
+    const fileInput = $m('materialFile');
+    const drop = $m('matDrop'), chip = $m('matFile'), err = $m('matFileError');
+    const MAX_MAT = 25 * 1024 * 1024;
 
-// Toggle file-vs-link fields in the upload form
-document.querySelectorAll('input[name="source"]').forEach((radio) => {
-    radio.addEventListener('change', () => {
-        const isFile = document.querySelector('input[name="source"]:checked').value === 'file';
-        document.querySelector('.material-source-file').hidden = !isFile;
-        document.querySelector('.material-source-link').hidden = isFile;
+    // Opens the form and hides the button while it's open (close with Cancel / the X)
+    if (btnShowUpload) {
+        btnShowUpload.addEventListener('click', () => {
+            uploadForm.hidden = false;
+            btnShowUpload.hidden = true;
+            uploadForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(() => $m('materialTitle') && $m('materialTitle').focus({ preventScroll: true }), 250);
+        });
+    }
+    function closeUpload() {
+        uploadForm.hidden = true;
+        if (btnShowUpload) btnShowUpload.hidden = false;
+        uploadForm.reset();
+        uploadForm.dispatchEvent(new Event('reset'));
+    }
+    if (btnCancelUpload) btnCancelUpload.addEventListener('click', closeUpload);
+    const btnClose = $m('btnCloseUpload');
+    if (btnClose) btnClose.addEventListener('click', closeUpload);
+
+    // File vs link
+    function syncSource() {
+        const checked = uploadForm.querySelector('input[name="source"]:checked');
+        const isFile = !checked || checked.value === 'file';
+        if (srcFile) srcFile.hidden = !isFile;
+        if (srcLink) srcLink.hidden = isFile;
+        if (urlInput) urlInput.required = !isFile;
+    }
+    uploadForm.querySelectorAll('input[name="source"]').forEach((r) => r.addEventListener('change', syncSource));
+
+    // Dropzone
+    function fmtSize(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB'; }
+    function showMatFile() {
+        err.hidden = true;
+        let f = fileInput.files && fileInput.files[0];
+        if (f && f.size > MAX_MAT) {
+            fileInput.value = '';
+            err.textContent = '\u201c' + f.name + '\u201d is ' + fmtSize(f.size) + ' \u2014 the limit is 25 MB.';
+            err.hidden = false;
+            f = null;
+        }
+        chip.hidden = !f;
+        drop.classList.toggle('has-file', !!f);
+        if (f) { $m('matFileName').textContent = f.name; $m('matFileSize').textContent = fmtSize(f.size); }
+    }
+    fileInput.addEventListener('change', showMatFile);
+    $m('matFileRemove').addEventListener('click', () => { fileInput.value = ''; showMatFile(); });
+    ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('is-over'); }));
+    ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('is-over')));
+    drop.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer && e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; showMatFile(); }
     });
-});
+
+    uploadForm.addEventListener('reset', () => setTimeout(() => { syncSource(); showMatFile(); }, 0));
+    syncSource();
+}
 
 // Toggle the "New Assignment" form open/closed
 const btnShowAssignmentForm = document.getElementById('btnShowAssignmentForm');

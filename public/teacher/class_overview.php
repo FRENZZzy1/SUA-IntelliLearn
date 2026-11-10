@@ -196,8 +196,8 @@ if (!empty($submissionRows)) {
                     </button>
                 </div>
 
-                <!-- Upload form -->
-                <form class="material-upload-form" id="materialUploadForm"
+                <!-- Add material form (same look as New Assignment) -->
+                <form class="asg-form mat-form" id="materialUploadForm"
                       action="assets/api/material_upload.php" method="POST" enctype="multipart/form-data" hidden>
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                     <input type="hidden" name="offering_id" value="<?= (int) $activeOfferingId ?>">
@@ -205,41 +205,82 @@ if (!empty($submissionRows)) {
                     <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
                     <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
 
-                    <div class="form-row">
-                        <label for="materialTitle">Title</label>
-                        <input type="text" id="materialTitle" name="title" maxlength="255" required
-                               placeholder="e.g. Module 1: Introduction to Cells">
-                    </div>
+                    <header class="asg-form__head">
+                        <span class="asg-form__icon"><i class="fas fa-book-open"></i></span>
+                        <div class="asg-form__heading">
+                            <h3>Add material</h3>
+                            <p>Share a file or a link with your students.</p>
+                        </div>
+                        <button type="button" class="asg-form__close" id="btnCloseUpload" aria-label="Close form">
+                            <i class="fas fa-xmark"></i>
+                        </button>
+                    </header>
 
-                    <div class="form-row material-source-toggle">
-                        <label><input type="radio" name="source" value="file" checked> Upload a file</label>
-                        <label><input type="radio" name="source" value="link"> Add a link</label>
-                    </div>
+                    <section class="asg-section">
+                        <div class="asg-field">
+                            <label for="materialTitle">Title <span class="asg-req">*</span></label>
+                            <input type="text" id="materialTitle" name="title" maxlength="255" required
+                                   placeholder="e.g. Module 1: Introduction to Cells">
+                        </div>
+                    </section>
 
-                    <div class="form-row material-source-file">
-                        <label for="materialType">File type</label>
-                        <select id="materialType" name="material_type">
-                            <option value="pdf">PDF</option>
-                            <option value="slides">Slides</option>
-                            <option value="video">Video</option>
-                            <option value="other">Other</option>
-                        </select>
-                        <label for="materialFile">File</label>
-                        <input type="file" id="materialFile" name="material_file"
-                               accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.mov,.jpg,.jpeg,.png,.zip">
-                        <span class="field-hint">Max 25MB.</span>
-                    </div>
+                    <section class="asg-section">
+                        <h4 class="asg-section__title">Source</h4>
+                        <div class="asg-segment asg-segment--2" role="radiogroup" aria-label="Material source">
+                            <label>
+                                <input type="radio" name="source" value="file" checked>
+                                <span><i class="fas fa-file-arrow-up"></i> Upload a file</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="source" value="link">
+                                <span><i class="fas fa-link"></i> Add a link</span>
+                            </label>
+                        </div>
+                    </section>
 
-                    <div class="form-row material-source-link" hidden>
-                        <label for="materialUrl">URL</label>
-                        <input type="url" id="materialUrl" name="external_url"
-                               placeholder="https://drive.google.com/... or https://youtube.com/...">
-                    </div>
+                    <section class="asg-section material-source-file">
+                        <div class="asg-field">
+                            <span class="asg-label">File type</span>
+                            <div class="asg-segment asg-segment--4" role="radiogroup" aria-label="File type">
+                                <label><input type="radio" name="material_type" value="pdf" checked><span><i class="fas fa-file-pdf"></i> PDF</span></label>
+                                <label><input type="radio" name="material_type" value="slides"><span><i class="fas fa-file-powerpoint"></i> Slides</span></label>
+                                <label><input type="radio" name="material_type" value="video"><span><i class="fas fa-circle-play"></i> Video</span></label>
+                                <label><input type="radio" name="material_type" value="other"><span><i class="fas fa-file"></i> Other</span></label>
+                            </div>
+                        </div>
 
-                    <div class="form-actions">
+                        <div class="asg-field">
+                            <span class="asg-label">File</span>
+                            <label class="asg-drop" id="matDrop" for="materialFile">
+                                <input type="file" id="materialFile" name="material_file"
+                                       accept=".pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.mp4,.mov,.jpg,.jpeg,.png,.zip">
+                                <span class="asg-drop__icon"><i class="fas fa-cloud-arrow-up"></i></span>
+                                <span class="asg-drop__text"><strong>Click to upload</strong> or drag and drop</span>
+                                <span class="asg-drop__sub">PDF, Office files, video, images or ZIP · up to 25 MB</span>
+                            </label>
+                            <div class="asg-file" id="matFile" hidden>
+                                <i class="fas fa-paperclip"></i>
+                                <span class="asg-file__name" id="matFileName"></span>
+                                <span class="asg-file__size" id="matFileSize"></span>
+                                <button type="button" id="matFileRemove" aria-label="Remove file"><i class="fas fa-xmark"></i></button>
+                            </div>
+                            <small class="asg-error" id="matFileError" hidden></small>
+                        </div>
+                    </section>
+
+                    <section class="asg-section material-source-link" hidden>
+                        <div class="asg-field">
+                            <label for="materialUrl">URL <span class="asg-req">*</span></label>
+                            <input type="url" id="materialUrl" name="external_url"
+                                   placeholder="https://drive.google.com/... or https://youtube.com/...">
+                            <small class="asg-hint">Google Drive, YouTube or any public link.</small>
+                        </div>
+                    </section>
+
+                    <footer class="asg-form__foot">
                         <button type="button" class="btn-secondary" id="btnCancelUpload">Cancel</button>
-                        <button type="submit" class="btn-primary"><i class="fas fa-upload"></i> Save Material</button>
-                    </div>
+                        <button type="submit" class="btn-primary"><i class="fas fa-upload"></i> Save material</button>
+                    </footer>
                 </form>
 
                 <?php if (empty($materials)): ?>
@@ -606,52 +647,67 @@ if (!empty($submissionRows)) {
                         <p>Click "New Assignment" to post work for your students.</p>
                     </div>
                 <?php else: ?>
-                    <ul class="material-list">
+                    <ul class="work-list">
                         <?php foreach ($assignments as $a): ?>
-                            <?php $due = dueDateLabel($a['due_date']); ?>
-                            <li class="material-item">
-                                <div class="material-icon material-icon--assignment"><i class="fas fa-marker"></i></div>
-                                <div class="material-info">
-                                    <a class="material-title"
-                                       href="<?= assignmentsUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $a['assignment_id']) ?>">
-                                        <?= htmlspecialchars($a['title']) ?>
-                                    </a>
-                                    <?php
-                                        $aPts = rtrim(rtrim((string) $a['points'], '0'), '.') ?: '0';
-                                        $aMax = (int) $a['max_attempts'];
-                                    ?>
-                                    <div class="quiz-facts">
-                                        <span class="quiz-fact"><i class="fas fa-tag"></i> <b><?= htmlspecialchars($a['type'] ?? 'Activity') ?></b></span>
-                                        <span class="quiz-fact"><i class="fas fa-star"></i> <b><?= $aPts ?></b> pt<?= $aPts === '1' ? '' : 's' ?></span>
-                                        <span class="quiz-fact"><i class="fas fa-rotate-right"></i> <b><?= $aMax ?></b> attempt<?= $aMax === 1 ? '' : 's' ?> allowed</span>
-                                        <span class="quiz-fact"><i class="fas fa-clipboard-check"></i> <b><?= (int) $a['graded_count'] ?>/<?= (int) $a['submitted_count'] ?></b> graded</span>
-                                        <span class="quiz-schedule__item <?= $due['overdue'] ? 'quiz-schedule__item--overdue' : '' ?>">
-                                            <i class="fas fa-calendar-xmark"></i>
-                                            <span class="quiz-schedule__label">Due</span>
-                                            <span class="quiz-schedule__value"><?= htmlspecialchars($due['label']) ?></span>
+                            <?php
+                                $due   = dueDateLabel($a['due_date']);
+                                $aPts  = rtrim(rtrim((string) $a['points'], '0'), '.') ?: '0';
+                                $aMax  = (int) $a['max_attempts'];
+                                $aSub  = (int) $a['submitted_count'];
+                                $aGr   = (int) $a['graded_count'];
+                                $aPct  = $aSub > 0 ? (int) round(($aGr / $aSub) * 100) : 0;
+                                $aUrl  = assignmentsUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $a['assignment_id']);
+                            ?>
+                            <li class="work-card work-card--assignment<?= $due['overdue'] ? ' is-overdue' : '' ?>">
+                                <div class="work-card__icon"><i class="fas fa-marker"></i></div>
+
+                                <div class="work-card__main">
+                                    <div class="work-card__top">
+                                        <a class="work-card__title" href="<?= $aUrl ?>"><?= htmlspecialchars($a['title']) ?></a>
+                                        <span class="work-tag"><?= htmlspecialchars($a['type'] ?? 'Activity') ?></span>
+                                    </div>
+
+                                    <div class="work-meta">
+                                        <span class="work-pill"><i class="fas fa-star"></i><b><?= $aPts ?></b> pt<?= $aPts === '1' ? '' : 's' ?></span>
+                                        <span class="work-pill"><i class="fas fa-rotate-right"></i><b><?= $aMax ?></b> attempt<?= $aMax === 1 ? '' : 's' ?></span>
+                                        <span class="work-pill work-pill--due<?= $due['overdue'] ? ' work-pill--overdue' : '' ?>">
+                                            <i class="fas fa-calendar-xmark"></i>Due <b><?= htmlspecialchars($due['label']) ?></b>
+                                        </span>
+                                    </div>
+
+                                    <div class="work-progress" title="<?= $aGr ?> of <?= $aSub ?> submissions graded">
+                                        <div class="work-progress__bar"><span style="width: <?= $aPct ?>%"></span></div>
+                                        <span class="work-progress__label">
+                                            <?php if ($aSub > 0): ?>
+                                                <b><?= $aGr ?>/<?= $aSub ?></b> graded
+                                            <?php else: ?>
+                                                No submissions yet
+                                            <?php endif; ?>
                                         </span>
                                     </div>
                                 </div>
-                                <a class="btn-secondary btn-view-submissions"
-                                   href="<?= assignmentsUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $a['assignment_id']) ?>">
-                                    View Submissions
-                                </a>
-                                <button type="button" class="qa-btn js-edit-assignment" title="Edit deadline / attempts"
-                                        data-assignment="<?= assignmentEditData($a, $assignmentStats) ?>">
-                                    <i class="fas fa-pen"></i>
-                                </button>
-                                <form action="assets/api/assignment_delete.php" method="POST" class="material-delete-form"
-                                      onsubmit="return confirm('Remove this assignment and all of its submissions? This cannot be undone.');">
-                                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-                                    <input type="hidden" name="assignment_id" value="<?= (int) $a['assignment_id'] ?>">
-                                    <input type="hidden" name="offering_id" value="<?= (int) $activeOfferingId ?>">
-                                    <input type="hidden" name="subject_id" value="<?= (int) $classInfo['subject_id'] ?>">
-                                    <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
-                                    <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
-                                    <button type="submit" class="qa-btn qa-btn--danger" title="Remove">
-                                        <i class="fas fa-trash"></i>
+
+                                <div class="work-card__actions">
+                                    <a class="btn-secondary work-btn" href="<?= $aUrl ?>">
+                                        <i class="fas fa-inbox"></i> View submissions
+                                    </a>
+                                    <button type="button" class="qa-btn js-edit-assignment" title="Edit deadline / attempts" aria-label="Edit assignment"
+                                            data-assignment="<?= assignmentEditData($a, $assignmentStats) ?>">
+                                        <i class="fas fa-pen"></i>
                                     </button>
-                                </form>
+                                    <form action="assets/api/assignment_delete.php" method="POST" class="material-delete-form"
+                                          onsubmit="return confirm('Remove this assignment and all of its submissions? This cannot be undone.');">
+                                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+                                        <input type="hidden" name="assignment_id" value="<?= (int) $a['assignment_id'] ?>">
+                                        <input type="hidden" name="offering_id" value="<?= (int) $activeOfferingId ?>">
+                                        <input type="hidden" name="subject_id" value="<?= (int) $classInfo['subject_id'] ?>">
+                                        <input type="hidden" name="section_id" value="<?= (int) $classInfo['section_id'] ?>">
+                                        <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm) ?>">
+                                        <button type="submit" class="qa-btn qa-btn--danger" title="Remove" aria-label="Delete assignment">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
                             </li>
                         <?php endforeach; ?>
                     </ul>
@@ -811,50 +867,52 @@ if (!empty($submissionRows)) {
                         <p>Quizzes you create show up here, along with student scores.</p>
                     </div>
                 <?php else: ?>
-                    <ul class="material-list">
+                    <ul class="work-list">
                         <?php foreach ($quizzes as $q): ?>
-                            <?php $qStatus = quizStatusInfo($q['status']); ?>
-                            <li class="material-item">
-                                <div class="material-icon material-icon--quiz"><i class="fas fa-file-circle-question"></i></div>
-                                <div class="material-info">
-                                    <a class="material-title"
-                                       href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $q['quiz_id']) ?>">
-                                        <?= htmlspecialchars($q['title']) ?>
-                                    </a>
-                                    <?php
-                                        $qAvail    = quizAvailabilityLabel($q['available_from'], $q['available_until']);
-                                        $qPts      = rtrim(rtrim((string) $q['total_points'], '0'), '.') ?: '0';
-                                        $qQuestions = (int) $q['question_count'];
-                                        $qMax      = (int) $q['max_attempts'];
-                                        $qSubmitted = (int) $q['attempts_submitted'];
-                                    ?>
-                                    <div class="quiz-facts">
-                                        <span class="quiz-fact"><i class="fas fa-circle-question"></i> <b><?= $qQuestions ?></b> question<?= $qQuestions === 1 ? '' : 's' ?></span>
-                                        <span class="quiz-fact"><i class="fas fa-star"></i> <b><?= $qPts ?></b> pt<?= $qPts === '1' ? '' : 's' ?></span>
-                                        <span class="quiz-fact"><i class="fas fa-rotate-right"></i> <b><?= $qMax ?></b> attempt<?= $qMax === 1 ? '' : 's' ?> allowed</span>
-                                        <span class="quiz-fact"><i class="fas fa-inbox"></i> <b><?= $qSubmitted ?></b> submitted<?php if ($q['avg_score'] !== null): ?> · avg <b><?= htmlspecialchars($q['avg_score']) ?></b><?php endif; ?></span>
+                            <?php
+                                $qStatus    = quizStatusInfo($q['status']);
+                                $qAvail     = quizAvailabilityLabel($q['available_from'], $q['available_until']);
+                                $qPts       = rtrim(rtrim((string) $q['total_points'], '0'), '.') ?: '0';
+                                $qQuestions = (int) $q['question_count'];
+                                $qMax       = (int) $q['max_attempts'];
+                                $qSubmitted = (int) $q['attempts_submitted'];
+                                $qUrl       = quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $q['quiz_id']);
+                            ?>
+                            <li class="work-card work-card--quiz<?= $qAvail['overdue'] ? ' is-overdue' : '' ?>">
+                                <div class="work-card__icon"><i class="fas fa-file-circle-question"></i></div>
+
+                                <div class="work-card__main">
+                                    <div class="work-card__top">
+                                        <a class="work-card__title" href="<?= $qUrl ?>"><?= htmlspecialchars($q['title']) ?></a>
+                                        <span class="chip chip-<?= $qStatus['class'] ?>"><?= $qStatus['label'] ?></span>
                                     </div>
-                                    <div class="quiz-schedule">
-                                        <span class="quiz-schedule__item">
-                                            <i class="fas fa-calendar-check"></i>
-                                            <span class="quiz-schedule__label">Opens</span>
-                                            <span class="quiz-schedule__value"><?= $qAvail['opens'] ? htmlspecialchars($qAvail['opens']) : 'Immediately' ?></span>
+
+                                    <div class="work-meta">
+                                        <span class="work-pill"><i class="fas fa-circle-question"></i><b><?= $qQuestions ?></b> question<?= $qQuestions === 1 ? '' : 's' ?></span>
+                                        <span class="work-pill"><i class="fas fa-star"></i><b><?= $qPts ?></b> pt<?= $qPts === '1' ? '' : 's' ?></span>
+                                        <span class="work-pill"><i class="fas fa-rotate-right"></i><b><?= $qMax ?></b> attempt<?= $qMax === 1 ? '' : 's' ?></span>
+                                        <span class="work-pill"><i class="fas fa-inbox"></i><b><?= $qSubmitted ?></b> submitted<?php if ($q['avg_score'] !== null): ?> · avg <b><?= htmlspecialchars($q['avg_score']) ?></b><?php endif; ?></span>
+                                    </div>
+
+                                    <div class="work-meta work-meta--schedule">
+                                        <span class="work-pill work-pill--soft">
+                                            <i class="fas fa-calendar-check"></i>Opens <b><?= $qAvail['opens'] ? htmlspecialchars($qAvail['opens']) : 'Immediately' ?></b>
                                         </span>
-                                        <span class="quiz-schedule__item <?= $qAvail['overdue'] ? 'quiz-schedule__item--overdue' : '' ?>">
-                                            <i class="fas fa-calendar-xmark"></i>
-                                            <span class="quiz-schedule__label">Due</span>
-                                            <span class="quiz-schedule__value"><?= $qAvail['due'] ? htmlspecialchars($qAvail['due']) : 'No due date' ?></span>
+                                        <span class="work-pill work-pill--due<?= $qAvail['overdue'] ? ' work-pill--overdue' : '' ?>">
+                                            <i class="fas fa-calendar-xmark"></i>Due <b><?= $qAvail['due'] ? htmlspecialchars($qAvail['due']) : 'No due date' ?></b>
                                         </span>
                                     </div>
                                 </div>
-                                <a class="btn-secondary btn-view-submissions"
-                                   href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $q['quiz_id']) ?>">
-                                    View Scores
-                                </a>
-                                <button type="button" class="qa-btn js-edit-quiz" title="Edit quiz details"
-                                        data-quiz="<?= quizEditData($q) ?>">
-                                    <i class="fas fa-pen"></i>
-                                </button>
+
+                                <div class="work-card__actions">
+                                    <a class="btn-secondary work-btn" href="<?= $qUrl ?>">
+                                        <i class="fas fa-chart-simple"></i> View scores
+                                    </a>
+                                    <button type="button" class="qa-btn js-edit-quiz" title="Edit quiz details" aria-label="Edit quiz"
+                                            data-quiz="<?= quizEditData($q) ?>">
+                                        <i class="fas fa-pen"></i>
+                                    </button>
+                                </div>
                             </li>
                         <?php endforeach; ?>
                     </ul>
