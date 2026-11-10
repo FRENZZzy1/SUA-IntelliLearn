@@ -386,10 +386,24 @@ if (!empty($submissionRows)) {
 
         <section class="panel panel--card" id="requestsPanel"
                  data-csrf="<?= htmlspecialchars($csrfToken) ?>"
+                 data-subject="<?= (int) $classInfo['subject_id'] ?>"
+                 data-section="<?= (int) $classInfo['section_id'] ?>"
                  data-endpoint="assets/api/enrollment_request_decide.php">
             <div class="panel-header">
                 <h2><i class="fas fa-user-plus"></i> Enrollment Requests</h2>
-                <span class="enrolled-badge"><?= (int) $pendingRequestCount ?> pending</span>
+                <div class="request-bulk">
+                    <?php if ($pendingRequestCount > 0 && !$isArchivedView): ?>
+                        <button type="button" class="btn-approve" data-request-bulk="approve_all"
+                                data-count="<?= (int) $pendingRequestCount ?>">
+                            <i class="fas fa-check-double"></i> Approve all
+                        </button>
+                        <button type="button" class="btn-deny" data-request-bulk="deny_all"
+                                data-count="<?= (int) $pendingRequestCount ?>">
+                            <i class="fas fa-xmark"></i> Deny all
+                        </button>
+                    <?php endif; ?>
+                    <span class="enrolled-badge"><?= (int) $pendingRequestCount ?> pending</span>
+                </div>
             </div>
 
             <div class="request-codes">
@@ -416,11 +430,12 @@ if (!empty($submissionRows)) {
                 </div>
             <?php else: ?>
                 <div class="table-scroll">
-                    <table class="data-table data-table--modern">
+                    <table class="data-table data-table--modern requests-table">
                         <thead>
                             <tr>
                                 <th>Student</th>
                                 <th>Term</th>
+                                <th>Status</th>
                                 <th>Requested</th>
                                 <th>Action</th>
                             </tr>
@@ -437,6 +452,7 @@ if (!empty($submissionRows)) {
                                         <span class="lrn-badge"><?= htmlspecialchars($r['student_lrn'] ?? '') ?></span>
                                     </td>
                                     <td><?= htmlspecialchars($termLabels[$r['quarter']] ?? $r['quarter']) ?></td>
+                                    <td><span class="chip chip-submitted">Pending</span></td>
                                     <td><?= date('M j, Y g:i A', strtotime($r['submitted_at'])) ?></td>
                                     <td>
                                         <div class="request-actions">
@@ -470,9 +486,15 @@ if (!empty($submissionRows)) {
             <section class="panel panel--card" id="decidedPanel">
                 <div class="panel-header">
                     <h2><i class="fas fa-clock-rotate-left"></i> Recently decided</h2>
+                    <?php if ($deniedRequestCount > 0 && !$isArchivedView): ?>
+                        <button type="button" class="btn-reopen" data-request-bulk="reopen_all"
+                                data-count="<?= (int) $deniedRequestCount ?>">
+                            <i class="fas fa-rotate-left"></i> Reopen all denied (<?= (int) $deniedRequestCount ?>)
+                        </button>
+                    <?php endif; ?>
                 </div>
                 <div class="table-scroll">
-                    <table class="data-table data-table--modern">
+                    <table class="data-table data-table--modern requests-table">
                         <thead>
                             <tr>
                                 <th>Student</th>

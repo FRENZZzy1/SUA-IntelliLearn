@@ -265,7 +265,57 @@ const requestsPanel = document.getElementById('requestsPanel');
 if (requestsPanel) {
     const requestErrors = document.getElementById('requestErrors');
 
+    // Approve all / Deny all / Reopen all (whole class, handled server-side).
+    const handleBulkClick = (bulkBtn) => {
+        const action = bulkBtn.dataset.requestBulk;
+        const n = bulkBtn.dataset.count || '';
+        const prompts = {
+            approve_all: 'Approve all ' + n + ' pending request(s)? Requests beyond the class capacity will stay pending.',
+            deny_all:    'Deny all ' + n + ' pending request(s)?',
+            reopen_all:  'Reopen all ' + n + ' denied request(s) and move them back to Pending?'
+        };
+        if (!window.confirm(prompts[action])) return;
+
+        const allButtons = document.querySelectorAll('[data-request-bulk], [data-request-action]');
+        allButtons.forEach((b) => { b.disabled = true; });
+        requestErrors.hidden = true;
+
+        const body = new FormData();
+        body.append('csrf', requestsPanel.dataset.csrf);
+        body.append('action', action);
+        body.append('subject_id', requestsPanel.dataset.subject);
+        body.append('section_id', requestsPanel.dataset.section);
+
+        fetch(requestsPanel.dataset.endpoint, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            body: body
+        })
+        .then((res) => res.json())
+        .then((data) => {
+            if (data.success) {
+                window.location.reload();
+                return;
+            }
+            requestErrors.textContent = (data.errors || ['Something went wrong. Please try again.']).join(' ');
+            requestErrors.hidden = false;
+            allButtons.forEach((b) => { b.disabled = false; });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        })
+        .catch(() => {
+            requestErrors.textContent = 'Something went wrong. Please try again.';
+            requestErrors.hidden = false;
+            allButtons.forEach((b) => { b.disabled = false; });
+        });
+    };
+
     const handleRequestClick = (e) => {
+        const bulkBtn = e.target.closest('[data-request-bulk]');
+        if (bulkBtn) {
+            handleBulkClick(bulkBtn);
+            return;
+        }
+
         const btn = e.target.closest('[data-request-action]');
         if (!btn) return;
 

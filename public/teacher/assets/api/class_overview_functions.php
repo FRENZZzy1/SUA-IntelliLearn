@@ -529,6 +529,7 @@ foreach ($offeringRows as $row) {
 $pendingRequestCount = 0;
 $pendingRequests     = [];
 $decidedRequests     = [];
+$deniedRequestCount  = 0;
 if ($classOfferingIds) {
     $offeringPlaceholders = implode(',', array_fill(0, count($classOfferingIds), '?'));
 
@@ -552,9 +553,19 @@ if ($classOfferingIds) {
         $stmt->execute($classOfferingIds);
         $pendingRequests = $stmt->fetchAll();
 
-        $stmt = $pdo->prepare($requestSelect . " AND e.status IN ('enrolled','denied') AND e.decided_at IS NOT NULL ORDER BY e.decided_at DESC, e.enrollment_id DESC LIMIT 10");
+        // Every denied request stays listed (so "Reopen all" matches what is shown);
+        // approved ones are capped to the 10 most recent.
+        $stmt = $pdo->prepare($requestSelect . " AND e.status = 'denied' ORDER BY e.decided_at DESC, e.enrollment_id DESC");
         $stmt->execute($classOfferingIds);
-        $decidedRequests = $stmt->fetchAll();
+        $deniedRequests = $stmt->fetchAll();
+
+        $stmt = $pdo->prepare($requestSelect . " AND e.status = 'enrolled' AND e.decided_at IS NOT NULL ORDER BY e.decided_at DESC, e.enrollment_id DESC LIMIT 10");
+        $stmt->execute($classOfferingIds);
+        $decidedRequests = array_merge($deniedRequests, $stmt->fetchAll());
+        usort($decidedRequests, function ($a, $b) {
+            return strcmp((string) $b['decided_at'], (string) $a['decided_at']) ?: ((int) $b['request_id'] <=> (int) $a['request_id']);
+        });
+        $deniedRequestCount = count($deniedRequests);
     }
 }
 

@@ -1743,6 +1743,54 @@
     background: #fef2f2;
 }
 
+/* Pending + Recently decided share one 5-column grid so columns line up */
+.requests-table {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 760px;
+}
+
+.requests-table th,
+.requests-table td {
+    vertical-align: middle;
+    text-align: left;
+}
+
+.requests-table th:nth-child(1) { width: 30%; }
+.requests-table th:nth-child(2) { width: 11%; }
+.requests-table th:nth-child(3) { width: 14%; }
+.requests-table th:nth-child(4) { width: 22%; }
+.requests-table th:nth-child(5) { width: 23%; }
+
+.requests-table .student-name {
+    overflow-wrap: anywhere;
+}
+
+.request-bulk .btn-approve,
+.request-bulk .btn-deny,
+.request-bulk .enrolled-badge,
+.panel-header .btn-reopen {
+    box-sizing: border-box;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.request-bulk {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.panel-header .btn-reopen {
+    margin-left: auto;
+}
+
 .btn-approve:disabled,
 .btn-deny:disabled {
     opacity: 0.6;
