@@ -268,7 +268,7 @@ foreach ($schoolYears as $sy) {
                         <div class="form-group">
                             <label><i class="fas fa-users"></i> Default Class Capacity</label>
                             <input type="number" name="default_class_capacity" min="1" max="100" oninput="if (this.value > 100) this.value = 100;"
-                                value="<?= clean($settings['default_class_capacity']) ?>" required <?= $canWrite ? '' : 'disabled' ?>>
+                                value="<?= min(100, max(1, (int) $settings['default_class_capacity'])) ?>" required <?= $canWrite ? '' : 'disabled' ?>>
                             <small>Used as the pre-filled capacity when a new class offering is created.</small>
                         </div>
 
