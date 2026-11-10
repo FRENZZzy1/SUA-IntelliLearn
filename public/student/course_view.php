@@ -296,17 +296,23 @@ include 'assets/api/course_view_functions.php';
                                                 <?= htmlspecialchars($a['title']) ?>
                                             </a>
                                         <?php endif; ?>
-                                        <div class="material-meta">
-                                            <?= rtrim(rtrim((string) $a['points'], '0'), '.') ?> pts
-                                            · <span class="<?= $isDue || $due['overdue'] ? 'due-overdue' : '' ?>">
-                                                <?= $isDue ? 'Assignment is due' : 'Due ' . htmlspecialchars($due['label']) ?>
-                                            </span>
-                                            · <?= (int) $a['attempts_used'] ?>/<?= (int) $a['max_attempts'] ?> attempts used
-                                            · <span class="chip chip-<?= $statusInfo['class'] ?>"><?= $statusInfo['label'] ?></span>
+                                        <?php
+                                            $aPts = rtrim(rtrim((string) $a['points'], '0'), '.') ?: '0';
+                                            $aMax = (int) $a['max_attempts'];
+                                        ?>
+                                        <div class="quiz-facts">
+                                            <span class="quiz-fact"><i class="fas fa-star"></i> <b><?= $aPts ?></b> pt<?= $aPts === '1' ? '' : 's' ?></span>
+                                            <span class="quiz-fact"><i class="fas fa-rotate-right"></i> <b><?= (int) $a['attempts_used'] ?>/<?= $aMax ?></b> attempt<?= $aMax === 1 ? '' : 's' ?> used</span>
                                             <?php if ($a['score'] !== null): ?>
-                                                · Score:
-                                                <?= rtrim(rtrim((string) $a['score'], '0'), '.') ?>/<?= rtrim(rtrim((string) $a['points'], '0'), '.') ?>
+                                                <span class="quiz-fact"><i class="fas fa-trophy"></i> Score <b><?= rtrim(rtrim((string) $a['score'], '0'), '.') ?: '0' ?>/<?= $aPts ?></b></span>
                                             <?php endif; ?>
+                                        </div>
+                                        <div class="quiz-schedule">
+                                            <span class="quiz-schedule__item <?= $isDue || $due['overdue'] ? 'quiz-schedule__item--overdue' : '' ?>">
+                                                <i class="fas fa-calendar-xmark"></i>
+                                                <span class="quiz-schedule__label">Due</span>
+                                                <span class="quiz-schedule__value"><?= htmlspecialchars($due['label']) ?></span>
+                                            </span>
                                         </div>
                                     </div>
                                     <?php if ($isDue): ?>
@@ -367,12 +373,16 @@ include 'assets/api/course_view_functions.php';
                     <section class="panel panel--card">
                         <div class="panel-header">
                             <h2><i class="fas fa-marker"></i> <?= htmlspecialchars($selectedAssignment['title']) ?></h2>
-                            <span class="enrolled-badge">
-                                <?= rtrim(rtrim((string) $selectedAssignment['points'], '0'), '.') ?> pts
-                                · <span class="<?= $due['overdue'] ? 'due-overdue' : '' ?>">Due
-                                    <?= htmlspecialchars($due['label']) ?></span>
-                                · <?= $maxAttempts ?> attempt<?= $maxAttempts === 1 ? '' : 's' ?> allowed
-                            </span>
+                            <?php $saPts = rtrim(rtrim((string) $selectedAssignment['points'], '0'), '.') ?: '0'; ?>
+                            <div class="quiz-facts quiz-facts--detail">
+                                <span class="quiz-fact"><i class="fas fa-star"></i> <b><?= $saPts ?></b> pt<?= $saPts === '1' ? '' : 's' ?></span>
+                                <span class="quiz-fact"><i class="fas fa-rotate-right"></i> <b><?= $attemptsUsed ?>/<?= $maxAttempts ?></b> attempt<?= $maxAttempts === 1 ? '' : 's' ?> used</span>
+                                <span class="quiz-schedule__item <?= $due['overdue'] ? 'quiz-schedule__item--overdue' : '' ?>">
+                                    <i class="fas fa-calendar-xmark"></i>
+                                    <span class="quiz-schedule__label">Due</span>
+                                    <span class="quiz-schedule__value"><?= htmlspecialchars($due['label']) ?></span>
+                                </span>
+                            </div>
                         </div>
 
                         <?php if (!empty($selectedAssignment['description'])): ?>
@@ -536,26 +546,29 @@ include 'assets/api/course_view_functions.php';
                                             href="<?= quizzesUrlStudent($classInfo['subject_id'], $activeTerm, (int) $q['quiz_id']) ?>">
                                             <?= htmlspecialchars($q['title']) ?>
                                         </a>
-                                        <div class="material-meta">
-                                            <span class="chip chip-<?= $qStatus['class'] ?>"><?= $qStatus['label'] ?></span>
-                                            · <?= (int) $q['question_count'] ?>
-                                            question<?= (int) $q['question_count'] === 1 ? '' : 's' ?>
-                                            · <?= rtrim(rtrim((string) $q['total_points'], '0'), '.') ?> pts
-                                            · <span
-                                                class="chip chip-<?= $attemptStatus['class'] ?>"><?= $attemptStatus['label'] ?></span>
+                                        <?php
+                                            $qPts       = rtrim(rtrim((string) $q['total_points'], '0'), '.') ?: '0';
+                                            $qQuestions = (int) $q['question_count'];
+                                            $qMax       = (int) $q['max_attempts'];
+                                            $qUsed      = (int) $q['attempts_used'];
+                                        ?>
+                                        <div class="quiz-facts">
+                                            <span class="quiz-fact"><i class="fas fa-circle-question"></i> <b><?= $qQuestions ?></b> question<?= $qQuestions === 1 ? '' : 's' ?></span>
+                                            <span class="quiz-fact"><i class="fas fa-star"></i> <b><?= $qPts ?></b> pt<?= $qPts === '1' ? '' : 's' ?></span>
+                                            <span class="quiz-fact"><i class="fas fa-rotate-right"></i> <b><?= $qUsed ?>/<?= $qMax ?></b> attempt<?= $qMax === 1 ? '' : 's' ?> used</span>
                                         </div>
-                                        <?php if (!empty($q['available_from']) || !empty($q['available_until'])): ?>
-                                            <div class="material-meta">
-                                                <i class="far fa-clock"></i>
-                                                <?php if (!empty($q['available_from'])): ?>
-                                                    Opens <?= date('M j, Y g:i A', strtotime($q['available_from'])) ?>
-                                                <?php endif; ?>
-                                                <?php if (!empty($q['available_from']) && !empty($q['available_until'])): ?> · <?php endif; ?>
-                                                <?php if (!empty($q['available_until'])): ?>
-                                                    <span class="<?= $qClosed ? 'due-overdue' : '' ?>">Due <?= date('M j, Y g:i A', strtotime($q['available_until'])) ?></span>
-                                                <?php endif; ?>
-                                            </div>
-                                        <?php endif; ?>
+                                        <div class="quiz-schedule">
+                                            <span class="quiz-schedule__item">
+                                                <i class="fas fa-calendar-check"></i>
+                                                <span class="quiz-schedule__label">Opens</span>
+                                                <span class="quiz-schedule__value"><?= !empty($q['available_from']) ? date('M j, Y g:i A', strtotime($q['available_from'])) : 'Immediately' ?></span>
+                                            </span>
+                                            <span class="quiz-schedule__item <?= $qClosed ? 'quiz-schedule__item--overdue' : '' ?>">
+                                                <i class="fas fa-calendar-xmark"></i>
+                                                <span class="quiz-schedule__label">Due</span>
+                                                <span class="quiz-schedule__value"><?= !empty($q['available_until']) ? date('M j, Y g:i A', strtotime($q['available_until'])) : 'No due date' ?></span>
+                                            </span>
+                                        </div>
                                         <?php if ($q['score'] !== null): ?>
                                             <div class="quiz-score-highlight quiz-score-highlight--<?= $qScoreTier ?>">
                                                 <i class="fas fa-trophy"></i>
@@ -601,15 +614,30 @@ include 'assets/api/course_view_functions.php';
                 <section class="panel panel--card">
                     <div class="panel-header">
                         <h2><i class="fas fa-file-circle-question"></i> <?= htmlspecialchars($selectedQuiz['title']) ?></h2>
-                        <span class="enrolled-badge">
-                            <span class="chip chip-<?= $qStatus['class'] ?>"><?= $qStatus['label'] ?></span>
-                            · <?= rtrim(rtrim((string) $selectedQuiz['total_points'], '0'), '.') ?> pts total
+                        <?php
+                            $sqPts    = rtrim(rtrim((string) $selectedQuiz['total_points'], '0'), '.') ?: '0';
+                            $sqMax    = (int) $selectedQuiz['max_attempts'];
+                            $sqUsed   = count(array_filter($quizAttempts, fn($r) => $r['attempt_status'] !== 'in_progress'));
+                            $sqClosed = !empty($selectedQuiz['available_until']) && time() > strtotime($selectedQuiz['available_until']);
+                        ?>
+                        <div class="quiz-facts quiz-facts--detail">
+                            <span class="quiz-fact"><span class="chip chip-<?= $qStatus['class'] ?>"><?= $qStatus['label'] ?></span></span>
+                            <span class="quiz-fact"><i class="fas fa-star"></i> <b><?= $sqPts ?></b> pt<?= $sqPts === '1' ? '' : 's' ?> total</span>
+                            <span class="quiz-fact"><i class="fas fa-rotate-right"></i> <b><?= $sqUsed ?>/<?= $sqMax ?></b> attempt<?= $sqMax === 1 ? '' : 's' ?> used</span>
                             <?php if ($selectedQuiz['time_limit_minutes']): ?>
-                                · <?= (int) $selectedQuiz['time_limit_minutes'] ?> min limit
+                                <span class="quiz-fact"><i class="fas fa-hourglass-half"></i> <b><?= (int) $selectedQuiz['time_limit_minutes'] ?></b> min limit</span>
                             <?php endif; ?>
-                            · <?= (int) $selectedQuiz['max_attempts'] ?>
-                            attempt<?= (int) $selectedQuiz['max_attempts'] === 1 ? '' : 's' ?> allowed
-                        </span>
+                            <span class="quiz-schedule__item">
+                                <i class="fas fa-calendar-check"></i>
+                                <span class="quiz-schedule__label">Opens</span>
+                                <span class="quiz-schedule__value"><?= !empty($selectedQuiz['available_from']) ? date('M j, Y g:i A', strtotime($selectedQuiz['available_from'])) : 'Immediately' ?></span>
+                            </span>
+                            <span class="quiz-schedule__item <?= $sqClosed ? 'quiz-schedule__item--overdue' : '' ?>">
+                                <i class="fas fa-calendar-xmark"></i>
+                                <span class="quiz-schedule__label">Due</span>
+                                <span class="quiz-schedule__value"><?= !empty($selectedQuiz['available_until']) ? date('M j, Y g:i A', strtotime($selectedQuiz['available_until'])) : 'No due date' ?></span>
+                            </span>
+                        </div>
                     </div>
 
                     <?php if (!empty($selectedQuiz['description'])): ?>

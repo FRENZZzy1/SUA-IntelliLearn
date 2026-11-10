@@ -2056,3 +2056,73 @@
 .rec-cell.n { color: #cbd5e1; font-weight: 400; }
 .rec-rate { font-weight: 700; min-width: 64px; }
 .rec-table thead th.rec-current { background: #e3f0e8; color: #1b4332; }
+
+/* ---- Quiz row: organized facts + schedule (aligned grid) ---- */
+.quiz-facts,
+.quiz-schedule {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 230px);
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: #4b5563;
+}
+
+.quiz-fact,
+.quiz-schedule__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 30px;
+    padding: 0 12px;
+    box-sizing: border-box;
+    border-radius: 8px;
+    background: #f3f4f6;
+    font-size: 0.78rem;
+    line-height: 1;
+    color: #4b5563;
+    white-space: nowrap;
+}
+
+.quiz-fact i,
+.quiz-schedule__item i {
+    flex: 0 0 14px;
+    width: 14px;
+    text-align: center;
+    font-size: 0.74rem;
+    color: #6b7280;
+}
+
+.quiz-fact b,
+.quiz-schedule__value { color: #111827; font-weight: 600; }
+
+.quiz-schedule__label {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    font-size: 0.68rem;
+    color: #6b7280;
+    min-width: 40px;
+}
+
+.quiz-schedule__item--overdue { background: #fef2f2; }
+.quiz-schedule__item--overdue i,
+.quiz-schedule__item--overdue .quiz-schedule__label,
+.quiz-schedule__item--overdue .quiz-schedule__value { color: #dc2626; }
+
+/* Detail-page header: pills flow in one wrapping row */
+.quiz-facts--detail {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin: 0;
+    flex: 1;
+}
+.quiz-facts--detail .quiz-fact:has(> .chip) { background: none; padding: 0; }
+
+@media (max-width: 640px) {
+    .quiz-facts,
+    .quiz-schedule { grid-template-columns: 1fr 1fr; }
+    .quiz-fact, .quiz-schedule__item { white-space: normal; padding: 6px 10px; line-height: 1.3; }
+    .quiz-facts--detail { justify-content: flex-start; }
+}
