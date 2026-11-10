@@ -567,11 +567,20 @@ $status_filter = $_GET['status'] ?? 'all';
 $department_filter = trim($_GET['department'] ?? 'all');
 $grade_level_filter = trim($_GET['grade_level'] ?? 'all');
 $gender_filter = $_GET['gender'] ?? 'all';
+$strand_filter = $_GET['strand'] ?? 'all';
 
 // Category-specific filters only exist inside their own category, so a stale
 // ?department= / ?grade_level= / ?gender= from another tab is ignored.
 if ($role_filter !== 'teacher') { $department_filter = 'all'; }
 if ($role_filter !== 'student') { $grade_level_filter = 'all'; $gender_filter = 'all'; }
+
+// Strand only exists in Senior High: the filter applies (and is shown) only while the
+// year-level filter is Grade 11 or Grade 12. Any other value is ignored.
+$strand_options = ['GAS', 'ABM', 'HUMSS', 'TVL'];
+if (!in_array((string) $grade_level_filter, ['11', '12'], true)
+    || !in_array($strand_filter, array_merge($strand_options, ['none']), true)) {
+    $strand_filter = 'all';
+}
 $sort = $_GET['sort'] ?? 'newest';
 $page = max(1, intval($_GET['page'] ?? 1));
 $per_page = 10;
@@ -610,6 +619,14 @@ if ($department_filter !== 'all' && $department_filter !== '') {
 if ($grade_level_filter !== 'all' && $grade_level_filter !== '') {
     $where_clauses[] = "s.year_level = ?";
     $params[] = $grade_level_filter;
+}
+
+// Student strand filter (Grade 11-12 only). 'none' = no strand assigned.
+if ($strand_filter === 'none') {
+    $where_clauses[] = "(s.strand IS NULL OR s.strand = '')";
+} elseif ($strand_filter !== 'all') {
+    $where_clauses[] = "s.strand = ?";
+    $params[] = $strand_filter;
 }
 
 // Student gender filter (s.gender is only populated for students, so this

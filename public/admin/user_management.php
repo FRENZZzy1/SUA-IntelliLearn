@@ -349,6 +349,15 @@ include 'assests/api/access_permissions_modal.php';
             <option value="<?= clean($gl) ?>" <?= (string)$grade_level_filter === (string)$gl ? 'selected' : '' ?>>Grade <?= clean($gl) ?></option>
             <?php endforeach; ?>
         </select>
+        <?php if (in_array((string) $grade_level_filter, ['11', '12'], true)): ?>
+        <select name="strand" class="select-filter" onchange="this.form.submit()" title="Filter Grade <?= clean($grade_level_filter) ?> students by strand">
+            <option value="all" <?= $strand_filter === 'all' ? 'selected' : '' ?>>All Strands</option>
+            <?php foreach ($strand_options as $st): ?>
+            <option value="<?= clean($st) ?>" <?= $strand_filter === $st ? 'selected' : '' ?>><?= clean($st) ?></option>
+            <?php endforeach; ?>
+            <option value="none" <?= $strand_filter === 'none' ? 'selected' : '' ?>>No Strand</option>
+        </select>
+        <?php endif; ?>
         <select name="gender" class="select-filter" onchange="this.form.submit()">
             <option value="all" <?= $gender_filter === 'all' ? 'selected' : '' ?>>All Genders</option>
             <option value="Male" <?= $gender_filter === 'Male' ? 'selected' : '' ?>>Male</option>
@@ -361,7 +370,7 @@ include 'assests/api/access_permissions_modal.php';
             <option value="name_asc" <?= $sort === 'name_asc' ? 'selected' : '' ?>>Name A–Z</option>
             <option value="name_desc" <?= $sort === 'name_desc' ? 'selected' : '' ?>>Name Z–A</option>
         </select>
-        <?php if (!empty($search) || $status_filter !== 'all' || $department_filter !== 'all' || $grade_level_filter !== 'all' || $gender_filter !== 'all'): ?>
+        <?php if (!empty($search) || $status_filter !== 'all' || $department_filter !== 'all' || $grade_level_filter !== 'all' || $gender_filter !== 'all' || $strand_filter !== 'all'): ?>
         <a href="?role=<?= clean($role_filter) ?>" class="btn-secondary" style="text-decoration:none; display:flex; align-items:center; gap:6px;">
             <i class="fas fa-times"></i> Clear Filters
         </a>
