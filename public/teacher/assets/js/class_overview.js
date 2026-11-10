@@ -438,3 +438,17 @@ if (requestsPanel) {
     f.from.addEventListener('input', updateDateHint);
     f.until.addEventListener('input', updateDateHint);
 })();
+
+
+// Arriving from the dashboard's grading queue (#student-<id>): scroll to that
+// student's row and flash it so the teacher can grade right away.
+(function () {
+    var m = /^#student-(\d+)$/.exec(location.hash);
+    if (!m) return;
+    var row = document.getElementById('student-' + m[1]);
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.add('row-flash');
+    var input = row.querySelector('input[type="number"]');
+    if (input) setTimeout(function () { input.focus({ preventScroll: true }); }, 500);
+})();

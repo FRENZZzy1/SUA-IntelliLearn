@@ -745,7 +745,7 @@ if (!empty($submissionRows)) {
                                             );
                                             $studentAttempts = $attemptsByStudent[(int) $row['student_id']] ?? [];
                                         ?>
-                                        <tr>
+                                        <tr id="student-<?= (int) $row['student_id'] ?>">
                                             <td class="student-name"><?= htmlspecialchars($row['lastname'] . ', ' . $row['firstname'] . ' ' . ($row['middlename'] ?? '')) ?></td>
                                             <td><span class="chip chip-<?= $statusInfo['class'] ?>"><?= $statusInfo['label'] ?></span></td>
                                             <td><?= (int) $row['attempts_used'] ?> / <?= (int) $selectedAssignment['max_attempts'] ?></td>

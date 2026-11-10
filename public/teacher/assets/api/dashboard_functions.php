@@ -155,6 +155,68 @@ if ($offeringIds) {
     usort($gradeTargets, fn($a, $b) => $b['pending'] <=> $a['pending']);
 }
 
+// ---- Ungraded submissions queue (feeds the "Assignments to Grade" panel) ----
+// One row per student's latest turned-in attempt that has no score yet, oldest
+// first so the longest-waiting work is graded first. Each row deep-links to that
+// assignment's grading view in the class overview.
+$pendingSubmissions = [];
+if ($offeringIds) {
+    $placeholders = implode(',', array_fill(0, count($offeringIds), '?'));
+    $stmt = $pdo->prepare("
+        SELECT sub.submission_id, sub.student_id, sub.attempt_number, sub.status AS sub_status,
+               sub.submitted_at,
+               a.assignment_id, a.offering_id, a.title AS assignment_title, a.type AS assignment_type,
+               a.points, a.due_date,
+               st.firstname, st.lastname
+        FROM submissions sub
+        JOIN (
+            SELECT s2.assignment_id, s2.student_id, MAX(s2.attempt_number) AS latest_attempt
+            FROM submissions s2
+            JOIN assignments a2 ON a2.assignment_id = s2.assignment_id
+            WHERE a2.offering_id IN ($placeholders)
+            GROUP BY s2.assignment_id, s2.student_id
+        ) latest
+          ON latest.assignment_id = sub.assignment_id
+         AND latest.student_id    = sub.student_id
+         AND latest.latest_attempt = sub.attempt_number
+        JOIN assignments a ON a.assignment_id = sub.assignment_id
+        JOIN enrollments e ON e.offering_id = a.offering_id
+                          AND e.student_id  = sub.student_id
+                          AND e.status = 'enrolled'
+        JOIN students st ON st.student_id = sub.student_id
+        WHERE a.offering_id IN ($placeholders)
+          AND a.status <> 'draft'
+          AND sub.status IN ('submitted', 'late')
+          AND sub.score IS NULL
+        ORDER BY sub.submitted_at ASC, st.lastname ASC
+        LIMIT 200
+    ");
+    $stmt->execute(array_merge($offeringIds, $offeringIds));
+    foreach ($stmt->fetchAll() as $row) {
+        $c = $offeringById[(int) $row['offering_id']] ?? null;
+        if (!$c) { continue; }
+        $pendingSubmissions[] = [
+            'student'      => trim($row['firstname'] . ' ' . $row['lastname']),
+            'initials'     => strtoupper(mb_substr($row['firstname'], 0, 1) . mb_substr($row['lastname'], 0, 1)),
+            'subject'      => $c['subject_name'],
+            'section'      => $c['section_name'],
+            'grade'        => (int) $c['grade_level'],
+            'class_key'    => (int) $c['offering_id'],
+            'assignment'   => $row['assignment_title'],
+            'type'         => $row['assignment_type'] ?: 'Activity',
+            'points'       => rtrim(rtrim((string) $row['points'], '0'), '.') ?: '0',
+            'attempt'      => (int) $row['attempt_number'],
+            'is_late'      => $row['sub_status'] === 'late',
+            'submitted_at' => $row['submitted_at'],
+            // deep link: class overview > Assignments > this assignment's grading table,
+            // with the student's row highlighted
+            'url'          => dash_class_url($c, 'assignments')
+                              . '&assignment_id=' . (int) $row['assignment_id']
+                              . '#student-' . (int) $row['student_id'],
+        ];
+    }
+}
+
 // ---- Attendance rate across this teacher's active classes -------------
 $attendanceRate = null;
 if ($offeringIds) {
