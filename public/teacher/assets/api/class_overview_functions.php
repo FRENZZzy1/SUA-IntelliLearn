@@ -395,7 +395,8 @@ if ($activeOfferingId && $activeView === 'quizzes') {
             (SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.quiz_id) AS question_count,
             (SELECT COALESCE(SUM(qq.points), 0) FROM quiz_questions qq WHERE qq.quiz_id = q.quiz_id) AS total_points,
             (SELECT COUNT(*) FROM quiz_attempts qa WHERE qa.quiz_id = q.quiz_id AND qa.status IN ('submitted', 'graded')) AS attempts_submitted,
-            (SELECT ROUND(AVG(qa.score), 1) FROM quiz_attempts qa WHERE qa.quiz_id = q.quiz_id AND qa.status IN ('submitted', 'graded')) AS avg_score
+            (SELECT ROUND(AVG(qa.score), 1) FROM quiz_attempts qa WHERE qa.quiz_id = q.quiz_id AND qa.status IN ('submitted', 'graded')) AS avg_score,
+            (SELECT COALESCE(MAX(c.cnt), 0) FROM (SELECT quiz_id, COUNT(*) AS cnt FROM quiz_attempts GROUP BY quiz_id, student_id) c WHERE c.quiz_id = q.quiz_id) AS attempts_used_max
         FROM quizzes q
         WHERE q.offering_id = ?
         ORDER BY q.created_at DESC
@@ -414,7 +415,8 @@ if ($activeOfferingId && $activeView === 'quizzes') {
             SELECT
                 quiz_id, title, description, status, max_attempts, time_limit_minutes,
                 available_from, available_until,
-                (SELECT COALESCE(SUM(points), 0) FROM quiz_questions WHERE quiz_id = quizzes.quiz_id) AS total_points
+                (SELECT COALESCE(SUM(points), 0) FROM quiz_questions WHERE quiz_id = quizzes.quiz_id) AS total_points,
+                (SELECT COALESCE(MAX(c.cnt), 0) FROM (SELECT quiz_id, COUNT(*) AS cnt FROM quiz_attempts GROUP BY quiz_id, student_id) c WHERE c.quiz_id = quizzes.quiz_id) AS attempts_used_max
             FROM quizzes
             WHERE quiz_id = ? AND offering_id = ?
             LIMIT 1
@@ -749,6 +751,37 @@ function quizzesUrl(int $subjectId, int $sectionId, ?string $term, ?int $quizId 
         $params['sy'] = (int) $GLOBALS['archiveYearId'];
     }
     return 'class_overview.php?' . http_build_query($params);
+}
+
+/**
+ * Helper: "Opens ... · Due ..." text for a quiz row, matching the student side.
+ * Returns ['opens' => string|null, 'due' => string|null, 'overdue' => bool].
+ */
+function quizAvailabilityLabel(?string $from, ?string $until): array
+{
+    return [
+        'opens'   => $from ? date('M j, Y g:i A', strtotime($from)) : null,
+        'due'     => $until ? date('M j, Y g:i A', strtotime($until)) : null,
+        'overdue' => $until ? strtotime($until) < time() : false,
+    ];
+}
+
+/**
+ * Helper: JSON for the "Edit quiz" modal's data-quiz attribute.
+ */
+function quizEditData(array $q): string
+{
+    return htmlspecialchars(json_encode([
+        'id'           => (int) $q['quiz_id'],
+        'title'        => $q['title'],
+        'description'  => $q['description'] ?? '',
+        'from'         => !empty($q['available_from']) ? date('Y-m-d\TH:i', strtotime($q['available_from'])) : '',
+        'until'        => !empty($q['available_until']) ? date('Y-m-d\TH:i', strtotime($q['available_until'])) : '',
+        'timeLimit'    => $q['time_limit_minutes'] !== null ? (int) $q['time_limit_minutes'] : '',
+        'maxAttempts'  => (int) $q['max_attempts'],
+        'attemptsUsed' => (int) ($q['attempts_used_max'] ?? 0),
+        'status'       => $q['status'],
+    ]), ENT_QUOTES, 'UTF-8');
 }
 
 /**

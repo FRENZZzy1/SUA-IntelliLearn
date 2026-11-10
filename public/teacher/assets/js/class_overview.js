@@ -353,3 +353,88 @@ if (requestsPanel) {
         f.attempts.value = Math.min(10, (parseInt(f.attempts.value, 10) || 0) + 1);
     });
 })();
+
+// ===================== Edit quiz modal =====================
+// Opens from the pencil / Edit buttons (.js-edit-quiz). Each button carries the quiz's
+// current values in data-quiz, so no extra request is needed.
+(function () {
+    const modal = document.getElementById('quizEditModal');
+    if (!modal) return;
+
+    const $ = (id) => document.getElementById(id);
+    const f = {
+        id: $('qeId'), fromDetail: $('qeFromDetail'), title: $('qeTitle'), desc: $('qeDescription'),
+        from: $('qeFrom'), until: $('qeUntil'), dateHint: $('qeDateHint'),
+        attempts: $('qeAttempts'), attemptsHint: $('qeAttemptsHint'),
+        timeLimit: $('qeTimeLimit'), status: $('qeStatus'),
+    };
+
+    const pad = (n) => String(n).padStart(2, '0');
+    const toLocalInput = (d) =>
+        d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+
+    function updateDateHint() {
+        const from = f.from.value ? new Date(f.from.value) : null;
+        const until = f.until.value ? new Date(f.until.value) : null;
+        if (from && until && until <= from) {
+            f.dateHint.textContent = 'The due date must be after the available-from date.';
+        } else if (until && until.getTime() < Date.now()) {
+            f.dateHint.textContent = 'The due date is in the past — students will be locked out.';
+        } else if (!from && !until) {
+            f.dateHint.textContent = 'No dates set — students can take it any time while it is published.';
+        } else {
+            f.dateHint.textContent = '';
+        }
+    }
+
+    function openModal(btn) {
+        let data;
+        try { data = JSON.parse(btn.dataset.quiz); } catch (e) { return; }
+
+        f.id.value = data.id;
+        f.fromDetail.value = btn.dataset.fromDetail ? '1' : '';
+        f.title.value = data.title;
+        f.desc.value = data.description || '';
+        f.from.value = data.from || '';
+        f.until.value = data.until || '';
+        f.attempts.value = data.maxAttempts;
+        f.attempts.min = Math.max(1, data.attemptsUsed || 0);
+        f.attempts.max = 10;
+        f.timeLimit.value = data.timeLimit === '' ? '' : data.timeLimit;
+        f.status.value = data.status;
+
+        f.attemptsHint.textContent = data.attemptsUsed > 0
+            ? 'A student has already used ' + data.attemptsUsed + ' — you can raise this but not go below it.'
+            : 'No attempts yet.';
+        updateDateHint();
+
+        modal.hidden = false;
+        f.title.focus();
+    }
+
+    function closeModal() { modal.hidden = true; }
+
+    document.querySelectorAll('.js-edit-quiz').forEach((btn) => {
+        btn.addEventListener('click', () => openModal(btn));
+    });
+    $('qeClose').addEventListener('click', closeModal);
+    $('qeCancel').addEventListener('click', closeModal);
+    modal.addEventListener('mousedown', (e) => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
+
+    // Quick-extend the due date: add days to the current one, or to now if empty/already past.
+    modal.querySelectorAll('[data-qe-add-days]').forEach((chip) => {
+        chip.addEventListener('click', () => {
+            const days = parseInt(chip.dataset.qeAddDays, 10);
+            let base = f.until.value ? new Date(f.until.value) : new Date();
+            if (isNaN(base.getTime()) || base.getTime() < Date.now()) base = new Date();
+            base.setDate(base.getDate() + days);
+            f.until.value = toLocalInput(base);
+            updateDateHint();
+        });
+    });
+    $('qeClearFrom').addEventListener('click', () => { f.from.value = ''; updateDateHint(); });
+    $('qeClearUntil').addEventListener('click', () => { f.until.value = ''; updateDateHint(); });
+    f.from.addEventListener('input', updateDateHint);
+    f.until.addEventListener('input', updateDateHint);
+})();

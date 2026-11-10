@@ -823,11 +823,21 @@ if (!empty($submissionRows)) {
                                             · Avg <?= htmlspecialchars($q['avg_score']) ?>
                                         <?php endif; ?>
                                     </div>
+                                    <?php $qAvail = quizAvailabilityLabel($q['available_from'], $q['available_until']); ?>
+                                    <div class="material-meta">
+                                        <i class="fas fa-calendar-days"></i>
+                                        <?php if ($qAvail['opens']): ?>Opens <?= htmlspecialchars($qAvail['opens']) ?><?php else: ?>Opens immediately<?php endif; ?>
+                                        · <span class="<?= $qAvail['overdue'] ? 'due-overdue' : '' ?>"><?php if ($qAvail['due']): ?>Due <?= htmlspecialchars($qAvail['due']) ?><?php else: ?>No due date<?php endif; ?></span>
+                                    </div>
                                 </div>
                                 <a class="btn-secondary btn-view-submissions"
                                    href="<?= quizzesUrl($classInfo['subject_id'], $classInfo['section_id'], $activeTerm, (int) $q['quiz_id']) ?>">
                                     View Scores
                                 </a>
+                                <button type="button" class="qa-btn js-edit-quiz" title="Edit quiz details"
+                                        data-quiz="<?= quizEditData($q) ?>">
+                                    <i class="fas fa-pen"></i>
+                                </button>
                             </li>
                         <?php endforeach; ?>
                     </ul>
@@ -850,7 +860,14 @@ if (!empty($submissionRows)) {
                         <?php if ($selectedQuiz['time_limit_minutes']): ?>
                             · <?= (int) $selectedQuiz['time_limit_minutes'] ?> min limit
                         <?php endif; ?>
+                        <?php $sqAvail = quizAvailabilityLabel($selectedQuiz['available_from'], $selectedQuiz['available_until']); ?>
+                        · <?php if ($sqAvail['opens']): ?>Opens <?= htmlspecialchars($sqAvail['opens']) ?><?php else: ?>Opens immediately<?php endif; ?>
+                        · <span class="<?= $sqAvail['overdue'] ? 'due-overdue' : '' ?>"><?php if ($sqAvail['due']): ?>Due <?= htmlspecialchars($sqAvail['due']) ?><?php else: ?>No due date<?php endif; ?></span>
                     </span>
+                    <button type="button" class="btn-secondary js-edit-quiz" data-from-detail="1"
+                            data-quiz="<?= quizEditData($selectedQuiz) ?>">
+                        <i class="fas fa-pen"></i> Edit
+                    </button>
                 </div>
 
                 <?php if (!empty($selectedQuiz['description'])): ?>
@@ -1339,6 +1356,86 @@ if (!empty($submissionRows)) {
 
             <div class="form-actions ae-actions">
                 <button type="button" class="btn-secondary" id="aeCancel">Cancel</button>
+                <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit quiz modal (filled from the clicked row's data-quiz) -->
+<div class="modal-overlay" id="quizEditModal" hidden>
+    <div class="modal-box">
+        <form action="assets/api/quiz_update.php" method="POST" class="material-upload-form" id="quizEditForm">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
+            <input type="hidden" name="quiz_id" id="qeId">
+            <input type="hidden" name="offering_id" value="<?= (int) ($activeOfferingId ?? 0) ?>">
+            <input type="hidden" name="subject_id" value="<?= (int) ($classInfo['subject_id'] ?? 0) ?>">
+            <input type="hidden" name="section_id" value="<?= (int) ($classInfo['section_id'] ?? 0) ?>">
+            <input type="hidden" name="term" value="<?= htmlspecialchars($activeTerm ?? '') ?>">
+            <input type="hidden" name="from_detail" id="qeFromDetail" value="">
+
+            <div class="modal-header">
+                <div>
+                    <h3><i class="fas fa-pen"></i> Edit quiz</h3>
+                    <p class="modal-subtitle">Changes apply to students right away. Questions are not changed here.</p>
+                </div>
+                <button type="button" class="modal-close" id="qeClose" aria-label="Close"><i class="fas fa-times"></i></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="form-row">
+                    <label for="qeTitle">Title</label>
+                    <input type="text" id="qeTitle" name="title" maxlength="255" required>
+                </div>
+                <div class="form-row">
+                    <label for="qeDescription">Instructions (optional)</label>
+                    <textarea id="qeDescription" name="description" rows="3"></textarea>
+                </div>
+
+                <div class="form-row form-row-inline ae-two">
+                    <div>
+                        <label for="qeFrom">Available from</label>
+                        <input type="datetime-local" id="qeFrom" name="available_from">
+                        <div class="ae-chips">
+                            <button type="button" class="ae-chip ae-chip--muted" id="qeClearFrom">Open immediately</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="qeUntil">Due / closes</label>
+                        <input type="datetime-local" id="qeUntil" name="available_until">
+                        <div class="ae-chips">
+                            <button type="button" class="ae-chip" data-qe-add-days="1">+1 day</button>
+                            <button type="button" class="ae-chip" data-qe-add-days="7">+1 week</button>
+                            <button type="button" class="ae-chip ae-chip--muted" id="qeClearUntil">No due date</button>
+                        </div>
+                    </div>
+                </div>
+                <span class="field-hint" id="qeDateHint"></span>
+
+                <div class="form-row form-row-inline ae-two">
+                    <div>
+                        <label for="qeAttempts">Attempts allowed</label>
+                        <input type="number" id="qeAttempts" name="max_attempts" min="1" max="10" step="1" required>
+                        <span class="field-hint" id="qeAttemptsHint"></span>
+                    </div>
+                    <div>
+                        <label for="qeTimeLimit">Time limit (minutes)</label>
+                        <input type="number" id="qeTimeLimit" name="time_limit_minutes" min="1" max="600" step="1" placeholder="No limit">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <label for="qeStatus">Status</label>
+                    <select id="qeStatus" name="status">
+                        <option value="draft">Draft (hidden from students)</option>
+                        <option value="published">Published</option>
+                        <option value="closed">Closed</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-actions ae-actions">
+                <button type="button" class="btn-secondary" id="qeCancel">Cancel</button>
                 <button type="submit" class="btn-primary"><i class="fas fa-check"></i> Save changes</button>
             </div>
         </form>
