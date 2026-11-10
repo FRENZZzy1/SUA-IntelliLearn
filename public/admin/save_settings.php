@@ -36,8 +36,8 @@ $enrollmentOpen    = isset($_POST['enrollment_open']) ? '1' : '0';
 if ($schoolName === '' || mb_strlen($schoolName) > 150) {
     $errors[] = 'School name must be between 1 and 150 characters.';
 }
-if (!ctype_digit((string) $defaultCapacity) || (int) $defaultCapacity < 1 || (int) $defaultCapacity > 500) {
-    $errors[] = 'Default class capacity must be a number between 1 and 500.';
+if (!ctype_digit((string) $defaultCapacity) || (int) $defaultCapacity < 1 || (int) $defaultCapacity > 100) {
+    $errors[] = 'Default class capacity must be a number between 1 and 100.';
 }
 
 
