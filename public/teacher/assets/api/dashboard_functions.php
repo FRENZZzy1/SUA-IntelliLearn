@@ -1,5 +1,5 @@
 <?php
-    require_once '../../config/config.php'; // adjust path to your actual config.php location
+    require_once __DIR__ . '/../../../../config/config.php';
     require_once __DIR__ . '/at_risk_functions.php';
 
 // ---- Access control -------------------------------------------------
