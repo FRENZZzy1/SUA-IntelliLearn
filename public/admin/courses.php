@@ -1059,7 +1059,7 @@ $subjectsList = $pdo->query("
 
                         <div class="form-row">
                             <label for="e_capacity">Capacity</label>
-                            <input type="number" id="e_capacity" name="capacity" min="1" value="50" required>
+                            <input type="number" id="e_capacity" name="capacity" min="1" max="100" oninput="if (this.value > 100) this.value = 100;" value="50" required>
                         </div>
 
                         <div class="form-row">
