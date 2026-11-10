@@ -16,7 +16,7 @@ try {
     $capacityStmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = 'default_class_capacity' LIMIT 1");
     $capacityStmt->execute();
     $savedCapacity = $capacityStmt->fetchColumn();
-    if (ctype_digit((string) $savedCapacity) && (int) $savedCapacity >= 1 && (int) $savedCapacity <= 500) {
+    if (ctype_digit((string) $savedCapacity) && (int) $savedCapacity >= 1 && (int) $savedCapacity <= 100) {
         $modalDefaultCapacity = (int) $savedCapacity;
     }
 } catch (PDOException $e) {
@@ -85,7 +85,7 @@ try {
 
                     <div class="form-row">
                         <label for="m_capacity"><i class="fas fa-hashtag" aria-hidden="true"></i> Capacity</label>
-                        <input type="number" id="m_capacity" name="capacity" min="1" max="500" value="<?= $modalDefaultCapacity ?>" required>
+                        <input type="number" id="m_capacity" name="capacity" min="1" max="100" oninput="if (this.value > 100) this.value = 100;" value="<?= min(100, $modalDefaultCapacity) ?>" required>
                         <span class="field-note">Default from Settings &rarr; Enrollment Rules. You can still adjust this for this class.</span>
                     </div>
 
