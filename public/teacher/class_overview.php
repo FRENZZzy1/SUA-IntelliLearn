@@ -176,15 +176,6 @@ if (!empty($submissionRows)) {
                         <span class="stat-card__label">Assignments</span>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-card__icon stat-card__icon--purple">
-                        <i class="fas fa-chart-line"></i>
-                    </div>
-                    <div class="stat-card__info">
-                        <span class="stat-card__value"><?= $classAverage ?>%</span>
-                        <span class="stat-card__label">Class Avg.</span>
-                    </div>
-                </div>
             </section>
 
             <div class="term-summary">
