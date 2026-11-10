@@ -23,7 +23,8 @@
         teacher_firstname:  { label: 'First name',    required: true  },
         teacher_lastname:   { label: 'Last name',     required: true  },
         teacher_middlename: { label: 'Middle name',   required: false },
-        guardian_name:      { label: 'Guardian name', required: false }
+        guardian_name:      { label: 'Guardian name', required: false },
+        specialization:     { label: 'Specialization', required: false }
     };
 
     var LETTER_OR_SPACE = /^[\p{L}\p{M} ]*$/u;
