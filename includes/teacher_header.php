@@ -873,10 +873,6 @@ if (function_exists('get_initials')) {
                         '<div><span class="svm-info-label">Contact</span><span>' + escapeHtml(s.guardian_contact || '—') + '</span></div>' +
                     '</div>' +
                 '</div>' +
-                '<div class="svm-section">' +
-                    '<p class="svm-section-title">Performance Snapshot</p>' +
-                    perfHtml +
-                '</div>' +
             '</div>';
     }
 
