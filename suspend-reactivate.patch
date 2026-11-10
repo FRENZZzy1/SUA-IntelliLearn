@@ -1,0 +1,116 @@
+diff --git a/public/admin/assests/api/admin_chatbot_guide.php b/public/admin/assests/api/admin_chatbot_guide.php
+index 2cfacbc..7d91673 100644
+--- a/public/admin/assests/api/admin_chatbot_guide.php
++++ b/public/admin/assests/api/admin_chatbot_guide.php
+@@ -29,7 +29,7 @@ ALWAYS use the exact names in this guide (they are the on-screen labels). Never
+ TASK-TO-PATH MAP (exact click paths)
+ - Add a student / teacher / admin account: User Management > pick the Students, Teachers or Admins tab > "Add User" (popup "Add New User", choose "Select Role").
+ - Add many students at once: User Management > Students tab > "Batch Add via Excel".
+-- Edit, view or deactivate an account: User Management > the person's row > View Profile (eye), Edit (pencil) or Deactivate (ban) icon.
++- Edit, view, suspend or reactivate an account: User Management > the person's row > View Profile (eye), Edit (pencil), Suspend (ban) or Reactivate (rotate-left) icon.
+ - Reset someone's password: User Management > row > Edit > "New password".
+ - Create a subject: Classes & Subjects > "New Subject". Create a section: Classes & Subjects > "New Section". Create a class: Classes & Subjects > "New Class" (or Dashboard > Quick Actions > "Create Class").
+ - Assign or change a section adviser: Classes & Subjects > "Sections" tab > the section's Update button.
+@@ -72,7 +72,7 @@ USER MANAGEMENT (sidebar > User Management)
+   - Teacher: name, Email, Contact Number, Department (Senior High only, High School only, or Highschool/Senior High), Employment Status (Full-time or Part-time), Specialization, password.
+   - Admin: name, Email, Position (Principal, Registrar, IT Administrator), Access Level (Full, Limited, Read Only), Full Access Duration in days when applicable, and module permissions for Limited admins.
+ - Batch Add via Excel (students): upload an .xlsx file. Required columns: firstname, lastname, lrn, birthdate, gender, year_level (7 to 12). A template can be downloaded in the modal. Rows with duplicate LRNs are skipped and reported.
+-- Row icons: eye = "View Profile" (popup "User Profile", includes an activity History), pencil = "Edit" (popup "Edit User"), ban icon = "Deactivate" (suspends the account; not available on your own account).
++- Row icons: eye = "View Profile" (popup "User Profile", includes an activity History), pencil = "Edit" (popup "Edit User"), ban icon = "Suspend" (suspends the account; not available on your own account). On a suspended account the ban icon becomes a rotate-left "Reactivate" icon that makes the account Active again.
+ - Edit User lets the admin change profile fields, Status, and set a new password (leave blank to keep the current one).
+ - Teachers cannot create student accounts or classes. Only admins can.
+ - Password rule for accounts: at least 8 characters, with at least one uppercase letter and one special character.
+diff --git a/public/admin/assests/api/user_management_logic.php b/public/admin/assests/api/user_management_logic.php
+index b78e129..6bff332 100644
+--- a/public/admin/assests/api/user_management_logic.php
++++ b/public/admin/assests/api/user_management_logic.php
+@@ -526,8 +526,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+         exit();
+     }
+ 
+-    // -------------------- DELETE / DEACTIVATE USER --------------------
+-    elseif ($action === 'delete') {
++    // -------------------- SUSPEND / REACTIVATE USER --------------------
++    elseif ($action === 'suspend' || $action === 'reactivate') {
+         $user_id = intval($_POST['user_id'] ?? 0);
+ 
+         if ($user_id <= 0) {
+@@ -536,18 +536,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+             exit();
+         }
+ 
+-        // Prevent deleting self
+-        if ($user_id == $_SESSION['user_id']) {
+-            setFlashMessage('error', "You cannot delete your own account.");
++        // Prevent suspending self
++        if ($action === 'suspend' && $user_id == $_SESSION['user_id']) {
++            setFlashMessage('error', "You cannot suspend your own account.");
+             header("Location: " . $um_return);
+             exit();
+         }
+ 
++        $new_status = ($action === 'suspend') ? 'suspended' : 'active';
++
+         try {
+-            // Soft delete by setting status to suspended
+-            $stmt = $pdo->prepare("UPDATE Users SET status = 'suspended', updated_at = NOW() WHERE id = ?");
+-            $stmt->execute([$user_id]);
+-            setFlashMessage('success', "User deactivated successfully.");
++            $stmt = $pdo->prepare("UPDATE Users SET status = ?, updated_at = NOW() WHERE id = ?");
++            $stmt->execute([$new_status, $user_id]);
++            setFlashMessage('success', $action === 'suspend'
++                ? "User suspended successfully."
++                : "User reactivated successfully.");
+         } catch (PDOException $e) {
+             setFlashMessage('error', "Database error: " . $e->getMessage());
+         }
+diff --git a/public/admin/assests/css/user_management.css b/public/admin/assests/css/user_management.css
+index 4b47bfa..ca22699 100644
+--- a/public/admin/assests/css/user_management.css
++++ b/public/admin/assests/css/user_management.css
+@@ -885,6 +885,12 @@ textarea.form-control {
+     border-color: var(--danger);
+ }
+ 
++.icon-btn.reactivate:hover {
++    background: rgba(34, 160, 107, 0.12);
++    color: #1f9d63;
++    border-color: #1f9d63;
++}
++
+ /* ---------- Empty State ---------- */
+ .empty-state {
+     text-align: center;
+diff --git a/public/admin/user_management.php b/public/admin/user_management.php
+index 41ecd2c..96d0e85 100644
+--- a/public/admin/user_management.php
++++ b/public/admin/user_management.php
+@@ -479,14 +479,25 @@ include 'assests/api/access_permissions_modal.php';
+                             <div class="icon-btn" title="View Profile" onclick="viewUser(<?= $user['id'] ?>)"><i class="fas fa-eye"></i></div>
+                             <?php if ($canManageUsers): ?><div class="icon-btn" title="Edit" onclick="editUser(<?= $user['id'] ?>)"><i class="fas fa-pen"></i></div><?php endif; ?>
+                             <?php if ($canManageUsers && $user['id'] != $_SESSION['user_id']): ?>
+-                            <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Are you sure you want to deactivate this user?');">
++                            <?php if ($user['status'] === 'active'): ?>
++                            <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Are you sure you want to suspend this user?');">
+                                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+-                                <input type="hidden" name="action" value="delete">
++                                <input type="hidden" name="action" value="suspend">
+                                 <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
+-                                <button type="submit" class="icon-btn delete" title="Deactivate" style="border:none; background:none; cursor:pointer;">
++                                <button type="submit" class="icon-btn delete" title="Suspend" style="border:none; background:none; cursor:pointer;">
+                                     <i class="fas fa-ban"></i>
+                                 </button>
+                             </form>
++                            <?php else: ?>
++                            <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Reactivate this user? They will be able to log in again.');">
++                                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
++                                <input type="hidden" name="action" value="reactivate">
++                                <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
++                                <button type="submit" class="icon-btn reactivate" title="Reactivate" style="border:none; background:none; cursor:pointer;">
++                                    <i class="fas fa-rotate-left"></i>
++                                </button>
++                            </form>
++                            <?php endif; ?>
+                             <?php endif; ?>
+                         </div>
+                     </td>

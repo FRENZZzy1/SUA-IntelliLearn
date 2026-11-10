@@ -479,14 +479,25 @@ include 'assests/api/access_permissions_modal.php';
                             <div class="icon-btn" title="View Profile" onclick="viewUser(<?= $user['id'] ?>)"><i class="fas fa-eye"></i></div>
                             <?php if ($canManageUsers): ?><div class="icon-btn" title="Edit" onclick="editUser(<?= $user['id'] ?>)"><i class="fas fa-pen"></i></div><?php endif; ?>
                             <?php if ($canManageUsers && $user['id'] != $_SESSION['user_id']): ?>
-                            <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Are you sure you want to deactivate this user?');">
+                            <?php if ($user['status'] === 'active'): ?>
+                            <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Are you sure you want to suspend this user?');">
                                 <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
-                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="action" value="suspend">
                                 <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
-                                <button type="submit" class="icon-btn delete" title="Deactivate" style="border:none; background:none; cursor:pointer;">
+                                <button type="submit" class="icon-btn delete" title="Suspend" style="border:none; background:none; cursor:pointer;">
                                     <i class="fas fa-ban"></i>
                                 </button>
                             </form>
+                            <?php else: ?>
+                            <form method="POST" action="" style="display:inline;" onsubmit="return confirm('Reactivate this user? They will be able to log in again.');">
+                                <input type="hidden" name="csrf_token" value="<?= $csrf_token ?>">
+                                <input type="hidden" name="action" value="reactivate">
+                                <input type="hidden" name="user_id" value="<?= $user['id'] ?>">
+                                <button type="submit" class="icon-btn reactivate" title="Reactivate" style="border:none; background:none; cursor:pointer;">
+                                    <i class="fas fa-rotate-left"></i>
+                                </button>
+                            </form>
+                            <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     </td>

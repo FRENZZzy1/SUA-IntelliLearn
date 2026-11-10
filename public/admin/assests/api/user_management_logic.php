@@ -526,8 +526,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    // -------------------- DELETE / DEACTIVATE USER --------------------
-    elseif ($action === 'delete') {
+    // -------------------- SUSPEND / REACTIVATE USER --------------------
+    elseif ($action === 'suspend' || $action === 'reactivate') {
         $user_id = intval($_POST['user_id'] ?? 0);
 
         if ($user_id <= 0) {
@@ -536,18 +536,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit();
         }
 
-        // Prevent deleting self
-        if ($user_id == $_SESSION['user_id']) {
-            setFlashMessage('error', "You cannot delete your own account.");
+        // Prevent suspending self
+        if ($action === 'suspend' && $user_id == $_SESSION['user_id']) {
+            setFlashMessage('error', "You cannot suspend your own account.");
             header("Location: " . $um_return);
             exit();
         }
 
+        $new_status = ($action === 'suspend') ? 'suspended' : 'active';
+
         try {
-            // Soft delete by setting status to suspended
-            $stmt = $pdo->prepare("UPDATE Users SET status = 'suspended', updated_at = NOW() WHERE id = ?");
-            $stmt->execute([$user_id]);
-            setFlashMessage('success', "User deactivated successfully.");
+            $stmt = $pdo->prepare("UPDATE Users SET status = ?, updated_at = NOW() WHERE id = ?");
+            $stmt->execute([$new_status, $user_id]);
+            setFlashMessage('success', $action === 'suspend'
+                ? "User suspended successfully."
+                : "User reactivated successfully.");
         } catch (PDOException $e) {
             setFlashMessage('error', "Database error: " . $e->getMessage());
         }

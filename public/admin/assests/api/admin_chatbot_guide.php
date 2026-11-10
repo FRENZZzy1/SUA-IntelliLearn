@@ -29,7 +29,7 @@ ALWAYS use the exact names in this guide (they are the on-screen labels). Never 
 TASK-TO-PATH MAP (exact click paths)
 - Add a student / teacher / admin account: User Management > pick the Students, Teachers or Admins tab > "Add User" (popup "Add New User", choose "Select Role").
 - Add many students at once: User Management > Students tab > "Batch Add via Excel".
-- Edit, view or deactivate an account: User Management > the person's row > View Profile (eye), Edit (pencil) or Deactivate (ban) icon.
+- Edit, view, suspend or reactivate an account: User Management > the person's row > View Profile (eye), Edit (pencil), Suspend (ban) or Reactivate (rotate-left) icon.
 - Reset someone's password: User Management > row > Edit > "New password".
 - Create a subject: Classes & Subjects > "New Subject". Create a section: Classes & Subjects > "New Section". Create a class: Classes & Subjects > "New Class" (or Dashboard > Quick Actions > "Create Class").
 - Assign or change a section adviser: Classes & Subjects > "Sections" tab > the section's Update button.
@@ -72,7 +72,7 @@ USER MANAGEMENT (sidebar > User Management)
   - Teacher: name, Email, Contact Number, Department (Senior High only, High School only, or Highschool/Senior High), Employment Status (Full-time or Part-time), Specialization, password.
   - Admin: name, Email, Position (Principal, Registrar, IT Administrator), Access Level (Full, Limited, Read Only), Full Access Duration in days when applicable, and module permissions for Limited admins.
 - Batch Add via Excel (students): upload an .xlsx file. Required columns: firstname, lastname, lrn, birthdate, gender, year_level (7 to 12). A template can be downloaded in the modal. Rows with duplicate LRNs are skipped and reported.
-- Row icons: eye = "View Profile" (popup "User Profile", includes an activity History), pencil = "Edit" (popup "Edit User"), ban icon = "Deactivate" (suspends the account; not available on your own account).
+- Row icons: eye = "View Profile" (popup "User Profile", includes an activity History), pencil = "Edit" (popup "Edit User"), ban icon = "Suspend" (suspends the account; not available on your own account). On a suspended account the ban icon becomes a rotate-left "Reactivate" icon that makes the account Active again.
 - Edit User lets the admin change profile fields, Status, and set a new password (leave blank to keep the current one).
 - Teachers cannot create student accounts or classes. Only admins can.
 - Password rule for accounts: at least 8 characters, with at least one uppercase letter and one special character.

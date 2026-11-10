@@ -885,6 +885,12 @@ textarea.form-control {
     border-color: var(--danger);
 }
 
+.icon-btn.reactivate:hover {
+    background: rgba(34, 160, 107, 0.12);
+    color: #1f9d63;
+    border-color: #1f9d63;
+}
+
 /* ---------- Empty State ---------- */
 .empty-state {
     text-align: center;
