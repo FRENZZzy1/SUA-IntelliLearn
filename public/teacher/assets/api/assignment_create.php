@@ -72,9 +72,15 @@ $description = trim($_POST['description'] ?? '');
 $description = $description === '' ? null : $description;
 
 // ---- Points ---------------------------------------------------------
+const MAX_ASSIGNMENT_POINTS = 100; // highest points an assignment can be worth
 $points = filter_input(INPUT_POST, 'points', FILTER_VALIDATE_FLOAT);
-if ($points === false || $points === null || $points <= 0) {
+if ($points === false || $points === null || !is_finite($points) || $points <= 0) {
     $points = 100.00;
+}
+if ($points > MAX_ASSIGNMENT_POINTS) {
+    setFlashMessage('error', 'Points cannot be higher than ' . MAX_ASSIGNMENT_POINTS . '.');
+    header('Location: ' . $backUrl);
+    exit();
 }
 $points = round($points, 2);
 

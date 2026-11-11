@@ -110,6 +110,18 @@ if ($points === false || $points === null || $points <= 0) {
     exit();
 }
 $points = round($points, 2);
+
+// Cap at 100 points. Older assignments already above 100 may keep their current
+// value (so editing a deadline doesn't suddenly fail), but can't be raised further.
+const MAX_ASSIGNMENT_POINTS = 100;
+$stmt = $pdo->prepare("SELECT points FROM assignments WHERE assignment_id = ? AND offering_id = ?");
+$stmt->execute([$assignmentId, $offeringId]);
+$currentPoints = (float) $stmt->fetchColumn();
+if (!is_finite($points) || ($points > MAX_ASSIGNMENT_POINTS && $points > $currentPoints)) {
+    setFlashMessage('error', 'Points cannot be higher than ' . MAX_ASSIGNMENT_POINTS . '.');
+    header('Location: ' . $backUrl);
+    exit();
+}
 if ($points < $highestScore) {
     setFlashMessage('error', 'Points cannot be lower than a score already given (' . rtrim(rtrim(number_format($highestScore, 2, '.', ''), '0'), '.') . ').');
     header('Location: ' . $backUrl);

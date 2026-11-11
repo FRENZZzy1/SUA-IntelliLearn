@@ -409,6 +409,10 @@ if (requestsPanel) {
         f.attempts.max = 10;
         f.points.value = data.points;
         f.points.min = Math.max(1, data.highestScore || 0);
+        // Older assignments already above 100 keep their value, but nothing new goes past 100
+        const legacyPts = parseFloat(data.points) > 100 ? parseFloat(data.points) : 0;
+        f.points.dataset.legacy = legacyPts;
+        f.points.max = legacyPts || 100;
         f.type.value = data.type;
 
         f.attemptsHint.textContent = data.attemptsUsed > 0
@@ -721,5 +725,27 @@ if (requestsPanel) {
             input.scrollIntoView({ behavior: 'smooth', block: 'center' });
             setTimeout(() => { input.focus({ preventScroll: true }); input.select(); }, 250);
         }
+    });
+})();
+
+
+// ===================== Assignment points: capped at 100 =====================
+(function () {
+    const MAX_POINTS = 100;
+    ['assignmentPoints', 'aePoints'].forEach((id) => {
+        const input = document.getElementById(id);
+        if (!input) return;
+        input.addEventListener('keydown', (e) => { if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault(); });
+        input.addEventListener('input', () => {
+            if (input.value === '') return;
+            const v = parseFloat(input.value);
+            if (isNaN(v)) { input.value = ''; return; }
+            if (v > MAX_POINTS && v > (parseFloat(input.dataset.legacy) || 0)) {
+                input.value = String(MAX_POINTS);
+                input.classList.add('is-capped');
+                setTimeout(() => input.classList.remove('is-capped'), 1200);
+            }
+        });
+        input.addEventListener('wheel', () => input.blur(), { passive: true });
     });
 })();

@@ -601,7 +601,7 @@ if (!empty($submissionRows)) {
                             <div class="asg-field">
                                 <label for="assignmentPoints">Points</label>
                                 <div class="asg-affix">
-                                    <input type="number" id="assignmentPoints" name="points" min="1" step="0.01" value="100">
+                                    <input type="number" id="assignmentPoints" name="points" min="1" max="100" step="0.01" value="100" inputmode="decimal">
                                     <span>pts</span>
                                 </div>
                             </div>
@@ -1500,7 +1500,7 @@ if (!empty($submissionRows)) {
                 <div class="form-row form-row-inline ae-two">
                     <div>
                         <label for="aePoints">Points</label>
-                        <input type="number" id="aePoints" name="points" min="1" step="0.01" required>
+                        <input type="number" id="aePoints" name="points" min="1" max="100" step="0.01" required inputmode="decimal">
                     </div>
                     <div>
                         <label for="aeType">Grading category</label>
