@@ -58,6 +58,13 @@ $title = trim($body['title'] ?? '');
 $description = trim($body['description'] ?? '');
 $timeLimit = isset($body['time_limit_minutes']) && $body['time_limit_minutes'] !== '' ? (int) $body['time_limit_minutes'] : null;
 $maxAttempts = max(1, (int) ($body['max_attempts'] ?? 1));
+
+if ($timeLimit !== null && ($timeLimit < 1 || $timeLimit > 120)) {
+    $errors[] = 'Time limit must be between 1 and 120 minutes.';
+}
+if ($maxAttempts < 1 || $maxAttempts > 10) {
+    $errors[] = 'Max attempts must be between 1 and 10.';
+}
 $shuffle = !empty($body['shuffle_questions']) ? 1 : 0;
 $status = in_array($body['status'] ?? '', ['draft', 'published'], true) ? $body['status'] : 'draft';
 $questions = is_array($body['questions'] ?? null) ? $body['questions'] : [];
