@@ -211,11 +211,11 @@ include 'assets/api/quiz_api/quiz_generator_functions.php';
                             </div>
                             <div class="qg-field">
                                 <label for="qgTimeLimit">Time Limit (minutes) <span class="hint">optional</span></label>
-                                <input type="number" id="qgTimeLimit" min="1">
+                                <input type="number" id="qgTimeLimit" min="1" max="120">
                             </div>
                             <div class="qg-field">
                                 <label for="qgMaxAttempts">Max Attempts</label>
-                                <input type="number" id="qgMaxAttempts" min="1" value="1">
+                                <input type="number" id="qgMaxAttempts" min="1" max="10" value="1">
                             </div>
                             <div class="qg-field" style="flex-direction:row; align-items:center; gap:8px;">
                                 <input type="checkbox" id="qgShuffle" style="width:auto;">

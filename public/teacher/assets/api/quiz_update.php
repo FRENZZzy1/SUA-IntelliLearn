@@ -116,6 +116,12 @@ if ($timeLimitRaw !== '') {
     if ($timeLimit === false || $timeLimit < 1) {
         quiz_update_fail('Time limit must be a whole number of minutes (or left blank for no limit).', $backUrl);
     }
+    if ($timeLimit > 120) {
+        quiz_update_fail('Time limit cannot exceed 120 minutes.', $backUrl);
+    }
+}
+if ($maxAttempts > 10) {
+    quiz_update_fail('Attempts allowed cannot exceed 10.', $backUrl);
 }
 
 // ---- Dates (blank = open immediately / no due date) --------------------
