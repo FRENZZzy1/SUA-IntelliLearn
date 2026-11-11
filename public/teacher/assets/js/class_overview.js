@@ -547,3 +547,179 @@ if (requestsPanel) {
     var input = row.querySelector('input[type="number"]');
     if (input) setTimeout(function () { input.focus({ preventScroll: true }); }, 500);
 })();
+
+
+// ===================== Assignment grading: submission viewer modal + score guard =====================
+(function () {
+    const modal = document.getElementById('submissionModal');
+    const gradingForm = document.getElementById('gradingForm');
+
+    // ---------- Score guard: can never exceed the assignment's points ----------
+    if (gradingForm) {
+        const inputs = gradingForm.querySelectorAll('.js-grade-input');
+
+        function flag(input, msg) {
+            input.classList.add('is-capped');
+            input.title = msg;
+            clearTimeout(input._capTimer);
+            input._capTimer = setTimeout(() => { input.classList.remove('is-capped'); input.title = ''; }, 1600);
+        }
+
+        inputs.forEach((input) => {
+            const max = parseFloat(input.dataset.max);
+
+            // No scientific notation / signs — plain numbers only
+            input.addEventListener('keydown', (e) => {
+                if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault();
+            });
+
+            // Clamp while typing (so 10000000 instantly becomes the max)
+            input.addEventListener('input', () => {
+                if (input.value === '') return;
+                const v = parseFloat(input.value);
+                if (isNaN(v)) { input.value = ''; return; }
+                if (v > max) {
+                    input.value = String(max);
+                    flag(input, 'Maximum score is ' + max);
+                } else if (v < 0) {
+                    input.value = '0';
+                }
+            });
+
+            // Keep at most 2 decimals once the teacher leaves the field
+            input.addEventListener('blur', () => {
+                if (input.value === '') return;
+                const v = Math.min(Math.max(parseFloat(input.value) || 0, 0), max);
+                input.value = String(Math.round(v * 100) / 100);
+            });
+
+            // Mouse-wheel over a focused number field shouldn't silently change grades
+            input.addEventListener('wheel', () => input.blur(), { passive: true });
+        });
+
+        // Last line of defence before the form is sent
+        gradingForm.addEventListener('submit', () => {
+            inputs.forEach((input) => {
+                if (input.value === '') return;
+                const max = parseFloat(input.dataset.max);
+                const v = parseFloat(input.value);
+                input.value = (isNaN(v) || v < 0) ? '' : String(Math.min(v, max));
+            });
+        });
+    }
+
+    // ---------- Submission modal ----------
+    if (!modal) return;
+
+    const body = document.getElementById('smBody');
+    const nameEl = document.getElementById('smName');
+    const avatarEl = document.getElementById('smAvatar');
+    let lastTrigger = null;
+    let currentStudent = null;
+
+    // Student-supplied links: only allow http(s) or site-relative paths (blocks javascript: URLs)
+    function safeHref(u) {
+        if (!u) return null;
+        try {
+            const url = new URL(u, window.location.href);
+            return (url.protocol === 'http:' || url.protocol === 'https:') ? url.href : null;
+        } catch (e) { return null; }
+    }
+
+    function el(tag, cls, text) {
+        const n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text != null) n.textContent = text;
+        return n;
+    }
+
+    function linkItem(icon, label, href) {
+        const a = el('a', 'sm-item');
+        a.href = href; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        const i = el('i', 'fas ' + icon);
+        a.appendChild(i);
+        a.appendChild(el('span', 'sm-item__label', label));
+        a.appendChild(el('i', 'fas fa-arrow-up-right-from-square sm-item__go'));
+        return a;
+    }
+
+    function render(data) {
+        body.textContent = '';
+        const attempts = data.attempts || [];
+        attempts.forEach((a, idx) => {
+            const card = el('section', 'sm-attempt' + (idx === attempts.length - 1 ? ' is-latest' : ''));
+
+            const head = el('div', 'sm-attempt__head');
+            head.appendChild(el('span', 'sm-attempt__title', 'Attempt ' + a.n));
+            if (idx === attempts.length - 1 && attempts.length > 1) head.appendChild(el('span', 'sm-badge', 'Latest'));
+            if (a.at) head.appendChild(el('span', 'sm-attempt__time', a.at));
+            card.appendChild(head);
+
+            let any = false;
+
+            (a.files || []).forEach((f) => {
+                const href = safeHref(f.path);
+                if (href) { card.appendChild(linkItem('fa-file-lines', f.name || 'File', href)); any = true; }
+            });
+            if (!(a.files || []).length) {
+                const fh = safeHref(a.file);
+                if (fh) { card.appendChild(linkItem('fa-file-lines', 'Open submitted file', fh)); any = true; }
+            }
+            const uh = safeHref(a.url);
+            if (uh) { card.appendChild(linkItem('fa-link', a.url, uh)); any = true; }
+            else if (a.url) { card.appendChild(el('div', 'sm-text', a.url)); any = true; }
+
+            if (a.text) {
+                const box = el('div', 'sm-text');
+                box.appendChild(el('div', 'sm-text__label', 'Text answer'));
+                box.appendChild(el('div', 'sm-text__content', a.text)); // textContent => safe, newlines kept by CSS
+                card.appendChild(box);
+                any = true;
+            }
+            if (!any) card.appendChild(el('p', 'sm-empty', 'Nothing was attached to this attempt.'));
+
+            body.appendChild(card);
+        });
+    }
+
+    function openModal(trigger) {
+        let data;
+        try { data = JSON.parse(trigger.dataset.payload || '{}'); } catch (e) { return; }
+        lastTrigger = trigger;
+        currentStudent = trigger.dataset.student;
+        nameEl.textContent = data.name || 'Student';
+        const parts = (data.name || '').split(',').map((p) => p.trim());
+        avatarEl.textContent = ((parts[1] || '').charAt(0) + (parts[0] || '').charAt(0)).toUpperCase() || '?';
+        render(data);
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        body.scrollTop = 0;
+        document.getElementById('smDone').focus({ preventScroll: true });
+    }
+
+    function closeModal() {
+        modal.hidden = true;
+        document.body.style.overflow = '';
+        if (lastTrigger) lastTrigger.focus({ preventScroll: true });
+    }
+
+    document.querySelectorAll('.js-view-submission').forEach((btn) => {
+        btn.addEventListener('click', () => openModal(btn));
+    });
+
+    document.getElementById('smClose').addEventListener('click', closeModal);
+    document.getElementById('smDone').addEventListener('click', closeModal);
+    modal.addEventListener('mousedown', (e) => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) closeModal(); });
+
+    // "Set score" -> close and jump straight to that student's score box
+    document.getElementById('smGrade').addEventListener('click', () => {
+        const student = currentStudent;
+        closeModal();
+        const input = document.querySelector('input[name="score[' + student + ']"]');
+        if (input) {
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => { input.focus({ preventScroll: true }); input.select(); }, 250);
+        }
+    });
+})();

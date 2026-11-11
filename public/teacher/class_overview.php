@@ -814,39 +814,65 @@ if (!empty($submissionRows)) {
                                             );
                                             $studentAttempts = $attemptsByStudent[(int) $row['student_id']] ?? [];
                                         ?>
+                                        <?php
+                                            $fullName = trim($row['lastname'] . ', ' . $row['firstname'] . ' ' . ($row['middlename'] ?? ''));
+                                            $initials = strtoupper(mb_substr($row['firstname'], 0, 1) . mb_substr($row['lastname'], 0, 1));
+                                            $attemptCount = count($studentAttempts);
+                                            $hasText = false; $hasLink = false;
+                                            foreach ($studentAttempts as $_a) {
+                                                if (!empty($_a['submission_text'])) { $hasText = true; }
+                                                if (!empty($_a['external_url'])) { $hasLink = true; }
+                                            }
+                                            $subIcon = $hasText ? 'fa-align-left' : ($hasLink ? 'fa-link' : 'fa-paperclip');
+
+                                            // Everything the modal needs for this student (rendered with textContent in JS, never as HTML)
+                                            $modalPayload = [
+                                                'name'     => $fullName,
+                                                'attempts' => array_map(function ($a) {
+                                                    return [
+                                                        'n'      => (int) $a['attempt_number'],
+                                                        'at'     => !empty($a['submitted_at']) ? date('M j, Y · g:i A', strtotime($a['submitted_at'])) : null,
+                                                        'url'    => $a['external_url'] ?: null,
+                                                        'file'   => $a['file_path'] ?: null,
+                                                        'text'   => $a['submission_text'] ?: null,
+                                                        'files'  => array_map(fn($f) => ['name' => $f['original_name'], 'path' => $f['file_path']], $a['files'] ?? []),
+                                                    ];
+                                                }, $studentAttempts),
+                                            ];
+                                        ?>
                                         <tr id="student-<?= (int) $row['student_id'] ?>">
-                                            <td class="student-name"><?= htmlspecialchars($row['lastname'] . ', ' . $row['firstname'] . ' ' . ($row['middlename'] ?? '')) ?></td>
+                                            <td class="student-name">
+                                                <span class="student-cell">
+                                                    <span class="student-avatar" aria-hidden="true"><?= htmlspecialchars($initials) ?></span>
+                                                    <span><?= htmlspecialchars($fullName) ?></span>
+                                                </span>
+                                            </td>
                                             <td><span class="chip chip-<?= $statusInfo['class'] ?>"><?= $statusInfo['label'] ?></span></td>
                                             <td><?= (int) $row['attempts_used'] ?> / <?= (int) $selectedAssignment['max_attempts'] ?></td>
                                             <td>
-                                                <?php if (empty($studentAttempts)): ?>
-                                                    <span class="field-hint">—</span>
+                                                <?php if ($attemptCount === 0): ?>
+                                                    <span class="sub-none"><i class="fas fa-minus"></i> No submission</span>
                                                 <?php else: ?>
-                                                    <ul class="attempt-file-list">
-                                                        <?php foreach ($studentAttempts as $attempt): ?>
-                                                            <li>
-                                                                <span class="attempt-file-list__label">Attempt <?= (int) $attempt['attempt_number'] ?>:</span>
-                                                                <?php if (!empty($attempt['files'])): ?>
-                                                                    <span class="attempt-file-list__files">
-                                                                        <?php foreach ($attempt['files'] as $i => $f): ?><?= $i > 0 ? ', ' : '' ?><a href="<?= htmlspecialchars($f['file_path']) ?>" target="_blank" rel="noopener" class="link-view"><?= htmlspecialchars($f['original_name']) ?></a><?php endforeach; ?>
-                                                                    </span>
-                                                                <?php elseif ($attempt['external_url'] ?: $attempt['file_path']): ?>
-                                                                    <a href="<?= htmlspecialchars($attempt['external_url'] ?: $attempt['file_path']) ?>" target="_blank" rel="noopener" class="link-view">View</a>
-                                                                <?php elseif (!empty($attempt['submission_text'])): ?>
-                                                                    <span title="<?= htmlspecialchars($attempt['submission_text']) ?>" class="link-view link-view--text">Text answer</span>
-                                                                <?php else: ?>
-                                                                    <span class="field-hint">—</span>
-                                                                <?php endif; ?>
-                                                            </li>
-                                                        <?php endforeach; ?>
-                                                    </ul>
+                                                    <button type="button" class="sub-view-btn js-view-submission"
+                                                            data-student="<?= (int) $row['student_id'] ?>"
+                                                            data-payload="<?= htmlspecialchars(json_encode($modalPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE), ENT_QUOTES, 'UTF-8') ?>">
+                                                        <i class="fas <?= $subIcon ?>"></i>
+                                                        <span>View submission</span>
+                                                        <?php if ($attemptCount > 1): ?><span class="sub-view-btn__count"><?= $attemptCount ?></span><?php endif; ?>
+                                                    </button>
                                                 <?php endif; ?>
                                             </td>
                                             <td>
-                                                <input type="number" class="grade-input" name="score[<?= (int) $row['student_id'] ?>]"
-                                                       min="0" max="<?= (float) $selectedAssignment['points'] ?>" step="0.01"
-                                                       value="<?= $row['score'] !== null ? htmlspecialchars($row['score']) : '' ?>"
-                                                       placeholder="—">
+                                                <?php $maxPts = (float) $selectedAssignment['points']; ?>
+                                                <div class="score-group">
+                                                    <input type="number" inputmode="decimal" class="grade-input js-grade-input"
+                                                           name="score[<?= (int) $row['student_id'] ?>]"
+                                                           min="0" max="<?= $maxPts ?>" step="0.01"
+                                                           data-max="<?= $maxPts ?>"
+                                                           value="<?= $row['score'] !== null ? htmlspecialchars($row['score']) : '' ?>"
+                                                           placeholder="—" aria-label="Score for <?= htmlspecialchars($fullName) ?>">
+                                                    <span class="score-group__max">/ <?= htmlspecialchars(rtrim(rtrim(number_format($maxPts, 2, '.', ''), '0'), '.') ?: '0') ?></span>
+                                                </div>
                                             </td>
                                             <td>
                                                 <input type="text" class="feedback-input" name="feedback[<?= (int) $row['student_id'] ?>]"
@@ -1396,6 +1422,29 @@ if (!empty($submissionRows)) {
 </main>
 
 
+
+<?php if (!empty($selectedAssignment) && !empty($submissionRows)): ?>
+<!-- Student submission viewer (filled by JS from the clicked row's data-payload) -->
+<div class="modal-overlay" id="submissionModal" hidden>
+    <div class="modal-box modal-box--submission" role="dialog" aria-modal="true" aria-labelledby="smName">
+        <div class="modal-header sm-header">
+            <div class="sm-header__who">
+                <span class="student-avatar student-avatar--lg" id="smAvatar" aria-hidden="true"></span>
+                <div>
+                    <h3 id="smName"></h3>
+                    <p class="modal-subtitle"><?= htmlspecialchars($selectedAssignment['title']) ?></p>
+                </div>
+            </div>
+            <button type="button" class="modal-close" id="smClose" aria-label="Close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="modal-body" id="smBody"></div>
+        <div class="form-actions sm-actions">
+            <button type="button" class="btn-secondary" id="smDone">Close</button>
+            <button type="button" class="btn-primary" id="smGrade"><i class="fas fa-pen"></i> Set score</button>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <!-- Edit assignment modal (filled from the clicked row's data-assignment) -->
 <div class="modal-overlay" id="assignmentEditModal" hidden>

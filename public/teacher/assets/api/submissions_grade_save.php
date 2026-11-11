@@ -109,6 +109,8 @@ $upsert = $pdo->prepare("
 ");
 
 $savedCount = 0;
+$cappedCount = 0;
+$skippedCount = 0;
 foreach ($scores as $studentId => $rawScore) {
     $studentId = (int) $studentId;
     if (!in_array($studentId, $validStudentIds, true)) {
@@ -123,11 +125,14 @@ foreach ($scores as $studentId => $rawScore) {
     }
 
     $score = filter_var($rawScore, FILTER_VALIDATE_FLOAT);
-    if ($score === false || $score < 0) {
+    if ($score === false || !is_finite($score) || $score < 0) {
+        $skippedCount++;
         continue; // skip invalid input rather than failing the whole batch
     }
     if ($score > $maxPoints) {
+        // Never trust the browser: a score can't exceed the assignment's points.
         $score = $maxPoints;
+        $cappedCount++;
     }
     $score = round($score, 2);
 
@@ -139,7 +144,15 @@ foreach ($scores as $studentId => $rawScore) {
 }
 
 if ($savedCount > 0) {
-    setFlashMessage('success', "Saved grades for {$savedCount} student(s).");
+    $maxLabel = rtrim(rtrim(number_format($maxPoints, 2, '.', ''), '0'), '.');
+    $msg = "Saved grades for {$savedCount} student(s).";
+    if ($cappedCount > 0) {
+        $msg .= " {$cappedCount} score(s) were above the maximum and were set to {$maxLabel}.";
+    }
+    if ($skippedCount > 0) {
+        $msg .= " {$skippedCount} invalid score(s) were skipped.";
+    }
+    setFlashMessage('success', $msg);
 } else {
     setFlashMessage('error', 'No grades were entered.');
 }
