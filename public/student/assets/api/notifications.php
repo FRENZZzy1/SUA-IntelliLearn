@@ -324,6 +324,14 @@ $annParams = [$sinceSql];
 if ($offeringIds) {
     $annSql .= " AND (a.offering_id IS NULL OR a.offering_id IN ($in))";
     $annParams = array_merge($annParams, $offeringIds);
+    // One notification per post even if the student is in several of the teacher's classes.
+    $annSql .= " AND NOT EXISTS (
+            SELECT 1 FROM announcements a2
+            WHERE a2.announcement_id < a.announcement_id
+              AND a2.posted_by = a.posted_by AND a2.title = a.title AND a2.body = a.body
+              AND a2.created_at = a.created_at AND a2.status = a.status
+              AND a2.offering_id IN ($in))";
+    $annParams = array_merge($annParams, $offeringIds);
 } else {
     $annSql .= " AND a.offering_id IS NULL";
 }

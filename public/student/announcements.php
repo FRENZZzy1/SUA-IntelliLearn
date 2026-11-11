@@ -71,8 +71,19 @@ $sql = "
                  AND aco.is_archived = 0
                  AND aco.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
             WHERE e.student_id = :sid AND e.status = 'enrolled'))
+      AND NOT EXISTS (
+            SELECT 1 FROM announcements a2
+            WHERE a2.announcement_id < a.announcement_id
+              AND a2.posted_by = a.posted_by AND a2.title = a.title AND a2.body = a.body
+              AND a2.created_at = a.created_at AND a2.status = a.status
+              AND a2.offering_id IN (
+                    SELECT e2.offering_id FROM enrollments e2
+                    JOIN classofferings aco2 ON aco2.offering_id = e2.offering_id
+                         AND aco2.is_archived = 0
+                         AND aco2.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+                    WHERE e2.student_id = :sid2 AND e2.status = 'enrolled'))
 ";
-$params = [':sid' => (int) $student['student_id']];
+$params = [':sid' => (int) $student['student_id'], ':sid2' => (int) $student['student_id']];
 
 if ($filter === 'admin') {
     $sql .= " AND u.role = 'admin'";
@@ -106,9 +117,20 @@ $countStmt = $pdo->prepare("
                  AND aco.is_archived = 0
                  AND aco.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
             WHERE e.student_id = :sid AND e.status = 'enrolled'))
+      AND NOT EXISTS (
+            SELECT 1 FROM announcements a2
+            WHERE a2.announcement_id < a.announcement_id
+              AND a2.posted_by = a.posted_by AND a2.title = a.title AND a2.body = a.body
+              AND a2.created_at = a.created_at AND a2.status = a.status
+              AND a2.offering_id IN (
+                    SELECT e2.offering_id FROM enrollments e2
+                    JOIN classofferings aco2 ON aco2.offering_id = e2.offering_id
+                         AND aco2.is_archived = 0
+                         AND aco2.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+                    WHERE e2.student_id = :sid2 AND e2.status = 'enrolled'))
     GROUP BY u.role
 ");
-$countStmt->execute([':sid' => (int) $student['student_id']]);
+$countStmt->execute([':sid' => (int) $student['student_id'], ':sid2' => (int) $student['student_id']]);
 $sourceCounts = ['admin' => 0, 'teachers' => 0];
 foreach ($countStmt->fetchAll() as $row) {
     if ($row['role'] === 'admin') {

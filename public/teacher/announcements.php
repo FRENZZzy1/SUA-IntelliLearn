@@ -37,6 +37,21 @@ $stmt->execute([':tid' => $teacherId]);
 $myOfferings   = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $myOfferingIds = array_map('intval', array_column($myOfferings, 'offering_id'));
 
+// "All my classes" = this teacher's classes in the ONGOING term only (not every term of the school year).
+$currentTerm      = resolveCurrentTerm(getTermIntervals($pdo));
+$termLabelMap     = ['TRM 1' => 'Term 1', 'TRM 2' => 'Term 2', 'TRM 3' => 'Term 3'];
+$currentTermLabel = $currentTerm !== null ? ($termLabelMap[$currentTerm] ?? $currentTerm) : null;
+$ongoingOfferingIds = $currentTerm === null ? [] : array_map(
+    'intval',
+    array_column(array_filter($myOfferings, fn($o) => $o['quarter'] === $currentTerm), 'offering_id')
+);
+
+// Parses "12,13,14" (or a single id) into a clean list of positive ints.
+function parseIdList($raw): array {
+    $ids = array_filter(array_map('intval', explode(',', (string) $raw)), fn($i) => $i > 0);
+    return array_values(array_unique($ids));
+}
+
 /* ---------------------------------------------------------
    Handle POST actions: save (publish / draft), pin, delete, publish draft
 --------------------------------------------------------- */
@@ -57,18 +72,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Target class: a single offering the teacher owns, or 'all' = every class of theirs.
         $offeringRaw = $_POST['offering_id'] ?? '';
+        $groupIds     = parseIdList($_POST['group_ids'] ?? '');
+        $editingGroup = $announcementId > 0 && count($groupIds) > 1; // an "All classes" card
         if ($offeringRaw === 'all' && $announcementId === 0) {
-            $targetOfferings = $myOfferingIds;
-        } elseif (ctype_digit((string) $offeringRaw) && in_array((int) $offeringRaw, $myOfferingIds, true)) {
+            $targetOfferings = $ongoingOfferingIds;
+        } elseif (ctype_digit((string) $offeringRaw)
+                && in_array((int) $offeringRaw, $announcementId === 0 ? $ongoingOfferingIds : $myOfferingIds, true)) {
             $targetOfferings = [(int) $offeringRaw];
         } else {
             $targetOfferings = []; // missing / not this teacher's class -> reject
         }
 
-        $publishedAt = ($status === 'published') ? date('Y-m-d H:i:s') : null;
+        $now         = date('Y-m-d H:i:s');
+        $publishedAt = ($status === 'published') ? $now : null;
 
-        if ($title !== '' && $body !== '' && $targetOfferings) {
-            if ($announcementId > 0) {
+        if ($title !== '' && $body !== '' && ($targetOfferings || $editingGroup)) {
+            if ($editingGroup) {
+                // Edit every copy that belongs to this "All classes" card at once.
+                $in  = implode(',', array_fill(0, count($groupIds), '?'));
+                $sql = "UPDATE announcements SET title = ?, body = ?, audience = ?, status = ?, is_pinned = ?"
+                     . ($status === 'published' ? ", published_at = ?" : "")
+                     . " WHERE posted_by = ? AND announcement_id IN ($in)";
+                $params = [$title, $body, $audience, $status, $isPinned];
+                if ($status === 'published') $params[] = $publishedAt;
+                $params[] = $currentUserId;
+                $pdo->prepare($sql)->execute(array_merge($params, $groupIds));
+            } elseif ($announcementId > 0) {
                 // Only the original poster may edit their own announcement.
                 if ($status === 'published') {
                     $stmt = $pdo->prepare(
@@ -109,9 +138,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             } else {
                 $stmt = $pdo->prepare(
-                    "INSERT INTO announcements (posted_by, title, body, audience, offering_id, status, is_pinned, published_at)
-                     VALUES (:posted_by, :title, :body, :audience, :offering_id, :status, :is_pinned, :published_at)"
+                    "INSERT INTO announcements (posted_by, title, body, audience, offering_id, status, is_pinned, published_at, created_at)
+                     VALUES (:posted_by, :title, :body, :audience, :offering_id, :status, :is_pinned, :published_at, :created_at)"
                 );
+                // Every copy of one "All classes" post shares the same created_at,
+                // which is how the list below folds them back into a single card.
+                $pdo->beginTransaction();
                 foreach ($targetOfferings as $oid) {
                     $stmt->execute([
                         ':posted_by'    => $currentUserId,
@@ -122,25 +154,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         ':status'       => $status,
                         ':is_pinned'    => $isPinned,
                         ':published_at' => $publishedAt,
+                        ':created_at'   => $now,
                     ]);
                 }
+                $pdo->commit();
             }
         }
     }
 
     // ---- Quick actions (own announcements only) ----
-    if (isset($_POST['quick_action'], $_POST['id'])) {
-        $id = (int) $_POST['id'];
+    if (isset($_POST['quick_action']) && (isset($_POST['ids']) || isset($_POST['id']))) {
+        $ids = parseIdList($_POST['ids'] ?? ($_POST['id'] ?? ''));
+        $in  = $ids ? implode(',', array_fill(0, count($ids), '?')) : 'NULL';
 
         if ($_POST['quick_action'] === 'toggle_pin') {
-            $stmt = $pdo->prepare("UPDATE announcements SET is_pinned = 1 - is_pinned WHERE announcement_id = :id AND posted_by = :posted_by");
-            $stmt->execute([':id' => $id, ':posted_by' => $currentUserId]);
+            $stmt = $pdo->prepare("UPDATE announcements SET is_pinned = 1 - is_pinned WHERE posted_by = ? AND announcement_id IN ($in)");
+            $stmt->execute(array_merge([$currentUserId], $ids));
         } elseif ($_POST['quick_action'] === 'delete') {
-            $stmt = $pdo->prepare("DELETE FROM announcements WHERE announcement_id = :id AND posted_by = :posted_by");
-            $stmt->execute([':id' => $id, ':posted_by' => $currentUserId]);
+            $stmt = $pdo->prepare("DELETE FROM announcements WHERE posted_by = ? AND announcement_id IN ($in)");
+            $stmt->execute(array_merge([$currentUserId], $ids));
         } elseif ($_POST['quick_action'] === 'publish') {
-            $stmt = $pdo->prepare("UPDATE announcements SET status = 'published', published_at = :published_at WHERE announcement_id = :id AND posted_by = :posted_by");
-            $stmt->execute([':published_at' => date('Y-m-d H:i:s'), ':id' => $id, ':posted_by' => $currentUserId]);
+            $stmt = $pdo->prepare("UPDATE announcements SET status = 'published', published_at = ? WHERE posted_by = ? AND announcement_id IN ($in)");
+            $stmt->execute(array_merge([date('Y-m-d H:i:s'), $currentUserId], $ids));
         }
     }
 
@@ -181,6 +216,20 @@ $stmt = $pdo->prepare("
 ");
 $stmt->execute([':uid' => $currentUserId]);
 $myAnnouncements = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fold the per-class copies of an "All classes" post back into ONE card.
+$cards = [];
+foreach ($myAnnouncements as $a) {
+    $key = implode('|', [$a['title'], $a['body'], $a['created_at'], $a['status'], $a['is_pinned'], $a['published_at']]);
+    if (!isset($cards[$key])) {
+        $a['ids'] = [];
+        $cards[$key] = $a;
+    }
+    $cards[$key]['ids'][] = (int) $a['announcement_id'];
+}
+$myAnnouncements = array_values($cards);
+foreach ($myAnnouncements as &$a) { $a['is_group'] = count($a['ids']) > 1; }
+unset($a);
 
 /* ---------------------------------------------------------
    Announcements from administration (published, for teachers).
@@ -278,6 +327,7 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
         <form class="compose-panel" id="composePanel" style="display:none;" method="POST" action="announcements.php">
             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
             <input type="hidden" name="announcement_id" id="announcementIdInput" value="">
+            <input type="hidden" name="group_ids" id="groupIdsInput" value="">
 
             <div class="compose-panel-header">
                 <h2 id="composeTitle"><i class="fas fa-pen-to-square"></i>&nbsp; Create Announcement</h2>
@@ -296,14 +346,20 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                 <?php else: ?>
                     <select name="offering_id" id="offeringInput" class="form-control" required>
                         <option value="">Select the class that should see this...</option>
-                        <option value="all" id="offeringAllOption">All my classes</option>
+                        <?php if ($ongoingOfferingIds): ?>
+                        <option value="all" id="offeringAllOption">All my classes (<?= htmlspecialchars($currentTermLabel) ?>)</option>
+                        <?php else: ?>
+                        <option value="all" id="offeringAllOption" hidden disabled></option>
+                        <?php endif; ?>
+                        <option value="group" id="offeringGroupOption" hidden disabled>All Classes</option>
                         <?php foreach ($myOfferings as $o): ?>
-                            <option value="<?= (int) $o['offering_id'] ?>">
+                            <?php $isPast = !in_array((int) $o['offering_id'], $ongoingOfferingIds, true); ?>
+                            <option value="<?= (int) $o['offering_id'] ?>"<?= $isPast ? ' class="past-term" hidden disabled' : '' ?>>
                                 <?= htmlspecialchars($o['subject_name'] . ' — Grade ' . $o['grade_level'] . ' ' . $o['section_name'] . ' (' . $o['quarter'] . ')') ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
-                    <small style="color:#6b7280;">Only students enrolled in the selected class will see it.</small>
+                    <small style="color:#6b7280;">Only students enrolled in the selected class will see it. “All my classes” covers the ongoing term only.</small>
                 <?php endif; ?>
             </div>
 
@@ -359,7 +415,9 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                         <div class="announcement-meta">
                             <span><i class="far fa-clock"></i> Posted <?= timeAgo($a['published_at'] ?? $a['created_at']) ?></span>
                             <div class="audience-tags">
-                                <?php if ($a['subject_name']): ?>
+                                <?php if ($a['is_group']): ?>
+                                    <span class="tag"><i class="fas fa-layer-group"></i> All Classes</span>
+                                <?php elseif ($a['subject_name']): ?>
                                     <span class="tag"><i class="fas fa-chalkboard"></i> <?= htmlspecialchars($a['subject_name'] . ' · Gr ' . $a['grade_level'] . ' ' . $a['section_name']) ?></span>
                                 <?php else: ?>
                                     <span class="tag">No class (visible to all students)</span>
@@ -375,6 +433,8 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                                 'body'   => $a['body'],
                                 'pinned' => (bool) $a['is_pinned'],
                                 'offering' => (int) $a['offering_id'],
+                                'ids'      => $a['ids'],
+                                'group'    => $a['is_group'],
                            ]), ENT_QUOTES, 'UTF-8') ?>); return false;">
                             <i class="fas fa-pen"></i>
                         </a>
@@ -383,7 +443,7 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                         <form method="POST" class="inline-form">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                             <input type="hidden" name="quick_action" value="publish">
-                            <input type="hidden" name="id" value="<?= (int) $a['announcement_id'] ?>">
+                            <input type="hidden" name="ids" value="<?= htmlspecialchars(implode(',', $a['ids'])) ?>">
                             <button type="submit" class="icon-btn" title="Publish draft"><i class="fas fa-paper-plane"></i></button>
                         </form>
                         <?php endif; ?>
@@ -391,7 +451,7 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                         <form method="POST" class="inline-form">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                             <input type="hidden" name="quick_action" value="toggle_pin">
-                            <input type="hidden" name="id" value="<?= (int) $a['announcement_id'] ?>">
+                            <input type="hidden" name="ids" value="<?= htmlspecialchars(implode(',', $a['ids'])) ?>">
                             <button type="submit" class="icon-btn pin-btn<?= $a['is_pinned'] ? ' is-pinned' : '' ?>" title="<?= $a['is_pinned'] ? 'Unpin' : 'Pin' ?>">
                                 <i class="fas fa-thumbtack"></i>
                             </button>
@@ -400,7 +460,7 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
                         <form method="POST" class="inline-form" onsubmit="return confirm('Delete this announcement?');">
                             <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                             <input type="hidden" name="quick_action" value="delete">
-                            <input type="hidden" name="id" value="<?= (int) $a['announcement_id'] ?>">
+                            <input type="hidden" name="ids" value="<?= htmlspecialchars(implode(',', $a['ids'])) ?>">
                             <button type="submit" class="icon-btn delete" title="Delete"><i class="fas fa-trash"></i></button>
                         </form>
                     </div>
@@ -492,7 +552,12 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
         const offSel = document.getElementById('offeringInput');
         if (offSel) {
             offSel.value = '';
-            const allOpt = document.getElementById('offeringAllOption'); allOpt.hidden = false; allOpt.disabled = false;
+            offSel.disabled = false;
+            offSel.querySelectorAll('option.past-term').forEach(o => { o.hidden = true; o.disabled = true; });
+            document.getElementById('groupIdsInput').value = '';
+            const grp = document.getElementById('offeringGroupOption'); grp.hidden = true; grp.disabled = true;
+            const allOpt = document.getElementById('offeringAllOption');
+            if (allOpt.textContent.trim() !== '') { allOpt.hidden = false; allOpt.disabled = false; }
         }
         document.getElementById('composeTitle').innerHTML = '<i class="fas fa-pen-to-square"></i>&nbsp; Create Announcement';
         document.getElementById('publishBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Publish';
@@ -511,9 +576,23 @@ $audienceLabel = ['all' => 'All School', 'teachers' => 'Teachers', 'students' =>
         document.getElementById('pinInput').checked = !!data.pinned;
         const offSel = document.getElementById('offeringInput');
         if (offSel) {
-            offSel.value = data.offering ? String(data.offering) : '';
             // 'All my classes' only makes sense when creating, not editing one post.
             const allOpt = document.getElementById('offeringAllOption'); allOpt.hidden = true; allOpt.disabled = true;
+            const grpOpt = document.getElementById('offeringGroupOption');
+            if (data.group) {
+                // An "All Classes" card: the edit applies to every copy; the target class can't be changed here.
+                document.getElementById('groupIdsInput').value = data.ids.join(',');
+                grpOpt.hidden = false; grpOpt.disabled = false;
+                offSel.value = 'group';
+                offSel.disabled = true;
+            } else {
+                document.getElementById('groupIdsInput').value = '';
+                grpOpt.hidden = true; grpOpt.disabled = true;
+                offSel.disabled = false;
+                // Past-term class: only reveal that one option so the old post can still be edited.
+                offSel.querySelectorAll('option.past-term').forEach(o => { const on = o.value === String(data.offering); o.hidden = !on; o.disabled = !on; });
+                offSel.value = data.offering ? String(data.offering) : '';
+            }
         }
         document.getElementById('composeTitle').innerHTML = '<i class="fas fa-pen-to-square"></i>&nbsp; Edit Announcement';
         document.getElementById('publishBtn').innerHTML = '<i class="fas fa-paper-plane"></i> Publish Update';
