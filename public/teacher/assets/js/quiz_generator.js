@@ -546,14 +546,31 @@
             return;
         }
 
+        const timeLimitInput = document.getElementById('qgTimeLimit');
+        const maxAttemptsInput = document.getElementById('qgMaxAttempts');
+        const timeLimitValue = timeLimitInput.value.trim();
+        const maxAttemptsValue = maxAttemptsInput.value.trim();
+
+        if (timeLimitValue !== '' && (Number(timeLimitValue) < 1 || Number(timeLimitValue) > 120)) {
+            showAlert(saveAlert, 'error', ['Time limit must be between 1 and 120 minutes.']);
+            timeLimitInput.focus();
+            return;
+        }
+
+        if (maxAttemptsValue === '' || Number(maxAttemptsValue) < 1 || Number(maxAttemptsValue) > 10) {
+            showAlert(saveAlert, 'error', ['Max attempts must be between 1 and 10.']);
+            maxAttemptsInput.focus();
+            return;
+        }
+
         const payload = {
             csrf_token: csrfToken,
             offering_id: state.offeringId,
             job_id: state.jobId,
             title: title,
             description: document.getElementById('qgQuizDescription').value.trim(),
-            time_limit_minutes: document.getElementById('qgTimeLimit').value || null,
-            max_attempts: document.getElementById('qgMaxAttempts').value || 1,
+            time_limit_minutes: timeLimitValue || null,
+            max_attempts: maxAttemptsValue || 1,
             shuffle_questions: document.getElementById('qgShuffle').checked,
             available_from: document.getElementById('qgAvailableFrom').value || null,
             available_until: document.getElementById('qgAvailableUntil').value || null,
