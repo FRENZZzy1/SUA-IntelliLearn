@@ -666,9 +666,10 @@ body:has(#sidebar.collapsed) .main-content {
    -------------------------------------------- */
 .profile-toast {
     position: fixed;
-    bottom: 32px;
-    right: 32px;
-    background: var(--text-dark);
+    /* sit ABOVE the chatbot bubble so they never overlap */
+    bottom: 100px;
+    right: 22px;
+    background: var(--text-dark, #1f2937);
     color: #fff;
     padding: 16px 24px;
     border-radius: 12px;
@@ -678,11 +679,12 @@ body:has(#sidebar.collapsed) .main-content {
     transform: translateY(120px);
     opacity: 0;
     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    z-index: 9999;
+    z-index: 10000;
     display: flex;
     align-items: center;
     gap: 12px;
-    max-width: 380px;
+    width: max-content;
+    max-width: min(380px, calc(100vw - 28px));
     pointer-events: none;
     border-left: 4px solid var(--primary);
 }
@@ -696,6 +698,10 @@ body:has(#sidebar.collapsed) .main-content {
     background: #fef2f2;
     color: #991b1b;
     border-left-color: var(--danger);
+}
+
+@media (max-width: 700px) {
+    .profile-toast { right: 14px; bottom: 88px; }
 }
 
 .toast-icon {

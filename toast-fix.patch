@@ -1,0 +1,118 @@
+diff --git a/public/admin/assests/css/profile.css b/public/admin/assests/css/profile.css
+index ef12f95..29a8d4d 100644
+--- a/public/admin/assests/css/profile.css
++++ b/public/admin/assests/css/profile.css
+@@ -666,9 +666,10 @@ body:has(#sidebar.collapsed) .main-content {
+    -------------------------------------------- */
+ .profile-toast {
+     position: fixed;
+-    bottom: 32px;
+-    right: 32px;
+-    background: var(--text-dark);
++    /* sit ABOVE the chatbot bubble so they never overlap */
++    bottom: 100px;
++    right: 22px;
++    background: var(--text-dark, #1f2937);
+     color: #fff;
+     padding: 16px 24px;
+     border-radius: 12px;
+@@ -678,11 +679,12 @@ body:has(#sidebar.collapsed) .main-content {
+     transform: translateY(120px);
+     opacity: 0;
+     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+-    z-index: 9999;
++    z-index: 10000;
+     display: flex;
+     align-items: center;
+     gap: 12px;
+-    max-width: 380px;
++    width: max-content;
++    max-width: min(380px, calc(100vw - 28px));
+     pointer-events: none;
+     border-left: 4px solid var(--primary);
+ }
+@@ -698,6 +700,10 @@ body:has(#sidebar.collapsed) .main-content {
+     border-left-color: var(--danger);
+ }
+ 
++@media (max-width: 700px) {
++    .profile-toast { right: 14px; bottom: 88px; }
++}
++
+ .toast-icon {
+     width: 28px;
+     height: 28px;
+diff --git a/public/teacher/assets/css/profile.css b/public/teacher/assets/css/profile.css
+index ef12f95..b5e9f7d 100644
+--- a/public/teacher/assets/css/profile.css
++++ b/public/teacher/assets/css/profile.css
+@@ -3,6 +3,12 @@
+    St. Uriel Academy Admin Portal
+    ============================================ */
+ 
++/* The teacher theme (dashboard.css) defines --text, not --text-dark.
++   Alias it so every var(--text-dark) below resolves instead of becoming invalid. */
++:root {
++    --text-dark: var(--text, #1c2b24);
++}
++
+ /* Force all [hidden] elements to actually hide */
+ [hidden] {
+     display: none !important;
+@@ -666,25 +672,27 @@ body:has(#sidebar.collapsed) .main-content {
+    -------------------------------------------- */
+ .profile-toast {
+     position: fixed;
+-    bottom: 32px;
+-    right: 32px;
+-    background: var(--text-dark);
++    /* sit ABOVE the chatbot bubble (60px bubble + 22px offset + gap) so they never overlap */
++    bottom: 100px;
++    right: 22px;
++    background: var(--primary-dark, #10281e);
+     color: #fff;
+     padding: 16px 24px;
+     border-radius: 12px;
+     font-size: 0.9rem;
+     font-weight: 500;
+-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
++    box-shadow: 0 12px 32px rgba(16, 40, 30, 0.35);
+     transform: translateY(120px);
+     opacity: 0;
+     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+-    z-index: 9999;
++    z-index: 10000; /* above the chatbot bubble (9998) and panel (9999) */
+     display: flex;
+     align-items: center;
+     gap: 12px;
+-    max-width: 380px;
++    width: max-content;
++    max-width: min(380px, calc(100vw - 28px));
+     pointer-events: none;
+-    border-left: 4px solid var(--primary);
++    border-left: 4px solid var(--accent, #f4a300);
+ }
+ 
+ .profile-toast.show {
+@@ -696,13 +704,20 @@ body:has(#sidebar.collapsed) .main-content {
+     background: #fef2f2;
+     color: #991b1b;
+     border-left-color: var(--danger);
++    box-shadow: 0 12px 32px rgba(153, 27, 27, 0.18);
++}
++
++@media (max-width: 700px) {
++    /* chatbot bubble is 56px at 14px on phones */
++    .profile-toast { right: 14px; bottom: 88px; padding: 14px 18px; }
+ }
+ 
+ .toast-icon {
+     width: 28px;
+     height: 28px;
+     border-radius: 50%;
+-    background: rgba(255, 255, 255, 0.15);
++    background: rgba(244, 163, 0, 0.18);
++    color: var(--accent, #f4a300);
+     display: flex;
+     align-items: center;
+     justify-content: center;
