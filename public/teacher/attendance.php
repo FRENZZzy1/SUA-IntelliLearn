@@ -775,21 +775,6 @@ $trend = array_reverse($trend);
     </div>
   </div>
 
-  <!-- Date Navigation -->
-  <div class="date-bar animate-in">
-    <button class="date-nav" onclick="changeDate(-1)" aria-label="Previous day"><i class="fas fa-chevron-left"></i></button>
-    <input type="date" id="datePicker" value="<?= htmlspecialchars($selectedDate) ?>" onchange="goToDate(this.value)">
-    <button class="date-nav" onclick="changeDate(1)" aria-label="Next day"><i class="fas fa-chevron-right"></i></button>
-    <button class="date-nav" onclick="goToDate('<?= date('Y-m-d') ?>')" title="Today" aria-label="Go to today"><i class="fas fa-calendar-check"></i></button>
-
-    <select id="termFilter" class="term-filter-select" onchange="goToTerm(this.value)" title="Records are grouped by whichever term their date actually fell in">
-      <option value="all" <?= $termFilter === 'all' ? 'selected' : '' ?>>All Terms</option>
-      <?php foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $t): ?>
-        <option value="<?= $t ?>" <?= $termFilter === $t ? 'selected' : '' ?>><?= $t ?><?= $t === $activeTerm ? ' (current)' : '' ?></option>
-      <?php endforeach; ?>
-    </select>
-  </div>
-
   <!-- Stats Cards -->
   <div class="att-grid">
     <div class="att-card animate-in">
