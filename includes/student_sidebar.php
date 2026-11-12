@@ -1,6 +1,11 @@
 <?php
 $current = basename($_SERVER['PHP_SELF']);
 
+// Pages reached from My Courses keep the "My Courses" item highlighted
+// (class page with its Overview / Assignments / Quizzes tabs, and the quiz-taking page).
+$coursesPages = ['courses.php', 'course_view.php', 'take_quiz.php'];
+$isCoursesPage = in_array($current, $coursesPages, true);
+
 // ================= CUSTOM SIDEBAR ICON CONFIG =================
 $scriptPath = str_replace('\\\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
 $appBasePath = preg_replace('#/public/(?:admin|teacher|student)/.*$#i', '', $scriptPath);
@@ -93,7 +98,7 @@ if (isset($pdo) && $pdo instanceof PDO) {
                 <span class="nav-label">Dashboard</span>
             </a>
             <a href="../../public/student/courses.php"
-                class="nav-item <?= $current === 'courses.php' ? 'active' : '' ?>">
+                class="nav-item <?= $isCoursesPage ? 'active' : '' ?>">
                 <div class="nav-icon-wrap"><i class="fas fa-book"></i></div>
                 <span class="nav-label">My Courses</span>
                 <?php if (!empty($assignmentsDueCount)): ?>
