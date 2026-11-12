@@ -278,54 +278,61 @@ include 'assets/api/course_view_functions.php';
                             <p>Anything your teacher posts for this class will show up here.</p>
                         </div>
                     <?php else: ?>
-                        <ul class="material-list">
+                        <ul class="work-list">
                             <?php foreach ($assignments as $a):
                                 $due = dueDateLabel($a['due_date']);
                                 $statusInfo = submissionStatusInfo($a['submission_status'], $a['submitted_at'], $a['due_date']);
-                                // Feature merged from doc2: lock the assignment once its due date has passed.
+                                // Lock the assignment once its due date has passed.
                                 $isDue = !empty($a['due_date']) && strtotime($a['due_date']) < time();
+                                $aPts  = rtrim(rtrim((string) $a['points'], '0'), '.') ?: '0';
+                                $aMax  = (int) $a['max_attempts'];
+                                $aUrl  = assignmentsUrlStudent($classInfo['subject_id'], $activeTerm, (int) $a['assignment_id']);
+                                $aOver = $isDue || $due['overdue'];
+                                $aDone = $a['score'] !== null;
+                                $aScorePct = null;
+                                if ($aDone && (float) $a['points'] > 0) {
+                                    $aScorePct = (int) round(((float) $a['score'] / (float) $a['points']) * 100);
+                                }
+                                $aTier = $aScorePct === null ? '' : ($aScorePct >= 80 ? 'good' : ($aScorePct >= 50 ? 'mid' : 'low'));
                                 ?>
-                                <li class="material-item">
-                                    <div class="material-icon material-icon--assignment"><i class="fas fa-marker"></i></div>
-                                    <div class="material-info">
-                                        <?php if ($isDue): ?>
-                                            <div class="material-title"><?= htmlspecialchars($a['title']) ?></div>
-                                        <?php else: ?>
-                                            <a class="material-title"
-                                                href="<?= assignmentsUrlStudent($classInfo['subject_id'], $activeTerm, (int) $a['assignment_id']) ?>">
-                                                <?= htmlspecialchars($a['title']) ?>
-                                            </a>
-                                        <?php endif; ?>
-                                        <?php
-                                            $aPts = rtrim(rtrim((string) $a['points'], '0'), '.') ?: '0';
-                                            $aMax = (int) $a['max_attempts'];
-                                        ?>
-                                        <div class="quiz-facts">
-                                            <span class="quiz-fact"><i class="fas fa-star"></i> <b><?= $aPts ?></b> pt<?= $aPts === '1' ? '' : 's' ?></span>
-                                            <span class="quiz-fact"><i class="fas fa-rotate-right"></i> <b><?= (int) $a['attempts_used'] ?>/<?= $aMax ?></b> attempt<?= $aMax === 1 ? '' : 's' ?> used</span>
-                                            <?php if ($a['score'] !== null): ?>
-                                                <span class="quiz-fact"><i class="fas fa-trophy"></i> Score <b><?= rtrim(rtrim((string) $a['score'], '0'), '.') ?: '0' ?>/<?= $aPts ?></b></span>
+                                <li class="work-card work-card--assignment<?= $aOver && !$aDone ? ' is-overdue' : '' ?><?= $aDone ? ' is-done' : '' ?><?= $isDue ? ' is-locked' : '' ?>">
+                                    <div class="work-card__icon"><i class="fas fa-marker"></i></div>
+
+                                    <div class="work-card__main">
+                                        <div class="work-card__top">
+                                            <?php if ($isDue): ?>
+                                                <span class="work-card__title work-card__title--static"><?= htmlspecialchars($a['title']) ?></span>
+                                            <?php else: ?>
+                                                <a class="work-card__title" href="<?= $aUrl ?>"><?= htmlspecialchars($a['title']) ?></a>
                                             <?php endif; ?>
+                                            <span class="chip chip-<?= htmlspecialchars($statusInfo['class']) ?>"><?= htmlspecialchars($statusInfo['label']) ?></span>
                                         </div>
-                                        <div class="quiz-schedule">
-                                            <span class="quiz-schedule__item <?= $isDue || $due['overdue'] ? 'quiz-schedule__item--overdue' : '' ?>">
-                                                <i class="fas fa-calendar-xmark"></i>
-                                                <span class="quiz-schedule__label">Due</span>
-                                                <span class="quiz-schedule__value"><?= htmlspecialchars($due['label']) ?></span>
+
+                                        <div class="work-meta">
+                                            <span class="work-pill"><i class="fas fa-star"></i><b><?= $aPts ?></b> pt<?= $aPts === '1' ? '' : 's' ?></span>
+                                            <span class="work-pill"><i class="fas fa-rotate-right"></i><b><?= (int) $a['attempts_used'] ?>/<?= $aMax ?></b> attempt<?= $aMax === 1 ? '' : 's' ?> used</span>
+                                            <?php if ($aDone): ?>
+                                                <span class="work-pill work-pill--score<?= $aTier ? ' work-pill--' . $aTier : '' ?>">
+                                                    <i class="fas fa-trophy"></i>Score <b><?= rtrim(rtrim((string) $a['score'], '0'), '.') ?: '0' ?>/<?= $aPts ?></b><?= $aScorePct !== null ? ' · <b>' . $aScorePct . '%</b>' : '' ?>
+                                                </span>
+                                            <?php endif; ?>
+                                            <span class="work-pill work-pill--due<?= $aOver ? ' work-pill--overdue' : '' ?>">
+                                                <i class="fas fa-calendar-xmark"></i>Due <b><?= htmlspecialchars($due['label']) ?></b>
                                             </span>
                                         </div>
                                     </div>
-                                    <?php if ($isDue): ?>
-                                        <span class="btn-secondary btn-view-submissions"
-                                            style="opacity:.6;cursor:not-allowed;pointer-events:none;">
-                                            <i class="fas fa-lock"></i> Assignment is due
-                                        </span>
-                                    <?php else: ?>
-                                        <a class="btn-secondary btn-view-submissions"
-                                            href="<?= assignmentsUrlStudent($classInfo['subject_id'], $activeTerm, (int) $a['assignment_id']) ?>">
-                                            View
-                                        </a>
-                                    <?php endif; ?>
+
+                                    <div class="work-card__actions">
+                                        <?php if ($isDue): ?>
+                                            <span class="btn-secondary work-btn work-btn--disabled">
+                                                <i class="fas fa-lock"></i> Assignment is due
+                                            </span>
+                                        <?php else: ?>
+                                            <a class="btn-secondary work-btn" href="<?= $aUrl ?>">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        <?php endif; ?>
+                                    </div>
                                 </li>
                             <?php endforeach; ?>
                         </ul>
@@ -520,7 +527,7 @@ include 'assets/api/course_view_functions.php';
                             <p>Quizzes your teacher publishes for this class will show up here.</p>
                         </div>
                     <?php else: ?>
-                        <ul class="material-list">
+                        <ul class="work-list">
                             <?php foreach ($quizzes as $q):
                                 $qStatus = quizStatusInfo($q['quiz_status']);
                                 $attemptStatus = quizAttemptStatusInfo($q['attempt_status']);
@@ -528,73 +535,61 @@ include 'assets/api/course_view_functions.php';
                                 $qNotOpen = !empty($q['available_from']) && $qNow < strtotime($q['available_from']);
                                 $qClosed  = !empty($q['available_until']) && $qNow > strtotime($q['available_until']);
                                 $qNoAttempts = (int) $q['attempts_used'] >= (int) $q['max_attempts'];
+                                $qScorePct = null;
+                                if ($q['score'] !== null && $q['max_score'] !== null && (float) $q['max_score'] > 0) {
+                                    $qScorePct = (int) round(((float) $q['score'] / (float) $q['max_score']) * 100);
+                                }
+                                $qScoreTier = $qScorePct === null ? '' : ($qScorePct >= 80 ? 'good' : ($qScorePct >= 50 ? 'mid' : 'low'));
+                                $qPts       = rtrim(rtrim((string) $q['total_points'], '0'), '.') ?: '0';
+                                $qQuestions = (int) $q['question_count'];
+                                $qMax       = (int) $q['max_attempts'];
+                                $qUsed      = (int) $q['attempts_used'];
+                                $qUrl       = quizzesUrlStudent($classInfo['subject_id'], $activeTerm, (int) $q['quiz_id']);
+                                $qDone      = $q['score'] !== null;
                                 ?>
-                                <?php
-                                    // Pull the score out of the small meta line and into its
-                                    // own high-visibility badge — the old inline "· Score: X/Y"
-                                    // text was easy to miss next to the other meta chips.
-                                    $qScorePct = null;
-                                    if ($q['score'] !== null && $q['max_score'] !== null && (float) $q['max_score'] > 0) {
-                                        $qScorePct = (int) round(((float) $q['score'] / (float) $q['max_score']) * 100);
-                                    }
-                                    $qScoreTier = $qScorePct === null ? 'neutral' : ($qScorePct >= 80 ? 'good' : ($qScorePct >= 50 ? 'mid' : 'low'));
-                                ?>
-                                <li class="material-item">
-                                    <div class="material-icon material-icon--quiz"><i class="fas fa-file-circle-question"></i></div>
-                                    <div class="material-info">
-                                        <a class="material-title"
-                                            href="<?= quizzesUrlStudent($classInfo['subject_id'], $activeTerm, (int) $q['quiz_id']) ?>">
-                                            <?= htmlspecialchars($q['title']) ?>
-                                        </a>
-                                        <?php
-                                            $qPts       = rtrim(rtrim((string) $q['total_points'], '0'), '.') ?: '0';
-                                            $qQuestions = (int) $q['question_count'];
-                                            $qMax       = (int) $q['max_attempts'];
-                                            $qUsed      = (int) $q['attempts_used'];
-                                        ?>
-                                        <div class="quiz-facts">
-                                            <span class="quiz-fact"><i class="fas fa-circle-question"></i> <b><?= $qQuestions ?></b> question<?= $qQuestions === 1 ? '' : 's' ?></span>
-                                            <span class="quiz-fact"><i class="fas fa-star"></i> <b><?= $qPts ?></b> pt<?= $qPts === '1' ? '' : 's' ?></span>
-                                            <span class="quiz-fact"><i class="fas fa-rotate-right"></i> <b><?= $qUsed ?>/<?= $qMax ?></b> attempt<?= $qMax === 1 ? '' : 's' ?> used</span>
-                                        </div>
-                                        <div class="quiz-schedule">
-                                            <span class="quiz-schedule__item">
-                                                <i class="fas fa-calendar-check"></i>
-                                                <span class="quiz-schedule__label">Opens</span>
-                                                <span class="quiz-schedule__value"><?= !empty($q['available_from']) ? date('M j, Y g:i A', strtotime($q['available_from'])) : 'Immediately' ?></span>
-                                            </span>
-                                            <span class="quiz-schedule__item <?= $qClosed ? 'quiz-schedule__item--overdue' : '' ?>">
-                                                <i class="fas fa-calendar-xmark"></i>
-                                                <span class="quiz-schedule__label">Due</span>
-                                                <span class="quiz-schedule__value"><?= !empty($q['available_until']) ? date('M j, Y g:i A', strtotime($q['available_until'])) : 'No due date' ?></span>
-                                            </span>
-                                        </div>
-                                        <?php if ($q['score'] !== null): ?>
-                                            <div class="quiz-score-highlight quiz-score-highlight--<?= $qScoreTier ?>">
-                                                <i class="fas fa-trophy"></i>
-                                                <span class="quiz-score-highlight__label">Your score:</span>
-                                                <span class="quiz-score-highlight__value"><?= rtrim(rtrim((string) $q['score'], '0'), '.') ?><?php if ($q['max_score'] !== null): ?>/<?= rtrim(rtrim((string) $q['max_score'], '0'), '.') ?><?php endif; ?></span>
-                                                <?php if ($qScorePct !== null): ?>
-                                                    <span class="quiz-score-highlight__pct"><?= $qScorePct ?>%</span>
-                                                <?php endif; ?>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                    <div class="material-actions material-actions--quiz">
-                                        <a class="btn-secondary btn-view-submissions"
-                                            href="<?= quizzesUrlStudent($classInfo['subject_id'], $activeTerm, (int) $q['quiz_id']) ?>">
-                                            View
-                                        </a>
+                                <li class="work-card work-card--quiz<?= $qClosed && !$qDone ? ' is-overdue' : '' ?><?= $qDone ? ' is-done' : '' ?>">
+                                    <div class="work-card__icon"><i class="fas fa-file-circle-question"></i></div>
 
+                                    <div class="work-card__main">
+                                        <div class="work-card__top">
+                                            <a class="work-card__title" href="<?= $qUrl ?>"><?= htmlspecialchars($q['title']) ?></a>
+                                            <span class="chip chip-<?= htmlspecialchars($attemptStatus['class']) ?>"><?= htmlspecialchars($attemptStatus['label']) ?></span>
+                                        </div>
+
+                                        <div class="work-meta">
+                                            <span class="work-pill"><i class="fas fa-circle-question"></i><b><?= $qQuestions ?></b> question<?= $qQuestions === 1 ? '' : 's' ?></span>
+                                            <span class="work-pill"><i class="fas fa-star"></i><b><?= $qPts ?></b> pt<?= $qPts === '1' ? '' : 's' ?></span>
+                                            <span class="work-pill"><i class="fas fa-rotate-right"></i><b><?= $qUsed ?>/<?= $qMax ?></b> attempt<?= $qMax === 1 ? '' : 's' ?> used</span>
+                                            <?php if ($q['score'] !== null): ?>
+                                                <span class="work-pill work-pill--score<?= $qScoreTier ? ' work-pill--' . $qScoreTier : '' ?>">
+                                                    <i class="fas fa-trophy"></i>Score <b><?= rtrim(rtrim((string) $q['score'], '0'), '.') ?><?php if ($q['max_score'] !== null): ?>/<?= rtrim(rtrim((string) $q['max_score'], '0'), '.') ?><?php endif; ?></b><?= $qScorePct !== null ? ' · <b>' . $qScorePct . '%</b>' : '' ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </div>
+
+                                        <div class="work-meta work-meta--schedule">
+                                            <span class="work-pill work-pill--soft">
+                                                <i class="fas fa-calendar-check"></i>Opens <b><?= !empty($q['available_from']) ? date('M j, Y g:i A', strtotime($q['available_from'])) : 'Immediately' ?></b>
+                                            </span>
+                                            <span class="work-pill work-pill--due<?= $qClosed ? ' work-pill--overdue' : '' ?>">
+                                                <i class="fas fa-calendar-xmark"></i>Due <b><?= !empty($q['available_until']) ? date('M j, Y g:i A', strtotime($q['available_until'])) : 'No due date' ?></b>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div class="work-card__actions">
+                                        <a class="btn-secondary work-btn" href="<?= $qUrl ?>">
+                                            <i class="fas fa-chart-simple"></i> View
+                                        </a>
                                         <?php if ($isArchivedView): ?>
-                                            <span class="btn-secondary" style="opacity:.6;cursor:not-allowed;"><i class="fas fa-lock"></i> Archived</span>
+                                            <span class="btn-secondary work-btn work-btn--disabled"><i class="fas fa-lock"></i> Archived</span>
                                         <?php elseif ($qNotOpen): ?>
-                                            <span class="btn-secondary" style="opacity:.6;cursor:not-allowed;"><i class="fas fa-lock"></i> Not open yet</span>
+                                            <span class="btn-secondary work-btn work-btn--disabled"><i class="fas fa-lock"></i> Not open yet</span>
                                         <?php elseif ($qClosed || $qNoAttempts): ?>
-                                            <span class="btn-secondary" style="opacity:.6;cursor:not-allowed;"><i class="fas fa-lock"></i> Closed</span>
+                                            <span class="btn-secondary work-btn work-btn--disabled"><i class="fas fa-lock"></i> Closed</span>
                                         <?php else: ?>
-                                            <a href="take_quiz.php?quiz_id=<?= (int) $q['quiz_id'] ?>" class="btn-primary">
-                                                Take Quiz
+                                            <a href="take_quiz.php?quiz_id=<?= (int) $q['quiz_id'] ?>" class="btn-primary work-btn">
+                                                <i class="fas fa-play"></i> Take Quiz
                                             </a>
                                         <?php endif; ?>
                                     </div>
