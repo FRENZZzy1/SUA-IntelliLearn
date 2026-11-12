@@ -22,6 +22,8 @@ $sectionStmt = $pdo->prepare("
     LEFT JOIN teachers t     ON t.teacher_id = sec.adviser_id
     LEFT JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id
     WHERE sec.section_id = ?
+      AND sec.is_archived = 0
+      AND sy.is_current = 1
 ");
 $sectionStmt->execute([$sectionId]);
 $section = $sectionStmt->fetch();
@@ -37,7 +39,7 @@ $adviserName = $section['adviser_firstname'] ? trim($section['adviser_firstname'
 // A section's grid is built from one quarter's classes at a time (subjects can
 // change between quarters). If ?quarter= isn't given, default to the earliest
 // quarter offered for this section.
-$quarterStmt = $pdo->prepare("SELECT DISTINCT quarter FROM classofferings WHERE section_id = ? ORDER BY quarter ASC");
+$quarterStmt = $pdo->prepare("SELECT DISTINCT quarter FROM classofferings WHERE section_id = ? AND is_archived = 0 AND school_year_id IN (SELECT school_year_id FROM schoolyears WHERE is_current = 1) ORDER BY quarter ASC");
 $quarterStmt->execute([$sectionId]);
 $availableQuarters = $quarterStmt->fetchAll(PDO::FETCH_COLUMN);
 
@@ -59,6 +61,8 @@ $stmt = $pdo->prepare("
     JOIN subjects s      ON s.subject_id = co.subject_id
     LEFT JOIN teachers t ON t.teacher_id = co.teacher_id
     WHERE co.section_id = ? AND co.quarter = ?
+      AND co.is_archived = 0
+      AND co.school_year_id IN (SELECT school_year_id FROM schoolyears WHERE is_current = 1)
     ORDER BY co.start_time ASC
 ");
 $stmt->execute([$sectionId, $quarter]);
@@ -166,6 +170,8 @@ $strandStmt = $pdo->prepare("
     JOIN classofferings co ON co.offering_id = e.offering_id
     JOIN students st       ON st.student_id  = e.student_id
     WHERE co.section_id = ? AND co.quarter = ? AND e.status = 'enrolled'
+      AND co.is_archived = 0
+      AND co.school_year_id IN (SELECT school_year_id FROM schoolyears WHERE is_current = 1)
       AND st.strand IS NOT NULL AND st.strand <> ''
 ");
 $strandStmt->execute([$sectionId, $quarter]);

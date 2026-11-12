@@ -433,7 +433,9 @@ function syncCourseTermsToCurrent($pdo) {
 //   1. Add the new year with "Copy sections & classes from <old year>". The new
 //      year gets the same sections and classes (teacher, schedule, capacity) as
 //      TRM 1 offerings, with NO students - promotion is a separate, later step.
-//   2. Set the new year as current - students and teachers now see only its classes.
+//   2. The new year becomes current - automatically the day after the old year's
+//      end date (autoAdvanceCurrentSchoolYear), or by hand with "Set as Current".
+//      Students and teachers now see only its classes.
 //   3. The old year is archived - automatically once its end date has passed
 //      (autoArchiveEndedSchoolYears), or by hand with the Archive button. Its
 //      classes and sections get the existing is_archived flag (so every page
@@ -679,6 +681,87 @@ function restoreSchoolYear(PDO $pdo, int $yearId): array
 }
 
 /**
+ * Automatic school year rollover. Once the current school year's end date has
+ * passed, the next school year becomes the current one - no manual "Set as
+ * Current" click needed.
+ *
+ * The next year is the earliest school year that is not archived, starts after
+ * the ended year and has not itself ended. If no such year exists yet, the
+ * ended year simply stays current (the system never ends up with no current
+ * year) and the rollover happens as soon as the admin adds the next year.
+ *
+ * A current year an admin restored (auto_archive_paused) is left alone, the
+ * same way the automatic archive leaves it alone.
+ *
+ * Runs from config.php on every request, before the automatic archive, so the
+ * ended year is no longer current when it gets archived. When there is nothing
+ * to do it costs a single small SELECT. It never throws.
+ *
+ * @param string|null $today Y-m-d, for tests; defaults to today.
+ * @return array{from:int, to:int}|null the switch made by this run, or null.
+ */
+function autoAdvanceCurrentSchoolYear(PDO $pdo, ?string $today = null): ?array
+{
+    $today = $today ?? date('Y-m-d');
+
+    try {
+        $check = $pdo->prepare(
+            "SELECT school_year_id FROM schoolyears
+             WHERE is_current = 1 AND end_date < ? AND auto_archive_paused = 0
+             LIMIT 1"
+        );
+        $check->execute([$today]);
+        if (!$check->fetchColumn()) {
+            return null; // No current year, or it is still running: nothing to do.
+        }
+
+        $pdo->beginTransaction();
+
+        // Lock and re-check so two simultaneous requests cannot both switch.
+        $cur = $pdo->prepare(
+            "SELECT school_year_id, start_date FROM schoolyears
+             WHERE is_current = 1 AND end_date < ? AND auto_archive_paused = 0
+             LIMIT 1 FOR UPDATE"
+        );
+        $cur->execute([$today]);
+        $ended = $cur->fetch(PDO::FETCH_ASSOC);
+        if (!$ended) {
+            $pdo->rollBack();
+            return null;
+        }
+
+        $next = $pdo->prepare(
+            "SELECT school_year_id FROM schoolyears
+             WHERE is_archived = 0 AND school_year_id <> ?
+               AND start_date > ? AND end_date >= ?
+             ORDER BY start_date ASC, school_year_id ASC
+             LIMIT 1"
+        );
+        $next->execute([(int) $ended['school_year_id'], $ended['start_date'], $today]);
+        $nextId = $next->fetchColumn();
+        if (!$nextId) {
+            $pdo->rollBack();
+            return null; // Next year not created yet; keep the ended year current for now.
+        }
+
+        $pdo->exec("UPDATE schoolyears SET is_current = 0");
+        $pdo->prepare("UPDATE schoolyears SET is_current = 1 WHERE school_year_id = ?")->execute([(int) $nextId]);
+        $pdo->commit();
+
+        return ['from' => (int) $ended['school_year_id'], 'to' => (int) $nextId];
+    } catch (Throwable $e) {
+        try {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+        } catch (Throwable $ignored) {
+        }
+        return null;
+    }
+}
+autoAdvanceCurrentSchoolYear($pdo);
+
+/**
  * Automatic year-end archive. Archives every school year whose end date has
  * passed (the day after its end date) that is not already archived and that an
  * admin has not restored (auto_archive_paused). Classes and sections are
@@ -790,6 +873,89 @@ function pickArchivedSchoolYear(array $years, $requestedId): ?array
         }
     }
     return $years[0];
+}
+
+/**
+ * Every archived school year, one entry per year (newest first), for the school
+ * year cards of the Archived sections - including archived years in which this
+ * person has no classes, so the list always matches Settings > School Years.
+ *
+ * A year is listed when it is archived itself, or when it holds at least one
+ * archived class of this teacher / student. Each entry carries:
+ *   class_count - distinct subject + section pairs of the person in that year
+ *   classes     - those pairs ([subject_name, section_name, grade_level])
+ * Pass $teacherId (teacher), $studentId (student) or neither (admin).
+ *
+ * @return list<array{school_year_id:int,label:string,start_date:string,end_date:string,is_current:int,is_archived:int,archived_at:?string,class_count:int,classes:list<array>}>
+ */
+function getArchivedSchoolYearCards(PDO $pdo, ?int $teacherId = null, ?int $studentId = null): array
+{
+    try {
+        $years = [];
+        $rows = $pdo->query(
+            "SELECT school_year_id, label, start_date, end_date, is_current, is_archived, archived_at
+             FROM schoolyears WHERE is_archived = 1"
+        )->fetchAll();
+        foreach ($rows as $r) {
+            $years[(int) $r['school_year_id']] = $r;
+        }
+        // Years that are not archived themselves but hold archived classes of this person.
+        $extra = getArchivedSchoolYears($pdo, $teacherId, $studentId);
+        $missing = [];
+        foreach ($extra as $e) {
+            if (!isset($years[(int) $e['school_year_id']])) {
+                $missing[] = (int) $e['school_year_id'];
+            }
+        }
+        if ($missing) {
+            $in = implode(',', array_fill(0, count($missing), '?'));
+            $st = $pdo->prepare("SELECT school_year_id, label, start_date, end_date, is_current, is_archived, archived_at FROM schoolyears WHERE school_year_id IN ($in)");
+            $st->execute($missing);
+            foreach ($st->fetchAll() as $r) {
+                $years[(int) $r['school_year_id']] = $r;
+            }
+        }
+        if (!$years) {
+            return [];
+        }
+
+        $sql = "SELECT DISTINCT co.school_year_id, sub.subject_name, sec.section_name, sec.grade_level
+                FROM classofferings co
+                JOIN sections sec   ON sec.section_id = co.section_id
+                JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
+                JOIN subjects sub   ON sub.subject_id = co.subject_id";
+        $params = [];
+        if ($studentId !== null) {
+            $sql .= " JOIN enrollments e ON e.offering_id = co.offering_id AND e.student_id = ? AND e.status IN ('enrolled','completed')";
+            $params[] = $studentId;
+        }
+        $sql .= " WHERE " . archivedClassSql();
+        if ($teacherId !== null) {
+            $sql .= " AND co.teacher_id = ?";
+            $params[] = $teacherId;
+        }
+        $sql .= " ORDER BY sec.grade_level, sec.section_name, sub.subject_name";
+        $st = $pdo->prepare($sql);
+        $st->execute($params);
+        $classes = [];
+        foreach ($st->fetchAll() as $c) {
+            $classes[(int) $c['school_year_id']][] = $c;
+        }
+
+        foreach ($years as $id => &$y) {
+            $y['school_year_id'] = (int) $id;
+            $y['classes']        = $classes[$id] ?? [];
+            $y['class_count']    = count($y['classes']);
+        }
+        unset($y);
+
+        usort($years, static function ($a, $b) {
+            return [$b['start_date'], $b['school_year_id']] <=> [$a['start_date'], $a['school_year_id']];
+        });
+        return array_values($years);
+    } catch (Throwable $e) {
+        return [];
+    }
 }
 
 // ---- Final grade weighting (DepEd-style: Written Work / Performance Task / Exam) ----

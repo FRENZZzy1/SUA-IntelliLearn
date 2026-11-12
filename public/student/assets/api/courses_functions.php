@@ -51,7 +51,20 @@ $schoolYearLabel = $schoolYear['label'] ?? null;
 $view               = (($_GET['view'] ?? '') === 'archived') ? 'archived' : 'current';
 $archivedYears      = getArchivedSchoolYears($pdo, null, $studentId);
 $archivedClassTotal = (int) array_sum(array_column($archivedYears, 'class_count'));
-$archiveYear        = ($view === 'archived') ? pickArchivedSchoolYear($archivedYears, $_GET['sy'] ?? null) : null;
+$archiveYear        = null;
+// Archived opens on the list of school year cards; a card links here with ?sy=<id>.
+// Only school years in which this student has archived classes get a card, and the
+// Archived tab badge counts those school years (not classes) so it matches the cards.
+$archivedYearCards  = array_values(array_filter(
+    getArchivedSchoolYearCards($pdo, null, $studentId),
+    static function ($y) { return (int) $y['class_count'] > 0; }
+));
+$archivedYearTotal  = count($archivedYearCards);
+if ($view === 'archived' && isset($_GET['sy']) && ctype_digit((string) $_GET['sy'])) {
+    foreach ($archivedYears as $y) {
+        if ((int) $y['school_year_id'] === (int) $_GET['sy']) { $archiveYear = $y; break; }
+    }
+}
 if ($archiveYear) {
     $schoolYearLabel = $archiveYear['label'];
 }

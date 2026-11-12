@@ -84,69 +84,6 @@ function setClassArchived(PDO $pdo, int $offeringId, bool $archive): int
     return $stmt->rowCount();
 }
 
-// courses.php?restore=ID&csrf=...   (Class List)
-// Classes are no longer archived by hand: they are archived automatically when their
-// school year ends. Restore is kept so already-archived classes can be brought back.
-foreach (['restore' => false] as $param => $doArchive) {
-    if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
-        if (!validateCSRFToken($_GET['csrf'] ?? '')) {
-            setFlashMessage('error', 'That link expired. Please try again.');
-        } else {
-            try {
-                $changed = setClassArchived($pdo, (int) $_GET[$param], $doArchive);
-                if ($changed === 0) {
-                    setFlashMessage('error', 'That class no longer exists.');
-                } elseif ($doArchive) {
-                    setFlashMessage('success', 'Class archived. It is now hidden from its students. Use the "Archived" filter to restore it.');
-                } else {
-                    $secCheck = $pdo->prepare("SELECT sec.is_archived FROM classofferings co JOIN sections sec ON sec.section_id = co.section_id WHERE co.offering_id = ?");
-                    $secCheck->execute([(int) $_GET[$param]]);
-                    if ((int) $secCheck->fetchColumn() === 1) {
-                        setFlashMessage('success', 'Class restored, but it stays hidden until its section is restored too.');
-                    } else {
-                        setFlashMessage('success', 'Class restored.');
-                    }
-                }
-            } catch (PDOException $e) {
-                setFlashMessage('error', 'Database error: ' . $e->getMessage());
-            }
-        }
-
-        header("Location: courses.php?" . http_build_query(array_filter([
-            'status'      => $_GET['status'] ?? null,
-            'grade'       => $_GET['grade'] ?? null,
-            'quarter'     => $_GET['quarter'] ?? null,
-            'school_year' => $_GET['school_year'] ?? null,
-            'q'           => $_GET['q'] ?? null,
-        ])));
-        exit();
-    }
-}
-
-// courses.php?archive_section=ID / restore_section=ID&csrf=...  (Sections List)
-foreach (['archive_section' => true, 'restore_section' => false] as $param => $doArchive) {
-    if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
-        if (!validateCSRFToken($_GET['csrf'] ?? '')) {
-            setFlashMessage('error', 'That link expired. Please try again.');
-        } else {
-            try {
-                $stmt = $pdo->prepare($doArchive
-                    ? "UPDATE sections SET is_archived = 1, archived_at = NOW() WHERE section_id = ?"
-                    : "UPDATE sections SET is_archived = 0, archived_at = NULL WHERE section_id = ?");
-                $stmt->execute([(int) $_GET[$param]]);
-                setFlashMessage('success', $doArchive
-                    ? 'Section archived. All of its classes are now hidden from students and teachers.'
-                    : 'Section restored. Its classes are visible again.');
-            } catch (PDOException $e) {
-                setFlashMessage('error', 'Database error: ' . $e->getMessage());
-            }
-        }
-
-        header("Location: courses.php?open=sections");
-        exit();
-    }
-}
-
 // courses.php?archive_subject=ID / restore_subject=ID&csrf=...  (Subjects List)
 foreach (['archive_subject' => true, 'restore_subject' => false] as $param => $doArchive) {
     if (isset($_GET[$param]) && ctype_digit($_GET[$param])) {
@@ -213,12 +150,9 @@ if ($schoolYearFilter !== 'all' && !ctype_digit((string) $schoolYearFilter)) {
 
 // ---- Archived view: School Year filter --------------------------------------
 // The Archived filter lists every school year that has archived classes (the
-// normal filter only lists years that are not archived) and opens on the newest
-// one until the admin picks another year or "All School Years".
+// normal filter only lists years that are not archived) and opens on
+// "All School Years" until the admin picks a specific year.
 $archivedYears = getArchivedSchoolYears($pdo);
-if ($statusFilter === 'archived' && !isset($_GET['school_year']) && $archivedYears) {
-    $schoolYearFilter = (string) $archivedYears[0]['school_year_id'];
-}
 
 $schoolYearLabels = [];
 foreach ($pdo->query("SELECT school_year_id, label FROM schoolyears")->fetchAll() as $syRow) {
@@ -389,7 +323,8 @@ $sectionsList = $pdo->query("
             WHERE co2.section_id = sec.section_id AND co2.is_archived = 0 AND e.status = 'enrolled') AS student_count
     FROM sections sec
     LEFT JOIN teachers t     ON t.teacher_id = sec.adviser_id
-    LEFT JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id
+    JOIN schoolyears sy ON sy.school_year_id = sec.school_year_id
+    WHERE sy.is_current = 1
     ORDER BY sec.grade_level ASC, sec.section_name ASC
 ")->fetchAll();
 
@@ -518,8 +453,8 @@ $subjectsList = $pdo->query("
     <?php
         $filtersActive = ($statusFilter !== 'all' || $gradeFilter !== 'all' || $quarterFilter !== 'all' || $schoolYearFilter !== 'all');
         $pillQuery = static function (string $status) use ($statusFilter, $gradeFilter, $quarterFilter, $schoolYearFilter, $searchQuery): string {
-            // Switching to Archived from another view starts on the newest archived year.
-            $yearParam = ($status === 'archived' && $statusFilter !== 'archived' && $schoolYearFilter === 'all') ? null : $schoolYearFilter;
+            // Switching to Archived from another view starts on All School Years.
+            $yearParam = ($status === 'archived' && $statusFilter !== 'archived') ? 'all' : $schoolYearFilter;
             return '?' . http_build_query(array_filter([
                 'status' => $status, 'grade' => $gradeFilter, 'quarter' => $quarterFilter,
                 'school_year' => $yearParam, 'q' => $searchQuery,
@@ -734,11 +669,6 @@ $subjectsList = $pdo->query("
                                    'status'        => $course['status'],
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditCourseModal(this)"><i class="fas fa-pen" aria-hidden="true"></i></button>
-                            <?php elseif ($ownArchived): ?>
-                            <a class="ra-btn restore" data-tip="Restore class" aria-label="Restore class" href="courses.php?restore=<?= (int) $course['offering_id'] ?>&csrf=<?= urlencode($csrfToken) ?>&status=<?= urlencode($statusFilter) ?>&grade=<?= urlencode($gradeFilter) ?>&quarter=<?= urlencode($quarterFilter) ?>&school_year=<?= urlencode($schoolYearFilter) ?>&q=<?= urlencode($searchQuery) ?>"
-                               onclick="return confirmArchive('restore-course')"><i class="fas fa-rotate-left" aria-hidden="true"></i></a>
-                            <?php else: ?>
-                            <span class="chip-muted" title="Restore the section from the Sections List to bring this class back">Restore its section</span>
                             <?php endif; ?>
                         </div>
                     </td>
@@ -828,11 +758,6 @@ $subjectsList = $pdo->query("
                                    'adviser_id'   => $sec['adviser_id'] ? (int) $sec['adviser_id'] : '',
                                ]), ENT_QUOTES, 'UTF-8') ?>"
                                onclick="openEditSectionModal(this)"><i class="fas fa-pen" aria-hidden="true"></i></button>
-                            <a class="ra-btn archive" data-tip="Archive section" aria-label="Archive section" href="courses.php?archive_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
-                               onclick="return confirmArchive('section')"><i class="fas fa-box-archive" aria-hidden="true"></i></a>
-                            <?php else: ?>
-                            <a class="ra-btn restore" data-tip="Restore section" aria-label="Restore section" href="courses.php?restore_section=<?= (int) $sec['section_id'] ?>&csrf=<?= urlencode($csrfToken) ?>"
-                               onclick="return confirmArchive('restore-section')"><i class="fas fa-rotate-left" aria-hidden="true"></i></a>
                             <?php endif; ?>
                         </div>
                     </td>

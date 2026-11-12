@@ -59,7 +59,7 @@ if ($currentTerm !== null) {
         FROM classofferings co
         JOIN subjects s ON s.subject_id = co.subject_id
         JOIN sections sec ON sec.section_id = co.section_id
-        WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ? AND co.status = 'active'
+        WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0 AND co.teacher_id = ? AND co.status = 'active'
           AND co.quarter = ?
           AND (co.school_year_id = ? OR ? IS NULL)
         ORDER BY sec.grade_level ASC, s.subject_name ASC, sec.section_name ASC
@@ -90,7 +90,7 @@ if ($reqSubject && $reqSection) {
 $stmt = $pdo->prepare("
     SELECT lm.material_id, lm.offering_id, lm.title, lm.file_size
     FROM learning_materials lm
-    JOIN classofferings co ON co.offering_id = lm.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+    JOIN classofferings co ON co.offering_id = lm.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0
     WHERE co.teacher_id = ? AND co.status = 'active'
       AND lm.file_path IS NOT NULL
       AND LOWER(lm.file_path) LIKE '%.pdf'
@@ -128,7 +128,7 @@ $stmt = $pdo->prepare("
         (SELECT COUNT(*) FROM quiz_questions qq WHERE qq.quiz_id = q.quiz_id) AS question_count,
         (SELECT COUNT(*) FROM quiz_attempts qa WHERE qa.quiz_id = q.quiz_id AND qa.status IN ('submitted', 'graded')) AS attempts_submitted
     FROM quizzes q
-    JOIN classofferings co ON co.offering_id = q.offering_id AND co.status = 'active' AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+    JOIN classofferings co ON co.offering_id = q.offering_id AND co.status = 'active' AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0
     JOIN subjects s ON s.subject_id = co.subject_id
     JOIN sections sec ON sec.section_id = co.section_id
     WHERE q.created_by = ?

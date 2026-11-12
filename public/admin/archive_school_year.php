@@ -32,7 +32,14 @@ if (!validateCSRFToken($_POST['csrf'] ?? '')) {
 $schoolYearId = $_POST['school_year_id'] ?? '';
 $action       = $_POST['action'] ?? '';
 
-if (!ctype_digit((string) $schoolYearId) || !in_array($action, ['archive', 'restore'], true)) {
+if ($action === 'restore') {
+    // The Restore button was removed: a year only comes back by being set as current.
+    http_response_code(422);
+    echo json_encode(['success' => false, 'errors' => ['Restoring a school year is no longer available. Set it as current instead.']]);
+    exit();
+}
+
+if (!ctype_digit((string) $schoolYearId) || !in_array($action, ['archive'], true)) {
     http_response_code(422);
     echo json_encode(['success' => false, 'errors' => ['Invalid request.']]);
     exit();
@@ -47,7 +54,7 @@ try {
     if ($action === 'archive') {
         $counts  = archiveSchoolYear($pdo, $schoolYearId);
         $message = sprintf(
-            '%s archived: %d class(es) and %d section(s) are now hidden. Nothing was deleted - use Restore to bring them back.',
+            '%s archived: %d class(es) and %d section(s) are now hidden. Nothing was deleted.',
             $label, $counts['classes'], $counts['sections']
         );
     } else {

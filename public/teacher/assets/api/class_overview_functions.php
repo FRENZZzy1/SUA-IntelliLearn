@@ -63,7 +63,7 @@ $stmt = $pdo->prepare("
     JOIN subjects sub ON sub.subject_id = co.subject_id
     JOIN sections sec ON sec.section_id = co.section_id
     LEFT JOIN enrollments e ON e.offering_id = co.offering_id AND e.status = 'enrolled'
-    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ?
+    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0 AND co.teacher_id = ?
       AND co.subject_id = ?
       AND co.section_id = ?
       AND co.status = 'active'
@@ -545,7 +545,7 @@ if ($classOfferingIds) {
                    co.quarter, co.class_code
             FROM enrollments e
             JOIN students s ON s.student_id = e.student_id
-            JOIN classofferings co ON co.offering_id = e.offering_id" . ($isArchivedView ? '' : " AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)") . "
+            JOIN classofferings co ON co.offering_id = e.offering_id" . ($isArchivedView ? '' : " AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0") . "
             WHERE e.offering_id IN ($offeringPlaceholders)
         ";
 

@@ -125,7 +125,7 @@ $stmt = $pdo->prepare("
     SELECT co.offering_id
     FROM classofferings co
     JOIN schoolyears sy ON sy.school_year_id = co.school_year_id
-    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ? AND co.status = 'active' AND sy.is_current = 1
+    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0 AND co.teacher_id = ? AND co.status = 'active' AND sy.is_current = 1
 ");
 $stmt->execute([$teacherId]);
 $offeringIds = array_map('intval', array_column($stmt->fetchAll(), 'offering_id'));
@@ -141,7 +141,7 @@ if ($offeringIds) {
                st.firstname, st.lastname
         FROM submissions s
         JOIN assignments a     ON a.assignment_id = s.assignment_id
-        JOIN classofferings co ON co.offering_id = a.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+        JOIN classofferings co ON co.offering_id = a.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN students st       ON st.student_id = s.student_id
         WHERE a.offering_id IN ($in)
@@ -182,7 +182,7 @@ if ($offeringIds) {
                st.firstname, st.lastname
         FROM quiz_attempts qa
         JOIN quizzes q         ON q.quiz_id = qa.quiz_id
-        JOIN classofferings co ON co.offering_id = q.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+        JOIN classofferings co ON co.offering_id = q.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN students st       ON st.student_id = qa.student_id
         WHERE q.offering_id IN ($in)
@@ -221,7 +221,7 @@ if ($offeringIds) {
                sub.subject_id, sub.subject_name, sec.section_name,
                st.firstname, st.lastname
         FROM enrollments e
-        JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+        JOIN classofferings co ON co.offering_id = e.offering_id AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0
         JOIN sections sec      ON sec.section_id = co.section_id
         JOIN subjects sub      ON sub.subject_id = co.subject_id
         JOIN students st       ON st.student_id = e.student_id

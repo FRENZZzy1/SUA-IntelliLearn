@@ -55,7 +55,7 @@ $stmt = $pdo->prepare("
     JOIN schoolyears sy    ON sy.school_year_id = co.school_year_id
     WHERE e.student_id = ?
       AND e.status IN ('enrolled','completed')
-      AND ((co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)) OR sy.is_archived = 1)
+      AND ((co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)))
     ORDER BY sy.start_date DESC
 ");
 $stmt->execute([$studentId]);
@@ -108,7 +108,7 @@ if ($selectedYearId !== null) {
         JOIN teachers t        ON t.teacher_id = co.teacher_id
         WHERE e.student_id = ? AND co.school_year_id = ?
           AND e.status IN ('enrolled','completed')
-          AND ((co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)) OR sy.is_archived = 1)
+          AND ((co.is_archived = 0 AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)))
         ORDER BY sub.subject_name, co.quarter
     ");
     $stmt->execute([$studentId, $selectedYearId]);

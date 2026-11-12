@@ -26,7 +26,7 @@ $results = [];
 if ($type === 'teacher') {
     $stmt = $pdo->prepare("
         SELECT teacher_id, firstname, lastname, department,
-               (SELECT COUNT(*) FROM classofferings co WHERE co.teacher_id = teachers.teacher_id) AS class_count
+               (SELECT COUNT(*) FROM classofferings co WHERE co.teacher_id = teachers.teacher_id AND co.is_archived = 0 AND co.school_year_id IN (SELECT school_year_id FROM schoolyears WHERE is_current = 1)) AS class_count
         FROM teachers
         WHERE CONCAT(firstname, ' ', lastname) LIKE ? OR firstname LIKE ? OR lastname LIKE ?
         ORDER BY lastname, firstname
@@ -43,9 +43,11 @@ if ($type === 'teacher') {
 } elseif ($type === 'section') {
     $stmt = $pdo->prepare("
         SELECT section_id, section_name, grade_level,
-               (SELECT COUNT(*) FROM classofferings co WHERE co.section_id = sections.section_id) AS class_count
+               (SELECT COUNT(*) FROM classofferings co WHERE co.section_id = sections.section_id AND co.is_archived = 0 AND co.school_year_id IN (SELECT school_year_id FROM schoolyears WHERE is_current = 1)) AS class_count
         FROM sections
         WHERE section_name LIKE ?
+          AND is_archived = 0
+          AND school_year_id IN (SELECT school_year_id FROM schoolyears WHERE is_current = 1)
         ORDER BY grade_level, section_name
         LIMIT 10
     ");
@@ -60,7 +62,7 @@ if ($type === 'teacher') {
 } elseif ($type === 'student') {
     $stmt = $pdo->prepare("
         SELECT student_id, firstname, middlename, lastname, student_lrn,
-               (SELECT COUNT(*) FROM enrollments e WHERE e.student_id = students.student_id AND e.status NOT IN ('pending','denied')) AS class_count
+               (SELECT COUNT(*) FROM enrollments e JOIN classofferings co ON co.offering_id = e.offering_id WHERE e.student_id = students.student_id AND e.status NOT IN ('pending','denied') AND co.is_archived = 0 AND co.school_year_id IN (SELECT school_year_id FROM schoolyears WHERE is_current = 1)) AS class_count
         FROM students
         WHERE CONCAT(firstname, ' ', lastname) LIKE ? OR firstname LIKE ? OR lastname LIKE ? OR student_lrn LIKE ?
         ORDER BY lastname, firstname

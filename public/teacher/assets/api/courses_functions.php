@@ -32,7 +32,20 @@ $schoolYearLabel = $schoolYear['label'] ?? null;
 $view               = (($_GET['view'] ?? '') === 'archived') ? 'archived' : 'current';
 $archivedYears      = getArchivedSchoolYears($pdo, $teacherId, null);
 $archivedClassTotal = (int) array_sum(array_column($archivedYears, 'class_count'));
-$archiveYear        = ($view === 'archived') ? pickArchivedSchoolYear($archivedYears, $_GET['sy'] ?? null) : null;
+$archiveYear        = null;
+// Archived opens on the list of school year cards; a card links here with ?sy=<id>.
+// Only school years in which this teacher has archived classes get a card, and the
+// Archived tab badge counts those school years (not classes) so it matches the cards.
+$archivedYearCards  = array_values(array_filter(
+    getArchivedSchoolYearCards($pdo, $teacherId, null),
+    static function ($y) { return (int) $y['class_count'] > 0; }
+));
+$archivedYearTotal  = count($archivedYearCards);
+if ($view === 'archived' && isset($_GET['sy']) && ctype_digit((string) $_GET['sy'])) {
+    foreach ($archivedYears as $y) {
+        if ((int) $y['school_year_id'] === (int) $_GET['sy']) { $archiveYear = $y; break; }
+    }
+}
 $archiveYearId      = $archiveYear ? (int) $archiveYear['school_year_id'] : null;
 if ($archiveYear) {
     $schoolYearLabel = $archiveYear['label'];
@@ -53,7 +66,7 @@ $stmt = $pdo->prepare("
     JOIN sections sec ON sec.section_id = co.section_id
     LEFT JOIN enrollments e
            ON e.offering_id = co.offering_id AND e.status = 'enrolled'
-    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ?
+    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0 AND co.teacher_id = ?
       AND co.status = 'active'
       AND (co.school_year_id = ? OR ? IS NULL)
     GROUP BY sec.section_id, sec.section_name, sec.grade_level
@@ -99,7 +112,7 @@ $stmt = $pdo->prepare("
     FROM classofferings co
     JOIN subjects sub ON sub.subject_id = co.subject_id
     JOIN sections sec ON sec.section_id = co.section_id
-    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.teacher_id = ?
+    WHERE co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0 AND co.teacher_id = ?
       AND co.status = 'active'
       AND (co.school_year_id = ? OR ? IS NULL)
     ORDER BY sec.grade_level, sec.section_name, sub.subject_name, co.quarter

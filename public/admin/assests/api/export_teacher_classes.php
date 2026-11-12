@@ -47,6 +47,8 @@ $stmt = $pdo->prepare("
     JOIN sections sec   ON sec.section_id = co.section_id
     LEFT JOIN schoolyears syco ON syco.school_year_id = co.school_year_id
     WHERE co.teacher_id = ?
+      AND co.school_year_id IN (SELECT school_year_id FROM schoolyears WHERE is_current = 1)
+      AND co.is_archived = 0 AND sec.is_archived = 0
     ORDER BY sec.grade_level ASC, s.subject_name ASC
 ");
 $stmt->execute([$teacherId]);

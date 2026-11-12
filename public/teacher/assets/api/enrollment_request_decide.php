@@ -71,7 +71,7 @@ if (in_array($action, ['approve_all', 'deny_all', 'reopen_all'], true)) {
         FROM classofferings co
         WHERE co.teacher_id = ? AND co.subject_id = ? AND co.section_id = ?
           AND co.status = 'active' AND co.is_archived = 0
-          AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1)
+          AND co.section_id NOT IN (SELECT section_id FROM sections WHERE is_archived = 1) AND co.is_archived = 0
           AND co.school_year_id = (SELECT school_year_id FROM schoolyears WHERE is_current = 1 LIMIT 1)
     ");
     $stmt->execute([$teacherId, (int) $bulkSubject, (int) $bulkSection]);

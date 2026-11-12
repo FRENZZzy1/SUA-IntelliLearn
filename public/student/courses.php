@@ -56,25 +56,56 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
             </a>
             <a class="archive-tab <?= $view === 'archived' ? 'active' : '' ?>" href="courses.php?view=archived">
                 <i class="fas fa-box-archive"></i> Archived
-                <?php if ($archivedClassTotal > 0): ?><span class="archive-tab__count"><?= (int) $archivedClassTotal ?></span><?php endif; ?>
+                <?php if ($archivedYearTotal > 0): ?><span class="archive-tab__count"><?= (int) $archivedYearTotal ?></span><?php endif; ?>
             </a>
         </nav>
-        <?php if ($view === 'archived' && $archivedYears): ?>
-            <form class="archive-filter" method="get" action="courses.php">
-                <input type="hidden" name="view" value="archived">
-                <label for="archiveYearSelect"><i class="fas fa-calendar-days"></i> School Year</label>
-                <select id="archiveYearSelect" name="sy" onchange="this.form.submit()">
-                    <?php foreach ($archivedYears as $y): ?>
-                        <option value="<?= (int) $y['school_year_id'] ?>" <?= $archiveYear && (int) $archiveYear['school_year_id'] === (int) $y['school_year_id'] ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($y['label']) ?> (<?= (int) $y['class_count'] ?> <?= (int) $y['class_count'] === 1 ? 'class' : 'classes' ?>)
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </form>
-        <?php endif; ?>
     </div>
 
-    <?php if (empty($myCourses) && $view === 'archived'): ?>
+        <?php if ($view === 'archived' && $archiveYear): ?>
+            <a class="archive-back" href="courses.php?view=archived"><i class="fas fa-arrow-left"></i> All school years</a>
+        <?php endif; ?>
+
+        <?php if ($view === 'archived' && !$archiveYear): ?>
+        <?php if (empty($archivedYearCards)): ?>
+            <section class="panel">
+                <div class="panel-empty panel-empty--enhanced">
+                    <div class="panel-empty__icon"><i class="fas fa-box-archive"></i></div>
+                    <h3>No archived school years yet</h3>
+                    <p>Your classes from past school years are kept here, grouped by school year, once they are archived.</p>
+                </div>
+            </section>
+        <?php else: ?>
+            <section class="sy-card-grid" aria-label="Archived school years">
+                <?php foreach ($archivedYearCards as $y): ?>
+                    <?php
+                        $hasClasses = (int) $y['class_count'] > 0;
+                        $tag  = $hasClasses ? 'a' : 'div';
+                        $href = $hasClasses ? ' href="courses.php?view=archived&amp;sy=' . (int) $y['school_year_id'] . '"' : '';
+                    ?>
+                    <<?= $tag ?> class="sy-card <?= $hasClasses ? '' : 'sy-card--empty' ?>"<?= $href ?>>
+                        <div class="sy-card__head">
+                            <span class="sy-card__icon"><i class="fas fa-calendar-days"></i></span>
+                            <div class="sy-card__heading">
+                                <h3 class="sy-card__title">School Year <?= htmlspecialchars(trim($y['label'])) ?></h3>
+                                <span class="sy-card__dates"><?= htmlspecialchars(date('M j, Y', strtotime($y['start_date']))) ?> &ndash; <?= htmlspecialchars(date('M j, Y', strtotime($y['end_date']))) ?></span>
+                            </div>
+                        </div>
+                        <div class="sy-card__meta">
+                            <span class="sy-card__badge"><i class="fas fa-box-archive"></i> Archived</span>
+                            <?php if ($hasClasses): ?>
+                                <span class="sy-card__count"><i class="fas fa-book"></i> <?= (int) $y['class_count'] ?> <?= (int) $y['class_count'] === 1 ? 'class' : 'classes' ?></span>
+                            <?php else: ?>
+                                <span class="sy-card__count sy-card__count--none">No classes</span>
+                            <?php endif; ?>
+                        </div>
+                        <?php if ($hasClasses): ?>
+                            <span class="sy-card__cta">Open school year <i class="fas fa-arrow-right"></i></span>
+                        <?php endif; ?>
+                    </<?= $tag ?>>
+                <?php endforeach; ?>
+            </section>
+        <?php endif; ?>
+    <?php elseif (empty($myCourses) && $view === 'archived'): ?>
         <section class="panel">
             <div class="panel-empty panel-empty--enhanced">
                 <div class="panel-empty__icon">

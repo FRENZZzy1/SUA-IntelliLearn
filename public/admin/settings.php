@@ -111,7 +111,7 @@ foreach ($schoolYears as $sy) {
                 <div class="settings-card">
                     <div class="settings-card-header">
                         <h2><i class="fas fa-calendar-check"></i> School Years</h2>
-                        <p>Only one school year can be active at a time. New sections and enrollments are created under the active year. Once a school year's end date has passed it is archived automatically: its classes and sections are hidden from teachers and from students' class lists, nothing is deleted, and students keep their grade history. Restore brings a year back and stops it from being archived automatically again; use Archive to archive it again. Use Edit to correct a year's label or dates.</p>
+                        <p>Only one school year can be active at a time. New sections and enrollments are created under the active year. Once a school year's end date has passed it is archived automatically: its classes and sections are hidden from teachers and students, and nothing is deleted. Setting a year as current archives all the other school years. Use Archive to archive a year yourself, and Edit to correct a year's label or dates.</p>
                     </div>
 
                     <div class="year-list">
@@ -129,7 +129,7 @@ foreach ($schoolYears as $sy) {
                                     <span><?= clean(date('M j, Y', strtotime($sy['start_date']))) ?> &ndash; <?= clean(date('M j, Y', strtotime($sy['end_date']))) ?></span>
                                     <?php if (!$syArchived): ?>
                                     <span class="year-note"><?= $syPaused
-                                        ? 'Restored &mdash; won&rsquo;t archive automatically until you archive it again'
+                                        ? 'Set manually &mdash; won&rsquo;t archive automatically until you archive it'
                                         : 'Archives automatically after ' . clean(date('M j, Y', strtotime($sy['end_date']))) ?></span>
                                     <?php endif; ?>
                                 </div>
@@ -146,10 +146,12 @@ foreach ($schoolYears as $sy) {
                             <?php if ($syArchived): ?>
                                 <span class="badge-archived"><i class="fas fa-box-archive"></i> Archived<?= !empty($sy['archived_at']) ? ' ' . clean(date('M j, Y', strtotime($sy['archived_at']))) : '' ?></span>
                                 <?php if ($canWrite): ?>
+                                <?php if (!$sy['is_current']): ?>
                                 <button type="button" class="btn btn-outline btn-sm"
-                                    onclick="archiveYear(<?= (int) $sy['school_year_id'] ?>, 'restore', this)">
-                                    Restore
+                                    onclick="setCurrentYear(<?= (int) $sy['school_year_id'] ?>, this, true)">
+                                    Set as Current
                                 </button>
+                                <?php endif; ?>
                                 <?php endif; ?>
                             <?php elseif ($canWrite): ?>
                                 <?php if (!$sy['is_current']): ?>
@@ -631,8 +633,8 @@ foreach ($schoolYears as $sy) {
 
         function archiveYear(id, action, btn) {
             const message = action === 'archive'
-                ? 'Archive this school year?\n\nAll of its classes and sections will be hidden from teachers and from students\' class lists. Students can still see their past grades. Nothing is deleted, and you can restore it any time.'
-                : 'Restore this school year?\n\nThe classes and sections that were hidden when it was archived will become visible again.\n\nIt will not be archived automatically again until you click Archive on it.';
+                ? 'Archive this school year?\n\nAll of its classes and sections will be hidden from teachers and from students\' class lists. Nothing is deleted.'
+                : '';
             if (!confirm(message)) return;
 
             const original = btn.innerHTML;
@@ -666,7 +668,10 @@ foreach ($schoolYears as $sy) {
             });
         }
 
-        function setCurrentYear(id, btn) {
+        function setCurrentYear(id, btn, isArchived) {
+            const msg = (isArchived ? 'This school year is archived, so it will be brought back first: its hidden classes and sections become visible again.\n\n' : '')
+                + 'Setting it as current will archive all other school years, including ones that have not started yet (nothing is deleted).\n\nContinue?';
+            if (!confirm(msg)) return;
             const original = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
