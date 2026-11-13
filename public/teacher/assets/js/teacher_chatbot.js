@@ -15,6 +15,7 @@
     ];
     var history = [];
     var sending = false;
+    var STORAGE_KEY = 'sua_teacher_ai_conversation_v1';
 
     function esc(value) {
         return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) {
@@ -175,6 +176,12 @@
     function now() { return new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}); }
     function scrollBottom() { messages.scrollTop = messages.scrollHeight; }
 
+    function saveConversation() {
+        try {
+            sessionStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        } catch (e) {}
+    }
+
     function addMessage(role, content, error) {
         var row = document.createElement('div');
         row.className = 'tca-row ' + role;
@@ -185,6 +192,23 @@
             '</div><div class="tca-time">' + now() + '</div></div>';
         messages.appendChild(row);
         scrollBottom();
+    }
+
+    function restoreConversation() {
+        try {
+            var saved = JSON.parse(sessionStorage.getItem(STORAGE_KEY) || '[]');
+            if (!Array.isArray(saved) || !saved.length) return false;
+            history = saved.slice(-MAX_HISTORY);
+            messages.innerHTML = '';
+            history.forEach(function (item) {
+                if (item && (item.role === 'user' || item.role === 'assistant') && item.content) {
+                    addMessage(item.role, item.content);
+                }
+            });
+            return messages.children.length > 0;
+        } catch (e) {
+            return false;
+        }
     }
 
     function typing(show) {
@@ -212,6 +236,7 @@
 
     function reset() {
         history = [];
+        try { sessionStorage.removeItem(STORAGE_KEY); } catch (e) {}
         messages.innerHTML = '';
         addMessage('assistant', 'Hi! I can report on your classes, students, attendance, assignments and quizzes, explain how to use IntelliLearn, and suggest ways to support your students. What would you like to know?');
         addSuggestions();
@@ -245,6 +270,7 @@
         addMessage('user', message);
         history.push({role:'user',content:message});
         history = history.slice(-MAX_HISTORY);
+        saveConversation();
         sending = true; send.disabled = true; typing(true);
 
         try {
@@ -262,6 +288,7 @@
             addMessage('assistant', data.reply);
             history.push({role:'assistant',content:data.reply});
             history = history.slice(-MAX_HISTORY);
+            saveConversation();
         } catch (error) {
             typing(false);
             addMessage('assistant', 'Connection error. Please check your XAMPP/server connection and try again.', true);
@@ -289,5 +316,7 @@
         if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }
     });
 
-    reset();
+    if (!restoreConversation()) {
+        reset();
+    }
 })();
