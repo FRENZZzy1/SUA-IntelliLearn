@@ -10,31 +10,122 @@
     font-weight: 500;
 }
 
-/* ---------- Breadcrumb Back Link ---------- */
+/* ---------- Back button ---------- */
 .breadcrumb-back {
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    padding: 9px 16px;
+    margin-bottom: 16px;
     font-size: 0.85rem;
     font-weight: 600;
-    color: var(--primary, #10b981);
+    line-height: 1;
+    color: var(--primary, #1b4332);
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #e3e9e6);
+    border-radius: 10px;
+    box-shadow: var(--shadow, 0 1px 2px rgba(0, 0, 0, 0.05));
     text-decoration: none;
-    margin-bottom: 14px;
-    transition: color 0.2s ease;
+    cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+                transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.breadcrumb-back i {
+    font-size: 0.8rem;
+    transition: transform 0.2s ease;
 }
 
 .breadcrumb-back:hover {
-    text-decoration: underline;
-    color: var(--primary-dark, #059669);
+    background: var(--primary, #1b4332);
+    border-color: var(--primary, #1b4332);
+    color: #ffffff;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(27, 67, 50, 0.22);
 }
 
-/* ---------- Page Title / Grade Badge ---------- */
-.section-title-grade {
-    display: block;
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--text-muted, #6b7280);
-    margin-top: 4px;
+.breadcrumb-back:hover i {
+    transform: translateX(-3px);
+}
+
+.breadcrumb-back:active {
+    transform: translateY(0);
+    box-shadow: var(--shadow, 0 1px 2px rgba(0, 0, 0, 0.05));
+}
+
+.breadcrumb-back:focus-visible {
+    outline: 3px solid rgba(45, 106, 79, 0.35);
+    outline-offset: 2px;
+}
+
+/* ---------- Page title / meta pills ---------- */
+.section-hero {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.section-hero__icon {
+    flex: 0 0 auto;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--primary-light, #2d6a4f), var(--primary, #1b4332));
+    box-shadow: 0 8px 18px rgba(27, 67, 50, 0.22);
+}
+
+.section-hero__text {
+    min-width: 0;
+}
+
+.section-hero .dash-title {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+}
+
+.section-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted, #6b7d74);
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #e3e9e6);
+}
+
+.meta-pill i {
+    font-size: 0.75rem;
+    opacity: 0.85;
+}
+
+.meta-pill--grade {
+    color: var(--primary, #1b4332);
+    background: #e7f3ec;
+    border-color: #cfe6d9;
+}
+
+.section-meta .archive-chip {
+    margin-left: 0;
 }
 
 /* ---------- Stats Bar ---------- */
@@ -463,6 +554,17 @@
 }
 
 @media (max-width: 480px) {
+    .section-hero__icon {
+        width: 46px;
+        height: 46px;
+        font-size: 1.1rem;
+        border-radius: 12px;
+    }
+
+    .section-hero .dash-title {
+        font-size: 1.4rem;
+    }
+
     .stat-card {
         padding: 14px 16px;
     }
