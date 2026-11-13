@@ -27,13 +27,21 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
     <?php include '../../includes/student_header.php'; ?>
 
     <div class="dash-page-title dash-page-title--with-action">
-        <div>
-            <h1 class="dash-title">My Courses</h1>
-            <?php if ($view === 'archived'): ?>
-                <p class="dash-subtitle"><?= $archiveYear ? 'Archived · School Year ' . htmlspecialchars($archiveYear['label']) : 'Archived classes' ?></p>
-            <?php elseif ($schoolYearLabel): ?>
-                <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
-            <?php endif; ?>
+        <div class="page-hero">
+            <div class="page-hero__icon" aria-hidden="true"><i class="fas fa-book"></i></div>
+            <div class="page-hero__text">
+                <h1 class="dash-title">My Courses</h1>
+                <div class="page-hero__meta">
+                    <?php if ($view === 'archived'): ?>
+                        <span class="meta-pill meta-pill--archived"><i class="fas fa-box-archive"></i> Archived</span>
+                        <?php if ($archiveYear): ?>
+                            <span class="meta-pill meta-pill--year"><i class="fas fa-calendar-alt"></i> School Year <?= htmlspecialchars($archiveYear['label']) ?></span>
+                        <?php endif; ?>
+                    <?php elseif ($schoolYearLabel): ?>
+                        <span class="meta-pill meta-pill--year"><i class="fas fa-calendar-alt"></i> School Year <?= htmlspecialchars($schoolYearLabel) ?></span>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
         <?php if ($view !== 'archived'): ?>
         <button type="button" class="btn-enroll" onclick="openJoinClassModal()">
@@ -46,6 +54,10 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
         <div class="class-flash class-flash-<?= htmlspecialchars($flash['type']) ?>">
             <?= htmlspecialchars($flash['message']) ?>
         </div>
+    <?php endif; ?>
+
+    <?php if ($view === 'archived' && $archiveYear): ?>
+        <a class="archive-back" href="courses.php?view=archived"><i class="fas fa-arrow-left"></i> All school years</a>
     <?php endif; ?>
 
     <!-- Current / Archived switch + School Year filter for the Archived view -->
@@ -61,9 +73,6 @@ $totalAssignments = array_sum(array_column($myCourses, 'assignments_count'));
         </nav>
     </div>
 
-        <?php if ($view === 'archived' && $archiveYear): ?>
-            <a class="archive-back" href="courses.php?view=archived"><i class="fas fa-arrow-left"></i> All school years</a>
-        <?php endif; ?>
 
         <?php if ($view === 'archived' && !$archiveYear): ?>
         <?php if (empty($archivedYearCards)): ?>

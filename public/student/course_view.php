@@ -38,17 +38,21 @@ include 'assets/api/course_view_functions.php';
             </div>
         <?php endif; ?>
 
-        <div class="dash-page-title">
-            <h1 class="dash-title">
-                <?= htmlspecialchars($classInfo['subject_name']) ?>
-                <span class="section-title-grade">
-                    <?= htmlspecialchars($classInfo['section_name']) ?> · Grade
-                    <?= (int) $classInfo['grade_level'] ?>
-                </span>
-            </h1>
-            <?php if ($schoolYearLabel): ?>
-                <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?><?php if ($isArchivedView): ?> <span class="archive-chip"><i class="fas fa-box-archive"></i> Archived</span><?php endif; ?></p>
-            <?php endif; ?>
+        <div class="dash-page-title section-hero">
+            <div class="section-hero__icon" aria-hidden="true"><i class="fas fa-book-open"></i></div>
+            <div class="section-hero__text">
+                <h1 class="dash-title"><?= htmlspecialchars($classInfo['subject_name']) ?></h1>
+                <div class="section-meta">
+                    <span class="meta-pill"><i class="fas fa-users"></i> <?= htmlspecialchars($classInfo['section_name']) ?></span>
+                    <span class="meta-pill meta-pill--grade"><i class="fas fa-graduation-cap"></i> Grade <?= (int) $classInfo['grade_level'] ?></span>
+                    <?php if ($schoolYearLabel): ?>
+                        <span class="meta-pill"><i class="fas fa-calendar-alt"></i> School Year <?= htmlspecialchars($schoolYearLabel) ?></span>
+                    <?php endif; ?>
+                    <?php if ($isArchivedView): ?>
+                        <span class="archive-chip"><i class="fas fa-box-archive"></i> Archived</span>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
 
         <?php if ($isArchivedView): ?>

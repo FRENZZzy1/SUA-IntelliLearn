@@ -30,14 +30,26 @@ $sectionsLabel = $view === 'archived' ? 'Archived Sections' : 'Active Sections';
 
         <?php include '../../includes/teacher_header.php'; ?>
 
-        <div class="dash-page-title">
-            <h1 class="dash-title">Sections</h1>
-            <?php if ($view === 'archived'): ?>
-                <p class="dash-subtitle"><?= $archiveYear ? 'Archived · School Year ' . htmlspecialchars($archiveYear['label']) : 'Archived classes' ?></p>
-            <?php elseif ($schoolYearLabel): ?>
-                <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?></p>
-            <?php endif; ?>
+        <div class="dash-page-title page-hero">
+            <div class="page-hero__icon" aria-hidden="true"><i class="fas fa-layer-group"></i></div>
+            <div class="page-hero__text">
+                <h1 class="dash-title">Sections</h1>
+                <div class="page-hero__meta">
+                    <?php if ($view === 'archived'): ?>
+                        <span class="meta-pill meta-pill--archived"><i class="fas fa-box-archive"></i> Archived</span>
+                        <?php if ($archiveYear): ?>
+                            <span class="meta-pill meta-pill--year"><i class="fas fa-calendar-alt"></i> School Year <?= htmlspecialchars($archiveYear['label']) ?></span>
+                        <?php endif; ?>
+                    <?php elseif ($schoolYearLabel): ?>
+                        <span class="meta-pill meta-pill--year"><i class="fas fa-calendar-alt"></i> School Year <?= htmlspecialchars($schoolYearLabel) ?></span>
+                    <?php endif; ?>
+                </div>
+            </div>
         </div>
+
+        <?php if ($view === 'archived' && $archiveYear): ?>
+            <a class="archive-back" href="courses.php?view=archived"><i class="fas fa-arrow-left"></i> All school years</a>
+        <?php endif; ?>
 
         <!-- Current / Archived switch + School Year filter for the Archived view -->
         <div class="archive-bar">
@@ -52,9 +64,6 @@ $sectionsLabel = $view === 'archived' ? 'Archived Sections' : 'Active Sections';
             </nav>
         </div>
 
-        <?php if ($view === 'archived' && $archiveYear): ?>
-            <a class="archive-back" href="courses.php?view=archived"><i class="fas fa-arrow-left"></i> All school years</a>
-        <?php endif; ?>
 
         <?php if ($view === 'archived' && !$archiveYear): ?>
         <?php if (empty($archivedYearCards)): ?>
