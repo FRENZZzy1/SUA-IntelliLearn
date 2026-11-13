@@ -606,7 +606,7 @@ $subjectsList = $pdo->query("
                     </td>
                     <td data-label="Schedule">
                         <?php if ($scheduleDisplay): ?>
-                            <span class="sched"><i class="far fa-clock" aria-hidden="true"></i> <?= htmlspecialchars($scheduleDisplay) ?></span>
+                            <span class="sched" title="<?= htmlspecialchars($scheduleDisplay) ?>"><i class="far fa-clock" aria-hidden="true"></i><span class="sched-text"><?= htmlspecialchars($scheduleDisplay) ?></span></span>
                         <?php else: ?>
                             <span class="field-note">Not set</span>
                         <?php endif; ?>

@@ -924,7 +924,9 @@ textarea.form-control {
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     box-shadow: 0 6px 24px rgba(15, 31, 61, 0.06);
-    overflow: hidden;
+    max-height: 560px;
+    overflow: auto;
+    scrollbar-width: thin;
 }
 
 .users-table {
@@ -944,6 +946,9 @@ textarea.form-control {
     letter-spacing: 0.6px;
     border-bottom: 1px solid var(--border);
     white-space: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
 .users-table thead th.th-user {
@@ -1133,6 +1138,7 @@ textarea.form-control {
         border: none;
         background: none;
         box-shadow: none;
+        max-height: none;
         overflow: visible;
     }
 
