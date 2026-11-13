@@ -278,7 +278,73 @@ const exportEndpoints = {
 const exportSelected_ = { teacher: null, section: null, student: null };
 const exportDebounce_ = { teacher: null, section: null, student: null };
 
+// Characters each export search box accepts. Everything else is blocked.
+//   teacher / student: letters + spaces only (no numbers, no special characters)
+//   section: letters, digits, spaces and the dash (-) only
+const exportAllowed = {
+    teacher: { bad: /[^\p{L}\p{M} ]/gu,       test: /^[\p{L}\p{M} ]*$/u,
+               msg: 'Letters only. Numbers and special characters are not allowed.' },
+    student: { bad: /[^\p{L}\p{M} ]/gu,       test: /^[\p{L}\p{M} ]*$/u,
+               msg: 'Letters only. Numbers and special characters are not allowed.' },
+    section: { bad: /[^\p{L}\p{M}0-9 \-]/gu, test: /^[\p{L}\p{M}0-9 \-]*$/u,
+               msg: 'Letters, numbers and the dash (-) only. Other special characters are not allowed.' },
+};
+const exportWarnTimer_ = {};
+
+function exportCleanValue(type, text) {
+    return text.replace(exportAllowed[type].bad, '').replace(/^ +/, '').replace(/ {2,}/g, ' ');
+}
+
+function exportWarn(type, show) {
+    const input = document.getElementById('export' + capitalize(type) + 'Input');
+    if (!input) return;
+    let el = document.getElementById('export' + capitalize(type) + 'Warn');
+    if (!el) {
+        el = document.createElement('small');
+        el.id = 'export' + capitalize(type) + 'Warn';
+        el.setAttribute('role', 'alert');
+        el.style.cssText = 'display:none;margin-top:6px;font-size:.78rem;line-height:1.35;color:#dc2626;';
+        input.closest('.export-search-box').insertAdjacentElement('afterend', el);
+    }
+    clearTimeout(exportWarnTimer_[type]);
+    if (show) {
+        el.textContent = exportAllowed[type].msg;
+        el.style.display = 'block';
+        exportWarnTimer_[type] = setTimeout(() => { el.style.display = 'none'; }, 2500);
+    } else {
+        el.style.display = 'none';
+    }
+}
+
+// Block disallowed characters as they are typed / pasted into the three search boxes.
+['teacher', 'section', 'student'].forEach(function (type) {
+    const input = document.getElementById('export' + capitalize(type) + 'Input');
+    if (!input) return;
+    input.addEventListener('beforeinput', function (e) {
+        if (e.isComposing || !e.inputType || e.inputType.indexOf('insert') !== 0) return;
+        if (typeof e.data !== 'string' || e.data === '') return;   // paste/drop handled by input event
+        if (!exportAllowed[type].test.test(e.data)) {
+            e.preventDefault();
+            exportWarn(type, true);
+        }
+    });
+    input.addEventListener('compositionend', function () {
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+});
+
 function exportSearchInput(type, value) {
+    // Strip anything that slipped through (paste, drop, autofill, IME).
+    const input = document.getElementById('export' + capitalize(type) + 'Input');
+    const cleaned = exportCleanValue(type, value);
+    if (cleaned !== value) {
+        const pos = input.selectionStart;
+        input.value = cleaned;
+        try { const p = Math.max(0, pos - (value.length - cleaned.length)); input.setSelectionRange(p, p); } catch (_) {}
+        exportWarn(type, true);
+        value = cleaned;
+    }
+
     // Typing again after a selection invalidates it.
     if (exportSelected_[type]) {
         exportSelected_[type] = null;

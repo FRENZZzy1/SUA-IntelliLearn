@@ -10,6 +10,15 @@ header('Content-Type: application/json');
 $type = $_GET['type'] ?? '';
 $q    = trim($_GET['q'] ?? '');
 
+// Server-side guard (mirrors courses.js): strip special characters per search type.
+//   teacher / student: letters + spaces | section: letters, digits, spaces + dash
+if ($type === 'teacher' || $type === 'student') {
+    $q = preg_replace('/[^\p{L}\p{M} ]/u', '', $q);
+} elseif ($type === 'section') {
+    $q = preg_replace('/[^\p{L}\p{M}0-9 \-]/u', '', $q);
+}
+$q = trim(preg_replace('/ {2,}/', ' ', (string) $q));
+
 if (!in_array($type, ['teacher', 'section', 'student'], true)) {
     echo json_encode(['success' => false, 'errors' => ['Invalid search type.']]);
     exit();

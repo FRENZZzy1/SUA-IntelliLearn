@@ -902,7 +902,7 @@ $subjectsList = $pdo->query("
                 <div class="export-search-card-title"><i class="fas fa-user-graduate"></i> By Student</div>
                 <p class="export-search-card-hint">e.g. "Frenz" — exports every class that student is enrolled in</p>
                 <div class="export-search-box">
-                    <input type="text" id="exportStudentInput" placeholder="Search student name or LRN..." autocomplete="off"
+                    <input type="text" id="exportStudentInput" placeholder="Search student name..." autocomplete="off"
                            oninput="exportSearchInput('student', this.value)">
                     <div class="export-search-dropdown" id="exportStudentDropdown" hidden></div>
                 </div>
