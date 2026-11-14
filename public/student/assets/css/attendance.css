@@ -162,3 +162,145 @@
     font-weight: 600;
     color: var(--primary-dark, #059669);
 }
+
+
+/* Phone layout: turn each attendance record into a readable card.
+   Scoped to this page so other student tables keep their existing behavior. */
+@media (max-width: 640px) {
+    .attendance-subject-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .attendance-subject-header > div:last-child {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px !important;
+    }
+
+    .attendance-subject-title {
+        min-width: 0;
+        align-items: flex-start;
+    }
+
+    .attendance-subject-title > div {
+        min-width: 0;
+    }
+
+    .attendance-subject-title h2,
+    .attendance-subject-meta {
+        overflow-wrap: anywhere;
+    }
+
+    .attendance-rate {
+        flex-wrap: wrap;
+    }
+
+    .attendance-mini-counts {
+        gap: 6px;
+    }
+
+    .attendance-mini-counts .chip {
+        font-size: 0.72rem;
+        padding: 5px 8px;
+    }
+
+    .attendance-term-header,
+    .attendance-term-header > div {
+        align-items: flex-start !important;
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .attendance-term-header > div {
+        gap: 8px !important;
+    }
+
+    .attendance-term-header .attendance-mini-counts {
+        flex-direction: row;
+    }
+
+    .attendance-subject-body,
+    .attendance-term-block,
+    .table-scroll {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .table-scroll {
+        overflow: visible;
+        border: 0;
+        border-radius: 0;
+    }
+
+    .attendance-subject .data-table,
+    .attendance-subject .data-table tbody {
+        display: block;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .attendance-subject .data-table thead {
+        display: none;
+    }
+
+    .attendance-subject .data-table tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 10px 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        border: 1px solid var(--border, #e5e7eb);
+        border-radius: 12px;
+        background: #fff;
+    }
+
+    .attendance-subject .data-table tbody tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .attendance-subject .data-table--modern tbody td {
+        display: block;
+        min-width: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        overflow-wrap: anywhere;
+    }
+
+    .attendance-subject .data-table tbody td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 5px;
+        color: var(--text-muted, #6b7280);
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .attendance-subject .data-table tbody td[data-label="Remarks"] {
+        grid-column: 1 / -1;
+    }
+
+    .attendance-subject .data-table tbody td[data-label="Date"] {
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .attendance-remarks-cell {
+        font-size: 0.82rem;
+        line-height: 1.45;
+    }
+}
+
+@media (max-width: 380px) {
+    .attendance-subject .data-table tbody tr {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .attendance-subject .data-table tbody td[data-label="Remarks"] {
+        grid-column: auto;
+    }
+}

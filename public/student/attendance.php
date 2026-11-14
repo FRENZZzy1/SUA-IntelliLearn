@@ -171,9 +171,9 @@ include 'assets/api/attendance_functions.php';
                                                 $statusInfo = attendanceStatusInfo($record['status']);
                                                 ?>
                                                 <tr>
-                                                    <td><?= date('M j, Y (D)', strtotime($record['attendance_date'])) ?></td>
-                                                    <td><span class="chip chip-<?= $statusInfo['class'] ?>"><?= htmlspecialchars($statusInfo['label']) ?></span></td>
-                                                    <td class="attendance-remarks-cell"><?= $record['remarks'] ? htmlspecialchars($record['remarks']) : '—' ?></td>
+                                                    <td data-label="Date"><?= date('M j, Y (D)', strtotime($record['attendance_date'])) ?></td>
+                                                    <td data-label="Status"><span class="chip chip-<?= $statusInfo['class'] ?>"><?= htmlspecialchars($statusInfo['label']) ?></span></td>
+                                                    <td class="attendance-remarks-cell" data-label="Remarks"><?= $record['remarks'] ? htmlspecialchars($record['remarks']) : '—' ?></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         </tbody>
