@@ -229,13 +229,14 @@ foreach ($schoolYears as $sy) {
                             </div>
                             <div class="form-group">
                                 <label><i class="fas fa-calendar-day"></i> Start Date</label>
-                                <input type="date" name="start_date" required>
+                                <input type="date" name="start_date" min="<?= date('Y-m-d') ?>" required>
+                                <small>Can't be in the past or overlap an existing school year.</small>
                             </div>
                         </div>
                         <div class="form-row">
                             <div class="form-group">
                                 <label><i class="fas fa-calendar-day"></i> End Date</label>
-                                <input type="date" name="end_date" required>
+                                <input type="date" name="end_date" min="<?= date('Y-m-d') ?>" required>
                             </div>
                             <div class="form-group" style="display: flex; align-items: flex-end;">
                                 <label style="margin-bottom: 12px;">
@@ -533,6 +534,14 @@ foreach ($schoolYears as $sy) {
 
         document.getElementById('addYearForm').addEventListener('submit', function (e) {
             e.preventDefault();
+            const yearErrorBox = document.getElementById('yearFormError');
+            const startVal = this.querySelector('input[name="start_date"]').value;
+            const today = <?= json_encode(date('Y-m-d')) ?>;
+            if (startVal && startVal < today) {
+                yearErrorBox.innerHTML = '<div>The start date has already passed. Please choose today or a future date.</div>';
+                yearErrorBox.hidden = false;
+                return;
+            }
             submitForm(
                 this, 'add_school_year.php',
                 document.getElementById('addYearBtn'),

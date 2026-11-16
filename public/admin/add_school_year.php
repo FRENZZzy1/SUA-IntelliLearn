@@ -54,6 +54,33 @@ if ($startTs !== false && $endTs !== false && $startTs >= $endTs) {
     $errors[] = 'End date must be after the start date.';
 }
 
+// A new school year can't start in the past, and it can't reuse any dates that an
+// existing school year (current, past or archived) already covers.
+if ($startTs !== false && $endTs !== false && $startTs < $endTs) {
+    $newStart = date('Y-m-d', $startTs);
+    $newEnd   = date('Y-m-d', $endTs);
+    $today    = date('Y-m-d');
+
+    if ($newStart < $today) {
+        $errors[] = 'The start date has already passed (' . date('M j, Y', $startTs) . '). Please choose today or a future date.';
+    }
+
+    $overlapStmt = $pdo->prepare(
+        "SELECT label, start_date, end_date FROM schoolyears
+         WHERE start_date <= ? AND end_date >= ?
+         ORDER BY start_date"
+    );
+    $overlapStmt->execute([$newEnd, $newStart]);
+    foreach ($overlapStmt->fetchAll() as $existing) {
+        $errors[] = sprintf(
+            'These dates are not allowed: they overlap with %s (%s to %s). A new school year must start after the previous school year ends.',
+            htmlspecialchars($existing['label'], ENT_QUOTES, 'UTF-8'),
+            date('M j, Y', strtotime($existing['start_date'])),
+            date('M j, Y', strtotime($existing['end_date']))
+        );
+    }
+}
+
 if (!empty($errors)) {
     http_response_code(422);
     echo json_encode(['success' => false, 'errors' => $errors]);
@@ -95,6 +122,25 @@ try {
             $copyStats['classes_created'],
             $copyLabel
         );
+
+        // A year that has not started yet must not show its classes to admins,
+        // teachers or students, and its class codes must not accept enrollments.
+        // Same mechanism as "Set as Current" (which archives years that have not
+        // started): archive the new year so its copied classes and sections are
+        // hidden. autoAdvanceCurrentSchoolYear() restores them automatically once
+        // the year has started and the previous year has ended, or an admin can
+        // use "Set as Current". Skipped when the admin made the new year current.
+        if (!$makeCurrent && date('Y-m-d', $startTs) > date('Y-m-d')) {
+            try {
+                archiveSchoolYear($pdo, $newId);
+                $message .= sprintf(
+                    ' Because this school year starts on %s, its classes stay hidden (it is archived) until then and are restored automatically when it starts.',
+                    date('M j, Y', $startTs)
+                );
+            } catch (Throwable $e) {
+                $message .= ' Warning: the copied classes could not be hidden until the start date. Please archive this school year from the list.';
+            }
+        }
     }
     setFlashMessage('success', $message);
     echo json_encode(['success' => true]);

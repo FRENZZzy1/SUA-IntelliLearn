@@ -938,6 +938,68 @@ function autoAdvanceCurrentSchoolYear(PDO $pdo, ?string $today = null): ?array
 autoAdvanceCurrentSchoolYear($pdo);
 
 /**
+ * Automatic activation when no school year is current. autoAdvanceCurrentSchoolYear()
+ * only moves on from a current year that has ended, so if nothing is marked current
+ * (for example a new year was added while the old one was archived) the new year
+ * would stay archived after its start date. This picks the earliest school year that
+ * is running today (start date reached, end date not passed), makes it current and,
+ * if it was archived, restores its classes and sections - the same steps as
+ * "Set as Current". It does nothing when a year is already current. Never throws.
+ *
+ * @param string|null $today Y-m-d, for tests; defaults to today.
+ * @return int|null the school year made current by this run, or null.
+ */
+function autoActivateStartedSchoolYear(PDO $pdo, ?string $today = null): ?int
+{
+    $today = $today ?? date('Y-m-d');
+
+    try {
+        if ($pdo->query("SELECT 1 FROM schoolyears WHERE is_current = 1 LIMIT 1")->fetchColumn()) {
+            return null; // A year is already current: nothing to do.
+        }
+
+        $pdo->beginTransaction();
+
+        $pick = $pdo->prepare(
+            "SELECT school_year_id, is_archived FROM schoolyears
+             WHERE start_date <= ? AND end_date >= ?
+             ORDER BY start_date ASC, school_year_id ASC
+             LIMIT 1 FOR UPDATE"
+        );
+        $pick->execute([$today, $today]);
+        $row = $pick->fetch(PDO::FETCH_ASSOC);
+
+        // Re-check inside the transaction so two simultaneous requests cannot both switch.
+        if (!$row || $pdo->query("SELECT 1 FROM schoolyears WHERE is_current = 1 LIMIT 1")->fetchColumn()) {
+            $pdo->rollBack();
+            return null;
+        }
+        $yearId = (int) $row['school_year_id'];
+
+        $pdo->prepare("UPDATE schoolyears SET is_current = 1 WHERE school_year_id = ?")->execute([$yearId]);
+        $pdo->commit();
+
+        if ((int) $row['is_archived'] === 1) {
+            // Bring back its classes and sections, then let it archive by itself
+            // again when it ends (restoring pauses it, and it has not ended yet).
+            restoreSchoolYear($pdo, $yearId);
+            $pdo->prepare("UPDATE schoolyears SET auto_archive_paused = 0 WHERE school_year_id = ?")->execute([$yearId]);
+        }
+
+        return $yearId;
+    } catch (Throwable $e) {
+        try {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+        } catch (Throwable $ignored) {
+        }
+        return null;
+    }
+}
+autoActivateStartedSchoolYear($pdo);
+
+/**
  * Automatic year-end archive. Archives every school year whose end date has
  * passed (the day after its end date) that is not already archived and that an
  * admin has not restored (auto_archive_paused). Classes and sections are
