@@ -307,8 +307,9 @@ if(isset($_POST['login'])){
         </button>
 
         <div class="legal-modal-header">
-            <div class="legal-modal-icon" id="legalModalIcon">
+            <div class="legal-modal-icon legal-modal-icon-ai" id="legalModalIcon">
                 <i class="fas fa-file-contract"></i>
+                <img class="legal-ai-mascot" src="assests/images/mascot_head.png" alt="Uriel AI">
             </div>
             <div>
                 <span class="legal-modal-eyebrow">SUA IntelliLearn</span>
