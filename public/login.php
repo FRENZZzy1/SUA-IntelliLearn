@@ -283,6 +283,12 @@ if(isset($_POST['login'])){
                         <span><i class="fas fa-phone"></i> 0956-635-4765</span>
                         <span><i class="fas fa-phone"></i> 0921-371-8889</span>
                     </div>
+
+                    <div class="legal-links" aria-label="Legal and AI information">
+                        <button type="button" class="legal-link" data-legal-section="terms">Terms &amp; Conditions</button>
+                        <button type="button" class="legal-link" data-legal-section="privacy">Privacy Notice</button>
+                        <button type="button" class="legal-link" data-legal-section="ai">Use of AI</button>
+                    </div>
                 </div>
 
             </div>
@@ -290,6 +296,98 @@ if(isset($_POST['login'])){
 
     </div>
 
+</div>
+
+
+<!-- Terms, Privacy Notice, and AI Use Modal -->
+<div class="legal-modal-overlay" id="legalModal" role="dialog" aria-modal="true" aria-labelledby="legalModalTitle" aria-describedby="legalModalContent">
+    <div class="legal-modal">
+        <button type="button" class="legal-modal-close" id="legalModalClose" aria-label="Close">
+            <i class="fas fa-times"></i>
+        </button>
+
+        <div class="legal-modal-header">
+            <div class="legal-modal-icon" id="legalModalIcon">
+                <i class="fas fa-file-contract"></i>
+            </div>
+            <div>
+                <span class="legal-modal-eyebrow">SUA IntelliLearn</span>
+                <h3 id="legalModalTitle">Terms &amp; Conditions</h3>
+            </div>
+        </div>
+
+        <div class="legal-tabs" role="tablist" aria-label="Legal information">
+            <button type="button" class="legal-tab active" data-legal-tab="terms" role="tab" aria-selected="true">Terms &amp; Conditions</button>
+            <button type="button" class="legal-tab" data-legal-tab="privacy" role="tab" aria-selected="false">Privacy Notice</button>
+            <button type="button" class="legal-tab" data-legal-tab="ai" role="tab" aria-selected="false">Use of AI</button>
+        </div>
+
+        <div class="legal-modal-body" id="legalModalContent">
+            <section class="legal-section active" data-legal-content="terms">
+                <p class="legal-intro">By accessing and using SUA IntelliLearn, you agree to use the platform responsibly and for legitimate educational and school-related purposes.</p>
+
+                <h4>1. Account Use</h4>
+                <p>Your account is assigned to you by the school. Keep your username and password confidential and do not share your account with another person.</p>
+
+                <h4>2. Educational Use</h4>
+                <p>The system is provided to support learning, teaching, assessment, attendance, communication, and school administration. Use of the platform must follow applicable school rules and policies.</p>
+
+                <h4>3. User Responsibilities</h4>
+                <p>Do not upload, submit, or distribute content that is unlawful, harmful, misleading, abusive, or unrelated to legitimate school activities. Do not attempt to bypass access controls, manipulate grades, or access information belonging to other users.</p>
+
+                <h4>4. System Availability</h4>
+                <p>Features may be updated, temporarily unavailable, or changed as the school improves the system. The platform should not be treated as a replacement for official school procedures or records where an official process is required.</p>
+
+                <h4>5. AI-Assisted Features</h4>
+                <p>Some features use artificial intelligence to assist teachers and administrators. AI-generated information may contain errors and should be reviewed by an appropriate school user before being relied upon.</p>
+            </section>
+
+            <section class="legal-section" data-legal-content="privacy">
+                <p class="legal-intro">SUA IntelliLearn processes school-related information to provide learning, assessment, attendance, communication, and administrative services.</p>
+
+                <h4>Information We Process</h4>
+                <p>Depending on your role and use of the system, this may include your name, username, student or employee information, class enrollment, grades and assessment results, attendance records, submitted learning activities, and account/security information.</p>
+
+                <h4>How Information Is Used</h4>
+                <p>Information is used to operate the learning management system, manage classes and accounts, record academic activities, provide teacher and administrator tools, generate educational analytics, and improve system functionality.</p>
+
+                <h4>Access and Confidentiality</h4>
+                <p>Access to information is role-based. Users should only receive information necessary for their school responsibilities. The system includes privacy controls intended to limit unnecessary exposure of personal and academic information.</p>
+
+                <h4>AI Processing</h4>
+                <p>Some school data may be processed by AI-powered features to generate educational assistance, summaries, insights, recommendations, or quiz content. AI outputs should not be treated as an independent final decision about a student.</p>
+
+                <h4>Your Responsibility</h4>
+                <p>Do not enter passwords, private credentials, or unrelated sensitive personal information into AI chat or other fields that do not require it. Report suspected unauthorized access or privacy concerns to the school or system administrator.</p>
+            </section>
+
+            <section class="legal-section" data-legal-content="ai">
+                <p class="legal-intro">SUA IntelliLearn uses AI as an assistive educational tool. It is designed to support teachers and administrators, not replace their professional judgment.</p>
+
+                <h4>AI Features</h4>
+                <ul>
+                    <li><strong>AI Quiz Generator:</strong> assists teachers in creating quiz questions from learning materials provided through the system.</li>
+                    <li><strong>Uriel AI:</strong> provides academic-focused assistance for authorized teachers and administrators.</li>
+                    <li><strong>AI Summaries and Insights:</strong> helps users interpret available academic and classroom information.</li>
+                    <li><strong>Risk Analysis and Recommendations:</strong> identifies patterns in available student records and provides assistive insights for teacher or administrator review.</li>
+                </ul>
+
+                <h4>Important Limitations</h4>
+                <p>AI responses can be incomplete, inaccurate, or inappropriate in some situations. AI-generated results must be reviewed before they are used for grading, intervention, recommendations, or other important school decisions.</p>
+
+                <h4>Privacy and Responsible Use</h4>
+                <p>AI features should only be used for their intended educational purpose. Do not use the AI tools to request passwords, confidential credentials, or information that you are not authorized to access. The AI assistant does not replace official school records or human review.</p>
+
+                <h4>No Guarantee of Accuracy</h4>
+                <p>The school and system developers do not guarantee that every AI-generated response or recommendation is error-free. Users remain responsible for verifying important information before acting on it.</p>
+            </section>
+        </div>
+
+        <div class="legal-modal-footer">
+            <span><i class="fas fa-shield-alt"></i> Please review this information before using the system.</span>
+            <button type="button" class="legal-understand-btn" id="legalModalUnderstand">I Understand</button>
+        </div>
+    </div>
 </div>
 
 <!-- Forgot Password Instructions Modal -->
