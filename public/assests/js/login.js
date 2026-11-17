@@ -115,7 +115,10 @@ function setLegalSection(section) {
     });
 
     legalModalTitle.textContent = legalMeta[selected].title;
-    legalModalIcon.innerHTML = '<i class="fas ' + legalMeta[selected].icon + '"></i>';
+    legalModalIcon.innerHTML = selected === 'ai'
+        ? '<img class="legal-ai-mascot" src="assests/images/mascot_head.png" alt="Uriel AI">'
+        : '<i class="fas ' + legalMeta[selected].icon + '"></i>'; 
+    legalModalIcon.classList.toggle('ai-active', selected === 'ai');
 }
 
 function openLegalModal(section = 'terms') {
