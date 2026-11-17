@@ -74,3 +74,84 @@ document.addEventListener('keydown', function(event) {
 });
 
 document.getElementById('togglePasswordBtn').addEventListener('click', togglePassword);
+
+
+/* Terms, Privacy Notice, and AI Use modal */
+const legalModal = document.getElementById('legalModal');
+const legalModalClose = document.getElementById('legalModalClose');
+const legalModalUnderstand = document.getElementById('legalModalUnderstand');
+const legalTabs = document.querySelectorAll('[data-legal-tab]');
+const legalSections = document.querySelectorAll('[data-legal-content]');
+const legalLinks = document.querySelectorAll('[data-legal-section]');
+const legalModalTitle = document.getElementById('legalModalTitle');
+const legalModalIcon = document.getElementById('legalModalIcon');
+
+const legalMeta = {
+    terms: {
+        title: 'Terms & Conditions',
+        icon: 'fa-file-contract'
+    },
+    privacy: {
+        title: 'Privacy Notice',
+        icon: 'fa-shield-halved'
+    },
+    ai: {
+        title: 'Use of AI',
+        icon: 'fa-robot'
+    }
+};
+
+function setLegalSection(section) {
+    const selected = legalMeta[section] ? section : 'terms';
+
+    legalTabs.forEach(tab => {
+        const active = tab.dataset.legalTab === selected;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    legalSections.forEach(content => {
+        content.classList.toggle('active', content.dataset.legalContent === selected);
+    });
+
+    legalModalTitle.textContent = legalMeta[selected].title;
+    legalModalIcon.innerHTML = '<i class="fas ' + legalMeta[selected].icon + '"></i>';
+}
+
+function openLegalModal(section = 'terms') {
+    setLegalSection(section);
+    legalModal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeLegalModal() {
+    legalModal.classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+legalLinks.forEach(link => {
+    link.addEventListener('click', function() {
+        openLegalModal(this.dataset.legalSection);
+    });
+});
+
+legalTabs.forEach(tab => {
+    tab.addEventListener('click', function() {
+        setLegalSection(this.dataset.legalTab);
+    });
+});
+
+legalModalClose.addEventListener('click', closeLegalModal);
+legalModalUnderstand.addEventListener('click', closeLegalModal);
+
+legalModal.addEventListener('click', function(event) {
+    if (event.target === legalModal) {
+        closeLegalModal();
+    }
+});
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && legalModal.classList.contains('active')) {
+        closeLegalModal();
+    }
+});
