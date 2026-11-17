@@ -410,3 +410,25 @@
         width: 100%;
     }
 }
+
+/* Uriel AI mascot for the legal modal */
+.legal-modal-icon-ai {
+    position: relative;
+    overflow: hidden;
+}
+.legal-ai-mascot {
+    display: none;
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    border-radius: 50%;
+}
+.legal-modal-icon-ai.ai-active {
+    background: rgba(255,255,255,0.22);
+}
+.legal-modal-icon-ai.ai-active .legal-ai-mascot {
+    display: block;
+}
+.legal-modal-icon-ai.ai-active > i {
+    display: none;
+}
