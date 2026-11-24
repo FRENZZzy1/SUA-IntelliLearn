@@ -33,23 +33,28 @@ if (!empty($submissionRows)) {
 
     <?php include '../../includes/teacher_header.php'; ?>
 
-    <a href="course_section.php?section_id=<?= (int) $classInfo['section_id'] ?><?= $isArchivedView ? '&amp;sy=' . (int) $archiveYearId : '' ?>" class="breadcrumb-back">
+    <a href="course_section.php?section_id=<?= (int) $classInfo['section_id'] ?><?= $isArchivedView ? '&amp;sy=' . (int) $archiveYearId : '' ?>" class="breadcrumb-back breadcrumb-back--btn">
         <i class="fas fa-arrow-left"></i> Back to <?= htmlspecialchars($classInfo['section_name']) ?>
     </a>
 
-    <div class="dash-page-title">
-        <h1 class="dash-title">
-            <?= htmlspecialchars($classInfo['subject_name']) ?>
-            <span class="section-title-grade">
-                <?= htmlspecialchars($classInfo['section_name']) ?> · Grade <?= (int) $classInfo['grade_level'] ?>
-            </span>
-        </h1>
-        <?php if ($activeOffering): ?>
-            <span class="class-code-badge"><?= htmlspecialchars($activeOffering['class_code']) ?></span>
-        <?php endif; ?>
-        <?php if ($schoolYearLabel): ?>
-            <p class="dash-subtitle">School Year <?= htmlspecialchars($schoolYearLabel) ?><?php if ($isArchivedView): ?> <span class="archive-chip"><i class="fas fa-box-archive"></i> Archived</span><?php endif; ?></p>
-        <?php endif; ?>
+    <div class="dash-page-title class-hero">
+        <div class="class-hero__icon" aria-hidden="true"><i class="fas fa-book-open"></i></div>
+        <div class="class-hero__text">
+            <h1 class="dash-title"><?= htmlspecialchars($classInfo['subject_name']) ?></h1>
+            <div class="class-hero__meta">
+                <span class="meta-pill meta-pill--section"><i class="fas fa-users"></i> <?= htmlspecialchars($classInfo['section_name']) ?></span>
+                <span class="meta-pill meta-pill--grade"><i class="fas fa-graduation-cap"></i> Grade <?= (int) $classInfo['grade_level'] ?></span>
+                <?php if ($schoolYearLabel): ?>
+                    <span class="meta-pill"><i class="fas fa-calendar-alt"></i> School Year <?= htmlspecialchars($schoolYearLabel) ?></span>
+                <?php endif; ?>
+                <?php if ($isArchivedView): ?>
+                    <span class="archive-chip"><i class="fas fa-box-archive"></i> Archived</span>
+                <?php endif; ?>
+                <?php if ($activeOffering): ?>
+                    <span class="class-code-badge"><?= htmlspecialchars($activeOffering['class_code']) ?></span>
+                <?php endif; ?>
+            </div>
+        </div>
     </div>
 
     <?php if ($isArchivedView): ?>

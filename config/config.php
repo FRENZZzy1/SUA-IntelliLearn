@@ -88,6 +88,36 @@ function ensureArchiveColumns(PDO $pdo): void {
 }
 ensureArchiveColumns($pdo);
 
+/**
+ * Term intervals (TRM 1 / TRM 2 / TRM 3 date ranges) now belong to a school
+ * year: they are stored as JSON in schoolyears.term_intervals and are edited
+ * from Settings > School Year & Terms when a year is added or edited.
+ *
+ * The first time the column is created, the old school-wide setting
+ * (system_settings 'term_intervals') is moved onto the current school year so
+ * existing installs keep their dates. Safe to run on every request.
+ */
+function ensureSchoolYearTermColumn(PDO $pdo): void {
+    try {
+        $has = $pdo->query(
+            "SELECT 1 FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'schoolyears' AND COLUMN_NAME = 'term_intervals'"
+        )->fetchColumn();
+        if ($has) {
+            return;
+        }
+        $pdo->exec("ALTER TABLE `schoolyears` ADD COLUMN `term_intervals` TEXT NULL DEFAULT NULL");
+
+        $legacy = $pdo->query("SELECT setting_value FROM system_settings WHERE setting_key = 'term_intervals' LIMIT 1")->fetchColumn();
+        if ($legacy) {
+            $pdo->prepare("UPDATE schoolyears SET term_intervals = ? WHERE is_current = 1")->execute([$legacy]);
+        }
+    } catch (PDOException $e) {
+        // Never block the page load; term intervals simply read as "not set".
+    }
+}
+ensureSchoolYearTermColumn($pdo);
+
 
 /**
  * Validate and normalize Philippine mobile numbers.
@@ -323,26 +353,40 @@ function getFlashMessage() {
     return null;
 }
 
-function getTermIntervals($pdo) {
-    $defaults = [
-        'TRM 1' => ['mode' => 'date', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
-        'TRM 2' => ['mode' => 'date', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
-        'TRM 3' => ['mode' => 'date', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null],
-    ];
+/**
+ * Term intervals of one school year (defaults to the current school year).
+ * Every term is always present in the result; unset terms have null dates.
+ *
+ * A term may have a start date and no end date: it then runs until the next
+ * term starts (see resolveCurrentTerm). If a year has no TRM 1 start date yet,
+ * TRM 1 defaults to the school year's own start date, because the classes copied
+ * into a new year are TRM 1 classes and are live from day one.
+ */
+function getTermIntervals($pdo, $schoolYearId = null) {
+    $blank = ['mode' => 'date', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null];
+    $defaults = ['TRM 1' => $blank, 'TRM 2' => $blank, 'TRM 3' => $blank];
 
     try {
-        $stmt = $pdo->prepare("SELECT setting_value FROM system_settings WHERE setting_key = ?");
-        $stmt->execute(['term_intervals']);
-        $raw = $stmt->fetchColumn();
-        if ($raw) {
-            $decoded = json_decode($raw, true);
-            if (is_array($decoded)) {
-                foreach ($defaults as $term => $shape) {
-                    if (isset($decoded[$term]) && is_array($decoded[$term])) {
-                        $defaults[$term] = array_merge($shape, $decoded[$term]);
-                    }
+        if ($schoolYearId === null) {
+            $stmt = $pdo->query("SELECT term_intervals, start_date FROM schoolyears WHERE is_current = 1 LIMIT 1");
+        } else {
+            $stmt = $pdo->prepare("SELECT term_intervals, start_date FROM schoolyears WHERE school_year_id = ?");
+            $stmt->execute([(int) $schoolYearId]);
+        }
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$row) {
+            return $defaults;
+        }
+        $decoded = $row['term_intervals'] ? json_decode($row['term_intervals'], true) : null;
+        if (is_array($decoded)) {
+            foreach ($defaults as $term => $shape) {
+                if (isset($decoded[$term]) && is_array($decoded[$term])) {
+                    $defaults[$term] = array_merge($shape, $decoded[$term]);
                 }
             }
+        }
+        if (empty($defaults['TRM 1']['start_date']) && !empty($row['start_date'])) {
+            $defaults['TRM 1']['start_date'] = $row['start_date'];
         }
     } catch (PDOException $e) {
         // Keep safe defaults when the setting cannot be read.
@@ -350,15 +394,127 @@ function getTermIntervals($pdo) {
     return $defaults;
 }
 
+/**
+ * Read the six term date fields (term_1_start_date ... term_3_end_date) from a
+ * form and validate them.
+ *
+ * Rules: a term may be left completely blank, or have only a start date (it
+ * then runs until the next term starts); an end date without a start date is an
+ * error. Terms must be set in order (TRM 2 needs TRM 1, TRM 3 needs TRM 2),
+ * start in order, and not share a day. When the school year's own dates are
+ * given, every date must be inside the school year.
+ *
+ * @param bool $allowEmpty true: all six blank is valid and returns null ("no
+ *                         term dates"); false: at least TRM 1's start is required.
+ * @return array{0: ?array, 1: string[]} [intervals-or-null, errors]
+ */
+function parseTermIntervalsInput(array $src, ?string $yearStart = null, ?string $yearEnd = null, bool $allowEmpty = false): array {
+    $errors = [];
+    $intervals = [];
+    $anyFilled = false;
+    $valid = static function (string $v): bool {
+        $d = DateTime::createFromFormat('Y-m-d', $v);
+        return $d && $d->format('Y-m-d') === $v;
+    };
+
+    foreach ([1 => 'TRM 1', 2 => 'TRM 2', 3 => 'TRM 3'] as $n => $label) {
+        $start = trim((string) ($src["term_{$n}_start_date"] ?? ''));
+        $end   = trim((string) ($src["term_{$n}_end_date"] ?? ''));
+        $entry = ['mode' => 'date', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null];
+
+        if ($start === '' && $end === '') {
+            $intervals[$label] = $entry;
+            continue;
+        }
+        $anyFilled = true;
+
+        if ($start === '') {
+            $errors[] = "$label: enter a start date (an end date alone is not enough).";
+        } elseif (!$valid($start) || ($end !== '' && !$valid($end))) {
+            $errors[] = "$label: choose a valid start and end date.";
+        } elseif ($end !== '' && $start > $end) {
+            $errors[] = "$label: start date must be on or before the end date.";
+        } elseif (($yearStart !== null && $start < $yearStart) || ($yearEnd !== null && ($start > $yearEnd || ($end !== '' && $end > $yearEnd)))) {
+            $errors[] = "$label: dates must fall inside the school year ($yearStart to $yearEnd).";
+        } else {
+            $entry['start_date'] = $start;
+            $entry['end_date']   = $end !== '' ? $end : null;
+        }
+        $intervals[$label] = $entry;
+    }
+
+    if (!$anyFilled) {
+        return $allowEmpty ? [null, []] : [$intervals, ['Enter at least the TRM 1 start date.']];
+    }
+
+    if (!$errors) {
+        $labels = array_keys($intervals);
+        for ($i = 1; $i < 3; $i++) {
+            if ($intervals[$labels[$i]]['start_date'] !== null && $intervals[$labels[$i - 1]]['start_date'] === null) {
+                $errors[] = "{$labels[$i]} can only be set after {$labels[$i - 1]} has a start date.";
+            }
+        }
+    }
+
+    if (!$errors) {
+        $labels = array_keys($intervals);
+        for ($i = 0; $i < 3; $i++) {
+            for ($j = $i + 1; $j < 3; $j++) {
+                $a = $intervals[$labels[$i]];
+                $b = $intervals[$labels[$j]];
+                if ($a['start_date'] === null || $b['start_date'] === null) {
+                    continue;
+                }
+                if ($b['start_date'] <= $a['start_date'] || ($a['end_date'] !== null && $b['start_date'] <= $a['end_date'])) {
+                    $errors[] = "{$labels[$j]} must start after {$labels[$i]} ends — terms must not share any dates (for example, end {$labels[$i]} the day before {$labels[$j]} starts).";
+                }
+            }
+        }
+    }
+
+    return [$intervals, $errors];
+}
+
+/**
+ * Store (or clear, with null) a school year's term intervals. When that year is
+ * the current one, classes are rolled forward to whatever term the new dates
+ * resolve to today. Call this OUTSIDE any open transaction (the roll-forward
+ * opens its own).
+ */
+function saveSchoolYearTermIntervals(PDO $pdo, int $schoolYearId, ?array $intervals): void {
+    $pdo->prepare("UPDATE schoolyears SET term_intervals = ? WHERE school_year_id = ?")
+        ->execute([$intervals === null ? null : json_encode($intervals), $schoolYearId]);
+
+    $isCurrent = $pdo->prepare("SELECT is_current FROM schoolyears WHERE school_year_id = ?");
+    $isCurrent->execute([$schoolYearId]);
+    if ((int) $isCurrent->fetchColumn() === 1) {
+        syncCourseTermsToCurrent($pdo);
+    }
+}
+
 function resolveCurrentTerm(array $intervals, ?DateTime $onDate = null) {
     $onDate = $onDate ?? new DateTime('today');
-    $month = (int)$onDate->format('n');
     $ymd = $onDate->format('Y-m-d');
 
-    foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $term) {
+    $order = ['TRM 1', 'TRM 2', 'TRM 3'];
+    foreach ($order as $i => $term) {
         $cfg = $intervals[$term] ?? null;
-        if (!$cfg) continue;
-        if (!empty($cfg['start_date']) && !empty($cfg['end_date']) && $ymd >= $cfg['start_date'] && $ymd <= $cfg['end_date']) {
+        if (!$cfg || empty($cfg['start_date'])) continue;
+
+        $end = $cfg['end_date'] ?? null;
+        if (empty($end)) {
+            // Open-ended term: runs until the day before the next term with a
+            // start date, or with no limit when no later term is set.
+            $end = '9999-12-31';
+            for ($j = $i + 1; $j < count($order); $j++) {
+                $next = $intervals[$order[$j]]['start_date'] ?? null;
+                if (!empty($next)) {
+                    $end = date('Y-m-d', strtotime($next . ' -1 day'));
+                    break;
+                }
+            }
+        }
+        if ($ymd >= $cfg['start_date'] && $ymd <= $end) {
             return $term;
         }
     }

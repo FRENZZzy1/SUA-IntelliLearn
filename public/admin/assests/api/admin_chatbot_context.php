@@ -83,7 +83,7 @@ function admin_chatbot_extra_context(PDO $pdo, string $question): string
     $parts = [];
     foreach (['TRM 1', 'TRM 2', 'TRM 3'] as $t) {
         $c = $intervals[$t] ?? null;
-        $parts[] = $t . ': ' . (($c && !empty($c['start_date']) && !empty($c['end_date'])) ? "{$c['start_date']} to {$c['end_date']}" : 'not set');
+        $parts[] = $t . ': ' . (($c && !empty($c['start_date'])) ? (!empty($c['end_date']) ? "{$c['start_date']} to {$c['end_date']}" : "from {$c['start_date']} (no end date yet; runs until the next term starts)") : 'not set');
     }
     $L[] = "TERM INTERVALS: " . implode(' | ', $parts);
 

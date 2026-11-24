@@ -2545,3 +2545,95 @@
     .sub-view-btn span:not(.sub-view-btn__count) { white-space: nowrap; }
     .sm-actions .btn-primary, .sm-actions .btn-secondary { flex: 1; justify-content: center; }
 }
+
+
+/* ==========================================================
+   Class header (hero) — matches the Course Section page.
+   Scoped to .breadcrumb-back--btn / .class-hero so the other
+   "Back to ..." links on this page are unchanged.
+   ========================================================== */
+.breadcrumb-back--btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 16px;
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--primary, #1b4332);
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #e3e9e6);
+    border-radius: 10px;
+    box-shadow: var(--shadow, 0 1px 2px rgba(0, 0, 0, 0.05));
+    text-decoration: none;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+                transform 0.2s ease, box-shadow 0.2s ease;
+}
+.breadcrumb-back--btn i { font-size: 0.8rem; transition: transform 0.2s ease; }
+.breadcrumb-back--btn:hover {
+    background: var(--primary, #1b4332);
+    border-color: var(--primary, #1b4332);
+    color: #ffffff;
+    text-decoration: none;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(27, 67, 50, 0.22);
+}
+.breadcrumb-back--btn:hover i { transform: translateX(-3px); }
+.breadcrumb-back--btn:active { transform: translateY(0); box-shadow: var(--shadow, 0 1px 2px rgba(0, 0, 0, 0.05)); }
+.breadcrumb-back--btn:focus-visible { outline: 3px solid rgba(45, 106, 79, 0.35); outline-offset: 2px; }
+
+.class-hero {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.class-hero__icon {
+    flex: 0 0 auto;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--primary-light, #2d6a4f), var(--primary, #1b4332));
+    box-shadow: 0 8px 18px rgba(27, 67, 50, 0.22);
+}
+.class-hero__text { min-width: 0; }
+.class-hero .dash-title {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+}
+.class-hero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+.class-hero__meta .meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted, #6b7d74);
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #e3e9e6);
+}
+.class-hero__meta .meta-pill i { font-size: 0.75rem; opacity: 0.85; }
+.class-hero__meta .meta-pill--grade { color: var(--primary, #1b4332); background: #e7f3ec; border-color: #cfe6d9; }
+.class-hero__meta .archive-chip { margin-left: 0; }
+.class-hero__meta .class-code-badge { margin: 0; padding: 5px 12px; border-radius: 999px; }
+
+@media (max-width: 480px) {
+    .class-hero__icon { width: 46px; height: 46px; font-size: 1.1rem; border-radius: 12px; }
+    .class-hero .dash-title { font-size: 1.4rem; }
+}

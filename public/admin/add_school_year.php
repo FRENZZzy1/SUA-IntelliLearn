@@ -90,7 +90,7 @@ try {
     $message = 'School year added successfully.';
     if ($copyStats !== null) {
         $message = sprintf(
-            'School year added. Copied %d section(s) and %d class(es) from %s as TRM 1 classes; no students were carried over. Next, set the term dates for the new year (Classes & Subjects > Set Term Interval).',
+            'School year added. Copied %d section(s) and %d class(es) from %s as TRM 1 classes only; no students were carried over. TRM 2 and TRM 3 are created automatically once the year is current and its term dates (Classes & Subjects > Set Term Interval) reach them.',
             $copyStats['sections_created'] + $copyStats['sections_reused'],
             $copyStats['classes_created'],
             $copyLabel

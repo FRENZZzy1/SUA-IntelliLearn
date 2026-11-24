@@ -95,19 +95,11 @@ $avgEnrollment   = $totalCapacity > 0 ? round(($totalEnrolled / $totalCapacity) 
             </div>
         </section>
 
-        <!-- Toolbar: Search + Filters + Sort -->
+        <!-- Toolbar: Search -->
         <section class="section-toolbar">
             <div class="toolbar-search">
                 <i class="fas fa-search"></i>
                 <input type="text" id="subjectSearch" placeholder="Search subjects by name, quarter, or schedule..." autocomplete="off">
-            </div>
-            <div class="toolbar-actions">
-                <button class="btn-toolbar" id="btnFilter" title="Filter subjects">
-                    <i class="fas fa-filter"></i> <span>Filter</span>
-                </button>
-                <button class="btn-toolbar" id="btnSort" title="Sort subjects">
-                    <i class="fas fa-sort-amount-down"></i> <span>Sort</span>
-                </button>
             </div>
         </section>
 

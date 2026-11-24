@@ -118,8 +118,9 @@ $csrfToken = generateCSRFToken();
 // when an admin re-saves the intervals.
 syncCourseTermsToCurrent($pdo);
 
-$termIntervals = getTermIntervals($pdo);
+$termIntervals = getTermIntervals($pdo);              // the current school year's intervals
 $currentTerm   = resolveCurrentTerm($termIntervals);
+$termYear      = $pdo->query("SELECT label FROM schoolyears WHERE is_current = 1 LIMIT 1")->fetchColumn();
 
 // Which view-panel (if any) should be open on load — set after a
 // Sections/Subjects add, update, or delete action so the panel doesn't
@@ -1049,7 +1050,9 @@ $subjectsList = $pdo->query("
                 <div class="modal-body">
                     <div class="form-row">
                         <span class="field-note">
+                            Term dates belong to the current school year<?= $termYear ? ' (<strong>' . clean($termYear) . '</strong>)' : '' ?> and can also be edited in Settings &rarr; School Year &amp; Terms.
                             New classes are automatically placed in whichever term covers today's date.
+                            TRM 1 starts with the school year by default. Only the start date is needed for a term: leave its end date and the later terms blank until you know them &mdash; a term with no end date runs until the next term starts, and TRM 2 / TRM 3 classes are created automatically when their dates begin.
                             Currently active: <strong><?= $currentTerm ? clean($currentTerm) : 'None — not configured' ?></strong>.
                         </span>
                     </div>

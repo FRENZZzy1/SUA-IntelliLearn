@@ -27,55 +27,16 @@ if (!validateCSRFToken($_POST['csrf'] ?? '')) {
     exit();
 }
 
-$errors    = [];
-$termLabels = [1 => 'TRM 1', 2 => 'TRM 2', 3 => 'TRM 3'];
-$intervals  = [];
+$errors = [];
 
-foreach ($termLabels as $n => $label) {
-    $entry = ['mode' => 'date', 'start_month' => null, 'end_month' => null, 'start_date' => null, 'end_date' => null];
-
-    $startDate = trim($_POST["term_{$n}_start_date"] ?? '');
-    $endDate   = trim($_POST["term_{$n}_end_date"] ?? '');
-
-    $startOk = (bool) DateTime::createFromFormat('Y-m-d', $startDate);
-    $endOk   = (bool) DateTime::createFromFormat('Y-m-d', $endDate);
-
-    if (!$startOk || !$endOk) {
-        $errors[] = "$label: choose a valid start and end date.";
-    } elseif ($startDate > $endDate) {
-        $errors[] = "$label: start date must be on or before the end date.";
-    } else {
-        $entry['start_date'] = $startDate;
-        $entry['end_date']   = $endDate;
-    }
-
-    $intervals[$label] = $entry;
+$year = $pdo->query("SELECT school_year_id, start_date, end_date FROM schoolyears WHERE is_current = 1 LIMIT 1")->fetch();
+if (!$year) {
+    http_response_code(422);
+    echo json_encode(['success' => false, 'errors' => ['There is no current school year. Set one in Settings > School Year & Terms first.']]);
+    exit();
 }
 
-// Guard against overlapping date-mode ranges. resolveCurrentTerm() walks
-// TRM 1 -> TRM 2 -> TRM 3 in order and returns the *first* range that
-// contains today, using inclusive start/end bounds on both sides. If two
-// terms share so much as a single day (e.g. TRM 1 ends 09/04 and TRM 2
-// starts 09/04), that shared day will always resolve to the earlier term
-// and the later term can never become active on it. Reject that here so
-// it can't be saved in the first place.
-if (empty($errors)) {
-    $dateTerms = array_filter($intervals, static fn($entry) => $entry['start_date'] !== null);
-    $labels    = array_keys($dateTerms);
-
-    for ($i = 0; $i < count($labels); $i++) {
-        for ($j = $i + 1; $j < count($labels); $j++) {
-            $a = $dateTerms[$labels[$i]];
-            $b = $dateTerms[$labels[$j]];
-
-            // Standard inclusive-range overlap test: a and b overlap
-            // unless one ends before the other begins.
-            if ($a['start_date'] <= $b['end_date'] && $b['start_date'] <= $a['end_date']) {
-                $errors[] = "{$labels[$i]} and {$labels[$j]} overlap ({$a['start_date']}–{$a['end_date']} vs {$b['start_date']}–{$b['end_date']}). Terms must not share any dates — for example, end {$labels[$i]} the day before {$labels[$j]} starts.";
-            }
-        }
-    }
-}
+[$intervals, $errors] = parseTermIntervalsInput($_POST, $year['start_date'], $year['end_date'], false);
 
 if (!empty($errors)) {
     http_response_code(422);
@@ -84,17 +45,7 @@ if (!empty($errors)) {
 }
 
 try {
-    $stmt = $pdo->prepare("
-        INSERT INTO system_settings (setting_key, setting_value, updated_by)
-        VALUES ('term_intervals', ?, ?)
-        ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value), updated_by = VALUES(updated_by)
-    ");
-    $stmt->execute([json_encode($intervals), $_SESSION['user_id'] ?? null]);
-
-    // Every class follows the single school-wide current term — push all
-    // of them onto whatever term these new intervals resolve to today,
-    // whether they were created just now or last school year.
-    syncCourseTermsToCurrent($pdo);
+    saveSchoolYearTermIntervals($pdo, (int) $year['school_year_id'], $intervals);
 
     setFlashMessage('success', 'Term intervals saved.');
     echo json_encode(['success' => true]);

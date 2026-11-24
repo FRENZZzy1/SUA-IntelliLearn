@@ -38,6 +38,22 @@ try {
 // ---- Load school years ----
 $schoolYears = $pdo->query("SELECT * FROM schoolyears ORDER BY start_date DESC")->fetchAll();
 
+// Renders the TRM 1-3 start/end date inputs used by both the Add and Edit
+// school year forms. $intervals comes from getTermIntervals() (or null).
+function renderTermIntervalFields(?array $intervals): void {
+    echo '<div class="term-interval-fields">';
+    echo '<div class="term-interval-title"><i class="fas fa-calendar-days"></i> Term intervals <small>TRM 1 starts with the school year by default. A term only needs a start date; leave end dates and later terms blank until you know them. TRM 2 and TRM 3 classes are created automatically when their dates begin.</small></div>';
+    foreach ([1 => 'TRM 1', 2 => 'TRM 2', 3 => 'TRM 3'] as $n => $label) {
+        $cfg = $intervals[$label] ?? [];
+        echo '<div class="term-interval-row">';
+        echo '<span class="term-interval-label">' . $label . '</span>';
+        echo '<div class="form-group"><label>Start Date</label><input type="date" name="term_' . $n . '_start_date" value="' . clean($cfg['start_date'] ?? '') . '"></div>';
+        echo '<div class="form-group"><label>End Date</label><input type="date" name="term_' . $n . '_end_date" value="' . clean($cfg['end_date'] ?? '') . '"></div>';
+        echo '</div>';
+    }
+    echo '</div>';
+}
+
 // ---- Teacher evaluation survey state ----
 require_once '../../includes/teacher_evaluation.php';
 $isFullAdmin   = adminAccessLevel() === 'full' && $canWrite;   // only Full Access admins may send/close a survey
@@ -187,6 +203,7 @@ foreach ($schoolYears as $sy) {
                                         <input type="date" name="end_date" value="<?= clean($sy['end_date']) ?>" required>
                                     </div>
                                 </div>
+                                <?php renderTermIntervalFields(getTermIntervals($pdo, (int) $sy['school_year_id'])); ?>
                                 <div class="year-edit-actions">
                                     <button type="button" class="btn btn-outline btn-sm" onclick="toggleYearEdit(<?= (int) $sy['school_year_id'] ?>, false)">Cancel</button>
                                     <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-check"></i> Save</button>
@@ -235,7 +252,7 @@ foreach ($schoolYears as $sy) {
                                     <option value="<?= (int) $sy['school_year_id'] ?>"><?= clean($sy['label']) ?><?= $sy['is_current'] ? ' (current)' : '' ?></option>
                                     <?php endforeach; ?>
                                 </select>
-                                <small>Recreates each section and class (teacher, schedule, capacity) as a TRM 1 class in the new year. Students are not carried over.</small>
+                                <small>Recreates each section and class (teacher, schedule, capacity) as a TRM 1 class only in the new year. TRM 2 and TRM 3 are created automatically later, from the term intervals set under Classes &amp; Subjects &rarr; Set Term Interval. Students are not carried over.</small>
                             </div>
                         </div>
                         <div class="form-actions">
@@ -249,7 +266,7 @@ foreach ($schoolYears as $sy) {
                 <div class="settings-card">
                     <div class="settings-card-header">
                         <h2><i class="fas fa-triangle-exclamation"></i> About Terms</h2>
-                        <p>Class offerings are created per term (TRM 1 / TRM 2 / TRM 3). Within a school year, each class is copied into the next term with its enrolled students when the term changes. A new school year starts without students: use &ldquo;Copy sections &amp; classes from&rdquo; above to recreate the structure. The old year is archived automatically once its end date has passed. Term dates are not tied to a school year, so set them again under Classes &amp; Subjects &rarr; Set Term Interval for each new year.</p>
+                        <p>Class offerings are created per term (TRM 1 / TRM 2 / TRM 3). Within a school year, each class is copied into the next term with its enrolled students when the term changes. A new school year starts without students: use &ldquo;Copy sections &amp; classes from&rdquo; above to recreate the structure. The old year is archived automatically once its end date has passed. Each school year keeps its own term dates. Set them under Classes &amp; Subjects &rarr; Set Term Interval (they apply to the current year), or edit a year here. A copied class starts as TRM 1 only &mdash; the later terms appear on their own once their dates begin.</p>
                     </div>
                 </div>
             </div>

@@ -32,11 +32,22 @@ $schedule_days_raw = $_POST['schedule_days'] ?? '';
 $start_time_raw  = trim($_POST['start_time'] ?? '');
 $end_time_raw    = trim($_POST['end_time'] ?? '');
 
-// Term is no longer picked in the modal — it's derived from today's date
-// against the intervals configured via "Set Term Interval".
-$quarter = resolveCurrentTerm(getTermIntervals($pdo));
-if ($quarter === null) {
-    $errors[] = 'No term is currently active based on today\'s date. Set the term intervals first (Search & Export bar > "Set Term Interval").';
+// Term is not picked in the modal — it's derived from today's date against the
+// term intervals of the school year the class is being created in (set under
+// Settings > School Year & Terms). A year that has not started yet starts at TRM 1.
+$quarter = null;
+if (ctype_digit((string) $school_year_id)) {
+    $yearIntervals = getTermIntervals($pdo, (int) $school_year_id);
+    $quarter = resolveCurrentTerm($yearIntervals);
+    if ($quarter === null) {
+        $trm1Start = $yearIntervals['TRM 1']['start_date'] ?? null;
+        if ($trm1Start !== null && date('Y-m-d') < $trm1Start) {
+            $quarter = 'TRM 1';
+        }
+    }
+}
+if ($quarter === null && ctype_digit((string) $school_year_id)) {
+    $errors[] = 'No term is active for that school year today. Set the term dates under Classes & Subjects > Set Term Interval (or Edit the school year in Settings).';
 }
 
 if (!ctype_digit((string) $subject_id)) $errors[] = 'Please choose a subject.';

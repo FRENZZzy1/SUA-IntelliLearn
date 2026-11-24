@@ -51,6 +51,13 @@ if ($startTs !== false && $endTs !== false && $startTs >= $endTs) {
     $errors[] = 'End date must be after the start date.';
 }
 
+// Term dates are edited together with the year. All six blank = no term dates.
+$termIntervals = null;
+if ($startTs !== false && $endTs !== false) {
+    [$termIntervals, $termErrors] = parseTermIntervalsInput($_POST, date('Y-m-d', $startTs), date('Y-m-d', $endTs), true);
+    $errors = array_merge($errors, $termErrors);
+}
+
 if (!empty($errors)) {
     http_response_code(422);
     echo json_encode(['success' => false, 'errors' => $errors]);
@@ -73,6 +80,10 @@ try {
 
     $pdo->prepare("UPDATE schoolyears SET label = ?, start_date = ?, end_date = ? WHERE school_year_id = ?")
         ->execute([$label, $newStart, $newEnd, $schoolYearId]);
+
+    // Saves the term dates and, for the current year, rolls its classes onto
+    // the term those dates give for today (so Classes & Subjects reflects them).
+    saveSchoolYearTermIntervals($pdo, $schoolYearId, $termIntervals);
 
     $message = 'School year updated.';
     // A year whose (new) end date has already passed is archived automatically.

@@ -101,6 +101,9 @@ try {
         }
     }
 
+    // Bring the newly current year's classes up to today's term (uses its own term intervals).
+    syncCourseTermsToCurrent($pdo);
+
     $message = $restoredCounts !== null
         ? sprintf('School year set as current: %d class(es) and %d section(s) are visible again.', $restoredCounts['classes'], $restoredCounts['sections'])
         : 'Active school year updated.';
