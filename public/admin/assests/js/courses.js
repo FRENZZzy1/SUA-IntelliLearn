@@ -370,24 +370,66 @@ function exportSearchInput(type, value) {
         .then(data => {
             dropdown.innerHTML = '';
             if (!data.success || data.results.length === 0) {
-                dropdown.innerHTML = '<div class="export-search-dropdown-empty">No matches found.</div>';
+                dropdown.innerHTML = '<div class="export-search-dropdown-empty"><i class="fas fa-magnifying-glass"></i><span>No matches found</span><small>Try a different spelling.</small></div>';
                 dropdown.hidden = false;
                 return;
             }
 
+            const icons = { teacher: 'fa-chalkboard-teacher', section: 'fa-layer-group', student: 'fa-user-graduate' };
+            const head = document.createElement('div');
+            head.className = 'esd-head';
+            head.textContent = data.results.length + (data.results.length === 1 ? ' match' : ' matches');
+            dropdown.appendChild(head);
+
             data.results.forEach(function (r) {
+                // sublabel looks like "Department · 2 classes" -> split meta / class count
+                const parts = String(r.sublabel || '').split(' \u00b7 ');
+                const count = parts.length > 1 ? parts.pop() : '';
+                const meta = parts.join(' \u00b7 ');
+                const num = parseInt(count, 10);
+
                 const item = document.createElement('div');
                 item.className = 'export-search-dropdown-item';
-                item.innerHTML = '<div class="esdi-name"></div><div class="esdi-sub"></div>';
-                item.querySelector('.esdi-name').textContent = r.label;
-                item.querySelector('.esdi-sub').textContent = r.sublabel;
+                item.setAttribute('role', 'option');
+                item.innerHTML =
+                    '<span class="esdi-avatar esdi-' + type + '"></span>' +
+                    '<span class="esdi-text"><span class="esdi-name"></span><span class="esdi-sub"></span></span>' +
+                    '<span class="esdi-badge"></span>';
+
+                const avatar = item.querySelector('.esdi-avatar');
+                if (type === 'section') {
+                    avatar.innerHTML = '<i class="fas ' + icons.section + '"></i>';
+                } else {
+                    const w = String(r.label).trim().split(/\s+/);
+                    avatar.textContent = ((w[0] || '').charAt(0) + (w.length > 1 ? w[w.length - 1].charAt(0) : '')).toUpperCase();
+                }
+
+                // Highlight the typed text inside the name
+                const nameEl = item.querySelector('.esdi-name');
+                const idx = r.label.toLowerCase().indexOf(q.toLowerCase());
+                if (idx >= 0) {
+                    nameEl.appendChild(document.createTextNode(r.label.slice(0, idx)));
+                    const mark = document.createElement('mark');
+                    mark.textContent = r.label.slice(idx, idx + q.length);
+                    nameEl.appendChild(mark);
+                    nameEl.appendChild(document.createTextNode(r.label.slice(idx + q.length)));
+                } else {
+                    nameEl.textContent = r.label;
+                }
+
+                item.querySelector('.esdi-sub').textContent = meta || count;
+                const badge = item.querySelector('.esdi-badge');
+                badge.textContent = count;
+                if (!count) badge.style.display = 'none';
+                if (num === 0) badge.classList.add('is-empty');
+
                 item.onclick = function () { selectExportEntity(type, r.id, r.label, r.sublabel); };
                 dropdown.appendChild(item);
             });
             dropdown.hidden = false;
         })
         .catch(() => {
-            dropdown.innerHTML = '<div class="export-search-dropdown-empty">Something went wrong.</div>';
+            dropdown.innerHTML = '<div class="export-search-dropdown-empty"><i class="fas fa-triangle-exclamation"></i><span>Something went wrong</span><small>Please try again.</small></div>';
             dropdown.hidden = false;
         });
     }, 250);
@@ -405,8 +447,10 @@ function selectExportEntity(type, id, label, sublabel) {
     dropdown.hidden = true;
     dropdown.innerHTML = '';
 
-    chip.innerHTML = '<span>' + escapeHtml(label) + ' <span style="font-weight:400; color:#3b82f6;">· ' + escapeHtml(sublabel) + '</span></span>'
-        + '<button type="button" onclick="clearExportSelection(\'' + type + '\')" aria-label="Clear">&times;</button>';
+    const parts = String(sublabel || '').split(' \u00b7 ');
+    chip.innerHTML = '<i class="fas fa-circle-check esc-check"></i>'
+        + '<span class="esc-text"><strong>' + escapeHtml(label) + '</strong><small>' + escapeHtml(parts.join(' \u00b7 ')) + '</small></span>'
+        + '<button type="button" onclick="clearExportSelection(\'' + type + '\')" aria-label="Clear selection">&times;</button>';
     chip.hidden = false;
     btn.disabled = false;
 }
