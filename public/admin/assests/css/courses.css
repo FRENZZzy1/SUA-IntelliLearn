@@ -1319,3 +1319,13 @@ body {
 .cs-page .course-table tbody tr:first-child .ra-btn[data-tip]:focus-visible::after {
     transform: translate(0, -50%);
 }
+
+/* Centre modals in the content area (beside the sidebar) instead of the whole
+   screen, so wide modals such as View Students never slide under the sidebar.
+   NOTE: add_course.css loads after this file and sets `inset: 0` on .modal-overlay,
+   which reset left to 0 and let the sidebar clip the modal. The `body` prefix raises
+   specificity so this offset always wins regardless of load order. */
+@media (min-width: 769px) {
+    body .modal-overlay { left: var(--sidebar-width, 260px); transition: opacity .25s ease, visibility .25s ease, left .3s ease; }
+    body:has(.sidebar.collapsed) .modal-overlay { left: var(--sidebar-collapsed, 70px); }
+}
